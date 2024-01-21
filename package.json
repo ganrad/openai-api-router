@@ -1,0 +1,11 @@
+{
+  "name": "openai-api-router",
+  "version": "1.0.0",
+  "description": "An intelligent router/load balancer that evenly distributes API requests among backend Openai API endpoints deployed on Azure.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ganesh Radhakrishnan",
+  "license": "MIT"
+}
