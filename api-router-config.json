@@ -1,0 +1,3 @@
+{
+  "endpoints" : [{ "uri": "https://{your-resource-name}.openai.azure.com/openai/deployments/{deployment-id}/completions?api-version={api-version}", "apikey" : "xyz"}]
+}
