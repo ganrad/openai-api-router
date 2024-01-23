@@ -23,7 +23,8 @@ fs.readFile("./api-router-config.json", (error, data) => {
   */
 });
 
-app.use(morgan('combined'));
+const log_mode = process.env.API_ROUTER_LOG_MODE;
+app.use(morgan(log_mode ? log_mode : 'combined'));
 
 app.get(endpoint + "/healthz", (req, res) => {
   resp_obj = { endpoint: "/healthz", date: new Date().toLocaleString(), status : "OK" };
