@@ -8,9 +8,6 @@ const host = "localhost";
 const port = 8000;
 const endpoint = "/api/v1/" + process.env.API_ROUTER_ENV;
 
-// var context = fs.readFileSync("./api-router-config.json");
-// console.log("Router config:\n" + context);
-
 var context;
 fs.readFile("./api-router-config.json", (error, data) => {
   if (error) {
@@ -18,10 +15,12 @@ fs.readFile("./api-router-config.json", (error, data) => {
     return; // exit program
   };
   context = JSON.parse(data);
+  /*
   context.endpoints.forEach((element) => {
     for (var key in element)
       console.log(key,element[key]);
   });
+  */
 });
 
 app.use(morgan('combined'));
@@ -38,6 +37,6 @@ app.use(endpoint + "/apirouter", function(req, res, next) {
 }, apirouter);
 
 app.listen(port, () => {
-  console.log(`OpenAI API Gateway uri: http://${host}:${port}${endpoint}`);
+  console.log(`OpenAI API Gateway started successfully. Endpoint uri: http://${host}:${port}${endpoint}`);
 });
 

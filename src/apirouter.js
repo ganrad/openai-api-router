@@ -17,11 +17,10 @@ router.post("/lb", async (req, res) => {
   let response;
   // eps.endpoints.forEach((element) => {
   for (const element of eps.endpoints) {
-    console.log(`****Router=apirouter()****\nEndpoint=/lb\nuri=${element.uri}\napikey=${element.apikey}\n*****`);
-    console.log(`****Method=${req.method}\nBody=${req.body}\n****`);
+    console.log(`****Router=apirouter()****\nMethod=${req.method}\nBody=${req.body}\nEndpoint=/lb\nuri=${element.uri}\napikey=${element.apikey}\n*****`);
     try {
       // req.pipe(request(targetUrl)).pipe(res);
-      response = await fetch(`${element.uri}`, {
+      response = await fetch(element.uri, {
         method: req.method,
 	headers: {'Content-Type': 'application/json', 'api-key': element.apikey},
         body: req.body
