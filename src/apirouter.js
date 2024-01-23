@@ -17,13 +17,14 @@ router.post("/lb", async (req, res) => {
   let response;
   // eps.endpoints.forEach((element) => {
   for (const element of eps.endpoints) {
-    console.log(`****Router=apirouter()****\nMethod=${req.method}\nBody=${req.body}\nEndpoint=/lb\nuri=${element.uri}\napikey=${element.apikey}\n*****`);
+    console.log(`****Router=apirouter()****\nBody=${JSON.stringify(req.body)}\n*****`);
+    console.log(`****Router=apirouter()****\nMethod=${req.method}\nEndpoint=/lb\nUri=${element.uri}\nApi-key=${element.apikey}\n*****`);
     try {
       // req.pipe(request(targetUrl)).pipe(res);
       response = await fetch(element.uri, {
         method: req.method,
 	headers: {'Content-Type': 'application/json', 'api-key': element.apikey},
-        body: req.body
+        body: JSON.stringify(req.body)
       });
       if (response.ok)
         break;
@@ -34,7 +35,7 @@ router.post("/lb", async (req, res) => {
   };
   if (response) {
     const data = await response.json();
-    res.status(200).json(response);
+    res.status(200).json(data);
   }
   else {
     err_obj = { endpoint: "/lb", date: new Date().toLocaleString(), err_msg: "Servers are too busy!" }
