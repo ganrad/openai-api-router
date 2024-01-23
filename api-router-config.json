@@ -1,3 +1,8 @@
 {
-  "endpoints" : [{ "uri": "https://{your-resource-name}.openai.azure.com/openai/deployments/{deployment-id}/completions?api-version={api-version}", "apikey" : "xyz"}]
+  "endpoints" : [
+    {
+      "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
+      "apikey" : "9eca9ec12e1e4be4a38d00282f0d266d"
+    }
+  ]
 }

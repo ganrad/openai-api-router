@@ -27,7 +27,8 @@ fs.readFile("./api-router-config.json", (error, data) => {
 app.use(morgan('combined'));
 
 app.get(endpoint + "/healthz", (req, res) => {
-  res.status(200).send("All OK!");
+  resp_obj = { endpoint: "/healthz", date: new Date().toLocaleString(), status : "OK" };
+  res.status(200).json(resp_obj);
 });
 
 app.use(endpoint + "/apirouter", function(req, res, next) {
