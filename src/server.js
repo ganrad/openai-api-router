@@ -11,7 +11,7 @@ const endpoint = "/api/v1/" + process.env.API_ROUTER_ENV;
 // var context = fs.readFileSync("./api-router-config.json");
 // console.log("Router config:\n" + context);
 
-var context = null;
+var context;
 fs.readFile("./api-router-config.json", (error, data) => {
   if (error) {
     console.log(error);
@@ -30,9 +30,13 @@ app.get(endpoint + "/healthz", (req, res) => {
   res.status(200).send("All OK!");
 });
 
-app.use(endpoint + "/apirouter", apirouter);
+app.use(endpoint + "/apirouter", function(req, res, next) {
+  // Add the target uri's to the request object
+  req.targeturis = context;
+  next();
+}, apirouter);
 
 app.listen(port, () => {
-  console.log(`OpenAI API Router uri: http://${host}:${port}${endpoint}`);
+  console.log(`OpenAI API Gateway uri: http://${host}:${port}${endpoint}`);
 });
 
