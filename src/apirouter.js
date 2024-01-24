@@ -15,6 +15,7 @@ router.get("/reconfig", (req, res) => {
 router.post("/lb", async (req, res) => {
   const eps = req.targeturis;
   let response;
+  let data;
   // eps.endpoints.forEach((element) => {
   for (const element of eps.endpoints) {
     // console.log(`****Router=apirouter()****\nBody=${JSON.stringify(req.body)}\n*****`);
@@ -27,8 +28,17 @@ router.post("/lb", async (req, res) => {
 	headers: {'Content-Type': 'application/json', 'api-key': element.apikey},
         body: JSON.stringify(req.body)
       });
-      if (response.ok)
-        break;
+      data = await response.json();
+
+      let { status } = response;
+      if ( status === 200 ) {
+      // if (response.ok)
+        res.status(200).json(data);
+        return;
+      }
+      else if ( status === 429 ) {
+        console.log(`*****\napirouter():\nTarget Endpoint=${element.uri}\nStatus=${status}\nMessage=${JSON.stringify(data)}\n*****`);
+      };
     }
     catch (error) {
       err_msg = { targetUri: element.uri, msg: error };
@@ -36,14 +46,8 @@ router.post("/lb", async (req, res) => {
       // console.log(`****Router=apirouter()****\nEndpoint=/lb\nuri=${element.uri}\nerror=${error}\n*****`);
     };
   };
-  if (response) {
-    const data = await response.json();
-    res.status(200).json(data);
-  }
-  else {
-    err_obj = { endpoint: "/lb", date: new Date().toLocaleString(), err_msg: "All backend servers are too busy! Retry after some time..." }
-    res.status(503).json(err_obj);
-  };
+  err_obj = { endpoint: "/lb", date: new Date().toLocaleString(), err_msg: "All backend servers are too busy! Retry after some time..." }
+  res.status(503).json(err_obj);
 });
 
 module.exports = router;
