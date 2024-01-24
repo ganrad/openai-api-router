@@ -17,8 +17,9 @@ router.post("/lb", async (req, res) => {
   let response;
   // eps.endpoints.forEach((element) => {
   for (const element of eps.endpoints) {
-    console.log(`****Router=apirouter()****\nBody=${JSON.stringify(req.body)}\n*****`);
-    console.log(`****Router=apirouter()****\nMethod=${req.method}\nEndpoint=/lb\nUri=${element.uri}\nApi-key=${element.apikey}\n*****`);
+    // console.log(`****Router=apirouter()****\nBody=${JSON.stringify(req.body)}\n*****`);
+    // console.log(`****Router=apirouter()****\nMethod=${req.method}\nEndpoint=/lb\nUri=${element.uri}\nApi-key=${element.apikey}\n*****`);
+    // req.log.info(`Target uri: ${element.uri}`);
     try {
       // req.pipe(request(targetUrl)).pipe(res);
       response = await fetch(element.uri, {
@@ -30,7 +31,9 @@ router.post("/lb", async (req, res) => {
         break;
     }
     catch (error) {
-      console.log(`****Router=apirouter()****\nEndpoint=/lb\nuri=${element.uri}\nerror=${error}\n*****`);
+      err_msg = { targetUri: element.uri, msg: error };
+      req.log.warn(err_msg);
+      // console.log(`****Router=apirouter()****\nEndpoint=/lb\nuri=${element.uri}\nerror=${error}\n*****`);
     };
   };
   if (response) {
@@ -38,11 +41,9 @@ router.post("/lb", async (req, res) => {
     res.status(200).json(data);
   }
   else {
-    err_obj = { endpoint: "/lb", date: new Date().toLocaleString(), err_msg: "Servers are too busy!" }
+    err_obj = { endpoint: "/lb", date: new Date().toLocaleString(), err_msg: "All backend servers are too busy! Retry after some time..." }
     res.status(503).json(err_obj);
   };
-  // res_obj = { endpoint: "/lb", date: new Date().toLocaleString(), status : "OK" };
-  // res.status(200).json(res_obj);
 });
 
 module.exports = router;
