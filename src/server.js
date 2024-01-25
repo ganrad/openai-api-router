@@ -1,5 +1,7 @@
 const fs = require("fs");
 const express = require("express");
+const EndpointMetrics = require("./utilities/ep-metrics.js");
+const epdata = new Map();
 const apirouter = require("./apirouter");
 const app = express();
 var bodyParser = require('body-parser');
@@ -58,15 +60,18 @@ fs.readFile(process.env.API_GATEWAY_CONFIG_FILE, (error, data) => {
     process.exit(1);
   };
   context = JSON.parse(data);
-  /*
+  
   context.endpoints.forEach((element) => {
-    for (var key in element)
-      console.log(key,element[key]);
+    epdata.set(element.uri, new EndpointMetrics(element.uri));
   });
-  */
+  console.log("Server(): Backend/Target endpoints:");
+  epdata.forEach((value, key, map) => {
+    console.log(`uri: ${key}`);
+  });
+  // for (var key in element)
+  //   console.log(key,element[key]);
 });
 
-// const log_mode = process.env.API_ROUTER_LOG_MODE;
 // app.use(morgan(log_mode ? log_mode : 'combined'));
 app.use(bodyParser.json());
 
@@ -79,12 +84,14 @@ app.get(endpoint + "/healthz", (req, res) => {
 app.use(endpoint + "/apirouter", function(req, res, next) {
   // Add logger
   logger(req,res);
+  // Add epdata to request object
+  req.epdata = epdata;
   // Add the target uri's to the request object
   req.targeturis = context;
   next();
 }, apirouter);
 
 app.listen(port, () => {
-  console.log(`Server(): OpenAI API Gateway server started successfully. Endpoint uri: http://${host}:${port}${endpoint}`);
+  console.log(`Server(): OpenAI API Gateway server started successfully.\nGateway uri: http://${host}:${port}${endpoint}`);
 });
 

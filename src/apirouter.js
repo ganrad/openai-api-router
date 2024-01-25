@@ -3,7 +3,14 @@ const express = require("express");
 const router = express.Router();
 
 router.get("/status", (req, res) => {
-  res_obj = { endpoint: "/status", date: new Date().toLocaleString(), status : "OK" };
+  let epDict = [];
+  req.epdata.forEach(function(value, key) {
+    // console.log(`Endpoint=${key}`);
+    dict = { endpoint: key, apiCalls: value.apiCalls }
+    epDict.push(dict);
+  });
+  let metricsObj = { metrics: epDict };
+  let res_obj = { endpoint: "/status", data: metricsObj, date: new Date().toLocaleString(), status : "OK" };
   res.status(200).json(res_obj);
 });
 
@@ -32,7 +39,9 @@ router.post("/lb", async (req, res) => {
 
       let { status } = response;
       if ( status === 200 ) {
-      // if (response.ok)
+	let metricsObj = req.epdata.get(element.uri);
+	metricsObj.incrementApiCalls();
+
         res.status(200).json(data);
         return;
       }

@@ -3,14 +3,14 @@
 i=0
 while [ $i -le 50 ]
 do
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}"
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}"
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}"
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}"
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}"
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}"
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}"
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}"
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}"
+  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
   ((i++))
 done
