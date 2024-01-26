@@ -7,11 +7,12 @@ var instanceCalls = 0;
 // Failed calls ~ when all target endpoints are operating at full capacity ~ max. pressure
 var instanceFailedCalls = 0;
 
-router.get("/status", (req, res) => {
+router.get("/metrics", (req, res) => {
   let epDict = [];
   req.epdata.forEach(function(value, key) {
     dict = {
       endpoint: key,
+      inferenceTokens: value.apiTokens,
       apiCalls: value.apiCalls,
       failedCalls: value.failedCalls,
       totalCalls: value.totalCalls
@@ -22,12 +23,16 @@ router.get("/status", (req, res) => {
   let instName = process.env.API_GATEWAY_NAME;
   let metricsObj = { metrics: epDict };
   let res_obj = {
+    hostName: process.env.API_GATEWAY_HOST,
+    listenPort: process.env.API_GATEWAY_PORT,
     instanceName: instName,
-    endpoint: "/status",
+    endpoint: "/metrics",
     data: metricsObj,
     totalCalls: instanceCalls,
     failedCalls: instanceFailedCalls,
-    date: new Date().toLocaleString(), status : "OK" };
+    date: new Date().toLocaleString(),
+    status: "OK"
+  };
 
   res.status(200).json(res_obj);
 });
@@ -47,6 +52,7 @@ router.post("/lb", async (req, res) => {
 
   for (const element of eps.endpoints) {
     let metricsObj = req.epdata.get(element.uri);
+    metricsObj.incrementTotalCalls();
 
     try {
       // req.pipe(request(targetUrl)).pipe(res);
@@ -61,6 +67,8 @@ router.post("/lb", async (req, res) => {
       if ( status === 200 ) {
 	metricsObj.incrementApiCalls();
 
+        metricsObj.apiTokens = data.usage.total_tokens;
+
         res.status(200).json(data);
         return;
       }
@@ -70,9 +78,10 @@ router.post("/lb", async (req, res) => {
       };
     }
     catch (error) {
-      err_msg = { targetUri: element.uri, msg: error };
+      err_msg = {targetUri: element.uri, cause: error};
+      // throw new Error("Encountered exception", {cause: error});
       metricsObj.incrementFailedCalls();
-      req.log.warn(err_msg);
+      req.log.warn({err: err_msg});
     };
   };
 
