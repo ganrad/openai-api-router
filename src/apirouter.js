@@ -1,6 +1,10 @@
 const fetch = require("node-fetch");
 const express = require("express");
+const EndpointMetrics = require("./utilities/ep-metrics.js");
 const router = express.Router();
+
+// Target endpoint metrics cache -
+const epdata = new Map();
 
 // Total api calls handled by this router instance
 var instanceCalls = 0;
@@ -9,7 +13,7 @@ var instanceFailedCalls = 0;
 
 router.get("/metrics", (req, res) => {
   let epDict = [];
-  req.epdata.forEach(function(value, key) {
+  epdata.forEach(function(value, key) {
     dict = {
       endpoint: key,
       inferenceTokens: value.apiTokens,
@@ -51,7 +55,10 @@ router.post("/lb", async (req, res) => {
   instanceCalls++;
 
   for (const element of eps.endpoints) {
-    let metricsObj = req.epdata.get(element.uri);
+    if ( ! epdata.has(element.uri) )
+      epdata.set(element.uri, new EndpointMetrics(element.uri));
+
+    let metricsObj = epdata.get(element.uri);
     metricsObj.incrementTotalCalls();
 
     try {
