@@ -88,7 +88,7 @@ class EndpointMetrics {
       
       let his_obj = {
         collectionTime: sdate,
-        collectionMetrics : {
+        collectedMetrics : {
           noOfApiCalls: this.apiCalls,
           noOfFailedCalls: this.failedCalls,
           tokensPerWindow: this.totalTokens,

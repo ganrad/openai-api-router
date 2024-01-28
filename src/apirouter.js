@@ -16,7 +16,7 @@ router.get("/metrics", (req, res) => {
   epdata.forEach(function(value, key) {
     dict = {
       endpoint: key,
-      data: value.toJSON()
+      metrics: value.toJSON()
     };
     epDict.push(dict);
   });
@@ -28,7 +28,7 @@ router.get("/metrics", (req, res) => {
     endpoint: "/metrics",
     collectionInterval: process.env.API_GATEWAY_METRICS_CINTERVAL,
     historyCount: process.env.API_GATEWAY_METRICS_CHISTORY,
-    metrics: epDict,
+    endpointMetrics: epDict,
     successApiCalls: (instanceCalls - instanceFailedCalls),
     failedApiCalls: instanceFailedCalls,
     totalApiCalls: instanceCalls,
@@ -58,8 +58,8 @@ router.post("/lb", async (req, res) => {
         element.uri,
         new EndpointMetrics(
           element.uri,
-          Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
-          Number(process.env.API_GATEWAY_METRICS_CHISTORY)));
+          process.env.API_GATEWAY_METRICS_CINTERVAL,
+          process.env.API_GATEWAY_METRICS_CHISTORY));
 
     let metricsObj = epdata.get(element.uri); 
 
