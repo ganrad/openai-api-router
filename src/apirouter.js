@@ -16,24 +16,22 @@ router.get("/metrics", (req, res) => {
   epdata.forEach(function(value, key) {
     dict = {
       endpoint: key,
-      inferenceTokens: value.apiTokens,
-      apiCalls: value.apiCalls,
-      failedCalls: value.failedCalls,
-      totalCalls: value.totalCalls
+      data: value.toJSON()
     };
     epDict.push(dict);
   });
 
-  let instName = process.env.API_GATEWAY_NAME;
-  let metricsObj = { metrics: epDict };
   let res_obj = {
     hostName: process.env.API_GATEWAY_HOST,
     listenPort: process.env.API_GATEWAY_PORT,
-    instanceName: instName,
+    instanceName: process.env.API_GATEWAY_NAME,
     endpoint: "/metrics",
-    data: metricsObj,
-    totalCalls: instanceCalls,
-    failedCalls: instanceFailedCalls,
+    collectionInterval: process.env.API_GATEWAY_METRICS_CINTERVAL,
+    historyCount: process.env.API_GATEWAY_METRICS_CHISTORY,
+    metrics: epDict,
+    successApiCalls: (instanceCalls - instanceFailedCalls),
+    failedApiCalls: instanceFailedCalls,
+    totalApiCalls: instanceCalls,
     date: new Date().toLocaleString(),
     status: "OK"
   };
@@ -56,10 +54,14 @@ router.post("/lb", async (req, res) => {
 
   for (const element of eps.endpoints) {
     if ( ! epdata.has(element.uri) )
-      epdata.set(element.uri, new EndpointMetrics(element.uri));
+      epdata.set(
+        element.uri,
+        new EndpointMetrics(
+          element.uri,
+          Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
+          Number(process.env.API_GATEWAY_METRICS_CHISTORY)));
 
-    let metricsObj = epdata.get(element.uri);
-    metricsObj.incrementTotalCalls();
+    let metricsObj = epdata.get(element.uri); 
 
     try {
       // req.pipe(request(targetUrl)).pipe(res);
@@ -72,22 +74,20 @@ router.post("/lb", async (req, res) => {
 
       let { status } = response;
       if ( status === 200 ) {
-	metricsObj.incrementApiCalls();
-
-        metricsObj.apiTokens = data.usage.total_tokens;
+	metricsObj.updateApiCallsAndTokens(data.usage.total_tokens);
 
         res.status(200).json(data);
         return;
       }
       else if ( status === 429 ) {
-	metricsObj.incrementFailedCalls();
+	metricsObj.updateFailedCalls();
         console.log(`*****\napirouter():\nTarget Endpoint=${element.uri}\nStatus=${status}\nMessage=${JSON.stringify(data)}\n*****`);
       };
     }
     catch (error) {
       err_msg = {targetUri: element.uri, cause: error};
       // throw new Error("Encountered exception", {cause: error});
-      metricsObj.incrementFailedCalls();
+      metricsObj.updateFailedCalls();
       req.log.warn({err: err_msg});
     };
   };

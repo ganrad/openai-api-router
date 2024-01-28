@@ -1,53 +1,120 @@
+class Queue {
+  constructor(itemCount) {
+    this.itemCount = itemCount;
+
+    this.items = {};
+    this.fidx = 0;
+    this.bidx = 0;
+  }
+ 
+  enqueue(item) {
+    this.items[this.bidx] = item;
+    this.bidx++;
+
+    if ( Object.keys(this.items).length > this.itemCount )
+      this.dequeue();
+
+    return item;
+  }
+
+  dequeue() {
+    const item = this.items[this.fidx];
+    delete this.items[this.fidx];
+    this.fidx++
+
+    return item;
+  }
+
+  peek() {
+    return this.items[this.fidx]
+  }
+
+  get queueItems() {
+    return this.items;
+  }
+}
+
 class EndpointMetrics {
-  #endpoint // The target endpoint
-  #apiCalls = 0 // No. of successful calls
-  #failedCalls = 0 // No. of failed calls ~ 429's
-  #totalCalls = 0 // Total calls handled by this target endpoint
-  #totalTokens = 0 // Total tokens processed by this target endpoint
+  static DEF_METRICS_C_INTERVAL = 60; // Default metrics collection interval
+  static DEF_METRICS_H_COUNT = 5; // Default metrics history count
 
-  constructor(endpoint) {
-    this.#endpoint = endpoint;
+  constructor(endpoint,interval,count) {
+    this.endpoint = endpoint; // The target endpoint
+    this.apiCalls = 0; // No. of successful calls
+    this.failedCalls = 0; // No. of failed calls ~ 429's
+    this.totalCalls = 0; // Total calls handled by this target endpoint
+    this.totalTokens = 0; // Total tokens processed by this target endpoint
+    if ( interval )
+      this.cInterval = Number(interval);
+    else
+      this.cInterval = EndpointMetrics.DEF_METRICS_C_INTERVAL;
+
+    if ( count )
+      this.hStack = Number(count);
+    else
+      this.hStack = EndpointMetrics.DEF_METRICS_H_COUNT;
+
+    this.startTime = Date.now();
+    this.endTime = this.startTime + (this.cInterval * 60 * 1000);
+
+    this.historyQueue = new Queue(count);
   }
 
-  incrementApiCalls() {
-    this.#apiCalls++;
+  updateApiCallsAndTokens(tokens) {
+    this.updateMetrics();
+
+    this.totalTokens += tokens;
+    this.apiCalls++;
+    this.totalCalls++;
   }
 
-  incrementFailedCalls() {
-    this.#failedCalls++;
+  updateFailedCalls() {
+    this.updateMetrics();
+
+    this.failedCalls++;
+    this.totalCalls++;
   }
 
-  incrementTotalCalls() {
-    this.#totalCalls++;
-  }
+  updateMetrics() {
+    let ctime = Date.now();
+    console.log(`******STEP-0: ${ctime}; ${this.endTime} ****`);
 
-  get apiCalls() {
-    return this.#apiCalls;
-  }
+    if ( ctime > this.endTime ) {
+      console.log("STEP-1");
 
-  get failedCalls() {
-    return this.#failedCalls;
-  }
+      let sdate = new Date(this.startTime).toLocaleString();
+      let tokens_per_call = (this.apiCalls > 0) ? (this.totalTokens / this.apiCalls) : 0;
+      console.log(`STEP-2: ${this.totalTokens}; ${this.apiCalls}; ${tokens_per_call}`);
+      
+      let his_obj = {
+        collectionTime: sdate,
+        collectionMetrics : {
+          noOfApiCalls: this.apiCalls,
+          noOfFailedCalls: this.failedCalls,
+          tokensPerWindow: this.totalTokens,
+          avgTokensPerCall: tokens_per_call
+        }
+      };
+      this.historyQueue.enqueue(his_obj);
+      console.log(`STEP-3: ${JSON.stringify(this.historyQueue.peek())}`);
 
-  get totalCalls() {
-    return this.#totalCalls;
-  }
+      this.apiCalls = 0;
+      this.failedCalls = 0;
+      this.totalCalls = 0;
+      this.totalTokens = 0;
 
-  get apiTokens() {
-    return this.#totalTokens;
-  }
-
-  set apiTokens(tokens) {
-    this.#totalTokens += tokens;
+      this.startTime = Date.now();
+      this.endTime = this.startTime + (this.cInterval * 60 * 1000);
+    };
   }
 
   toJSON() {
     return {
-      endpoint: this.#endpoint,
-      apiCalls: this.#apiCalls,
-      failedCalls: this.#failedCalls,
-      totalCalls: this.#totalCalls,
-      totalTokens: this.#totalTokens
+      apiCalls: this.apiCalls,
+      failedCalls: this.failedCalls,
+      totalCalls: this.totalCalls,
+      inferenceTokens: this.totalTokens,
+      history: this.historyQueue.queueItems
     };
   }
 }
