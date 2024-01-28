@@ -45,25 +45,27 @@ class EndpointMetrics {
     this.totalCalls = 0; // Total calls handled by this target endpoint
     this.totalTokens = 0; // Total tokens processed by this target endpoint
     if ( interval )
-      this.cInterval = Number(interval);
+      this.cInterval = Number(interval); // Metrics collection interval
     else
       this.cInterval = EndpointMetrics.DEF_METRICS_C_INTERVAL;
 
     if ( count )
-      this.hStack = Number(count);
+      this.hStack = Number(count); // Metrics history cache count
     else
       this.hStack = EndpointMetrics.DEF_METRICS_H_COUNT;
 
     this.startTime = Date.now();
     this.endTime = this.startTime + (this.cInterval * 60 * 1000);
 
-    this.historyQueue = new Queue(count);
+    this.respTime = 0; // Average api call response time for a cInterval
+    this.historyQueue = new Queue(count); // Metrics history cache (fifo queue)
   }
 
-  updateApiCallsAndTokens(tokens) {
+  updateApiCallsAndTokens(tokens, latency) {
     this.updateMetrics();
 
     this.totalTokens += tokens;
+    this.respTime += latency;
     this.apiCalls++;
     this.totalCalls++;
   }
@@ -77,14 +79,11 @@ class EndpointMetrics {
 
   updateMetrics() {
     let ctime = Date.now();
-    console.log(`******STEP-0: ${ctime}; ${this.endTime} ****`);
 
     if ( ctime > this.endTime ) {
-      console.log("STEP-1");
-
       let sdate = new Date(this.startTime).toLocaleString();
       let tokens_per_call = (this.apiCalls > 0) ? (this.totalTokens / this.apiCalls) : 0;
-      console.log(`STEP-2: ${this.totalTokens}; ${this.apiCalls}; ${tokens_per_call}`);
+      let latency = (this.respTime > 0) ? (this.respTime / this.apiCalls) : 0;
       
       let his_obj = {
         collectionTime: sdate,
@@ -92,16 +91,17 @@ class EndpointMetrics {
           noOfApiCalls: this.apiCalls,
           noOfFailedCalls: this.failedCalls,
           tokensPerWindow: this.totalTokens,
-          avgTokensPerCall: tokens_per_call
+          avgTokensPerCall: tokens_per_call,
+          avgResponseTime: latency
         }
       };
       this.historyQueue.enqueue(his_obj);
-      console.log(`STEP-3: ${JSON.stringify(this.historyQueue.peek())}`);
 
       this.apiCalls = 0;
       this.failedCalls = 0;
       this.totalCalls = 0;
       this.totalTokens = 0;
+      this.respTime = 0;
 
       this.startTime = Date.now();
       this.endTime = this.startTime + (this.cInterval * 60 * 1000);

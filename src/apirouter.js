@@ -52,6 +52,7 @@ router.post("/lb", async (req, res) => {
 
   instanceCalls++;
 
+  let stTime = Date.now();
   for (const element of eps.endpoints) {
     if ( ! epdata.has(element.uri) )
       epdata.set(
@@ -74,7 +75,10 @@ router.post("/lb", async (req, res) => {
 
       let { status } = response;
       if ( status === 200 ) {
-	metricsObj.updateApiCallsAndTokens(data.usage.total_tokens);
+        let respTime = Date.now() - stTime;
+	metricsObj.updateApiCallsAndTokens(
+          data.usage.total_tokens,
+          respTime);
 
         res.status(200).json(data);
         return;
