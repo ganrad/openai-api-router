@@ -101,10 +101,14 @@ class EndpointMetrics {
         collectedMetrics : {
           noOfApiCalls: this.apiCalls,
           noOfFailedCalls: this.failedCalls,
-          kTokensPerWindow: kTokens,
-          avgTokensPerCall: tokens_per_call,
-          avgRequestsPerCall: (tokens_per_call * 6) / 1000,
-          avgResponseTime: latency
+	  throughput: {
+            kTokensPerWindow: kTokens,
+            avgTokensPerCall: tokens_per_call,
+            avgRequestsPerCall: (tokens_per_call * 6) / 1000,
+	  },
+	  latency: {
+            avgResponseTimeMsec: latency
+	  }
         }
       };
       this.historyQueue.enqueue(his_obj);
