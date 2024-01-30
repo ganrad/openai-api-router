@@ -1,5 +1,5 @@
 class Queue {
-  static CINDEX_RESET_COUNT = 5; // Cache index reset count
+  static CINDEX_RESET_COUNT = 1000; // Cache index reset count
 
   constructor(itemCount) {
     this.itemCount = itemCount;
@@ -94,14 +94,16 @@ class EndpointMetrics {
       let sdate = new Date(this.startTime).toLocaleString();
       let tokens_per_call = (this.apiCalls > 0) ? (this.totalTokens / this.apiCalls) : 0;
       let latency = (this.respTime > 0) ? (this.respTime / this.apiCalls) : 0;
+      let kTokens = (this.totalTokens > 1000) ? (this.totalTokens / 1000) : this.totalTokens;
       
       let his_obj = {
         collectionTime: sdate,
         collectedMetrics : {
           noOfApiCalls: this.apiCalls,
           noOfFailedCalls: this.failedCalls,
-          tokensPerWindow: this.totalTokens,
+          kTokensPerWindow: kTokens,
           avgTokensPerCall: tokens_per_call,
+          avgRequestsPerCall: (tokens_per_call * 6) / 1000,
           avgResponseTime: latency
         }
       };
@@ -119,11 +121,13 @@ class EndpointMetrics {
   }
 
   toJSON() {
+    let kTokens = (this.totalTokens > 1000) ? (this.totalTokens / 1000) : this.totalTokens;
+
     return {
       apiCalls: this.apiCalls,
       failedCalls: this.failedCalls,
       totalCalls: this.totalCalls,
-      inferenceTokens: this.totalTokens,
+      kInferenceTokens: kTokens,
       history: this.historyQueue.queueItems
     };
   }
