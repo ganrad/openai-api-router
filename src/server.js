@@ -11,7 +11,6 @@ const { randomUUID } = require('node:crypto');
 const pino = require('pino');
 
 const log_level = process.env.API_GATEWAY_LOG_LEVEL;
-// console.log(`Log level set to: ${log_level ? log_level : 'info'}`);
 const logger = require('pino-http')({
   useLevel: log_level ? log_level : 'info',
   // Define a custom request id function

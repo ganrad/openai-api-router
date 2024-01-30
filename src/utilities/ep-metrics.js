@@ -1,4 +1,6 @@
 class Queue {
+  static CINDEX_RESET_COUNT = 5; // Cache index reset count
+
   constructor(itemCount) {
     this.itemCount = itemCount;
 
@@ -14,6 +16,9 @@ class Queue {
     if ( Object.keys(this.items).length > this.itemCount )
       this.dequeue();
 
+    if ( this.bidx >= Queue.CINDEX_RESET_COUNT )
+      this.bidx = 0;
+
     return item;
   }
 
@@ -21,6 +26,9 @@ class Queue {
     const item = this.items[this.fidx];
     delete this.items[this.fidx];
     this.fidx++
+
+    if ( this.fidx >= Queue.CINDEX_RESET_COUNT )
+      this.fidx = 0;
 
     return item;
   }
@@ -44,6 +52,7 @@ class EndpointMetrics {
     this.failedCalls = 0; // No. of failed calls ~ 429's
     this.totalCalls = 0; // Total calls handled by this target endpoint
     this.totalTokens = 0; // Total tokens processed by this target endpoint
+
     if ( interval )
       this.cInterval = Number(interval); // Metrics collection interval
     else
@@ -53,6 +62,7 @@ class EndpointMetrics {
       this.hStack = Number(count); // Metrics history cache count
     else
       this.hStack = EndpointMetrics.DEF_METRICS_H_COUNT;
+    console.log(`******* Interval=${this.cInterval}; HistoryCount=${this.hStack}`);
 
     this.startTime = Date.now();
     this.endTime = this.startTime + (this.cInterval * 60 * 1000);

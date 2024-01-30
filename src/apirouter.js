@@ -3,6 +3,9 @@ const express = require("express");
 const EndpointMetrics = require("./utilities/ep-metrics.js");
 const router = express.Router();
 
+// Server start date
+const srvStartDate = new Date().toLocaleString();
+
 // Target endpoint metrics cache -
 const epdata = new Map();
 
@@ -32,7 +35,7 @@ router.get("/metrics", (req, res) => {
     successApiCalls: (instanceCalls - instanceFailedCalls),
     failedApiCalls: instanceFailedCalls,
     totalApiCalls: instanceCalls,
-    date: new Date().toLocaleString(),
+    serverStartDate: srvStartDate,
     status: "OK"
   };
 
