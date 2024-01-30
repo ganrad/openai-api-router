@@ -62,7 +62,7 @@ class EndpointMetrics {
       this.hStack = Number(count); // Metrics history cache count
     else
       this.hStack = EndpointMetrics.DEF_METRICS_H_COUNT;
-    console.log(`******* Interval=${this.cInterval}; HistoryCount=${this.hStack}`);
+    console.log(`***** Interval=${this.cInterval}; HistoryCount=${this.hStack}; *****`);
 
     this.startTime = Date.now();
     this.endTime = this.startTime + (this.cInterval * 60 * 1000);
@@ -103,6 +103,7 @@ class EndpointMetrics {
           noOfFailedCalls: this.failedCalls,
 	  throughput: {
             kTokensPerWindow: kTokens,
+	    requestsPerWindow: (kTokens * 6),
             avgTokensPerCall: tokens_per_call,
             avgRequestsPerCall: (tokens_per_call * 6) / 1000,
 	  },
