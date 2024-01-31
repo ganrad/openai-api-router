@@ -88,7 +88,7 @@ router.post("/lb", async (req, res) => {
       }
       else if ( status === 429 ) {
 	metricsObj.updateFailedCalls();
-        console.log(`*****\napirouter():\nTarget Endpoint=${element.uri}\nStatus=${status}\nMessage=${JSON.stringify(data)}\n*****`);
+        console.log(`*****\napirouter():\nTarget Endpoint=${element.uri}\nStatus=${status}\nMessage=${JSON.stringify(data)}\nStatus Text=${response.statusText}\nResponse Headers=${response.headers.raw()}\n*****`);
       };
     }
     catch (error) {
