@@ -5,7 +5,7 @@ This API gateway can be used to distribute requests to OpenAI API Service endpoi
 1. The API Gateway uses Nodejs as the runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
 2. The API Gateway can be configured with multiple Azure OpenAI Service deployment uri's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will automatically switch to the next endpoint configured in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
 3. The Gateway can be easily configured with multiple backend endpoints using a JSON file.  Furthermore, the backend endpoints can be reconfigured at any time even when the server is running.  The gateway exposes a separate reconfig (/reconfig) endpoint that facilitates dynamic reconfiguration of backend endpoints.
-4. The Gateway continously collects backend API metrics and exposes them thru the metrics (/metrics) endpoint.  Users can make routing decisions based on these metrics and effectively route/shift the API load across multiple backend endpoints.
+4. The Gateway continously collects backend API metrics and exposes them thru the metrics (/metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the API workload to the desired backend endpoints based on available and consumed capacity.
 
 **Usage scenarios:**
 The API Gateway can be used in two scenarios.
