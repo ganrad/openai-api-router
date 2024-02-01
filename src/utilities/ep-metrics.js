@@ -53,6 +53,8 @@ class EndpointMetrics {
     this.totalCalls = 0; // Total calls handled by this target endpoint
     this.totalTokens = 0; // Total tokens processed by this target endpoint
 
+    this.timeMarker = Date.now(); // Time marker used to check if endpoint is unhealthy
+
     if ( interval )
       this.cInterval = Number(interval); // Metrics collection interval
     else
@@ -71,6 +73,12 @@ class EndpointMetrics {
     this.historyQueue = new Queue(count); // Metrics history cache (fifo queue)
   }
 
+  isEndpointHealthy() {
+    let currentTime = Date.now();
+
+    return (currentTime >= this.timeMarker);
+  }
+
   updateApiCallsAndTokens(tokens, latency) {
     this.updateMetrics();
 
@@ -80,9 +88,10 @@ class EndpointMetrics {
     this.totalCalls++;
   }
 
-  updateFailedCalls() {
+  updateFailedCalls(retrySeconds) {
     this.updateMetrics();
 
+    this.timeMarker = Date.now() + (retrySeconds * 1000);
     this.failedCalls++;
     this.totalCalls++;
   }

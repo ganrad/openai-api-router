@@ -66,6 +66,8 @@ router.post("/lb", async (req, res) => {
           process.env.API_GATEWAY_METRICS_CHISTORY));
 
     let metricsObj = epdata.get(element.uri); 
+    if ( ! metricsObj.isEndpointHealthy() )
+      continue;
 
     try {
       // req.pipe(request(targetUrl)).pipe(res);
@@ -76,7 +78,7 @@ router.post("/lb", async (req, res) => {
       });
       data = await response.json();
 
-      let { status } = response;
+      let { status, statusText, headers } = response;
       if ( status === 200 ) {
         let respTime = Date.now() - stTime;
 	metricsObj.updateApiCallsAndTokens(
@@ -87,8 +89,11 @@ router.post("/lb", async (req, res) => {
         return;
       }
       else if ( status === 429 ) {
-	metricsObj.updateFailedCalls();
-        console.log(`*****\napirouter():\nTarget Endpoint=${element.uri}\nStatus=${status}\nMessage=${JSON.stringify(data)}\nStatus Text=${response.statusText}\nResponse Headers=${response.headers.raw()}\n*****`);
+	let retryAfterSecs = headers.get('retry-after');
+	let retryAfterMs = headers.get('retry-after-ms');
+
+	metricsObj.updateFailedCalls(retryAfterSecs);
+        console.log(`*****\napirouter():\nTarget Endpoint=${element.uri}\nStatus=${status}\nMessage=${JSON.stringify(data)}\nStatus Text=${statusText}\nRetry MS=${retryAfterMs}\nRetry seconds=${retryAfterSecs}\n*****`);
       };
     }
     catch (error) {
