@@ -1,3 +1,13 @@
+/**
+ * Name: API Gateway/Router
+ * Description: An intelligent stateful API gateway that routes incoming requests to backend 
+ * OpenAI deployment resources based on 1) Priority and 2) Availability
+ *
+ * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
+ * Date: 01-28-2024
+ *
+ * Notes:
+*/
 const fetch = require("node-fetch");
 const express = require("express");
 const EndpointMetrics = require("./utilities/ep-metrics.js");
@@ -7,7 +17,7 @@ const router = express.Router();
 const srvStartDate = new Date().toLocaleString();
 
 // Target endpoint metrics cache -
-const epdata = new Map();
+let epdata = new Map();
 
 // Total api calls handled by this router instance
 var instanceCalls = 0;
@@ -110,4 +120,12 @@ router.post("/lb", async (req, res) => {
   res.status(503).json(err_obj);
 });
 
-module.exports = router;
+module.exports.apirouter = router;
+module.exports.reconfigEndpoints = function () {
+  // reset total and failed api calls
+  instanceCalls = 0;
+  instanceFailedCalls = 0;
+
+  epdata = new Map(); // reset the metrics cache;
+  console.log("apirouter(): Metrics cache has been successfully reset");
+}

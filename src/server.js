@@ -1,7 +1,18 @@
+/**
+ * Name: Azure OpenAI API Gateway/Router
+ * Description: A light-weight API Gateway that intelligently distributes incoming OpenAI requests
+ * to backend model deployments on Azure.
+ *
+ * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
+ * Date: 01-26-2024
+ *
+ * Notes:
+*/
+
 const fs = require("fs");
 const express = require("express");
 const epdata = new Map();
-const apirouter = require("./apirouter");
+const { apirouter, reconfigEndpoints } = require("./apirouter");
 const app = express();
 var bodyParser = require('body-parser');
 // var morgan = require('morgan');
@@ -51,26 +62,41 @@ else {
 };
 
 var context;
-fs.readFile(process.env.API_GATEWAY_CONFIG_FILE, (error, data) => {
-  if (error) {
-    console.log(`Server(): Error loading gateway config file. Error=${error}`);
-    // exit program
-    process.exit(1);
-  };
-  context = JSON.parse(data);
+function readApiGatewayConfigFile() {
+  fs.readFile(process.env.API_GATEWAY_CONFIG_FILE, (error, data) => {
+    if (error) {
+      console.log(`Server(): Error loading gateway config file. Error=${error}`);
+      // exit program
+      process.exit(1);
+    };
+    context = JSON.parse(data);
   
-  console.log("Server(): Backend/Target endpoints:");
-  context.endpoints.forEach((element) => {
-    console.log(`uri: ${element.uri}`);
+    console.log("Server(): Backend/Target endpoints:");
+    context.endpoints.forEach((element) => {
+      console.log(`uri: ${element.uri}`);
+    });
+
+    console.log("Server(): Loaded backend Azure OpenAI API endpoints");
   });
-});
+};
+readApiGatewayConfigFile();
 
 // app.use(morgan(log_mode ? log_mode : 'combined'));
 app.use(bodyParser.json());
 
-app.get(endpoint + "/healthz", (req, res) => {
-  logger(req,res)
+app.get(endpoint + "/apirouter/healthz", (req, res) => {
+  logger(req,res);
   resp_obj = { endpoint: "/healthz", date: new Date().toLocaleString(), status : "OK" };
+  res.status(200).json(resp_obj);
+});
+
+app.use(endpoint + "/apirouter/reconfig", function(req, res, next) {
+  logger(req,res);
+
+  readApiGatewayConfigFile();
+  reconfigEndpoints();
+
+  resp_obj = { endpoint: "/reconfig", date: new Date().toLocaleString(), status : "Reloaded router config ..." };
   res.status(200).json(resp_obj);
 });
 

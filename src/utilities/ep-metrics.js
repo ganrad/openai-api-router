@@ -1,3 +1,14 @@
+/**
+ * Name: EndpointMetrics
+ * Description: Calculates backend API endpoint metrics and stores them in a light-weight
+ * internal cache (~ Queue).
+ *
+ * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
+ * Date: 01-28-2024
+ *
+ * Notes:
+ *
+*/
 class Queue {
   static CINDEX_RESET_COUNT = 1000; // Cache index reset count
 
