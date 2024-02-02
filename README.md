@@ -49,6 +49,27 @@ Readers can refer to the following on-line resources as needed.
 - [Azure Container Registry](https://docs.microsoft.com/en-us/azure/container-registry/)
 - [Helm 3.x](https://docs.helm.sh/)
 
-**Important Notes:**
-- This project describes the steps for configuring and deploying the API Gateway in 1) Standalone *Virtual machine* on Azure and 2) Containerized server deployed on *Azure Kubernetes Service*.
+The sections below describe the steps to configure and deploy the API Gateway on Azure.  Although, there are multiple deployment options available on Azure, we will describe the top two suggested for production deployments.
 
+1.  Run the API Gateway on a standalone *Virtual machine*
+2.  Containerize the API Gateway and deploy it on a container platform such as Kubernetes.  We will describe the steps for deploying the gateway container on *Azure Kubernetes Service*.
+
+### A. Run the API Gateway on a standalone *Virtual Machine*
+
+**NOTE**: Before we can get started, you will need a Linux Virtual Machine to run the API Gateway. If you haven't already, provision a Virtual Machine with a Linux flavor of your choice.
+
+1. Login to the Virtual Machine. Clone or fork this GitHub repository into a directory on the VM.  If you intend to customize the API Gateway, it's best to fork this repository into your GitHub account.
+
+2. Install Node.js. Refer to the installation instructions on the [nodejs.org](https://nodejs.org/en/download/package-manager) for your specific Linux distribution.
+
+3. Set the gateway environment variables to the correct values and export them.  Refer to the table below for descriptions of the environment variables.
+
+   Env Variable Name | Description | Required | Default Value
+   ----------------- | ----------- | -------- | -------------
+   API_GATEWAY_CONFIG_FILE | The gateway configuration file location | Yes | None
+   API_GATEWAY_NAME | Gateway instance name | Yes | Set a value such as 'Instance-01' ...
+   API_GATEWAY_PORT | Gateway server listen port | No | 8000
+   API_GATEWAY_ENV | Gateway environment | Yes | Set a value such as 'dev', 'test', 'pre-prod', 'prod' ...
+   API_GATEWAY_LOG_LEVEL | Gateway logging level | No | Default=info.  Possible values are debug, info, warn, error, fatal.
+   API_GATEWAY_METRICS_CINTERVAL | Backend API metrics collection and aggregation interval (in minutes) | Yes | Set it to a numeric value eg., 60 (1 hour)
+   API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numberic value (<= 600)  
