@@ -92,7 +92,7 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
    Switch to the project root directory. Then issue the command shown in the shell snippet below.
 
-   ```
+   ```bash
    # Use the node package manager (npm) to install the server dependencies
    $ npm install
    #
@@ -110,6 +110,14 @@ The sections below describe the steps to configure and deploy the API Gateway on
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/healthz
 
    If you get a json response similar to the one shown in the snippet below then the server is ready to accept OpenAI service requests.
+
+   ```json
+   {
+      "endpoint": "/healthz",
+      "date": "2/2/2024, 4:40:58 PM",
+      "status": "OK"
+   }
+   ```
 
    Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server endpoint.  Review the response and log lines output by the gateway server in the terminal window.
 
