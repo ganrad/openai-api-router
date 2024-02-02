@@ -49,12 +49,12 @@ Readers can refer to the following on-line resources as needed.
 - [Azure Container Registry](https://docs.microsoft.com/en-us/azure/container-registry/)
 - [Helm 3.x](https://docs.helm.sh/)
 
-The sections below describe the steps to configure and deploy the API Gateway on Azure.  Although, there are multiple deployment options available on Azure, we will describe the top two suggested for production deployments.
+The sections below describe the steps to configure and deploy the API Gateway on Azure.  Although, there are multiple deployment options available on Azure, we will only describe the top two options recommended for production deployments.
 
-1.  Run the API Gateway on a standalone *Virtual machine*
+1.  Containerize the API Gateway and deploy it on a standalone *Virtual machine*
 2.  Containerize the API Gateway and deploy it on a container platform such as Kubernetes.  We will describe the steps for deploying the gateway container on *Azure Kubernetes Service*.
 
-### A. Run the API Gateway on a standalone *Virtual Machine*
+### A. Configure and run the API Gateway on a standalone *Virtual Machine*
 
 **NOTE**: Before we can get started, you will need a Linux Virtual Machine to run the API Gateway. If you haven't already, provision a Virtual Machine with a Linux flavor of your choice.
 
@@ -110,3 +110,5 @@ The sections below describe the steps to configure and deploy the API Gateway on
    If you get a json response similar to the one shown in the snippet below then the server is ready to accept OpenAI service requests.
 
    Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server endpoint.  Review the response and log lines output by the gateway server in the terminal window.
+
+### B. Containerize the API Gateway and deploy it on the Virtual Machine
