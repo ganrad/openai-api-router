@@ -86,7 +86,7 @@ The sections below describe the steps to configure and deploy the API Gateway on
    API_GATEWAY_METRICS_CINTERVAL | Backend API metrics collection and aggregation interval (in minutes) | Yes | Set it to a numeric value eg., 60 (1 hour)
    API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numberic value (<= 600)  
 
-   **NOTE**: You can update and run the shell script `set-api-gtwy-env.sh` to set the environment variables.
+   **NOTE**: You can update and run the shell script `./set-api-gtwy-env.sh` to set the environment variables.
 
 5. Run the API Gateway server.
 
