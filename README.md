@@ -113,9 +113,13 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
    ```json
    {
-      "endpoint": "/healthz",
-      "date": "2/2/2024, 4:40:58 PM",
-      "status": "OK"
+     "oaiEndpoints": {
+         "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
+         "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
+     },
+     "endpoint": "/healthz",
+     "date": "2/2/2024, 5:55:23 PM",
+     "status": "OK"
    }
    ```
 
@@ -127,7 +131,7 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
    Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
 
-   **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` to test Azure OpenAI model deployments using sample data.
+   **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distribues the OpenAI API requests among multiple configured backend endpoints.
 
 ### B. Containerize the API Gateway and deploy it on the Virtual Machine
 
@@ -135,7 +139,7 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
 1. Build the API Gateway container image.
 
-   Review the container image build script `./Dockerfile`.  Make any required updates to the environment variables.  The environment variables can also be passed to the docker engine at build time.  To do this, you can modify the provided container build script `./scripts/build-container.sh`.  After making the updates to this build shell script, run the script to build the API Gateway container image.  See command below.
+   Review the container image build script `./Dockerfile`.  Make any required updates to the environment variables.  The environment variables can also be passed to the docker engine at build time.  To do this, you can modify the provided container build script `./scripts/build-container.sh`.  After making the updates to this build shell script, run the script to build the API Gateway container image.  See command snippet below.
 
    ```bash
    # Run the container image build
@@ -146,7 +150,7 @@ The sections below describe the steps to configure and deploy the API Gateway on
    #
    ```
 
-2. Run the containerized API Gateway instance.
+2. Run the containerized API Gateway server instance.
 
    Run the API Gateway container instance using the provided `./scripts/start-container.sh` shell script.  Refer to the command snippet below.
 
@@ -165,4 +169,4 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
    Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
 
-   **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` to test Azure OpenAI model deployments using sample data.
+   **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distribues the OpenAI API requests among multiple configured backend endpoints.

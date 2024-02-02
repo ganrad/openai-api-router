@@ -11,7 +11,6 @@
 
 const fs = require("fs");
 const express = require("express");
-const epdata = new Map();
 const { apirouter, reconfigEndpoints } = require("./apirouter");
 const app = express();
 var bodyParser = require('body-parser');
@@ -86,7 +85,20 @@ app.use(bodyParser.json());
 
 app.get(endpoint + "/apirouter/healthz", (req, res) => {
   logger(req,res);
-  resp_obj = { endpoint: "/healthz", date: new Date().toLocaleString(), status : "OK" };
+
+  let epIdx = 0;
+  let eps = new Map();
+  context.endpoints.forEach((element) => {
+    eps.set(epIdx,element.uri);
+    epIdx++;
+  });
+
+  resp_obj = { 
+    oaiEndpoints: Object.fromEntries(eps),
+    endpoint: "/healthz",
+    date: new Date().toLocaleString(),
+    status : "OK"
+  };
   res.status(200).json(resp_obj);
 });
 
@@ -96,7 +108,11 @@ app.use(endpoint + "/apirouter/reconfig", function(req, res, next) {
   readApiGatewayConfigFile();
   reconfigEndpoints();
 
-  resp_obj = { endpoint: "/reconfig", date: new Date().toLocaleString(), status : "Reloaded router config ..." };
+  resp_obj = {
+    endpoint: "/reconfig",
+    date: new Date().toLocaleString(),
+    status : "Reloaded router config ..."
+  };
   res.status(200).json(resp_obj);
 });
 
