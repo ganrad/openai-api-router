@@ -16,6 +16,9 @@ const app = express();
 var bodyParser = require('body-parser');
 // var morgan = require('morgan');
 
+// Server start date
+const srvStartDate = new Date().toLocaleString();
+
 const { randomUUID } = require('node:crypto');
 // Configure pinojs logger
 const pino = require('pino');
@@ -47,7 +50,7 @@ else
 
 var port;
 if ( process.env.API_GATEWAY_PORT )
-  port = process.env.API_GATEWAY_PORT;
+  port = Number(process.env.API_GATEWAY_PORT);
 else
   port = 8000;
 
@@ -94,8 +97,8 @@ app.get(endpoint + "/apirouter/healthz", (req, res) => {
   });
 
   let envvars = {
-    apiGatewayHost: process.env.API_GATEWAY_HOST,
-    apiGatewayListenPort: process.env.API_GATEWAY_PORT,
+    apiGatewayHost: host,
+    apiGatewayListenPort: port,
     apiGatewayEnv: process.env.API_GATEWAY_ENV,
     apiGatewayCollectInterval: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
     apiGatewayCollectHistoryCount: Number(process.env.API_GATEWAY_METRICS_CHISTORY),
@@ -106,7 +109,7 @@ app.get(endpoint + "/apirouter/healthz", (req, res) => {
     envVars: envvars,
     oaiEndpoints: Object.fromEntries(eps),
     endpoint: "/healthz",
-    date: new Date().toLocaleString(),
+    serverStartDate: srvStartDate,
     status : "OK"
   };
   res.status(200).json(resp_obj);
@@ -120,7 +123,7 @@ app.use(endpoint + "/apirouter/reconfig", function(req, res, next) {
 
   resp_obj = {
     endpoint: "/reconfig",
-    date: new Date().toLocaleString(),
+    currentDate: new Date().toLocaleString(),
     status : "Reloaded router config ..."
   };
   res.status(200).json(resp_obj);

@@ -13,9 +13,6 @@ const express = require("express");
 const EndpointMetrics = require("./utilities/ep-metrics.js");
 const router = express.Router();
 
-// Server start date
-const srvStartDate = new Date().toLocaleString();
-
 // Target endpoint metrics cache -
 let epdata = new Map();
 
@@ -25,13 +22,16 @@ var instanceCalls = 0;
 var instanceFailedCalls = 0;
 
 router.get("/metrics", (req, res) => {
+  let priorityIdx = 1;
   let epDict = [];
   epdata.forEach(function(value, key) {
     dict = {
       endpoint: key,
+      priority: priorityIdx,
       metrics: value.toJSON()
     };
     epDict.push(dict);
+    priorityIdx++;
   });
 
   let res_obj = {
@@ -45,7 +45,7 @@ router.get("/metrics", (req, res) => {
     successApiCalls: (instanceCalls - instanceFailedCalls),
     failedApiCalls: instanceFailedCalls,
     totalApiCalls: instanceCalls,
-    serverStartDate: srvStartDate,
+    currentDate: new Date().toLocaleString(),
     status: "OK"
   };
 
@@ -53,7 +53,11 @@ router.get("/metrics", (req, res) => {
 });
 
 router.get("/reconfig", (req, res) => {
-  res_obj = { endpoint: "/reconfig", date: new Date().toLocaleString(), status : "OK" };
+  res_obj = {
+    endpoint: "/reconfig",
+    currentDate: new Date().toLocaleString(),
+    status : "OK"
+  };
 
   res.status(200).json(res_obj);
 });

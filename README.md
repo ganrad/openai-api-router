@@ -114,14 +114,21 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
    ```json
    {
+     "envVars": {
+        "apiGatewayListenPort": "8000",
+        "apiGatewayEnv": "dev",
+        "apiGatewayCollectInterval": 5,
+        "apiGatewayCollectHistoryCount": 5,
+        "apiGatewayConfigFile": "./api-router-config-test.json"
+     },
      "oaiEndpoints": {
-         "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
-         "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
+        "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
+        "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
      },
      "endpoint": "/healthz",
-     "date": "2/2/2024, 5:55:23 PM",
+     "serverStartDate": "2/2/2024, 8:33:34 PM",
      "status": "OK"
-   }
+   }   
    ```
 
 7. Access the API Gateway Server load balancer/router (/lb) endpoint
@@ -171,3 +178,116 @@ The sections below describe the steps to configure and deploy the API Gateway on
    Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
 
    **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distribues the OpenAI API requests among multiple configured backend endpoints.
+
+### C. Accessing and analyzing API Gateway backend endpoint(s) traffic metrics
+
+1. Access the metrics (/metrics) endpoint and analyze backend API metrics.
+
+   Use a web browser and access the API Gateway metrics URL to retrieve the backend OpenAI API metrics information.  The metrics URL is provided below.
+
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/metrics
+    
+   A sample Json output snippet is pasted below.
+
+   ```json
+   {
+     "listenPort": "8000",
+     "instanceName": "Gateway-Instance-01",
+     "endpoint": "/metrics",
+     "collectionInterval": "5",
+     "historyCount": "5",
+     "endpointMetrics": [
+        {
+            "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
+            "priority": 1,
+            "metrics": {
+                "apiCalls": 39,
+                "failedCalls": 3,
+                "totalCalls": 42,
+                "kInferenceTokens": 16.913,
+                "history": {
+                    "0": {
+                        "collectionTime": "2/2/2024, 9:24:25 PM",
+                        "collectedMetrics": {
+                            "noOfApiCalls": 50,
+                            "noOfFailedCalls": 7,
+                            "throughput": {
+                                "kTokensPerWindow": 20.499,
+                                "requestsPerWindow": 122.994,
+                                "avgTokensPerCall": 409.98,
+                                "avgRequestsPerCall": 2.45988
+                            },
+                            "latency": {
+                                "avgResponseTimeMsec": 3024.9
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15",
+            "priority": 2,
+            "metrics": {
+                "apiCalls": 18,
+                "failedCalls": 9,
+                "totalCalls": 27,
+                "kInferenceTokens": 8.129,
+                "history": {
+                    "0": {
+                        "collectionTime": "2/2/2024, 9:24:57 PM",
+                        "collectedMetrics": {
+                            "noOfApiCalls": 30,
+                            "noOfFailedCalls": 16,
+                            "throughput": {
+                                "kTokensPerWindow": 12.582,
+                                "requestsPerWindow": 75.492,
+                                "avgTokensPerCall": 419.4,
+                                "avgRequestsPerCall": 2.5163999999999995
+                            },
+                            "latency": {
+                                "avgResponseTimeMsec": 3628.633333333333
+                            }
+                        }
+                    }
+                }
+            }
+        }
+     ],
+     "successApiCalls": 138,
+     "failedApiCalls": 423,
+     "totalApiCalls": 561,
+     "currentDate": "2/2/2024, 9:33:16 PM",
+     "status": "OK"
+   }
+   ```
+
+   Description of API Gateway server instance metrics are provided in the table below.
+
+   Metric name | Description
+   ----------- | -----------
+   successApiCalls | Number of backend API calls successfully handled by the API Gateway.
+   failedApiCalls | Number of backend API calls which couldn't be completed. Reason here could be that all backend endpoints were busy/throttled.
+   totalApiCalls | Total number of backend API calls received by this API Gateway Server instance.
+
+   Description of backend endpoint metrics are provided in the table below.
+
+   Metric name | Description
+   ----------- | -----------
+   apiCalls | Number of OpenAI API calls successfully handled by this backend endpoint in the current metrics collection interval
+   failedCalls | Number of OpenAI API calls which this backend endpoint couldn't handle (failed) in the current metrics collection interval
+   totalCalls | Total number of OpenAI API calls received by this backend endpoint in the current metrics collection interval
+   kInferenceTokens | Total tokens (K) processed/handled by this backend OpenAI endpoint in the current metrics collection interval
+
+   Description of backend endpoint history metrics are provided in the table below.
+
+   Metric name | Description
+   ----------- | -----------
+   collectionTime | Start time of metrics collection interval/window
+   noOfApiCalls | Number of OpenAI API calls successfully handled by this backend (/endpoint)
+   noOfFailedCalls | Number of OpenAI API calls which this backend endpoint couldn't handle (failed) 
+   throughput.kTokensPerWindow | Total tokens (K) processed/handled by this OpenAI backend 
+   throughput.requestsPerWindow | Total number of requests processed/handled by this OpenAI endpoint 
+   throughput.avgTokensPerCall | Average tokens (K) processed by this OpenAI backend per API call
+   throughput.avgRequestsPerCall | Average requests processed by this OpenAI backend per API call
+   latency.avgResponseTimeMsec | Average response time of OpenAI backend API call
