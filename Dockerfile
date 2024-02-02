@@ -47,7 +47,7 @@ ENV API_GATEWAY_LOG_LEVEL=$gateway_log_level
 
 # (Required) API Gateway metrics collection interval (in minutes)
 ARG metrics_interval=5
-ENV API_GATEWAY_METRICS_CINTERVAL=$metrics_inteval
+ENV API_GATEWAY_METRICS_CINTERVAL=$metrics_interval
 
 # (Required) API Gateway metrics history cache count
 ARG metrics_history=5
