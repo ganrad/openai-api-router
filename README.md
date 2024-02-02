@@ -23,7 +23,7 @@ The API Gateway can be used in two scenarios.
 1.  An Azure **Resource Group** with **Owner** *Role* permission.  All Azure resources can be deloyed into this resource group.
 2.  A **GitHub** Account to fork and clone this GitHub repository.
 3.  Review [Overview of Azure Cloud Shell](https://docs.microsoft.com/en-us/azure/cloud-shell/overview).  **Azure Cloud Shell** is an interactive, browser accessible shell for managing Azure resources.  You will be using the Cloud Shell to create the Bastion Host (Linux VM).
-4.  This project assumes readers/attendees are familiar with Linux fundamentals, Git SCM, Linux Containers (*docker engine*) and Kubernetes.  If you are new to any of these technologies, go thru the resources below.
+4.  This project assumes readers are familiar with Linux fundamentals, Git SCM, Linux Containers (*docker engine*) and Kubernetes.  If you are new to any of these technologies, go thru the resources below.
     - [Learn Linux, 101: A roadmap for LPIC-1](https://developer.ibm.com/tutorials/l-lpic1-map/)
 
       Go thru the chapters in **Topic 103: GNU and UNIX commands**
@@ -31,7 +31,7 @@ The API Gateway can be used in two scenarios.
     - [Git SCM Docs](https://git-scm.com/book/en/v2)
     - [Docker Overview](https://docs.docker.com/engine/docker-overview/)
     - [Kubernetes Overview](https://kubernetes.io/docs/tutorials/kubernetes-basics/)
-5.  (Windows users only) A **terminal emulator** is required to login (SSH) into the Linux VM (Bastion) host running on Azure. Download and install one of the utilities below.
+5.  (Windows users only) A **terminal emulator** is required to login (SSH) into the Linux VM on Azure. Download and install one of the utilities below.
     - [Putty](https://putty.org/)
     - [Git bash](https://gitforwindows.org/)
     - [Windows Sub-System for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10)
@@ -71,7 +71,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    Review the `api-router-config.json` file and add/update the Azure OpenAI Service model deployment endpoints/URI's and corresponding API key values in this file. Save the file.
 
-   **IMPORTANT**: The model deployment endpoints/URI's should be listed in increasing order of priority (top down) within the file. Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  The API Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
+   **IMPORTANT**: The model deployment endpoints/URI's should be listed in increasing order of priority (top down) within the file. Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  The API Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to OpenAI API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
 
 4. Set the gateway server environment variables.
 
@@ -297,3 +297,24 @@ Before getting started with this section, make sure you have installed a contain
 Before proceeding with this section, make sure you have installed the following services on Azure.
 - An *Azure Container Registry* instance
 - An *Azure Kubernetes Cluster* instance
+
+1. Push the API Gateway container image into ACR
+
+   Refer the script snippet below to push the API Gateway container image into ACR.  Remember to substitute ACR name with the name of your container registry.
+
+   ```bash
+   # Login to the ACR instance. Substitute the correct name of your ACR instance.
+   $ az acr login --name [acr-name].azurecr.io
+   #
+   # Tag the container image so we can push it to ACR repo.
+   $ docker tag az-oai-api-gateway [acr-name].azurecr.io/az-oai-api-gateway:020224
+   # 
+   # List container images on your VM
+   $ docker images
+   #
+   # Push the API Gateway container image to ACR repo.
+   $ docker push oaiapigateway.azurecr.io/az-oai-api-gateway:020224
+   #
+   ```
+
+   Use Azure portal to verify the API Gateway container image is stored in the respective repository (`az-oai-api-gateway`).
