@@ -86,6 +86,8 @@ The sections below describe the steps to configure and deploy the API Gateway on
    API_GATEWAY_METRICS_CINTERVAL | Backend API metrics collection and aggregation interval (in minutes) | Yes | Set it to a numeric value eg., 60 (1 hour)
    API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numberic value (<= 600)  
 
+   **NOTE**: You can update and run the shell script `set-api-gtwy-env.sh` to set the environment variables.
+
 5. Run the API Gateway server.
 
    Switch to the project root directory. Then issue the command shown in the shell snippet below.
@@ -110,5 +112,7 @@ The sections below describe the steps to configure and deploy the API Gateway on
    If you get a json response similar to the one shown in the snippet below then the server is ready to accept OpenAI service requests.
 
    Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server endpoint.  Review the response and log lines output by the gateway server in the terminal window.
+
+   **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` to test Azure OpenAI model deployments using sample data.
 
 ### B. Containerize the API Gateway and deploy it on the Virtual Machine
