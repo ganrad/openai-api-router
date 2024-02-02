@@ -57,7 +57,7 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
 ### A. Configure and run the API Gateway on a standalone *Virtual Machine*
 
-**NOTE**: Before we can get started, you will need a Linux Virtual Machine to run the API Gateway. If you haven't already, provision a Virtual Machine with a Linux flavor of your choice.
+Before we can get started, you will need a Linux Virtual Machine to run the API Gateway. If you haven't already, provision a Virtual Machine with a Linux flavor of your choice.
 
 1. Clone or fork this GitHub repository into a directory on the VM.
 
@@ -143,7 +143,7 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
 ### B. Containerize the API Gateway and deploy it on the Virtual Machine
 
-**NOTE**: Before getting started with this section, make sure you have installed a container runtime such as `docker` or `containerd` on the Linux VM. For installing docker engine, refer to the docs [here](https://docs.docker.com/engine/install/).
+Before getting started with this section, make sure you have installed a container runtime such as `docker` or `containerd` on the Linux VM. For installing docker engine, refer to the docs [here](https://docs.docker.com/engine/install/).
 
 1. Build the API Gateway container image.
 
@@ -291,3 +291,9 @@ The sections below describe the steps to configure and deploy the API Gateway on
    throughput.avgTokensPerCall | Average tokens (K) processed by this OpenAI backend per API call
    throughput.avgRequestsPerCall | Average requests processed by this OpenAI backend per API call
    latency.avgResponseTimeMsec | Average response time of OpenAI backend API call
+
+### D. Deploy the API Gateway on *Azure Kubernetes Service*
+
+Before proceeding with this section, make sure you have installed the following services on Azure.
+- An *Azure Container Registry* instance
+- An *Azure Kubernetes Cluster* instance
