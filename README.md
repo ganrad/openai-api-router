@@ -60,7 +60,7 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
 1. Clone or fork this GitHub repository into a directory on the VM.
 
-   Login to the Virtual Machine. If you intend to customize the API Gateway, it's best to fork this repository into your GitHub account and then clone the repository to the VM.
+   SSH login to the Virtual Machine using a terminal window. If you intend to customize the API Gateway, it's best to fork this repository into your GitHub account and then clone the repository to the VM.
 
 2. Install Node.js.
 
@@ -78,7 +78,7 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
    Env Variable Name | Description | Required | Default Value
    ----------------- | ----------- | -------- | -------------
-   API_GATEWAY_CONFIG_FILE | The gateway configuration file location | Yes | None
+   API_GATEWAY_CONFIG_FILE | The gateway configuration file location | Yes | Set the full or relative path to the gateway configuration file from the project root directory.
    API_GATEWAY_NAME | Gateway instance name | Yes | Set a value such as 'Instance-01' ...
    API_GATEWAY_PORT | Gateway server listen port | No | 8000
    API_GATEWAY_ENV | Gateway environment | Yes | Set a value such as 'dev', 'test', 'pre-prod', 'prod' ...
@@ -88,10 +88,25 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
 5. Run the API Gateway server.
 
-   Go the project root directory. Then issue the command shown in the snippet below.
+   Switch to the project root directory. Then issue the command shown in the shell snippet below.
 
    ```
+   # Use the node package manager (npm) to install the server dependencies
+   $ npm install
+   #
    # Start the API Gateway Server
    $ npm start
    #
    ```
+
+   Leave the terminal window open.
+
+6. Access the API Gateway Server URI
+
+   Use a web browser to access the API Gateway Server *health* endpoint. Specify correct values for the gateway listen port and environment. See below.
+
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/healthz
+
+   If you get a json response similar to the one shown in the snippet below then the server is ready to accept OpenAI service requests.
+
+   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server endpoint.  Review the response and log lines output by the gateway server in the terminal window.
