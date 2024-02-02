@@ -26,7 +26,7 @@ LABEL description="This container image exposes endpoints to 1) Track API usage 
 LABEL author="Ganesh Radhakrishnan" email="ganrad01@gmail.com" dated="01-28-2024" license="MIT"
 
 # (Required) API Gateway config file
-ARG config_file=./api-router-config.json
+ARG config_file=./api-router-config-test.json
 ENV API_GATEWAY_CONFIG_FILE=$config_file
 
 # (Required) API Gateway name
@@ -47,11 +47,11 @@ ENV API_GATEWAY_LOG_LEVEL=$gateway_log_level
 
 # (Required) API Gateway metrics collection interval (in minutes)
 ARG metrics_interval=5
-ENV API_GATEWAY_METRICS_INTERVAL=$metrics_inteval
+ENV API_GATEWAY_METRICS_CINTERVAL=$metrics_inteval
 
 # (Required) API Gateway metrics history cache count
 ARG metrics_history=5
-ENV API_GATEWAY_METRICS_HISTORY=$metrics_history
+ENV API_GATEWAY_METRICS_CHISTORY=$metrics_history
 
 RUN mkdir -p /home/node/app/node_modules
 RUN mkdir -p /home/node/app/src && chown -R node:node /home/node/app
