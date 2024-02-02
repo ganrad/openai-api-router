@@ -58,11 +58,23 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
 **NOTE**: Before we can get started, you will need a Linux Virtual Machine to run the API Gateway. If you haven't already, provision a Virtual Machine with a Linux flavor of your choice.
 
-1. Login to the Virtual Machine. Clone or fork this GitHub repository into a directory on the VM.  If you intend to customize the API Gateway, it's best to fork this repository into your GitHub account.
+1. Clone or fork this GitHub repository into a directory on the VM.
 
-2. Install Node.js. Refer to the installation instructions on the [nodejs.org](https://nodejs.org/en/download/package-manager) for your specific Linux distribution.
+   Login to the Virtual Machine. If you intend to customize the API Gateway, it's best to fork this repository into your GitHub account and then clone the repository to the VM.
 
-3. Set the gateway environment variables to the correct values and export them.  Refer to the table below for descriptions of the environment variables.
+2. Install Node.js.
+
+   Refer to the installation instructions on [nodejs.org](https://nodejs.org/en/download/package-manager) for your specific Linux distribution.
+
+3. Update the API Gateway configuration file.
+
+   Review the `api-router-config.json` file and add/update the Azure OpenAI Service model deployment endpoints/URI's and corresponding API key values in this file. Save the file.
+
+   **IMPORTANT**: The model deployment endpoints/URI's should be listed in increasing order of priority (top down) within the file. Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  The API Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
+
+4. Set the gateway server environment variables.
+
+   Set the environment variables to the correct values and export them before proceeding to the next step. Refer to the table below for descriptions of the environment variables.
 
    Env Variable Name | Description | Required | Default Value
    ----------------- | ----------- | -------- | -------------
@@ -73,3 +85,13 @@ The sections below describe the steps to configure and deploy the API Gateway on
    API_GATEWAY_LOG_LEVEL | Gateway logging level | No | Default=info.  Possible values are debug, info, warn, error, fatal.
    API_GATEWAY_METRICS_CINTERVAL | Backend API metrics collection and aggregation interval (in minutes) | Yes | Set it to a numeric value eg., 60 (1 hour)
    API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numberic value (<= 600)  
+
+5. Run the API Gateway server.
+
+   Go the project root directory. Then issue the command shown in the snippet below.
+
+   ```
+   # Start the API Gateway Server
+   $ npm start
+   #
+   ```
