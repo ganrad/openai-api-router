@@ -90,7 +90,7 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
 5. Run the API Gateway server.
 
-   Switch to the project root directory. Then issue the command shown in the shell snippet below.
+   Switch to the project root directory. Then issue the command shown in the command snippet below.
 
    ```bash
    # Use the node package manager (npm) to install the server dependencies
@@ -103,7 +103,7 @@ The sections below describe the steps to configure and deploy the API Gateway on
 
    Leave the terminal window open.
 
-6. Access the API Gateway Server URI
+6. Check the API Gateway Server health (/healthz) endpoint
 
    Use a web browser to access the API Gateway Server *health* endpoint. Specify correct values for the gateway listen port and environment. See below.
 
@@ -119,8 +119,50 @@ The sections below describe the steps to configure and deploy the API Gateway on
    }
    ```
 
-   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server endpoint.  Review the response and log lines output by the gateway server in the terminal window.
+7. Access the API Gateway Server load balancer/router (/lb) endpoint
+
+   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* (/lb) endpoint.  See URL below.
+
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/lb
+
+   Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
 
    **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` to test Azure OpenAI model deployments using sample data.
 
 ### B. Containerize the API Gateway and deploy it on the Virtual Machine
+
+**NOTE**: Before getting started with this section, make sure you have installed a container runtime such as `docker` or `containerd` on the Linux VM. For installing docker engine, refer to the docs [here](https://docs.docker.com/engine/install/).
+
+1. Build the API Gateway container image.
+
+   Review the container image build script `./Dockerfile`.  Make any required updates to the environment variables.  The environment variables can also be passed to the docker engine at build time.  To do this, you can modify the provided container build script `./scripts/build-container.sh`.  After making the updates to this build shell script, run the script to build the API Gateway container image.  See command below.
+
+   ```bash
+   # Run the container image build
+   $ ./scripts/build-container.sh
+   #
+   # List the container images.  This command should list the images on the system.
+   $ docker images
+   #
+   ```
+
+2. Run the containerized API Gateway instance.
+
+   Run the API Gateway container instance using the provided `./scripts/start-container.sh` shell script.  Refer to the command snippet below.
+
+   ```bash
+   # Run the API Gateway container instance
+   $ ./scripts/start-container.sh
+   #
+   # Leave this terminal window open
+   ```
+
+3. Access the API Gateway Server load balancer/router (/lb) endpoint
+
+   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* (/lb) endpoint.  See URL below.
+
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/lb
+
+   Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
+
+   **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` to test Azure OpenAI model deployments using sample data.
