@@ -93,7 +93,17 @@ app.get(endpoint + "/apirouter/healthz", (req, res) => {
     epIdx++;
   });
 
+  let envvars = {
+    apiGatewayHost: process.env.API_GATEWAY_HOST,
+    apiGatewayListenPort: process.env.API_GATEWAY_PORT,
+    apiGatewayEnv: process.env.API_GATEWAY_ENV,
+    apiGatewayCollectInterval: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
+    apiGatewayCollectHistoryCount: Number(process.env.API_GATEWAY_METRICS_CHISTORY),
+    apiGatewayConfigFile: process.env.API_GATEWAY_CONFIG_FILE,
+  };
+
   resp_obj = { 
+    envVars: envvars,
     oaiEndpoints: Object.fromEntries(eps),
     endpoint: "/healthz",
     date: new Date().toLocaleString(),
