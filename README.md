@@ -118,13 +118,13 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    Leave the terminal window open.
 
-6. Check the API Gateway Server health (/healthz) endpoint
+6. Retrieve the API Gateway Server info (/instanceinfo)
 
-   Use a web browser to access the API Gateway Server *health* endpoint. Specify correct values for the gateway listen port and environment. See below.
+   Use a web browser to access the API Gateway Server *instanceinfo* endpoint. Specify correct values for the gateway listen port and environment. See below.
 
-   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/healthz
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/instanceinfo
 
-   If you get a json response similar to the one shown in the snippet below then the server is ready to accept OpenAI service requests.
+   If you get a json response similar to the one shown in the snippet below then the server is ready to accept Azure OpenAI service requests.
 
    ```json
    {

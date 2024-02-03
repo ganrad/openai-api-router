@@ -88,10 +88,10 @@ readApiGatewayConfigFile();
 // app.use(morgan(log_mode ? log_mode : 'combined'));
 app.use(bodyParser.json());
 
-app.get(endpoint + "/apirouter/healthz", (req, res) => {
+app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
   logger(req,res);
 
-  let epIdx = 0;
+  let epIdx = 0; // also the priority index
   let eps = new Map();
   context.endpoints.forEach((element) => {
     eps.set(epIdx,element.uri);
@@ -112,8 +112,20 @@ app.get(endpoint + "/apirouter/healthz", (req, res) => {
     serverVersion: srvVersion,
     envVars: envvars,
     oaiEndpoints: Object.fromEntries(eps),
-    endpoint: "/healthz",
+    endpoint: "/instanceinfo",
     serverStartDate: srvStartDate,
+    status : "OK"
+  };
+
+  res.status(200).json(resp_obj);
+});
+
+app.get(endpoint + "/apirouter/healthz", (req, res) => {
+  logger(req,res);
+
+  resp_obj = {
+    endpoint: "/healthz",
+    currentDate: new Date().toLocaleString(),
     status : "OK"
   };
   res.status(200).json(resp_obj);
