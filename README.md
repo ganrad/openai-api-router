@@ -306,7 +306,7 @@ Before getting started with this section, make sure you have installed a contain
    throughput.avgRequestsPerCall | Average requests processed by this OpenAI backend per API call
    latency.avgResponseTimeMsec | Average response time of OpenAI backend API call
 
-### D. Reloading the API Gateway endpoint configuration
+### D. Dynamically reload the API Gateway endpoint configuration
 
 The API Gateway endpoint configuration can be easily updated even when the server is running. There are just two simple steps.
 
@@ -320,7 +320,7 @@ The API Gateway endpoint configuration can be easily updated even when the serve
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/reconfig
 
-**IMPORTANT**: A side effect of API Gateway endpoint reconfiguration is that all current and historical metric values collected and cached by the server will be reset. Hence, if you want to retain metrics history, use the export metrics (/metrics-export) endpoint (explained later).
+**IMPORTANT**: A side effect of reconfiguring the API Gateway endpoints is that all current and historical metric values collected and cached by the server will be reset. Hence, if you want to retain metrics history, you should save the metrics (/metrics) endpoint output prior to reloading the gateway server.
 
 ### E. Deploy the API Gateway on *Azure Kubernetes Service*
 
