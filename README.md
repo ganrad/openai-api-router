@@ -128,8 +128,11 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    ```json
    {
+     "serverName": "Gateway-Instance-01",
+     "serverVersion": "1.0.0",
      "envVars": {
-        "apiGatewayListenPort": "8000",
+        "apiGatewayHost": "localhost",
+        "apiGatewayListenPort": 8000,
         "apiGatewayEnv": "dev",
         "apiGatewayCollectInterval": 5,
         "apiGatewayCollectHistoryCount": 5,
@@ -139,10 +142,10 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
         "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
         "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
      },
-     "endpoint": "/healthz",
-     "serverStartDate": "2/2/2024, 8:33:34 PM",
+     "endpoint": "/instanceinfo",
+     "serverStartDate": "2/3/2024, 5:36:04 PM",
      "status": "OK"
-   }   
+   }  
    ```
 
 7. Access the API Gateway Server load balancer/router (/lb) endpoint
