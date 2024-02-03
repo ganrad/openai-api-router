@@ -153,7 +153,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
 
-   **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distribues the OpenAI API requests among multiple configured backend endpoints.
+   **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
 
 ### B. Containerize the API Gateway and deploy it on the Virtual Machine
 
@@ -191,7 +191,7 @@ Before getting started with this section, make sure you have installed a contain
 
    Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
 
-   **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distribues the OpenAI API requests among multiple configured backend endpoints.
+   **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
 
 ### C. Accessing and analyzing API Gateway backend endpoint(s) traffic metrics
 
@@ -320,7 +320,7 @@ The API Gateway endpoint configuration can be easily updated even when the serve
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/reconfig
 
-**IMPORTANT**: A side effect of reconfiguring the API Gateway endpoints is that all current and historical metric values collected and cached by the server will be reset. Hence, if you want to retain metrics history, you should save the metrics (/metrics) endpoint output prior to reloading the gateway server.
+**IMPORTANT**: A side effect of reconfiguring the API Gateway endpoints is that all current and historical metric values collected and cached by the server will be reset. Hence, if you want to retain metrics history, you should save the metrics (/metrics) endpoint output prior to reloading the updated OpenAI endpoints from the configuration file.
 
 ### E. Deploy the API Gateway on *Azure Kubernetes Service*
 
