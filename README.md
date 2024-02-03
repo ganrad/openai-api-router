@@ -67,7 +67,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    Refer to the installation instructions on [nodejs.org](https://nodejs.org/en/download/package-manager) for your specific Linux distribution.
 
-3. Update the API Gateway configuration file.
+3. Update the API Gateway endpoint configuration file.
 
    Review the `api-router-config.json` file and add/update the Azure OpenAI Service model deployment endpoints/URI's and corresponding API key values in this file. Save the file.
 
@@ -100,6 +100,20 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    # Start the API Gateway Server
    $ npm start
    #
+   ```
+
+   You will see the gateway server start up message in the terminal window as shown in the snippet below.
+
+   ```bash
+   > openai-api-router@1.0.0 start
+   > node ./src/server.js
+
+   Server(): OpenAI API Gateway server started successfully.
+   Gateway uri: http://localhost:8000/api/v1/dev
+   Server(): Backend/Target endpoints:
+   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15
+   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
+   Server(): Loaded backend Azure OpenAI API endpoints
    ```
 
    Leave the terminal window open.
@@ -292,7 +306,23 @@ Before getting started with this section, make sure you have installed a contain
    throughput.avgRequestsPerCall | Average requests processed by this OpenAI backend per API call
    latency.avgResponseTimeMsec | Average response time of OpenAI backend API call
 
-### D. Deploy the API Gateway on *Azure Kubernetes Service*
+### D. Reloading the API Gateway endpoint configuration
+
+The API Gateway endpoint configuration can be easily updated even when the server is running. There are just two simple steps.
+
+1. Update the API Gateway endpoint configuration file.
+
+   Open the API Gateway endpoint configuration json file (`api-router-config.json`) and update the OpenAI endpoints as needed.  Save this file.
+
+2. Reload the API Gateway endpoint configuration.
+
+   Use **Curl** command in a terminal window or a web browser to access the gateway reconfiguration endpoint.  See below.
+
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/reconfig
+
+**IMPORTANT**: A side effect of API Gateway endpoint reconfiguration is that all current and historical metric values collected and cached by the server will be reset. Hence, if you want to retain metrics history, use the export metrics (/metrics-export) endpoint (explained later).
+
+### E. Deploy the API Gateway on *Azure Kubernetes Service*
 
 Before proceeding with this section, make sure you have installed the following services on Azure.
 - An *Azure Container Registry* instance
@@ -317,4 +347,4 @@ Before proceeding with this section, make sure you have installed the following 
    #
    ```
 
-   Use Azure portal to verify the API Gateway container image is stored in the respective repository (`az-oai-api-gateway`).
+   Use Azure portal to verify the API Gateway container image was stored in the respective repository (`az-oai-api-gateway`).
