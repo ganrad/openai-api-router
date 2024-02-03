@@ -16,6 +16,8 @@ const app = express();
 var bodyParser = require('body-parser');
 // var morgan = require('morgan');
 
+// Server version
+const srvVersion = "1.0.0";
 // Server start date
 const srvStartDate = new Date().toLocaleString();
 
@@ -102,10 +104,12 @@ app.get(endpoint + "/apirouter/healthz", (req, res) => {
     apiGatewayEnv: process.env.API_GATEWAY_ENV,
     apiGatewayCollectInterval: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
     apiGatewayCollectHistoryCount: Number(process.env.API_GATEWAY_METRICS_CHISTORY),
-    apiGatewayConfigFile: process.env.API_GATEWAY_CONFIG_FILE,
+    apiGatewayConfigFile: process.env.API_GATEWAY_CONFIG_FILE
   };
 
-  resp_obj = { 
+  resp_obj = {
+    serverName: process.env.API_GATEWAY_NAME,
+    serverVersion: srvVersion,
     envVars: envvars,
     oaiEndpoints: Object.fromEntries(eps),
     endpoint: "/healthz",
