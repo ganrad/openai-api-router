@@ -22,7 +22,7 @@ var instanceCalls = 0;
 var instanceFailedCalls = 0;
 
 router.get("/metrics", (req, res) => {
-  let priorityIdx = 1;
+  let priorityIdx = 0;
   let epDict = [];
   epdata.forEach(function(value, key) {
     dict = {
