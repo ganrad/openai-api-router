@@ -52,16 +52,6 @@ router.get("/metrics", (req, res) => {
   res.status(200).json(res_obj);
 });
 
-router.get("/reconfig", (req, res) => {
-  res_obj = {
-    endpoint: "/reconfig",
-    currentDate: new Date().toLocaleString(),
-    status : "OK"
-  };
-
-  res.status(200).json(res_obj);
-});
-
 router.post("/lb", async (req, res) => {
   const eps = req.targeturis;
   let response;
