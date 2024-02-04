@@ -128,7 +128,7 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
     serverName: process.env.API_GATEWAY_NAME,
     serverVersion: srvVersion,
     envVars: envvars,
-    k8sInfo: platformInfo,
+    containerInfo: platformInfo,
     nodejs: process.versions,
     oaiEndpoints: Object.fromEntries(eps),
     apiGatewayUri: endpoint + "/apirouter",

@@ -4,9 +4,10 @@ This API gateway can be used to distribute requests to OpenAI API Service endpoi
 **Advantages/Benefits:**
 1. The API Gateway uses Nodejs as the runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
 2. The API Gateway can be configured with multiple Azure OpenAI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will automatically switch to the next endpoint configured in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
-3. The Gateway can be easily configured with multiple backend endpoints using a JSON file.  Furthermore, the backend endpoints can be reconfigured at any time even when the server is running.  The gateway exposes a separate reconfig (/reconfig) endpoint that facilitates dynamic reconfiguration of backend endpoints.
-4. The Gateway continously collects backend API metrics and exposes them thru the metrics (/metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the API workload to the desired backend endpoints based on available and consumed capacity.
-5. Azure OpenAI model deployments can be easily swapped (eg., gpt-35 to gpt-4-8k) or updated without having to take down the API Gateway instance thereby limiting (or completely eliminating) application downtime.  
+3. The Gateway provides the flexibility to split OpenAI API traffic between consumption based and reserved capacity (Provisioned managed throughput) model deployments on Azure.
+4. The Gateway can be easily configured with multiple backend endpoints using a JSON file.  Furthermore, the backend endpoints can be reconfigured at any time even when the server is running.  The gateway exposes a separate reconfig (/reconfig) endpoint that facilitates dynamic reconfiguration of backend endpoints.
+5. The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the API workload to the desired backend endpoints based on available and consumed capacity.
+6. Azure OpenAI model deployments can be easily swapped (eg., gpt-35 to gpt-4-8k) or updated without having to take down the API Gateway instance thereby limiting (or completely eliminating) application downtime.  
 
 **Usage scenarios:**
 
@@ -50,6 +51,9 @@ Readers can refer to the following on-line resources as needed.
 - [Azure Container Registry](https://docs.microsoft.com/en-us/azure/container-registry/)
 - [Helm 3.x](https://docs.helm.sh/)
 
+**Important Notes (Disclaimer):**
+- The API Gateway does not currently secure the exposed API's by means of security tokens or API keys. Hence it's usage should be limited to private virtual network deployments on Azure.  That said, the gateway can be easily customized to support security tokens and/or private API keys and used to authenticate requests.
+
 The sections below describe the steps to configure and deploy the API Gateway on Azure.  Although, there are multiple deployment options available on Azure, we will only describe the top two options recommended for production deployments.
 
 1.  Containerize the API Gateway and deploy it on a standalone *Virtual machine*
@@ -79,7 +83,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    Env Variable Name | Description | Required | Default Value
    ----------------- | ----------- | -------- | ------------- 
-   API_GATEWAY_KEY | API Gateway private key used for reconfiguring backend (Azure OpenAI) endpoints | Yes | Set this value to an alphanumeric string
+   API_GATEWAY_KEY | API Gateway private key (secret) required to reconfigure backend (Azure OpenAI) endpoints | Yes | Set this value to an alphanumeric string
    API_GATEWAY_CONFIG_FILE | The gateway configuration file location | Yes | Set the full or relative path to the gateway configuration file from the project root directory.
    API_GATEWAY_NAME | Gateway instance name | Yes | Set a value such as 'Instance-01' ...
    API_GATEWAY_PORT | Gateway server listen port | No | 8000
@@ -139,7 +143,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
         "apiGatewayCollectHistoryCount": 5,
         "apiGatewayConfigFile": "./api-router-config-test.json"
      },
-     "k8sInfo": {},
+     "containerInfo": {},
      "nodejs": {
         "node": "20.11.0",
         "acorn": "8.11.2",
@@ -352,7 +356,9 @@ The API Gateway endpoint configuration can be easily updated even when the serve
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/reconfig/{API_GATEWAY_KEY}
 
-**IMPORTANT**: A side effect of reconfiguring the API Gateway endpoints is that all current and historical metric values collected and cached by the server will be reset. Hence, if you want to retain metrics history, you should save the metrics (/metrics) endpoint output prior to reloading the updated OpenAI endpoints from the configuration file.
+**IMPORTANT**:
+- A side effect of reconfiguring the API Gateway endpoints is that all current and historical metric values collected and cached by the server will be reset. Hence, if you want to retain metrics history, you should save the metrics (/metrics) endpoint output prior to reloading the updated OpenAI endpoints from the configuration file.
+- It is advised to reconfigure the backend endpoints during a maintenance time window (down time) when there is minimal to no API traffic.  Reconfiguring the backend endpoints when the gateway is actively serving API requests could result in undefined behavior.
 
 ### E. Deploy the API Gateway on *Azure Kubernetes Service*
 
