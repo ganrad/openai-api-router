@@ -358,7 +358,7 @@ The API Gateway endpoint configuration can be easily updated even when the serve
 
 **IMPORTANT**:
 - A side effect of reconfiguring the API Gateway endpoints is that all current and historical metric values collected and cached by the server will be reset. Hence, if you want to retain metrics history, you should save the metrics (/metrics) endpoint output prior to reloading the updated OpenAI endpoints from the configuration file.
-- It is advised to reconfigure the backend endpoints during a maintenance time window (down time) when there is minimal to no API traffic.  Reconfiguring the backend endpoints when the gateway is actively serving API requests could result in undefined behavior.
+- It is advised to reconfigure the backend endpoints during a maintenance time window (down time) when there is minimal to no API traffic.  Reconfiguring the backend endpoints when the gateway is actively serving API requests may result in undefined behavior.
 
 ### E. Deploy the API Gateway on *Azure Kubernetes Service*
 
@@ -396,4 +396,4 @@ Additionally, a Kubernetes ingress controller (**Ngnix**) should also be deploye
 
 2. Deploy the Azure OpenAI API endpoints configuration.
 
-   Review the *Config Map* resource `./k8s-resources/apigateway-cm.yaml` file and update the backend Azure OpenAI endpoints along with corresponding API keys.  This Config Map resource will be mounted into the API Gateway container.
+   Review the *Config Map* resource `./k8s-resources/api-gateway-cm.yaml` file and update the backend Azure OpenAI endpoints along with corresponding API keys.  This Config Map resource will be mounted into the API Gateway container.
