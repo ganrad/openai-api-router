@@ -224,9 +224,9 @@ Before getting started with this section, make sure you have installed a contain
 
    **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
 
-### C. Accessing and analyzing API Gateway backend endpoint(s) traffic metrics
+### C. Analyze Azure OpenAI endpoint(s) traffic metrics
 
-1. Access the metrics (/metrics) endpoint and analyze backend API metrics.
+1. Access the API Gateway metrics (/metrics) endpoint and analyze OpenAI API metrics.
 
    Use a web browser and access the API Gateway metrics URL to retrieve the backend OpenAI API metrics information.  The metrics URL is provided below.
 
@@ -337,7 +337,7 @@ Before getting started with this section, make sure you have installed a contain
    throughput.avgRequestsPerCall | Average requests processed by this OpenAI backend per API call
    latency.avgResponseTimeMsec | Average response time of OpenAI backend API call
 
-### D. Dynamically reload the API Gateway endpoint configuration
+### D. Reload the API Gateway backend endpoints (Configuration)
 
 The API Gateway endpoint configuration can be easily updated even when the server is running. There are just two simple steps.
 
@@ -356,10 +356,17 @@ The API Gateway endpoint configuration can be easily updated even when the serve
 ### E. Deploy the API Gateway on *Azure Kubernetes Service*
 
 Before proceeding with this section, make sure you have installed the following services on Azure.
-- An *Azure Container Registry* instance
-- An *Azure Kubernetes Cluster* instance
+- An *Azure Container Registry* (ACR) instance
+- An *Azure Kubernetes Cluster* (AKS) instance
 
-1. Push the API Gateway container image into ACR
+The following command line tools should be installed on the Linux VM.
+- Azure CLI
+- Kubernetes CLI (`kubectl`)
+- Helm CLI
+
+Additionally, a Kubernetes ingress controller (**Ngnix**) should also be deployed and running on the AKS / Kubernetes cluster.
+
+1. Push the API Gateway container image into ACR.
 
    Refer the script snippet below to push the API Gateway container image into ACR.  Remember to substitute ACR name with the name of your container registry.
 
@@ -368,14 +375,18 @@ Before proceeding with this section, make sure you have installed the following 
    $ az acr login --name [acr-name].azurecr.io
    #
    # Tag the container image so we can push it to ACR repo.
-   $ docker tag az-oai-api-gateway [acr-name].azurecr.io/az-oai-api-gateway:020224
+   $ docker tag az-oai-api-gateway [acr-name].azurecr.io/az-oai-api-gateway:v1.020224
    # 
    # List container images on your VM
    $ docker images
    #
    # Push the API Gateway container image to ACR repo.
-   $ docker push oaiapigateway.azurecr.io/az-oai-api-gateway:020224
+   $ docker push [acr-name].azurecr.io/az-oai-api-gateway:v1.020224
    #
    ```
 
    Use Azure portal to verify the API Gateway container image was stored in the respective repository (`az-oai-api-gateway`).
+
+2. Deploy the Azure OpenAI API endpoints configuration.
+
+   Review the *Config Map* resource `./k8s-resources/apigateway-cm.yaml` file and update the backend Azure OpenAI endpoints along with corresponding API keys.  This Config Map resource will be mounted into the API Gateway container.
