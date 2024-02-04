@@ -138,12 +138,40 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
         "apiGatewayCollectHistoryCount": 5,
         "apiGatewayConfigFile": "./api-router-config-test.json"
      },
+     "k8sInfo": {},
+     "nodejs": {
+        "node": "20.11.0",
+        "acorn": "8.11.2",
+        "ada": "2.7.4",
+        "ares": "1.20.1",
+        "base64": "0.5.1",
+        "brotli": "1.0.9",
+        "cjs_module_lexer": "1.2.2",
+        "cldr": "43.1",
+        "icu": "73.2",
+        "llhttp": "8.1.1",
+        "modules": "115",
+        "napi": "9",
+        "nghttp2": "1.58.0",
+        "nghttp3": "0.7.0",
+        "ngtcp2": "0.8.1",
+        "openssl": "3.0.12+quic",
+        "simdutf": "4.0.4",
+        "tz": "2023c",
+        "undici": "5.27.2",
+        "unicode": "15.0",
+        "uv": "1.46.0",
+        "uvwasi": "0.0.19",
+        "v8": "11.3.244.8-node.17",
+        "zlib": "1.2.13.1-motley-5daffc7"
+     },
      "oaiEndpoints": {
         "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
         "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
      },
-     "endpoint": "/instanceinfo",
-     "serverStartDate": "2/3/2024, 5:36:04 PM",
+     "apiGatewayUri": "/api/v1/dev/apirouter",
+     "endpointUri": "/api/v1/dev/apirouter/instanceinfo",
+     "serverStartDate": "2/4/2024, 4:43:39 AM",
      "status": "OK"
    }  
    ```

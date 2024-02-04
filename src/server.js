@@ -107,12 +107,23 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
     apiGatewayConfigFile: process.env.API_GATEWAY_CONFIG_FILE
   };
 
+  let platformInfo = {
+    imageID: process.env.IMAGE_ID,
+    nodeName: process.env.NODE_NAME,
+    podName: process.env.POD_NAME,
+    podNamespace: process.env.POD_NAMESPACE,
+    podServiceAccount: process.env.POD_SVC_ACCOUNT
+  };
+
   resp_obj = {
     serverName: process.env.API_GATEWAY_NAME,
     serverVersion: srvVersion,
     envVars: envvars,
+    k8sInfo: platformInfo,
+    nodejs: process.versions,
     oaiEndpoints: Object.fromEntries(eps),
-    endpoint: "/instanceinfo",
+    apiGatewayUri: endpoint + "/apirouter",
+    endpointUri: endpoint + "/apirouter/instanceinfo",
     serverStartDate: srvStartDate,
     status : "OK"
   };
@@ -124,7 +135,7 @@ app.get(endpoint + "/apirouter/healthz", (req, res) => {
   logger(req,res);
 
   resp_obj = {
-    endpoint: "/healthz",
+    endpointUri: endpoint + "/apirouter/healthz",
     currentDate: new Date().toLocaleString(),
     status : "OK"
   };
@@ -138,7 +149,7 @@ app.use(endpoint + "/apirouter/reconfig", function(req, res, next) {
   reconfigEndpoints();
 
   resp_obj = {
-    endpoint: "/reconfig",
+    endpointUri: endpoint + "/apirouter/reconfig",
     currentDate: new Date().toLocaleString(),
     status : "Reloaded router config ..."
   };
@@ -151,6 +162,8 @@ app.use(endpoint + "/apirouter", function(req, res, next) {
 
   // Add the target uri's to the request object
   req.targeturis = context;
+  // Add the api gateway context root path to request object
+  req.gatewayuri = endpoint;
 
   next();
 }, apirouter);
