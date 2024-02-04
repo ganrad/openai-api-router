@@ -78,7 +78,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    Set the environment variables to the correct values and export them before proceeding to the next step. Refer to the table below for descriptions of the environment variables.
 
    Env Variable Name | Description | Required | Default Value
-   ----------------- | ----------- | -------- | -------------
+   ----------------- | ----------- | -------- | ------------- 
+   API_GATEWAY_KEY | API Gateway private key used for reconfiguring backend (Azure OpenAI) endpoints | Yes | Set this value to an alphanumeric string
    API_GATEWAY_CONFIG_FILE | The gateway configuration file location | Yes | Set the full or relative path to the gateway configuration file from the project root directory.
    API_GATEWAY_NAME | Gateway instance name | Yes | Set a value such as 'Instance-01' ...
    API_GATEWAY_PORT | Gateway server listen port | No | 8000
@@ -347,9 +348,9 @@ The API Gateway endpoint configuration can be easily updated even when the serve
 
 2. Reload the API Gateway endpoint configuration.
 
-   Use **Curl** command in a terminal window or a web browser to access the gateway reconfiguration endpoint.  See below.
+   Supply the private key configured with the API Gateway.  Use **Curl** command in a terminal window or a web browser to access the gateway reconfiguration endpoint.  See URL below.
 
-   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/reconfig
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/reconfig/{API_GATEWAY_KEY}
 
 **IMPORTANT**: A side effect of reconfiguring the API Gateway endpoints is that all current and historical metric values collected and cached by the server will be reset. Hence, if you want to retain metrics history, you should save the metrics (/metrics) endpoint output prior to reloading the updated OpenAI endpoints from the configuration file.
 
