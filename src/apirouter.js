@@ -38,7 +38,7 @@ router.get("/metrics", (req, res) => {
     hostName: process.env.API_GATEWAY_HOST,
     listenPort: process.env.API_GATEWAY_PORT,
     instanceName: process.env.API_GATEWAY_NAME,
-    endpointUri: req.gatewayuri + "/apirouter/metrics",
+    endpointUri: req.originalUrl,
     collectionInterval: process.env.API_GATEWAY_METRICS_CINTERVAL,
     historyCount: process.env.API_GATEWAY_METRICS_CHISTORY,
     endpointMetrics: epDict,
@@ -110,7 +110,7 @@ router.post("/lb", async (req, res) => {
 
   instanceFailedCalls++;
   err_obj = {
-    endpointUri: req.gatewayuri + "/apirouter/lb",
+    endpointUri: req.originalUrl,
     currentDate: new Date().toLocaleString(),
     err_msg: "All backend servers are too busy! Retry after some time..."
   };

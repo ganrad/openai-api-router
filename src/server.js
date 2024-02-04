@@ -56,11 +56,20 @@ if ( process.env.API_GATEWAY_PORT )
 else
   port = 8000;
 
-var endpoint;
+var endpoint; // API Gateway base URI
 if ( process.env.API_GATEWAY_ENV )
   endpoint = "/api/v1/" + process.env.API_GATEWAY_ENV;
 else {
   console.log("Server(): Env. variable [API_GATEWAY_ENV] not set, aborting ...");
+  // exit program
+  process.exit(1);
+};
+
+var pkey; // API Gateway private key (used for reconfiguring endpoints)
+if ( process.env.API_GATEWAY_KEY )
+  pkey = process.env.API_GATEWAY_KEY;
+else {
+  console.log("Server(): Env. variable [API_GATEWAY_KEY] not set, aborting ...");
   // exit program
   process.exit(1);
 };
@@ -123,7 +132,7 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
     nodejs: process.versions,
     oaiEndpoints: Object.fromEntries(eps),
     apiGatewayUri: endpoint + "/apirouter",
-    endpointUri: endpoint + "/apirouter/instanceinfo",
+    endpointUri: req.url,
     serverStartDate: srvStartDate,
     status : "OK"
   };
@@ -135,21 +144,31 @@ app.get(endpoint + "/apirouter/healthz", (req, res) => {
   logger(req,res);
 
   resp_obj = {
-    endpointUri: endpoint + "/apirouter/healthz",
+    endpointUri: req.url,
     currentDate: new Date().toLocaleString(),
     status : "OK"
   };
   res.status(200).json(resp_obj);
 });
 
-app.use(endpoint + "/apirouter/reconfig", function(req, res, next) {
+app.use(endpoint + "/apirouter/reconfig/:pkey", function(req, res, next) {
   logger(req,res);
+
+  if ( req.params.pkey !== pkey ) { // Check if key matches gateway secret key
+    resp_obj = {
+      endpointUri: req.originalUrl,
+      currentDate: new Date().toLocaleString(),
+      status : `Incorrect API Gateway Key=[${req.params.pkey}]`
+    };
+    res.status(400).json(resp_obj); // 400 = Bad Request
+    return;
+  };
 
   readApiGatewayConfigFile();
   reconfigEndpoints();
 
   resp_obj = {
-    endpointUri: endpoint + "/apirouter/reconfig",
+    endpointUri: req.originalUrl,
     currentDate: new Date().toLocaleString(),
     status : "Reloaded router config ..."
   };
@@ -162,8 +181,6 @@ app.use(endpoint + "/apirouter", function(req, res, next) {
 
   // Add the target uri's to the request object
   req.targeturis = context;
-  // Add the api gateway context root path to request object
-  req.gatewayuri = endpoint;
 
   next();
 }, apirouter);
