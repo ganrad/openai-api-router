@@ -441,6 +441,7 @@ Additionally, a Kubernetes ingress controller (**Ngnix**) should also be deploye
    Refer to the command snippet below to deploy all Kubernetes resources for the API Gateway.
 
    ```bash
+   # Make sure you are in the project root directory!
    # Use helm chart to deploy the API Gateway. Substitute the correct value for the image tag.
    #
    $ helm upgrade --install az-oai-api-gateway ./aoai-api-gtwy-chart --set image.tag=[image-tag-name] --namespace apigateway
@@ -449,17 +450,17 @@ Additionally, a Kubernetes ingress controller (**Ngnix**) should also be deploye
 
 6. Verify deployment.
 
-   Refer to the command snippet below.
+   First, confirm the API Gateway Pod(s) is running. Refer to the command snippet below.
 
    ```bash
-   # Make sure the API Gateway pods are up and running.
+   # Make sure the API Gateway pods are up and running. Output is shown below the command.
    #
    $ kubectl get pods -n apigateway
    NAME                                  READY   STATUS    RESTARTS   AGE
    aoai-api-gateway-v1-7f7bf5f75-grk6p   1/1     Running   0          11h
    ```
 
-   Get public IP of Nginx ingress controller (application routing system).  Refer to the code snippet below.
+   Get the public IP of Nginx ingress controller (application routing system).  Refer to the command snippet below.
 
    ```bash
    # Get public IP (Azure LB IP) assigned to Nginx ingress controller service. Save (copy) the IP address listed under
@@ -488,7 +489,7 @@ Additionally, a Kubernetes ingress controller (**Ngnix**) should also be deploye
         "apiGatewayCollectHistoryCount": 2,
         "apiGatewayConfigFile": "/home/node/app/files/api-router-config-test.json"
      },
-     containerInfo": {
+     "containerInfo": {
         "imageID": "acrgrdev.azurecr.io/az-oai-api-gateway:v1.020424",
         "nodeName": "aks-nodepool1-35747021-vmss000000",
         "podName": "aoai-api-gateway-v1-7f7bf5f75-grk6p",
@@ -538,4 +539,4 @@ Additionally, a Kubernetes ingress controller (**Ngnix**) should also be deploye
 
    Congratulations!
 
-   You have reached the end of this how-to for deploying and scaling an Azure OpenAI API Gateway. Please feel free to use the artifacts posted in this repository to efficiently scale the API Gateway and distribute Azure OpenAI API traffic among multiple model deployments.
+   You have reached the end of this how-to for deploying and scaling an Azure OpenAI API Gateway on Azure. Please feel free to use the artifacts posted in this repository to efficiently scale the API Gateway and distribute API traffic among multiple Azure OpenAI model deployments.
