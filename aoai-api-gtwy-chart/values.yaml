@@ -1,0 +1,115 @@
+# Default values for aoai-api-gtwy-chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  # Update/set the name of ACR and repository name
+  repository: [acr-name].azurecr.io/[api-gateway-repo-name]
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "v1.020224"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+apigateway:
+  name: aoai-api-gateway-v1
+  instanceName: aoai-api-gateway-gpt35
+  configFile: /home/node/app/files/api-router-config.json
+  # Set the private/secret key for the API Gateway
+  # IMPORTANT: Change this private/secret key!!
+  secretKey: abcxyz
+  env: dev
+  logLevel: info
+  metricsCInterval: 1
+  metricsCHistory: 2
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  name: "aoai-api-gateway-v1"
+  type: ClusterIP
+  port: 80
+
+container:
+  port: 8000
+  healthCheckUrl: /healthz
+  delaySeconds: 10
+  periodSeconds: 25
+
+ingress:
+  enabled: true
+  className: webapprouting.kubernetes.azure.com
+  annotations: {}
+  hosts:
+    - paths:
+        - path: /api/v1/
+          pathType: Prefix
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  requests:
+    cpu: 250m
+    memory: 1Gi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

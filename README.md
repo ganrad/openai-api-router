@@ -4,7 +4,7 @@ This API gateway can be used to distribute requests to OpenAI API Service endpoi
 **Advantages/Benefits:**
 1. The API Gateway uses Nodejs as the runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
 2. The API Gateway can be configured with multiple Azure OpenAI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will automatically switch to the next endpoint configured in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
-3. The Gateway provides the flexibility to split OpenAI API traffic between consumption based and reserved capacity (Provisioned managed throughput) model deployments on Azure.
+3. The Gateway provides the flexibility to split OpenAI API traffic between multiple model deployments hosted on consumption based and reserved capacity units (Provisioned managed throughput) on Azure.
 4. The Gateway can be easily configured with multiple backend endpoints using a JSON file.  Furthermore, the backend endpoints can be reconfigured at any time even when the server is running.  The gateway exposes a separate reconfig (/reconfig) endpoint that facilitates dynamic reconfiguration of backend endpoints.
 5. The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the API workload to the desired backend endpoints based on available and consumed capacity.
 6. Azure OpenAI model deployments can be easily swapped (eg., gpt-35 to gpt-4-8k) or updated without having to take down the API Gateway instance thereby limiting (or completely eliminating) application downtime.  
@@ -344,7 +344,7 @@ Before getting started with this section, make sure you have installed a contain
 
 ### D. Reload the API Gateway backend endpoints (Configuration)
 
-The API Gateway endpoint configuration can be easily updated even when the server is running. There are just two simple steps.
+The API Gateway endpoint configuration can be updated even when the server is running. Follow the steps below.
 
 1. Update the API Gateway endpoint configuration file.
 
@@ -352,7 +352,8 @@ The API Gateway endpoint configuration can be easily updated even when the serve
 
 2. Reload the API Gateway endpoint configuration.
 
-   Supply the private key configured with the API Gateway.  Use **Curl** command in a terminal window or a web browser to access the gateway reconfiguration endpoint.  See URL below.
+   Use **Curl** command in a terminal window or a web browser to access the gateway reconfiguration endpoint.  See URL below.
+   The private key of the API Gateway is required to reload the endpoint configuration.
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/reconfig/{API_GATEWAY_KEY}
 
@@ -396,4 +397,52 @@ Additionally, a Kubernetes ingress controller (**Ngnix**) should also be deploye
 
 2. Deploy the Azure OpenAI API endpoints configuration.
 
-   Review the *Config Map* resource `./k8s-resources/api-gateway-cm.yaml` file and update the backend Azure OpenAI endpoints along with corresponding API keys.  This Config Map resource will be mounted into the API Gateway container.
+   Create a *ConfigMap* Kubernetes resource containing the API Gateway endpoint configurations.  See command snippet below.
+
+   ```bash
+   # First, create a namespace where all API Gateway resources will be deployed.
+   $ kubectl create namespace apigateway
+   #
+   # List all namespaces.
+   $ kubectl get ns
+   #
+   # Create a ConfigMap containing the API Gateway endpoints. Substitute the correct location of the
+   # API Gateway configuration (json) file.
+   #
+   $ kubectl create configmap api-gateway-config-cm --from-file=[Path to 'api-router-config.json' file] -n apigateway
+   #
+   # List ConfigMaps.
+   $ kubectl get cm -n apigateway
+   #
+   ```
+
+3. Review and update the *Helm* deployment configuration file.
+
+   Go thru the variables in `values.yaml` file and update them as needed.  Make sure to update the value of the API Gateway private key (secret) variable (`apigateway.secretKey`). This secret is required for reloading the endpoint configuration.
+
+   Review/Update the following values.  See table below.
+
+   Variable Name | Description | Default Value
+   ----------------- | ----------- | ------------- 
+   replicaCount | Number of Pod instances (gateway instances | 1
+   image.repository | ACR location of the API Gateway container image. Specify the correct values for `acr-name` and `api-gateway-repo-name`. | [acr-name].azurecr.io/[api-gateway-repo-name]
+   image.tag | API Gateway container image tag. Specify correct value for the image tag. | v1.xxxxxx
+   name | The name of API Gateway server instance.  Can be set to any string. Use the model version as prefix or suffix to easily identify which models are served by specific gateway server instances. | aoai-api-gateway-gpt35
+   secretKey | API Gateway private key. This key is required for reconfiguring the gateway with updated endpoint info. | None.
+   metricsCInterval | Backend API metrics collection and aggregation interval (in minutes) | 60 minutes (1 hour)
+   metricsCHistory | Backend API metrics collection history count | 168 (Max. <= 600)  
+
+4. Assign required compute resources to API Gateway pods.
+
+   Review/Update the Pod compute resources as needed in the `values.yaml` file.
+
+5. Deploy the API Gateway on AKS.
+
+   Refer to the command snippet below to deploy all Kubernetes resources for the API Gateway.
+
+   ```bash
+   # Use helm chart to deploy the API Gateway. Substitute the correct value for the image tag.
+   #
+   $ helm upgrade --install az-oai-api-gateway ./aoai-api-gtwy-chart --set image.tag=[image-tag-name] --namespace apigateway
+   #
+   ```

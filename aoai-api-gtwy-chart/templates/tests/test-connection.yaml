@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "aoai-api-gtwy-chart.fullname" . }}-test-connection"
+  labels:
+    {{- include "aoai-api-gtwy-chart.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['{{ include "aoai-api-gtwy-chart.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never

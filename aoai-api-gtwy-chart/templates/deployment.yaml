@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # name: {{ include "aoai-api-gtwy-chart.fullname" . }}
+  name: {{ .Values.apigateway.name }}
+  labels:
+    {{- include "aoai-api-gtwy-chart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "aoai-api-gtwy-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "aoai-api-gtwy-chart.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: api-gateway-cm-vol
+          configMap:
+            name: api-gateway-config-cm
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          volumeMounts:
+            - name: api-gateway-cm-vol
+              mountPath: /home/node/app/files
+          env:
+            - name: API_GATEWAY_NAME
+              value: "{{ .Values.apigateway.instanceName }}"
+            - name: API_GATEWAY_CONFIG_FILE
+              value: "{{ .Values.apigateway.configFile }}"
+            - name: API_GATEWAY_KEY
+              value: "{{ .Values.apigateway.secretKey }}"
+            - name: API_GATEWAY_ENV
+              value: "{{ .Values.apigateway.env }}"
+            - name: API_GATEWAY_PORT
+              value: "{{ .Values.container.port }}"
+            - name: API_GATEWAY_LOG_LEVEL
+              value: "{{ .Values.apigateway.logLevel }}"
+            - name: API_GATEWAY_METRICS_CINTERVAL
+              value: "{{ .Values.apigateway.metricsCInterval }}"
+            - name: API_GATEWAY_METRICS_CHISTORY
+              value: "{{ .Values.apigateway.metricsCHistory }}"
+            - name: IMAGE_ID
+              value: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_SVC_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: API_GATEWAY_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.container.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /api/v1/{{ .Values.apigateway.env }}/apirouter{{ .Values.container.healthCheckUrl }}
+              port: http
+            initialDelaySeconds: {{ .Values.container.delaySeconds }}
+            periodSeconds: {{ .Values.container.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: /api/v1/{{ .Values.apigateway.env }}/apirouter{{ .Values.container.healthCheckUrl }}
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
