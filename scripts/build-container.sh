@@ -1,1 +1,1 @@
-docker build -t az-oai-api-gateway .
+docker build --progress=plain -t az-oai-api-gateway .

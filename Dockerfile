@@ -29,6 +29,10 @@ LABEL author="Ganesh Radhakrishnan" email="ganrad01@gmail.com" dated="01-28-2024
 ARG config_file=./api-router-config-test.json
 ENV API_GATEWAY_CONFIG_FILE=$config_file
 
+# (Required) API Gateway secret key.
+# IMPORTANT: Change this value before building the image!!
+ENV API_GATEWAY_KEY="abcxyz"
+
 # (Required) API Gateway name
 ARG gateway_name=Test-Gateway
 ENV API_GATEWAY_NAME=$gateway_name
@@ -53,8 +57,8 @@ ENV API_GATEWAY_METRICS_CINTERVAL=$metrics_interval
 ARG metrics_history=5
 ENV API_GATEWAY_METRICS_CHISTORY=$metrics_history
 
-RUN mkdir -p /home/node/app/node_modules
-RUN mkdir -p /home/node/app/src && chown -R node:node /home/node/app
+RUN mkdir -p /home/node/app/node_modules && chown -R node:node /home/node/app
+RUN mkdir -p /home/node/app/src
 
 WORKDIR /home/node/app
 
@@ -65,6 +69,8 @@ USER node
 RUN npm install
 
 COPY --chown=node:node . .
+
+RUN ls -lt
 
 EXPOSE $API_GATEWAY_PORT
 
