@@ -418,13 +418,13 @@ Additionally, a Kubernetes ingress controller (**Ngnix**) should also be deploye
 
 3. Review and update the *Helm* deployment configuration file.
 
-   Go thru the variables in `values.yaml` file and update them as needed.  Make sure to update the value of the API Gateway private key (secret) variable (`apigateway.secretKey`). This secret is required for reloading the endpoint configuration.
+   Go thru the variables in `values.yaml` file and update them as needed. 
 
-   Review/Update the following values.  See table below.
+   Review/Update the following variable values.  See table below.
 
    Variable Name | Description | Default Value
    ----------------- | ----------- | ------------- 
-   replicaCount | Number of Pod instances (gateway instances | 1
+   replicaCount | Number of Pod instances (gateway instances) | 1
    image.repository | ACR location of the API Gateway container image. Specify the correct values for `acr-name` and `api-gateway-repo-name`. | [acr-name].azurecr.io/[api-gateway-repo-name]
    image.tag | API Gateway container image tag. Specify correct value for the image tag. | v1.xxxxxx
    name | The name of API Gateway server instance.  Can be set to any string. Use the model version as prefix or suffix to easily identify which models are served by specific gateway server instances. | aoai-api-gateway-gpt35
@@ -436,7 +436,7 @@ Additionally, a Kubernetes ingress controller (**Ngnix**) should also be deploye
 
    Review/Update the Pod compute resources as needed in the `values.yaml` file.
 
-5. Deploy the API Gateway on AKS.
+5. Deploy the API Gateway on *Azure Kubernetes Service*.
 
    Refer to the command snippet below to deploy all Kubernetes resources for the API Gateway.
 
@@ -446,3 +446,96 @@ Additionally, a Kubernetes ingress controller (**Ngnix**) should also be deploye
    $ helm upgrade --install az-oai-api-gateway ./aoai-api-gtwy-chart --set image.tag=[image-tag-name] --namespace apigateway
    #
    ```
+
+6. Verify deployment.
+
+   Refer to the command snippet below.
+
+   ```bash
+   # Make sure the API Gateway pods are up and running.
+   #
+   $ kubectl get pods -n apigateway
+   NAME                                  READY   STATUS    RESTARTS   AGE
+   aoai-api-gateway-v1-7f7bf5f75-grk6p   1/1     Running   0          11h
+   ```
+
+   Get public IP of Nginx ingress controller (application routing system).  Refer to the code snippet below.
+
+   ```bash
+   # Get public IP (Azure LB IP) assigned to Nginx ingress controller service. Save (copy) the IP address listed under
+   # column 'EXTERNAL-IP' in the command output. See below.
+   #
+   $ kubectl get svc -n app-routing-system
+   NAME    TYPE           CLUSTER-IP     EXTERNAL-IP     PORT(S)                                      AGE
+   nginx   LoadBalancer   10.0.114.112   xx.xx.xx.xx   80:30553/TCP,443:32318/TCP,10254:31744/TCP   2d
+   ```
+
+   Use a web browser to access the API Gateway Server *instance information* endpoint (/instanceinfo). Substitute the public IP of the Nginx ingress controller which you copied in the previous step.  See below.
+
+   http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV/apirouter/instanceinfo
+
+   The output should like the screen capture below.
+
+   ```json
+   {
+     "serverName": "AOAI-API-Gateway-01",
+     "serverVersion": "1.0.0",
+     "envVars": {
+        "apiGatewayHost": "10.244.1.31",
+        "apiGatewayListenPort": 8000,
+        "apiGatewayEnv": "dev",
+        "apiGatewayCollectInterval": 1,
+        "apiGatewayCollectHistoryCount": 2,
+        "apiGatewayConfigFile": "/home/node/app/files/api-router-config-test.json"
+     },
+     containerInfo": {
+        "imageID": "acrgrdev.azurecr.io/az-oai-api-gateway:v1.020424",
+        "nodeName": "aks-nodepool1-35747021-vmss000000",
+        "podName": "aoai-api-gateway-v1-7f7bf5f75-grk6p",
+        "podNamespace": "apigateway",
+        "podServiceAccount": "default"
+     },
+     "nodejs": {
+        "node": "20.11.0",
+        "acorn": "8.11.2",
+        "ada": "2.7.4",
+        "ares": "1.20.1",
+        "base64": "0.5.1",
+        "brotli": "1.0.9",
+        "cjs_module_lexer": "1.2.2",
+        "cldr": "43.1",
+        "icu": "73.2",
+        "llhttp": "8.1.1",
+        "modules": "115",
+        "napi": "9",
+        "nghttp2": "1.58.0",
+        "nghttp3": "0.7.0",
+        "ngtcp2": "0.8.1",
+        "openssl": "3.0.12+quic",
+        "simdutf": "4.0.4",
+        "tz": "2023c",
+        "undici": "5.27.2",
+        "unicode": "15.0",
+        "uv": "1.46.0",
+        "uvwasi": "0.0.19",
+        "v8": "11.3.244.8-node.17",
+        "zlib": "1.2.13.1-motley-5daffc7"
+     },
+     "oaiEndpoints": {
+        "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
+        "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
+     },
+     "apiGatewayUri": "/api/v1/dev/apirouter",
+     "endpointUri": "/api/v1/dev/apirouter/instanceinfo",
+     "serverStartDate": "2/5/2024, 6:43:41 AM",
+     "status": "OK"
+   }
+   ```
+
+   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* (/lb) endpoint.  See URL below.
+
+   http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV/apirouter/lb
+
+   Congratulations!
+
+   You have reached the end of this how-to for deploying and scaling an Azure OpenAI API Gateway. Please feel free to use the artifacts posted in this repository to efficiently scale the API Gateway and distribute Azure OpenAI API traffic among multiple model deployments.
