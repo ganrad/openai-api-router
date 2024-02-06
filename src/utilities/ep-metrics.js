@@ -87,7 +87,9 @@ class EndpointMetrics {
   isEndpointHealthy() {
     let currentTime = Date.now();
 
-    return (currentTime >= this.timeMarker);
+    let isAvailable = currentTime >= this.timeMarker;
+    let retrySecs = isAvailable ? 0 : (this.timeMarker - currentTime) / 1000;
+    return [isAvailable, retrySecs];
   }
 
   updateApiCallsAndTokens(tokens, latency) {

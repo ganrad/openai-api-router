@@ -38,13 +38,13 @@ router.get("/metrics", (req, res) => {
     hostName: process.env.API_GATEWAY_HOST,
     listenPort: process.env.API_GATEWAY_PORT,
     instanceName: process.env.API_GATEWAY_NAME,
-    endpointUri: req.originalUrl,
     collectionInterval: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
     historyCount: Number(process.env.API_GATEWAY_METRICS_CHISTORY),
     endpointMetrics: epDict,
     successApiCalls: (instanceCalls - instanceFailedCalls),
     failedApiCalls: instanceFailedCalls,
     totalApiCalls: instanceCalls,
+    endpointUri: req.originalUrl,
     currentDate: new Date().toLocaleString(),
     status: "OK"
   };
@@ -56,6 +56,7 @@ router.post("/lb", async (req, res) => {
   const eps = req.targeturis;
   let response;
   let data;
+  let retryAfter = 0;
 
   instanceCalls++;
 
@@ -70,8 +71,15 @@ router.post("/lb", async (req, res) => {
           process.env.API_GATEWAY_METRICS_CHISTORY));
 
     let metricsObj = epdata.get(element.uri); 
-    if ( ! metricsObj.isEndpointHealthy() )
+    let healthArr = metricsObj.isEndpointHealthy();
+    // console.log(`******isAvailable=${healthArr[0]}; retryAfter=${healthArr[1]}`);
+    if ( ! healthArr[0] ) {
+      if ( retryAfter > 0 )
+	  retryAfter = (healthArr[1] < retryAfter) ? healthArr[1] : retryAfter;
+	else
+	  retryAfter = healthArr[1];
       continue;
+    };
 
     try {
       // req.pipe(request(targetUrl)).pipe(res);
@@ -96,6 +104,11 @@ router.post("/lb", async (req, res) => {
 	let retryAfterSecs = headers.get('retry-after');
 	let retryAfterMs = headers.get('retry-after-ms');
 
+	if ( retryAfter > 0 )
+	  retryAfter = (retryAfterSecs < retryAfter) ? retryAfterSecs : retryAfter;
+	else
+	  retryAfter = retryAfterSecs;
+
 	metricsObj.updateFailedCalls(retryAfterSecs);
         console.log(`*****\napirouter():\nTarget Endpoint=${element.uri}\nStatus=${status}\nMessage=${JSON.stringify(data)}\nStatus Text=${statusText}\nRetry MS=${retryAfterMs}\nRetry seconds=${retryAfterSecs}\n*****`);
       };
@@ -106,15 +119,16 @@ router.post("/lb", async (req, res) => {
       metricsObj.updateFailedCalls();
       req.log.warn({err: err_msg});
     };
-  };
+  }; // end of for
 
   instanceFailedCalls++;
   err_obj = {
     endpointUri: req.originalUrl,
     currentDate: new Date().toLocaleString(),
-    err_msg: "All backend servers are too busy! Retry after some time..."
+    err_msg: `All backend servers are too busy! Retry after [${retryAfter}] seconds ...`
   };
 
+  res.set('retry-after', retryAfter); // Set the retry-after response header
   res.status(503).json(err_obj);
 });
 
