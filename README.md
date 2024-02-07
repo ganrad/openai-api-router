@@ -12,7 +12,7 @@ This API gateway can be used to distribute requests to OpenAI API Service endpoi
 **Usage scenarios:**
 
 The API Gateway can be used in two scenarios.
-1. **Collecting Azure OpenAI API metrics**
+1. **Estimating capacity for Azure OpenAI workloads**
 
    The API Gateway collects various backend API metrics based on configured time intervals.  These metrics can then be used to compute the required throughput (*Tokens per minute*) for a given OpenAI workload.  TPMs can be used to estimate *Provisioned Throughput Units*.
 
@@ -42,7 +42,7 @@ The API Gateway can be used in two scenarios.
 
 ![alt tag](./images/az-openai-api-gateway-ra.PNG)
 
-Readers can refer to the following on-line resources as needed.
+Readers are advised to refer to the following on-line resources as needed.
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
 - [Creating an Azure Linux VM](https://learn.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-cli)
 - [Docker](https://docs.docker.com/)
@@ -50,6 +50,7 @@ Readers can refer to the following on-line resources as needed.
 - [Azure Kubernetes Service](https://docs.microsoft.com/en-us/azure/aks/)
 - [Azure Container Registry](https://docs.microsoft.com/en-us/azure/container-registry/)
 - [Helm 3.x](https://docs.helm.sh/)
+- [Azure Load Testing](https://learn.microsoft.com/en-us/azure/load-testing/)
 
 **Important Notes (Disclaimer):**
 - The API Gateway does not currently secure the exposed API's by means of security tokens or API keys. Hence it's usage should be limited to private virtual network deployments on Azure.  That said, the gateway can be easily customized to support security tokens and/or private API keys and used to authenticate requests.
@@ -125,7 +126,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
 6. Retrieve the API Gateway Server info (/instanceinfo)
 
-   Use a web browser to access the API Gateway Server *instanceinfo* endpoint. Specify correct values for the gateway listen port and environment. See below.
+   Use a web browser to access the API Gateway Server *info* endpoint - `/instanceinfo`. Specify correct values for the gateway listen port and environment. See below.
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/instanceinfo
 
@@ -183,13 +184,16 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
 7. Access the API Gateway Server load balancer/router (/lb) endpoint
 
-   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* (/lb) endpoint.  See URL below.
+   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* endpoint - `/lb`.  See URL below.
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/lb
 
    Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
 
-   **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
+**IMPORTANT**:
+For generating OpenAI API traffic and/or simulating API workload, one of the following methods can be used.  See below.
+- Update and use the provided shell script `./tests/test-oai-api-gateway.sh` with sample data.  Observe how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
+- For simulating continuous API traffic and performing comprehensive load testing (capacity planning), use *Azure Load Testing* PaaS service.
 
 ### B. Containerize the API Gateway and deploy it on the Virtual Machine
 
@@ -237,9 +241,9 @@ It is important to understand how the API Gateway's load balancer distributes in
 
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
 
-1. Access the API Gateway metrics (/metrics) endpoint and analyze OpenAI API metrics.
+1. Access the API Gateway metrics endpoint and analyze OpenAI API metrics.
 
-   Use a web browser and access the API Gateway metrics URL to retrieve the backend OpenAI API metrics information.  The metrics URL is provided below.
+   Use a web browser and access the API Gateway *metrics* endpoint to retrieve the backend OpenAI API metrics information.  The metrics endpoint URL - `/metrics`, is listed below.
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/metrics
     
