@@ -14,7 +14,7 @@ This API gateway can be used to distribute requests to OpenAI API Service endpoi
 The API Gateway can be used in two scenarios.
 1. **Estimating capacity for Azure OpenAI workloads**
 
-   The API Gateway collects various backend API metrics based on configured time intervals.  These metrics can then be used to compute the required throughput (*Tokens per minute*) for a given OpenAI workload.  TPMs can be used to estimate *Provisioned Throughput Units*.
+   Based on configured time intervals, the API Gateway collects various backend API metrics.  These metrics can then be used to compute the required throughput (*Tokens per minute*) for a given OpenAI workload.  TPMs can be used to estimate *Provisioned Throughput Units*.
 
 2. **Intelligently routing Azure OpenAI API requests**
 
@@ -225,7 +225,7 @@ Before getting started with this section, make sure you have installed a contain
 
 3. Access the API Gateway Server load balancer/router (/lb) endpoint
 
-   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* (/lb) endpoint.  See URL below.
+   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* endpoint - `/lb`.  See URL below.
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/lb
 
@@ -235,9 +235,10 @@ Before getting started with this section, make sure you have installed a contain
 
 **IMPORTANT**:
 It is important to understand how the API Gateway's load balancer distributes incoming API requests among configured Azure OpenAI backends (model deployment endpoints). Please read below.
-- The Gateway will strictly follow the priority order when forwarding OpenAI API requests to backends. Lower numeric values equate to higher priority. This implies, the gateway will forward requests to backends with priority of '0', '1' and then go in that order.  Priorities assigned to OpenAI backends can be viewed by invoking the `instanceinfo` endpoint (/instanceinfo). 
+- The Gateway will strictly follow the priority order when forwarding OpenAI API requests to backends. Lower numeric values equate to higher priority. This implies, the gateway will forward requests to backends with priority of '0', '1' and then go in that order.  Priorities assigned to OpenAI backends can be viewed by invoking the *instanceinfo* endpoint - `/instanceinfo`. 
 - When a backend endpoint is busy or throttled (returns http status code = 429), the gateway will mark this endpoint as unavailable and **record** the 'retry-after' seconds value returned in the OpenAI API response header.  The gateway will not forward/proxy any more API requests to this backend until retry-after seconds has elapsed thereby ensuring the backend (OpenAI endpoint) doesn't get overloaded with too many requests.
-- When all configured backend endpoints are busy or throttled (return http status code = 429), the gateway will return the lowest 'retry-after' seconds value returned by one of the OpenAI backends, in the gateway response header 'retry-after'.  Client applications should ideally wait the no. of seconds returned in the 'retry-after' response header before making a subsequent API call.
+- When all configured backend endpoints are busy or throttled (return http status code = 429), the gateway will return the **lowest** 'retry-after' seconds value returned by one of the *throttled* OpenAI backends, in the gateway response header 'retry-after'.  Client applications should ideally wait the no. of seconds returned in the 'retry-after' response header before making a subsequent API call.
+- For as long as all the backend endpoints are busy/throttled, the API Gateway will continue to return the **lowest** 'retry-after' seconds in it's response header ('retry-after').
 
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
 
@@ -362,7 +363,7 @@ The API Gateway endpoint configuration can be updated even when the server is ru
 
 2. Reload the API Gateway endpoint configuration.
 
-   Use **Curl** command in a terminal window or a web browser to access the gateway reconfiguration endpoint.  See URL below.
+   Use **Curl** command in a terminal window or a web browser to access the gateway *reconfiguration* endpoint - `/reconfig`.  See URL below.
    The private key of the API Gateway is required to reload the endpoint configuration.
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/reconfig/{API_GATEWAY_KEY}
