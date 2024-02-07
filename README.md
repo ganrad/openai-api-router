@@ -62,8 +62,9 @@ Deployment options recommended for *Usage Scenario 1*.
 
 Deployment options recommended for *Usage Scenario 2*.
 1. Containerize the API Gateway and deploy it on a serverless container platform such as *Azure Container Apps*.
+
    We will not be describing the steps for this option here.  Readers can follow the deployment instructions described in Azure Container Apps documentation [here](https://learn.microsoft.com/en-us/azure/container-apps/tutorial-code-to-cloud?source=recommendations&tabs=bash%2Ccsharp&pivots=acr-remote).
-2. Containerize the API Gateway and deploy it on a container platform such as Kubernetes.  We will describe the steps for deploying the gateway container on *Azure Kubernetes Service*.
+2. Containerize the API Gateway and deploy it on a container platform such as *Azure Kubernetes Service*.
 
 ### A. Configure and run the API Gateway on a standalone *Virtual Machine*
 
