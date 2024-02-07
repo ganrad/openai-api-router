@@ -58,7 +58,7 @@ Readers are advised to refer to the following on-line resources as needed.
 The sections below describe the steps to configure and deploy the API Gateway on Azure.  Although, there are multiple deployment options available on Azure, we will only describe the top two options recommended for production deployments.
 
 Deployment options recommended for *Usage Scenario 1*.
-- Containerize the API Gateway and deploy it on a standalone *Virtual machine* (Recommended for usage scenario 1).
+- Containerize the API Gateway and deploy it on a standalone *Virtual Machine*
 
 Deployment options recommended for *Usage Scenario 2*.
 1. Containerize the API Gateway and deploy it on a serverless container platform such as *Azure Container Apps*.
