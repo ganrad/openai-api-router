@@ -233,7 +233,7 @@ Before getting started with this section, make sure you have installed a contain
 It is important to understand how the API Gateway's load balancer distributes incoming API requests among configured Azure OpenAI backends (model deployment endpoints). Please read below.
 - The Gateway will strictly follow the priority order when forwarding OpenAI API requests to backends. Lower numeric values equate to higher priority. This implies, the gateway will forward requests to backends with priority of '0', '1' and then go in that order.  Priorities assigned to OpenAI backends can be viewed by invoking the `instanceinfo` endpoint (/instanceinfo). 
 - When a backend endpoint is busy or throttled (returns http status code = 429), the gateway will mark this endpoint as unavailable and **record** the 'retry-after' seconds value returned in the OpenAI API response header.  The gateway will not forward/proxy any more API requests to this backend until retry-after seconds has elapsed thereby ensuring the backend (OpenAI endpoint) doesn't get overloaded with too many requests.
-- When all configured backend endpoints are busy or throttled (return http status code = 429), the gateway will return the lowest value of 'retry-after' seconds returned by one of the OpenAI backends, in the response header 'retry-after'.  Client applications should ideally wait the no. of seconds returned in the 'retry-after' response header before making a subsequent API call.
+- When all configured backend endpoints are busy or throttled (return http status code = 429), the gateway will return the lowest 'retry-after' seconds value returned by one of the OpenAI backends, in the gateway response header 'retry-after'.  Client applications should ideally wait the no. of seconds returned in the 'retry-after' response header before making a subsequent API call.
 
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
 
@@ -374,9 +374,9 @@ Before proceeding with this section, make sure you have installed the following 
 - An *Azure Kubernetes Cluster* (AKS) instance
 
 The following command line tools should be installed on the Linux VM.
-- Azure CLI
+- Azure CLI (`az`)
 - Kubernetes CLI (`kubectl`)
-- Helm CLI
+- Helm CLI (`helm`)
 
 Additionally, a Kubernetes ingress controller (**Ngnix**) should also be deployed and running on the AKS / Kubernetes cluster.
 
