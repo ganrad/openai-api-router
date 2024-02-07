@@ -544,10 +544,10 @@ Additionally, a Kubernetes ingress controller (**Ngnix**) should also be deploye
    }
    ```
 
-   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* (/lb) endpoint.  See URL below.
+   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* endpoint - `/lb`.  See URL below.
 
    http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV/apirouter/lb
 
-   Congratulations!
+   **Congratulations!**
 
    You have reached the end of this how-to for deploying and scaling an Azure OpenAI API Gateway on Azure. Please feel free to use the artifacts posted in this repository to efficiently scale the API Gateway and distribute API traffic among multiple Azure OpenAI model deployments.
