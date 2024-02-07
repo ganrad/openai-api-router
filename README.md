@@ -229,6 +229,12 @@ Before getting started with this section, make sure you have installed a contain
 
    **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
 
+**IMPORTANT**:
+It is important to understand how the API Gateway's load balancer distributes incoming API requests among configured Azure OpenAI backends (model deployment endpoints). Please read below.
+- The Gateway will strictly follow the priority order when forwarding OpenAI API requests to backends. Lower numeric values equate to higher priority. This implies, the gateway will forward requests to backends with priority of '0', '1' and then go in that order.  Priorities assigned to OpenAI backends can be viewed by invoking the `instanceinfo` endpoint (/instanceinfo). 
+- When a backend endpoint is busy or throttled (returns http status code = 429), the gateway will mark this endpoint as unavailable and **record** the 'retry-after' seconds value returned in the OpenAI API response header.  The gateway will not forward/proxy any more API requests to this backend until retry-after seconds has elapsed thereby ensuring the backend (OpenAI endpoint) doesn't get overloaded with too many requests.
+- When all configured backend endpoints are busy or throttled (return http status code = 429), the gateway will return the lowest value of 'retry-after' seconds returned by one of the OpenAI backends, in the response header 'retry-after'.  Client applications should ideally wait the no. of seconds returned in the 'retry-after' response header before making a subsequent API call.
+
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
 
 1. Access the API Gateway metrics (/metrics) endpoint and analyze OpenAI API metrics.
@@ -243,7 +249,6 @@ Before getting started with this section, make sure you have installed a contain
    {
      "listenPort": "8000",
      "instanceName": "Gateway-Instance-01",
-     "endpoint": "/metrics",
      "collectionInterval": "5",
      "historyCount": "5",
      "endpointMetrics": [
@@ -307,6 +312,7 @@ Before getting started with this section, make sure you have installed a contain
      "successApiCalls": 138,
      "failedApiCalls": 423,
      "totalApiCalls": 561,
+     "endpointUri": "/api/v1/dev/apirouter/metrics",
      "currentDate": "2/2/2024, 9:33:16 PM",
      "status": "OK"
    }
