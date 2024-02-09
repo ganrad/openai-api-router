@@ -7,7 +7,19 @@
  * Date: 01-26-2024
  *
  * Notes:
+ * ID05082024: ganrad : Added support for capturing gateway metrics using Azure Monitor OpenTelemetry.
 */
+
+// ID05082024.sn: Configure Azure Monitor OpenTelemetry for instrumenting API gateway requests.
+const { useAzureMonitor } = require("@azure/monitor-opentelemetry");
+let azAppInsightsConString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+if ( azAppInsightsConString ) {
+   useAzureMonitor();
+   console.log("Server(): Azure Application Monitor OpenTelemetry configured.");
+}
+else
+   console.log("Server(): Azure Application Insights 'connection string' not found. No telemetry data will be sent to App Insights.");
+// ID05082024.en
 
 const fs = require("fs");
 const express = require("express");
@@ -21,7 +33,9 @@ const srvVersion = "1.0.0";
 // Server start date
 const srvStartDate = new Date().toLocaleString();
 
+// Init. random uuid generator
 const { randomUUID } = require('node:crypto');
+
 // Configure pinojs logger
 const pino = require('pino');
 

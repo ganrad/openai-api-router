@@ -11,6 +11,12 @@
   "author": "Ganesh Radhakrishnan",
   "license": "MIT",
   "dependencies": {
+    "@azure/monitor-opentelemetry": "^1.2.0",
+    "@opentelemetry/api": "^1.7.0",
+    "@opentelemetry/resources": "^1.21.0",
+    "@opentelemetry/sdk-metrics": "^1.21.0",
+    "@opentelemetry/sdk-trace-base": "^1.21.0",
+    "@opentelemetry/semantic-conventions": "^1.21.0",
     "body-parser": "^1.20.2",
     "express": "^4.18.2",
     "node-fetch": "^2.6.1",
