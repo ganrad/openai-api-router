@@ -382,6 +382,8 @@ It is important to understand how the API Gateway's load balancer distributes in
 
    ![alt tag](./images/api-gateway-telemetry-04.png)
 
+   ![alt tag](./images/api-gateway-telemetry-05.png)
+
 ### D. Reload the API Gateway backend endpoints (Configuration)
 
 The API Gateway endpoint configuration can be updated even when the server is running. Follow the steps below.
