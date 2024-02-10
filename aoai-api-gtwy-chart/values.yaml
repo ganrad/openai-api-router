@@ -27,7 +27,9 @@ serviceAccount:
   name: ""
 
 apigateway:
+  # This is the deployment name
   name: aoai-api-gateway-v1
+  # This is the API Gateway instance name
   instanceName: aoai-api-gateway-gpt35
   configFile: /home/node/app/files/api-router-config.json
   # Set the private/secret key for the API Gateway
@@ -35,8 +37,10 @@ apigateway:
   secretKey: abcxyz
   env: dev
   logLevel: info
-  metricsCInterval: 1
-  metricsCHistory: 2
+  metricsCInterval: 60
+  metricsCHistory: 168
+  # (Optional) Azure Monitor OpenTelemetry connection string
+  appInsightsConnectionString: ""
 
 podAnnotations: {}
 podLabels: {}

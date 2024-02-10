@@ -2,12 +2,13 @@
 This API gateway can be used to distribute requests to OpenAI API Service endpoints deployed on Azure.  This project describes the steps for deploying the API Gateway on Azure.
 
 **Advantages/Benefits:**
-1. The API Gateway uses Nodejs as the runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
-2. The API Gateway can be configured with multiple Azure OpenAI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
-3. The Gateway provides the flexibility to split OpenAI API traffic between multiple model deployments hosted on consumption based and reserved capacity units (Provisioned managed throughput) on Azure.
-4. The Gateway can be easily configured with multiple backend endpoints using a JSON file.  Furthermore, the backend endpoints can be reconfigured at any time even when the server is running.  The gateway exposes a separate reconfig (/reconfig) endpoint that facilitates dynamic reconfiguration of backend endpoints.
-5. The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the API workload to the desired backend endpoints based on available and consumed capacity.
-6. Azure OpenAI model deployments can be easily swapped (eg., gpt-35 to gpt-4-8k) or updated without having to take down the API Gateway instance thereby limiting (or completely eliminating) application downtime.  
+- The API Gateway uses Nodejs as the runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
+- The API Gateway can be configured with multiple Azure OpenAI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
+- The Gateway provides the flexibility to split OpenAI API traffic between multiple model deployments hosted on consumption based and reserved capacity units (Provisioned managed throughput) on Azure.
+- The Gateway can be easily configured with multiple backend endpoints using a JSON file.  Furthermore, the backend endpoints can be reconfigured at any time even when the server is running.  The gateway exposes a separate reconfig (/reconfig) endpoint that facilitates dynamic reconfiguration of backend endpoints.
+- The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the API workload to the desired backend endpoints based on available and consumed capacity.
+- The Gateway can also be configured with an Azure Application Insights *connection string*.  With this setting, the gateway sends API request and dependency (Azure OpenAI API) telemetry to Azure Monitor.
+- Azure OpenAI model deployments can be easily swapped (eg., gpt-35 to gpt-4-8k) or updated without having to take down the API Gateway instance thereby limiting (or completely eliminating) application downtime.  
 
 **Usage scenarios:**
 
@@ -50,6 +51,7 @@ Readers are advised to refer to the following on-line resources as needed.
 - [Azure Kubernetes Service](https://docs.microsoft.com/en-us/azure/aks/)
 - [Azure Container Registry](https://docs.microsoft.com/en-us/azure/container-registry/)
 - [Helm 3.x](https://docs.helm.sh/)
+- [Azure Monitor OpenTelemetry](https://learn.microsoft.com/en-us/azure/azure-monitor/app/opentelemetry-enable?tabs=aspnetcore)
 - [Azure Load Testing](https://learn.microsoft.com/en-us/azure/load-testing/)
 
 **Important Notes (Disclaimer):**
@@ -98,6 +100,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    API_GATEWAY_LOG_LEVEL | Gateway logging level | No | Default=info.  Possible values are debug, info, warn, error, fatal.
    API_GATEWAY_METRICS_CINTERVAL | Backend API metrics collection and aggregation interval (in minutes) | Yes | Set it to a numeric value eg., 60 (1 hour)
    API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numeric value (<= 600)  
+   APPLICATIONINSIGHTS_CONNECTION_STRING | Azure Monitor connection string | No | Assign the value of the Azure Application Insights resource *connection string* (from Azure Portal)
 
    **NOTE**: You can update and run the shell script `./set-api-gtwy-env.sh` to set the environment variables.
 
@@ -363,6 +366,22 @@ It is important to understand how the API Gateway's load balancer distributes in
    throughput.avgRequestsPerCall | Average requests processed by this OpenAI backend per API call
    latency.avgResponseTimeMsec | Average response time of OpenAI backend API call
 
+2. Access API Gateway and OpenAI API metrics using *Azure Application Insights*
+
+   Login to Azure Portal and go to the **Overview** blade/tab of the Application Insights resource.  Here you can get a quick summary view of the API Gateway server requests, availability, server response time and failed requests in the last 30 minutes, 1 hour .. 30 days. See screenshot below.
+
+   ![alt tag](./images/api-gateway-telemetry-01.png)
+
+   Click on the **Performance** tab to view the average duration for each API Gateway endpoint call, call counts, request and response details.  See screenshot below.
+
+   ![alt tag](./images/api-gateway-telemetry-02.png)
+
+   Click on the **Application map** tab to view the API Gateway and dependency info. (Azure OpenAI). Here you can drill down into API calls received by a) API Gateway and b) Azure OpenAI deployment endpoint, and investigate failures and performance issues.
+   
+   ![alt tag](./images/api-gateway-telemetry-03.png)
+
+   ![alt tag](./images/api-gateway-telemetry-04.png)
+
 ### D. Reload the API Gateway backend endpoints (Configuration)
 
 The API Gateway endpoint configuration can be updated even when the server is running. Follow the steps below.
@@ -456,6 +475,7 @@ Additionally, the following resources should be deployed/configured.
    secretKey | API Gateway private key. This key is required for reconfiguring the gateway with updated endpoint info. | None.
    metricsCInterval | Backend API metrics collection and aggregation interval (in minutes) | 60 minutes (1 hour)
    metricsCHistory | Backend API metrics collection history count | 168 (Max. <= 600)  
+   appInsightsConnectionString | (Optional) To collect API request telemetry, set this value to the Azure Application Insights resource *connection string* | None.
 
 4. Assign required compute resources to API Gateway pods.
 
