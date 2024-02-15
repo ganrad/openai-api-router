@@ -7,31 +7,42 @@
  * Date: 01-28-2024
  *
  * Notes:
+ * ID02132024: ganrad : Use a single data plane to server Azure OpenAI models for multiple AI applications.
 */
 const fetch = require("node-fetch");
 const express = require("express");
 const EndpointMetrics = require("./utilities/ep-metrics.js");
+const AppConnections = require("./utilities/app-connection.js");
 const router = express.Router();
-
-// Target endpoint metrics cache -
-let epdata = new Map();
 
 // Total api calls handled by this router instance
 var instanceCalls = 0;
 // Failed calls ~ when all target endpoints are operating at full capacity ~ max. pressure
 var instanceFailedCalls = 0;
 
+// ID02132024.n - Init the AppConnections instance 
+let appConnections = new AppConnections();
+
 router.get("/metrics", (req, res) => {
-  let priorityIdx = 0;
-  let epDict = [];
-  epdata.forEach(function(value, key) {
-    dict = {
-      endpoint: key,
-      priority: priorityIdx,
-      metrics: value.toJSON()
+  let conList = [];
+  appConnections.getAllConnections().forEach(function(epdata, ky) {
+    let priorityIdx = 0;
+    let epDict = [];
+    epdata.forEach(function(value, key) {
+      let dict = {
+        endpoint: key,
+        priority: priorityIdx,
+        metrics: value.toJSON()
+      };
+      epDict.push(dict);
+      priorityIdx++;
+    });
+
+    let conObject = {
+      applicationId: ky,
+      endpointMetrics: epDict
     };
-    epDict.push(dict);
-    priorityIdx++;
+    conList.push(conObject);
   });
 
   let res_obj = {
@@ -40,7 +51,7 @@ router.get("/metrics", (req, res) => {
     instanceName: process.env.API_GATEWAY_NAME,
     collectionInterval: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
     historyCount: Number(process.env.API_GATEWAY_METRICS_CHISTORY),
-    endpointMetrics: epDict,
+    applicationMetrics: conList,
     successApiCalls: (instanceCalls - instanceFailedCalls),
     failedApiCalls: instanceFailedCalls,
     totalApiCalls: instanceCalls,
@@ -52,24 +63,51 @@ router.get("/metrics", (req, res) => {
   res.status(200).json(res_obj);
 });
 
-router.post("/lb", async (req, res) => {
+router.post("/lb/:app_id", async (req, res) => {
   const eps = req.targeturis;
   let response;
   let data;
   let retryAfter = 0;
 
+  let appId = req.params.app_id;
+  if ( ! appConnections.loaded ) {
+    for (const application of eps.applications) {
+      // Target endpoint metrics cache -
+      let epinfo = new Map();
+      for (const element of application.endpoints) {
+        epinfo.set(
+          element.uri,
+          new EndpointMetrics(
+            element.uri,
+            process.env.API_GATEWAY_METRICS_CINTERVAL,
+            process.env.API_GATEWAY_METRICS_CHISTORY));
+      };
+      appConnections.addConnection(application.appId, epinfo);
+    };
+    appConnections.loaded = true;
+  };
+
+  if ( ! appConnections.getAllConnections().has(appId) ) {
+    err_obj = {
+      endpointUri: req.originalUrl,
+      currentDate: new Date().toLocaleString(),
+      err_msg: `Application ID [${appId}] not found. Unable to process request.`
+    };
+
+    res.status(400).json(err_obj); // 400 = Bad request
+    return;
+  };
+
   instanceCalls++;
+  let epdata = appConnections.getConnection(appId);
+  
+  let appEndpoints = null;
+  for (const application of eps.applications)
+    if ( application.appId === appId )
+      appEndpoints = application.endpoints;
 
   let stTime = Date.now();
-  for (const element of eps.endpoints) {
-    if ( ! epdata.has(element.uri) )
-      epdata.set(
-        element.uri,
-        new EndpointMetrics(
-          element.uri,
-          process.env.API_GATEWAY_METRICS_CINTERVAL,
-          process.env.API_GATEWAY_METRICS_CHISTORY));
-
+  for (const element of appEndpoints) {
     let metricsObj = epdata.get(element.uri); 
     let healthArr = metricsObj.isEndpointHealthy();
     // console.log(`******isAvailable=${healthArr[0]}; retryAfter=${healthArr[1]}`);
@@ -97,7 +135,7 @@ router.post("/lb", async (req, res) => {
           data.usage.total_tokens,
           respTime);
 
-        res.status(200).json(data);
+        res.status(200).json(data); // 200 = All OK
         return;
       }
       else if ( status === 429 ) {
@@ -110,7 +148,7 @@ router.post("/lb", async (req, res) => {
 	  retryAfter = retryAfterSecs;
 
 	metricsObj.updateFailedCalls(retryAfterSecs);
-        console.log(`*****\napirouter():\nTarget Endpoint=${element.uri}\nStatus=${status}\nMessage=${JSON.stringify(data)}\nStatus Text=${statusText}\nRetry MS=${retryAfterMs}\nRetry seconds=${retryAfterSecs}\n*****`);
+        console.log(`*****\napirouter():\nApp Id=${appId}\nTarget Endpoint=${element.uri}\nStatus=${status}\nMessage=${JSON.stringify(data)}\nStatus Text=${statusText}\nRetry MS=${retryAfterMs}\nRetry seconds=${retryAfterSecs}\n*****`);
       };
     }
     catch (error) {
@@ -129,7 +167,7 @@ router.post("/lb", async (req, res) => {
   };
 
   res.set('retry-after', retryAfter); // Set the retry-after response header
-  res.status(503).json(err_obj);
+  res.status(503).json(err_obj); // 503 = Server is busy
 });
 
 module.exports.apirouter = router;
@@ -138,6 +176,6 @@ module.exports.reconfigEndpoints = function () {
   instanceCalls = 0;
   instanceFailedCalls = 0;
 
-  epdata = new Map(); // reset the metrics cache;
-  console.log("apirouter(): Metrics cache has been successfully reset");
+  appConnections = new AppConnections(); // reset the application connections cache;
+  console.log("apirouter(): Application connections cache has been successfully reset");
 }

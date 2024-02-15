@@ -4,6 +4,7 @@ This API gateway can be used to distribute requests to OpenAI API Service endpoi
 **Advantages/Benefits:**
 - The API Gateway uses Nodejs as the runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
 - The API Gateway can be configured with multiple Azure OpenAI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
+- The API Gateway is AI Application *aware* meaning, Azure OpenAI Service backend endpoints can be configured separately for each AI Application.  This not only allows model deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing by application.
 - The Gateway provides the flexibility to split OpenAI API traffic between multiple model deployments hosted on consumption based and reserved capacity units (Provisioned managed throughput) on Azure.
 - The Gateway can be easily configured with multiple backend endpoints using a JSON file.  Furthermore, the backend endpoints can be reconfigured at any time even when the server is running.  The gateway exposes a separate reconfig (/reconfig) endpoint that facilitates dynamic reconfiguration of backend endpoints.
 - The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the API workload to the desired backend endpoints based on available and consumed capacity.
@@ -19,7 +20,7 @@ The API Gateway can be used in two scenarios.
 
 2. **Intelligently routing Azure OpenAI API requests**
 
-   The API Gateway functions as an intelligent router and redirects OpenAI API traffic among multiple configured backend endpoints.  The gateway keeps track of unavailable/busy backend endpoints and automatically redirects traffic to available endpoints thereby distributing the API traffic load evenly and not overloading a given endpoint with too many requests.  
+   For each configured AI Application, the API Gateway functions as an intelligent router and redirects OpenAI API traffic among multiple backend endpoints.  The gateway keeps track of unavailable/busy backend endpoints and automatically redirects traffic to available endpoints thereby distributing the API traffic load evenly and not overloading a given endpoint with too many requests.  
 
 **Prerequisites:**
 1.  An Azure **Resource Group** with **Owner** *Role* permission.  All Azure resources can be deloyed into this resource group.
@@ -66,7 +67,7 @@ Deployment options recommended for *Usage Scenario 2*.
 1. Containerize the API Gateway and deploy it on a serverless container platform such as *Azure Container Apps*.
 
    We will not be describing the steps for this option here.  Readers can follow the deployment instructions described in Azure Container Apps documentation [here](https://learn.microsoft.com/en-us/azure/container-apps/tutorial-code-to-cloud?source=recommendations&tabs=bash%2Ccsharp&pivots=acr-remote).
-2. Containerize the API Gateway and deploy it on a container platform such as *Azure Kubernetes Service*.
+2. Containerize the API Gateway and deploy it on a container platform such as *Azure Kubernetes Service*. Refer to sections **B** and **E** below.
 
 ### A. Configure and run the API Gateway on a standalone *Virtual Machine*
 
@@ -82,9 +83,9 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
 3. Update the API Gateway endpoint configuration file.
 
-   Review the `api-router-config.json` file and add/update the Azure OpenAI Service model deployment endpoints/URI's and corresponding API key values in this file. Save the file.
+   Edit the `./api-router-config.json` file. Each AI Application should have a unique *appId*. For each AI Application, add/update the Azure OpenAI Service model deployment endpoints/URI's and corresponding API key values in this file. Save the file.
 
-   **IMPORTANT**: The model deployment endpoints/URI's should be listed in increasing order of priority (top down) within the file. Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  The API Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to OpenAI API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
+   **IMPORTANT**: The model deployment endpoints/URI's should be listed in increasing order of priority (top down). Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  For each API Application, the API Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to OpenAI API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
 
 4. Set the gateway server environment variables.
 
@@ -123,12 +124,16 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    > openai-api-router@1.0.0 start
    > node ./src/server.js
 
+   Server(): Azure Application Monitor OpenTelemetry configured.
    Server(): OpenAI API Gateway server started successfully.
    Gateway uri: http://localhost:8000/api/v1/dev
    Server(): Backend/Target endpoints:
-   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15
-   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
-   Server(): Loaded backend Azure OpenAI API endpoints
+   applicationId: aichatbotapp
+     Priority: 0   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15
+     Priority: 1   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
+   applicationId: aidocusearchapp
+     Priority: 0   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
+   Server(): Loaded backend Azure OpenAI API endpoints for applications
    ```
 
    Leave the terminal window open.
@@ -149,9 +154,9 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
         "apiGatewayHost": "localhost",
         "apiGatewayListenPort": 8000,
         "apiGatewayEnv": "dev",
-        "apiGatewayCollectInterval": 5,
-        "apiGatewayCollectHistoryCount": 5,
-        "apiGatewayConfigFile": "./api-router-config-test.json"
+        "apiGatewayCollectInterval": 1,
+        "apiGatewayCollectHistoryCount": 2,
+        "apiGatewayConfigFile": "./api-router-config.json"
      },
      "containerInfo": {},
      "nodejs": {
@@ -180,22 +185,33 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
         "v8": "11.3.244.8-node.17",
         "zlib": "1.2.13.1-motley-5daffc7"
      },
-     "oaiEndpoints": {
-        "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
-        "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
-     },
+     "appConnections": [
+        {
+            "applicationId": "aichatbotapp",
+            "oaiEndpoints": {
+                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
+                "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
+            }
+        },
+        {
+            "applicationId": "aidocusearchapp",
+            "oaiEndpoints": {
+                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
+            }
+        }
+     ],
      "apiGatewayUri": "/api/v1/dev/apirouter",
      "endpointUri": "/api/v1/dev/apirouter/instanceinfo",
-     "serverStartDate": "2/4/2024, 4:43:39 AM",
+     "serverStartDate": "2/15/2024, 10:21:40 PM",
      "status": "OK"
-   }  
+   }
    ```
 
 7. Access the API Gateway Server load balancer/router (/lb) endpoint
 
-   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* endpoint - `/lb`.  See URL below.
+   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* endpoint - `/lb`.  Remember to substitute the correct value for *AI_APPLICATION_ID* in the URL below.  The AI Application ID value should be one of the unique *appId* values specified in API Gateway configuration file `./api-router-config.json`.
 
-   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/lb
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/lb/{AI_APPLICATION_ID}
 
    Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
 
@@ -203,7 +219,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
 For generating OpenAI API traffic and/or simulating API workload, one of the following methods can be used.  See below.
 
-- Update and use the provided shell script `./tests/test-oai-api-gateway.sh` with sample data.  Observe how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
+- Update and use the provided shell script `./tests/test-oai-api-gateway.sh` with sample data.  For an AI Application, observe how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
 - For simulating continuous API traffic and performing comprehensive load testing (capacity planning), use *Azure Load Testing* PaaS service.
 
 ### B. Containerize the API Gateway and deploy it on the Virtual Machine
@@ -238,7 +254,7 @@ Before getting started with this section, make sure you have installed a contain
 
    Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* endpoint - `/lb`.  See URL below.
 
-   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/lb
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/lb/{AI_APPLICATION_ID}
 
    Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
 
@@ -259,7 +275,7 @@ It is important to understand how the API Gateway's load balancer distributes in
 
    Use a web browser and access the API Gateway *metrics* endpoint to retrieve the backend OpenAI API metrics information.  The metrics endpoint URL - `/metrics`, is listed below.
 
-   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/metrics
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/metrics
     
    A sample Json output snippet is pasted below.
 
@@ -267,71 +283,157 @@ It is important to understand how the API Gateway's load balancer distributes in
    {
      "listenPort": "8000",
      "instanceName": "Gateway-Instance-01",
-     "collectionInterval": "5",
-     "historyCount": "5",
-     "endpointMetrics": [
+     "collectionInterval": 1,
+     "historyCount": 2,
+     "applicationMetrics": [
         {
-            "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
-            "priority": 1,
-            "metrics": {
-                "apiCalls": 39,
-                "failedCalls": 3,
-                "totalCalls": 42,
-                "kInferenceTokens": 16.913,
-                "history": {
-                    "0": {
-                        "collectionTime": "2/2/2024, 9:24:25 PM",
-                        "collectedMetrics": {
-                            "noOfApiCalls": 50,
-                            "noOfFailedCalls": 7,
-                            "throughput": {
-                                "kTokensPerWindow": 20.499,
-                                "requestsPerWindow": 122.994,
-                                "avgTokensPerCall": 409.98,
-                                "avgRequestsPerCall": 2.45988
+            "applicationId": "aichatbotapp",
+            "endpointMetrics": [
+                {
+                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
+                    "priority": 0,
+                    "metrics": {
+                        "apiCalls": 3,
+                        "failedCalls": 0,
+                        "totalCalls": 3,
+                        "kInferenceTokens": 1.158,
+                        "history": {
+                            "0": {
+                                "collectionTime": "2/15/2024, 10:51:06 PM",
+                                "collectedMetrics": {
+                                    "noOfApiCalls": 10,
+                                    "noOfFailedCalls": 1,
+                                    "throughput": {
+                                        "kTokensPerWindow": 3.944,
+                                        "requestsPerWindow": 23.664,
+                                        "avgTokensPerCall": 394.4,
+                                        "avgRequestsPerCall": 2.3663999999999996
+                                    },
+                                    "latency": {
+                                        "avgResponseTimeMsec": 2672.5
+                                    }
+                                }
                             },
-                            "latency": {
-                                "avgResponseTimeMsec": 3024.9
+                            "1": {
+                                "collectionTime": "2/15/2024, 10:52:20 PM",
+                                "collectedMetrics": {
+                                    "noOfApiCalls": 10,
+                                    "noOfFailedCalls": 1,
+                                    "throughput": {
+                                        "kTokensPerWindow": 4.026,
+                                        "requestsPerWindow": 24.156,
+                                        "avgTokensPerCall": 402.6,
+                                        "avgRequestsPerCall": 2.4156000000000004
+                                    },
+                                    "latency": {
+                                        "avgResponseTimeMsec": 2729.3
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15",
+                    "priority": 1,
+                    "metrics": {
+                        "apiCalls": 1,
+                        "failedCalls": 0,
+                        "totalCalls": 1,
+                        "kInferenceTokens": 504,
+                        "history": {
+                            "0": {
+                                "collectionTime": "2/15/2024, 10:51:06 PM",
+                                "collectedMetrics": {
+                                    "noOfApiCalls": 0,
+                                    "noOfFailedCalls": 1,
+                                    "throughput": {
+                                        "kTokensPerWindow": 0,
+                                        "requestsPerWindow": 0,
+                                        "avgTokensPerCall": 0,
+                                        "avgRequestsPerCall": 0
+                                    },
+                                    "latency": {
+                                        "avgResponseTimeMsec": 0
+                                    }
+                                }
+                            },
+                            "1": {
+                                "collectionTime": "2/15/2024, 10:52:15 PM",
+                                "collectedMetrics": {
+                                    "noOfApiCalls": 1,
+                                    "noOfFailedCalls": 1,
+                                    "throughput": {
+                                        "kTokensPerWindow": 497,
+                                        "requestsPerWindow": 2982,
+                                        "avgTokensPerCall": 497,
+                                        "avgRequestsPerCall": 2.982
+                                    },
+                                    "latency": {
+                                        "avgResponseTimeMsec": 8585
+                                    }
+                                }
                             }
                         }
                     }
                 }
-            }
+            ]
         },
         {
-            "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15",
-            "priority": 2,
-            "metrics": {
-                "apiCalls": 18,
-                "failedCalls": 9,
-                "totalCalls": 27,
-                "kInferenceTokens": 8.129,
-                "history": {
-                    "0": {
-                        "collectionTime": "2/2/2024, 9:24:57 PM",
-                        "collectedMetrics": {
-                            "noOfApiCalls": 30,
-                            "noOfFailedCalls": 16,
-                            "throughput": {
-                                "kTokensPerWindow": 12.582,
-                                "requestsPerWindow": 75.492,
-                                "avgTokensPerCall": 419.4,
-                                "avgRequestsPerCall": 2.5163999999999995
+            "applicationId": "aidocusearchapp",
+            "endpointMetrics": [
+                {
+                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15",
+                    "priority": 0,
+                    "metrics": {
+                        "apiCalls": 3,
+                        "failedCalls": 0,
+                        "totalCalls": 3,
+                        "kInferenceTokens": 1.354,
+                        "history": {
+                            "0": {
+                                "collectionTime": "2/15/2024, 10:51:06 PM",
+                                "collectedMetrics": {
+                                    "noOfApiCalls": 6,
+                                    "noOfFailedCalls": 1,
+                                    "throughput": {
+                                        "kTokensPerWindow": 2.898,
+                                        "requestsPerWindow": 17.388,
+                                        "avgTokensPerCall": 483,
+                                        "avgRequestsPerCall": 2.898
+                                    },
+                                    "latency": {
+                                        "avgResponseTimeMsec": 3320.1666666666665
+                                    }
+                                }
                             },
-                            "latency": {
-                                "avgResponseTimeMsec": 3628.633333333333
+                            "1": {
+                                "collectionTime": "2/15/2024, 10:52:17 PM",
+                                "collectedMetrics": {
+                                    "noOfApiCalls": 5,
+                                    "noOfFailedCalls": 1,
+                                    "throughput": {
+                                        "kTokensPerWindow": 1.926,
+                                        "requestsPerWindow": 11.556,
+                                        "avgTokensPerCall": 385.2,
+                                        "avgRequestsPerCall": 2.3112
+                                    },
+                                    "latency": {
+                                        "avgResponseTimeMsec": 2745.6
+                                    }
+                                }
                             }
                         }
                     }
                 }
-            }
+            ]
         }
      ],
-     "successApiCalls": 138,
-     "failedApiCalls": 423,
-     "totalApiCalls": 561,
+     "successApiCalls": 40,
+     "failedApiCalls": 87,
+     "totalApiCalls": 127,
      "endpointUri": "/api/v1/dev/apirouter/metrics",
-     "currentDate": "2/2/2024, 9:33:16 PM",
+     "currentDate": "2/15/2024, 10:53:37 PM",
      "status": "OK"
    }
    ```
@@ -397,7 +499,7 @@ The API Gateway endpoint configuration can be updated even when the server is ru
    Use **Curl** command in a terminal window or a web browser to access the gateway *reconfiguration* endpoint - `/reconfig`.  See URL below.
    The private key of the API Gateway is required to reload the endpoint configuration.
 
-   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV/apirouter/reconfig/{API_GATEWAY_KEY}
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/reconfig/{API_GATEWAY_KEY}
 
 **IMPORTANT**:
 
@@ -534,7 +636,7 @@ Additionally, the following resources should be deployed/configured.
         "apiGatewayEnv": "dev",
         "apiGatewayCollectInterval": 1,
         "apiGatewayCollectHistoryCount": 2,
-        "apiGatewayConfigFile": "/home/node/app/files/api-router-config-test.json"
+        "apiGatewayConfigFile": "/home/node/app/files/api-router-config.json"
      },
      "containerInfo": {
         "imageID": "acrgrdev.azurecr.io/az-oai-api-gateway:v1.020424",

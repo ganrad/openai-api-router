@@ -7,7 +7,8 @@
  * Date: 01-26-2024
  *
  * Notes:
- * ID05082024: ganrad : Added support for capturing gateway metrics using Azure Monitor OpenTelemetry.
+ * ID02082024: ganrad : Added support for capturing gateway metrics using Azure Monitor OpenTelemetry.
+ * ID02132024: ganrad : Provide a single data plane for multiple AI applications.
 */
 
 // ID05082024.sn: Configure Azure Monitor OpenTelemetry for instrumenting API gateway requests.
@@ -99,11 +100,16 @@ function readApiGatewayConfigFile() {
     context = JSON.parse(data);
   
     console.log("Server(): Backend/Target endpoints:");
-    context.endpoints.forEach((element) => {
-      console.log(`uri: ${element.uri}`);
+    context.applications.forEach((app) => {
+      let pidx = 0;
+      console.log(`applicationId: ${app.appId}`);
+      app.endpoints.forEach((element) => {
+        console.log(`  Priority: ${pidx}\turi: ${element.uri}`);
+	pidx++;
+      });
     });
 
-    console.log("Server(): Loaded backend Azure OpenAI API endpoints");
+    console.log("Server(): Loaded backend Azure OpenAI API endpoints for applications");
   });
 };
 readApiGatewayConfigFile();
@@ -114,11 +120,18 @@ app.use(bodyParser.json());
 app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
   logger(req,res);
 
-  let epIdx = 0; // also the priority index
-  let eps = new Map();
-  context.endpoints.forEach((element) => {
-    eps.set(epIdx,element.uri);
-    epIdx++;
+  let appcons = [];
+  context.applications.forEach((app) => {
+    let epIdx = 0; // Priority index
+    let eps = new Map();
+    app.endpoints.forEach((element) => {
+      eps.set(epIdx,element.uri);
+      epIdx++;
+    });
+    let appeps = new Map();
+    appeps.set("applicationId", app.appId);
+    appeps.set("oaiEndpoints", Object.fromEntries(eps));
+    appcons.push(Object.fromEntries(appeps));
   });
 
   let envvars = {
@@ -144,7 +157,7 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
     envVars: envvars,
     containerInfo: platformInfo,
     nodejs: process.versions,
-    oaiEndpoints: Object.fromEntries(eps),
+    appConnections: appcons,
     apiGatewayUri: endpoint + "/apirouter",
     endpointUri: req.url,
     serverStartDate: srvStartDate,

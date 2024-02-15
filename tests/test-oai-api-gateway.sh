@@ -2,17 +2,17 @@
 # -H "api-key: 9eca9ec" \
 
 i=0
-while [ $i -le 50 ]
+while [ $i -le 1000 ]
 do
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
-  curl http://localhost:8000/api/v1/dev/apirouter/lb -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb/aidocusearchapp -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb/aidocusearchapp -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb/aichatbotapp -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb/aidocusearchapp -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb/aichatbotapp -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb/aidocusearchapp -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb/aichatbotapp -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb/aidocusearchapp -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
+  curl http://localhost:8000/api/v1/dev/apirouter/lb/aichatbotapp -H "Content-Type: application/json" -d "{\"prompt\": \"Once upon a time\", \"max_tokens\": 500}" | jq .
   ((i++))
-  # sleep 2
+  sleep 2
 done
