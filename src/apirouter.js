@@ -7,7 +7,7 @@
  * Date: 01-28-2024
  *
  * Notes:
- * ID02132024: ganrad : Use a single data plane to server Azure OpenAI models for multiple AI applications.
+ * ID02132024: ganrad : Use a single data plane to serve Azure OpenAI models for multiple AI applications.
 */
 const fetch = require("node-fetch");
 const express = require("express");
@@ -68,6 +68,7 @@ router.post("/lb/:app_id", async (req, res) => {
   let response;
   let data;
   let retryAfter = 0;
+  let err_obj = null;
 
   let appId = req.params.app_id;
   if ( ! appConnections.loaded ) {
@@ -97,6 +98,18 @@ router.post("/lb/:app_id", async (req, res) => {
     res.status(400).json(err_obj); // 400 = Bad request
     return;
   };
+
+  let r_stream = req.body.stream;
+  if ( r_stream ) {
+    err_obj = {
+      endpointUri: req.originalUrl,
+      currentDate: new Date().toLocaleString(),
+      err_msg: "Stream mode is not yet supported! Unable to process request."
+    };
+
+    res.status(400).json(err_obj); // 400 = Bad request
+    return;
+  }; 
 
   instanceCalls++;
   let epdata = appConnections.getConnection(appId);
@@ -160,14 +173,28 @@ router.post("/lb/:app_id", async (req, res) => {
   }; // end of for
 
   instanceFailedCalls++;
-  err_obj = {
-    endpointUri: req.originalUrl,
-    currentDate: new Date().toLocaleString(),
-    err_msg: `All backend servers are too busy! Retry after [${retryAfter}] seconds ...`
-  };
+  let http_code = 503; // 503 = (Default) Server is busy!
 
-  res.set('retry-after', retryAfter); // Set the retry-after response header
-  res.status(503).json(err_obj); // 503 = Server is busy
+  if ( retryAfter > 0 ) {
+    err_obj = {
+      endpointUri: req.originalUrl,
+      currentDate: new Date().toLocaleString(),
+      err_msg: `All backend servers are too busy! Retry after [${retryAfter}] seconds ...`
+    };
+
+    res.set('retry-after', retryAfter); // Set the retry-after response header
+  }
+  else {
+    err_obj = {
+      endpointUri: req.originalUrl,
+      currentDate: new Date().toLocaleString(),
+      err_msg: "Internal server error. Unable to process request. Check logs."
+    };
+
+    http_code = 500 // 500 = Internal server error
+  };
+    
+  res.status(http_code).json(err_obj);
 });
 
 module.exports.apirouter = router;
