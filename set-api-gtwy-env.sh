@@ -1,4 +1,4 @@
-export API_GATEWAY_CONFIG_FILE="./api-router-config-test.json"
+export API_GATEWAY_CONFIG_FILE="./api-router-config.json"
 export API_GATEWAY_NAME="Gateway-Instance-01"
 export API_GATEWAY_PORT=8000
 export API_GATEWAY_ENV="dev"
