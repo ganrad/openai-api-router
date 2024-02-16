@@ -16,7 +16,7 @@ This API gateway can be used to distribute requests to OpenAI API Service endpoi
 The API Gateway can be used in two scenarios.
 1. **Estimating capacity for Azure OpenAI workloads**
 
-   For each AI Application (/OpenAI Workload), the API Gateway collects various backend API metrics.  These metrics are collected for configured time intervals and can be used to compute the required throughput (*Tokens per minute*) for a given OpenAI workload.  TPMs can then be used to estimate *Provisioned Throughput Units*.
+   For each AI Application (/OpenAI Workload), the API Gateway collects various backend API metrics.  The metrics are collected for pre-configured time intervals and can be used to compute the required throughput a.k.a *Tokens per minute* (TPM). TPM can then be used to estimate *Provisioned Throughput Units* for each OpenAI workload.
 
 2. **Intelligently route AI Application requests to Azure OpenAI deployments/backends**
 
@@ -40,7 +40,7 @@ The API Gateway can be used in two scenarios.
     - [Windows Sub-System for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10)
 9. (Optional) Download and install [Postman App](https://www.getpostman.com/apps), a REST API Client used for testing the API Gateway.
 
-**Functional Architecture:**
+**Reference Architecture:**
 
 ![alt tag](./images/az-openai-api-gateway-ra.PNG)
 
@@ -58,7 +58,7 @@ Readers are advised to refer to the following on-line resources as needed.
 **Important Notes (Disclaimer):**
 - The API Gateway does not currently secure the exposed API's by means of security tokens or API keys. Hence it's usage should be limited to private virtual network deployments on Azure.  That said, the gateway can be easily customized to support security tokens and/or private API keys and used to authenticate requests.
 
-The sections below describe the steps to configure and deploy the API Gateway on Azure.  Although, there are multiple deployment options available on Azure, we will only describe the top two options recommended for production deployments.
+The Sections below describe the steps to configure and deploy the API Gateway on Azure.  Although, there are multiple deployment options available on Azure, we will only describe the top two options recommended for production deployments.
 
 Deployment options recommended for *Usage Scenario 1*.
 - Containerize the API Gateway and deploy it on a standalone *Virtual Machine*
@@ -67,7 +67,7 @@ Deployment options recommended for *Usage Scenario 2*.
 1. Containerize the API Gateway and deploy it on a serverless container platform such as *Azure Container Apps*.
 
    We will not be describing the steps for this option here.  Readers can follow the deployment instructions described in Azure Container Apps documentation [here](https://learn.microsoft.com/en-us/azure/container-apps/tutorial-code-to-cloud?source=recommendations&tabs=bash%2Ccsharp&pivots=acr-remote).
-2. Containerize the API Gateway and deploy it on a container platform such as *Azure Kubernetes Service*. Refer to sections **B** and **E** below.
+2. Containerize the API Gateway and deploy it on a container platform such as *Azure Kubernetes Service*. Refer to Sections **B** and **E** below.
 
 ### A. Configure and run the API Gateway on a standalone *Virtual Machine*
 
@@ -624,7 +624,7 @@ Additionally, the following resources should be deployed/configured.
 
    http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV}/apirouter/instanceinfo
 
-   The output should like the screen capture below.
+   The Json output is shown below.
 
    ```json
    {
