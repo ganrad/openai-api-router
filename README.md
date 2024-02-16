@@ -4,7 +4,7 @@ This API gateway can be used to distribute requests to OpenAI API Service endpoi
 **Advantages/Benefits:**
 - The API Gateway uses Nodejs as the runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
 - The API Gateway can be configured with multiple Azure OpenAI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
-- The API Gateway is AI Application *aware* meaning, Azure OpenAI Service backend endpoints can be configured separately for each AI Application.  This not only allows model deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing by application.
+- The API Gateway is AI Application *aware* meaning, Azure OpenAI Service backend endpoints can be configured separately for each AI Application.  This not only allows model deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing for each individual AI application.
 - The Gateway provides the flexibility to split OpenAI API traffic between multiple model deployments hosted on consumption based and reserved capacity units (Provisioned managed throughput) on Azure.
 - The Gateway can be easily configured with multiple backend endpoints using a JSON file.  Furthermore, the backend endpoints can be reconfigured at any time even when the server is running.  The gateway exposes a separate reconfig (/reconfig) endpoint that facilitates dynamic reconfiguration of backend endpoints.
 - The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the API workload to the desired backend endpoints based on available and consumed capacity.
@@ -16,11 +16,11 @@ This API gateway can be used to distribute requests to OpenAI API Service endpoi
 The API Gateway can be used in two scenarios.
 1. **Estimating capacity for Azure OpenAI workloads**
 
-   Based on configured time intervals, the API Gateway collects various backend API metrics.  These metrics can then be used to compute the required throughput (*Tokens per minute*) for a given OpenAI workload.  TPMs can be used to estimate *Provisioned Throughput Units*.
+   For each AI Application (/OpenAI Workload), the API Gateway collects various backend API metrics.  These metrics are collected for configured time intervals and can be used to compute the required throughput (*Tokens per minute*) for a given OpenAI workload.  TPMs can then be used to estimate *Provisioned Throughput Units*.
 
-2. **Intelligently routing Azure OpenAI API requests**
+2. **Intelligently route AI Application requests to Azure OpenAI deployments/backends**
 
-   For each configured AI Application, the API Gateway functions as an intelligent router and redirects OpenAI API traffic among multiple backend endpoints.  The gateway keeps track of unavailable/busy backend endpoints and automatically redirects traffic to available endpoints thereby distributing the API traffic load evenly and not overloading a given endpoint with too many requests.  
+   For each AI Application, the API Gateway functions as an intelligent router and redirects OpenAI API traffic among multiple backend endpoints.  The gateway keeps track of unavailable/busy backend endpoints and automatically redirects traffic to available endpoints thereby distributing the API traffic load evenly and not overloading a given endpoint with too many requests.  
 
 **Prerequisites:**
 1.  An Azure **Resource Group** with **Owner** *Role* permission.  All Azure resources can be deloyed into this resource group.
@@ -548,7 +548,7 @@ Additionally, the following resources should be deployed/configured.
    Create a *ConfigMap* Kubernetes resource containing the API Gateway endpoint configurations.  See command snippet below.
 
    ```bash
-   # First, create a namespace where all API Gateway resources will be deployed.
+   # First, create a namespace 'apigateway' where all API Gateway resources will be deployed.
    $ kubectl create namespace apigateway
    #
    # List all namespaces.
@@ -622,7 +622,7 @@ Additionally, the following resources should be deployed/configured.
 
    Use a web browser to access the API Gateway Server *instance information* endpoint (/instanceinfo). Substitute the public IP of the Nginx ingress controller which you copied in the previous step.  See below.
 
-   http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV/apirouter/instanceinfo
+   http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV}/apirouter/instanceinfo
 
    The output should like the screen capture below.
 
@@ -631,7 +631,7 @@ Additionally, the following resources should be deployed/configured.
      "serverName": "AOAI-API-Gateway-01",
      "serverVersion": "1.0.0",
      "envVars": {
-        "apiGatewayHost": "10.244.1.31",
+        "apiGatewayHost": "10.244.4.6",
         "apiGatewayListenPort": 8000,
         "apiGatewayEnv": "dev",
         "apiGatewayCollectInterval": 1,
@@ -639,9 +639,9 @@ Additionally, the following resources should be deployed/configured.
         "apiGatewayConfigFile": "/home/node/app/files/api-router-config.json"
      },
      "containerInfo": {
-        "imageID": "acrgrdev.azurecr.io/az-oai-api-gateway:v1.020424",
-        "nodeName": "aks-nodepool1-35747021-vmss000000",
-        "podName": "aoai-api-gateway-v1-7f7bf5f75-grk6p",
+        "imageID": "oaiapigateway.azurecr.io/az-oai-api-gateway:v1.021524",
+        "nodeName": "aks-nodepool1-35747021-vmss000001",
+        "podName": "aoai-api-gateway-v1-57b5946666-7zrg2",
         "podNamespace": "apigateway",
         "podServiceAccount": "default"
      },
@@ -671,21 +671,32 @@ Additionally, the following resources should be deployed/configured.
         "v8": "11.3.244.8-node.17",
         "zlib": "1.2.13.1-motley-5daffc7"
      },
-     "oaiEndpoints": {
-        "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
-        "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
-     },
+     "appConnections": [
+        {
+            "applicationId": "aichatbotapp",
+            "oaiEndpoints": {
+                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
+                "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
+            }
+        },
+        {
+            "applicationId": "aidocusearchapp",
+            "oaiEndpoints": {
+                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
+            }
+        }
+     ],
      "apiGatewayUri": "/api/v1/dev/apirouter",
      "endpointUri": "/api/v1/dev/apirouter/instanceinfo",
-     "serverStartDate": "2/5/2024, 6:43:41 AM",
+     "serverStartDate": "2/16/2024, 6:07:55 AM",
      "status": "OK"
    }
    ```
 
    Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* endpoint - `/lb`.  See URL below.
 
-   http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV/apirouter/lb
+   http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV}/apirouter/lb/{AI_APPLICATION_ID}
 
    **Congratulations!**
 
-   You have reached the end of this how-to for deploying and scaling an Azure OpenAI API Gateway on Azure. Please feel free to use the artifacts posted in this repository to efficiently scale the API Gateway and distribute API traffic among multiple Azure OpenAI model deployments.
+   You have reached the end of this how-to for deploying and scaling an *OpenAI API Gateway* on Azure. Please feel free to customize and use the artifacts posted in this repository to efficiently distribute AI Application traffic among multiple Azure OpenAI model deployments and elastically scale the API Gateway solution.

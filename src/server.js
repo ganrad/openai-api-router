@@ -99,7 +99,7 @@ function readApiGatewayConfigFile() {
     };
     context = JSON.parse(data);
   
-    console.log("Server(): Backend/Target endpoints:");
+    console.log("Server(): AI Application backend (Azure OpenAI Service) endpoints:");
     context.applications.forEach((app) => {
       let pidx = 0;
       console.log(`applicationId: ${app.appId}`);
