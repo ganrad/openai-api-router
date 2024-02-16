@@ -127,7 +127,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    Server(): Azure Application Monitor OpenTelemetry configured.
    Server(): OpenAI API Gateway server started successfully.
    Gateway uri: http://localhost:8000/api/v1/dev
-   Server(): Backend/Target endpoints:
+   Server(): AI Application backend (Azure OpenAI Service) endpoints:
    applicationId: aichatbotapp
      Priority: 0   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15
      Priority: 1   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
