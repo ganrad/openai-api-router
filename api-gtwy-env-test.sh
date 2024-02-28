@@ -29,7 +29,7 @@ export API_GATEWAY_SRCH_ENGINE="Postgresql/pgvector"
 
 # Vector DB host, port, name, uname and user pwd
 export VECTOR_DB_NAME="aoaisvc"
-export VECTOR_DB_HOST="db.postgres.database.azure.com"
-export VECTOR_DB_USER="user01"
-export VECTOR_DB_UPWD="semantic-cache"
+export VECTOR_DB_HOST="gr-apig-dev-pg.postgres.database.azure.com"
+export VECTOR_DB_USER="gradmin"
+export VECTOR_DB_UPWD="Gbb-2024"
 export VECTOR_DB_PORT="5432"
