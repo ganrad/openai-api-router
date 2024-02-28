@@ -1,7 +1,7 @@
 /**
  * Name: EndpointMetrics
- * Description: Calculates backend API endpoint metrics and stores them in a light-weight
- * internal cache (~ Queue).
+ * Description: Calculates backend API endpoint metrics and stores them in a
+ * light-weight internal cache (~ Queue).
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 01-28-2024
@@ -75,7 +75,7 @@ class EndpointMetrics {
       this.hStack = Number(count); // Metrics history cache count
     else
       this.hStack = EndpointMetrics.DEF_METRICS_H_COUNT;
-    console.log(`***** Interval=${this.cInterval}; HistoryCount=${this.hStack}; *****`);
+    console.log(`*****\nEndpointMetrics():\n  Cache Interval (minutes): ${this.cInterval}\n  History Count: ${this.hStack}\n*****`);
 
     this.startTime = Date.now();
     this.endTime = this.startTime + (this.cInterval * 60 * 1000);

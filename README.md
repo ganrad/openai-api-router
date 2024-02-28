@@ -55,13 +55,14 @@ Readers are advised to refer to the following on-line resources as needed.
 - [Azure Monitor OpenTelemetry](https://learn.microsoft.com/en-us/azure/azure-monitor/app/opentelemetry-enable?tabs=aspnetcore)
 - [Azure Load Testing](https://learn.microsoft.com/en-us/azure/load-testing/)
 
-**Important Notes (Disclaimer):**
-- The API Gateway does not currently secure the exposed API's by means of security tokens or API keys. Hence it's usage should be limited to private virtual network deployments on Azure.  That said, the gateway can be easily customized to support security tokens and/or private API keys and used to authenticate requests.
+**Disclaimer:**
+- The software (API Gateway) is provided "as is" without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non infringement.  In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software. Use at your own risk.
+- The API Gateway does not currently secure the exposed API's by means of security tokens or API keys. Hence it's usage should be limited to private virtual network deployments on Azure.  That said, the gateway can be easily deployed behind an application gateway or firewall appliance that provides advanced and sophisticated security features.
 
 The Sections below describe the steps to configure and deploy the API Gateway on Azure.  Although, there are multiple deployment options available on Azure, we will only describe the top two options recommended for production deployments.
 
 Deployment options recommended for *Usage Scenario 1*.
-- Containerize the API Gateway and deploy it on a standalone *Virtual Machine*
+- Containerize the API Gateway and deploy it on a standalone *Virtual Machine*. Refer to Sections **A** and **B** below.
 
 Deployment options recommended for *Usage Scenario 2*.
 1. Containerize the API Gateway and deploy it on a serverless container platform such as *Azure Container Apps*.
