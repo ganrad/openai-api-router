@@ -184,7 +184,8 @@ router.post("/lb/:app_id", async (req, res) => {
         req.id,
         appId,
         req.body,
-        pgdb);
+        pgdb
+      );
 
     if ( rowCount === 1 ) { // Cache hit!
       cachedCalls++;
@@ -236,7 +237,13 @@ router.post("/lb/:app_id", async (req, res) => {
             pgvector.toSql(embeddedPrompt),
             data
           ];
-          await dao.storeEntity(0,values,pgdb);
+
+          await dao.storeEntity(
+            req.id,
+            0,
+            values,
+            pgdb
+          );
         };
 
         res.status(200).json(data); // 200 = All OK
@@ -261,7 +268,8 @@ router.post("/lb/:app_id", async (req, res) => {
       err_msg = {targetUri: element.uri, cause: error};
       // throw new Error("Encountered exception", {cause: error});
       // metricsObj.updateFailedCalls();
-      req.log.warn({err: err_msg});
+      // req.log.warn({err: err_msg});
+      console.log(`*****\napirouter():\n  Encountered exception:\n  ${err_msg}\n*****`)
     };
   }; // end of for
 

@@ -21,6 +21,7 @@ pool.on('connect',async function (client) {
   await pgvector.registerType(client);
 });
 
+// Check Vector DB Connection
 async function checkDbConnection() {
   let query = `SELECT id FROM apigtwycache LIMIT 1`;
 
@@ -52,6 +53,7 @@ async function checkDbConnection() {
   return ret_val;
 }
 
+// Delete/Drop table
 async function dropTable() {
   try {
     const client = await pool.connect(); // Get a connection
@@ -65,6 +67,7 @@ async function dropTable() {
   };
 }
 
+// Create table
 async function createTable(idx) {
   try {
     const client = await pool.connect(); // Get a connection
@@ -78,20 +81,22 @@ async function createTable(idx) {
   };
 }
 
-async function insertData(query, params) {
+// Insert vector record
+async function insertData(requestid, query, params) {
   let stTime = Date.now();
   try {
     const client = await pool.connect();
     const res = await client.query(query,params)
-    console.log(`insertData():\n  Inserted recs: [${res.rowCount}]\n  Rowid: [${res.rows[0].id}]\n  Execution time: ${Date.now() - stTime}\n*****`);
+    console.log(`insertData():\n  Request ID: ${requestid}\n  Inserted recs: [${res.rowCount}]\n  Rowid: [${res.rows[0].id}]\n  Execution time: ${Date.now() - stTime}\n*****`);
 
     client.release();
   }
   catch (err) {
-    console.log("insertData(): Encountered exception:\n" + err.stack);
+    console.log("*****\ninsertData():\n  Encountered exception:\n  " + err.stack);
   };
 }
 
+// Execute query
 async function executeQuery(requestid,query, params) {
   let result;
   let rows = 0;

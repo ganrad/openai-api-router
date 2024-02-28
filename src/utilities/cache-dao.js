@@ -107,8 +107,12 @@ class CacheDao {
     };
   }
 
-  async storeEntity(qidx, values, dbHandle) {
-    await dbHandle.insertData(insertStmts[qidx],values);
+  async storeEntity(rid, qidx, values, dbHandle) {
+    let stTime = Date.now();
+
+    await dbHandle.insertData(rid,insertStmts[qidx],values);
+
+    console.log(`storeEntity():\n  Application ID: ${values[0]}\n  Request ID: ${rid}\n  Execution Time: ${Date.now() - stTime}\n*****`);
   }
 }
 
