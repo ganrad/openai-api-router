@@ -22,6 +22,14 @@ The API Gateway can be used in two scenarios.
 
    For each AI Application, the API Gateway functions as an intelligent router and redirects OpenAI API traffic among multiple backend endpoints.  The gateway keeps track of unavailable/busy backend endpoints and automatically redirects traffic to available endpoints thereby distributing the API traffic load evenly and not overloading a given endpoint with too many requests.  
 
+**Reference Architecture:**
+
+![alt tag](./images/az-openai-api-gateway-ra.PNG)
+
+**API Gateway Workflow:**
+
+![alt tag](./images/aoai-api-gtwy-flow-chart.png)
+
 **Prerequisites:**
 1.  An Azure **Resource Group** with **Owner** *Role* permission.  All Azure resources can be deloyed into this resource group.
 2.  A **GitHub** Account to fork and clone this GitHub repository.
@@ -40,14 +48,6 @@ The API Gateway can be used in two scenarios.
     - [Windows Sub-System for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10)
 9. (Optional) Download and install [Postman App](https://www.getpostman.com/apps), a REST API Client used for testing the API Gateway.
 
-**Reference Architecture:**
-
-![alt tag](./images/az-openai-api-gateway-ra.PNG)
-
-**API Gateway Workflow:**
-
-![alt tag](./images/aoai-api-gtwy-flow-chart.png)
-
 Readers are advised to refer to the following on-line resources as needed.
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
 - [Creating an Azure Linux VM](https://learn.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-cli)
@@ -59,7 +59,7 @@ Readers are advised to refer to the following on-line resources as needed.
 - [Azure Monitor OpenTelemetry](https://learn.microsoft.com/en-us/azure/azure-monitor/app/opentelemetry-enable?tabs=aspnetcore)
 - [Azure Load Testing](https://learn.microsoft.com/en-us/azure/load-testing/)
 
-**Disclaimer:**
+##Disclaimer:
 - The software (API Gateway) is provided "as is" without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non infringement.  In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software. Use at your own risk.
 - The API Gateway does not currently secure the exposed API's by means of security tokens or API keys. Hence it's usage should be limited to private virtual network deployments on Azure.  That said, the gateway can be easily deployed behind an application gateway or firewall appliance that provides advanced and sophisticated security features.
 
