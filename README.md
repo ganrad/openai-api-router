@@ -44,6 +44,10 @@ The API Gateway can be used in two scenarios.
 
 ![alt tag](./images/az-openai-api-gateway-ra.PNG)
 
+**API Gateway Workflow:**
+
+![alt tag](./images/aoai-api-gtwy-flow-chart.png)
+
 Readers are advised to refer to the following on-line resources as needed.
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
 - [Creating an Azure Linux VM](https://learn.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-cli)
