@@ -31,7 +31,7 @@ const queryStmts = [
 ];
 
 const insertStmts = [
-  "INSERT INTO apigtwycache (aiappname, prompt, embedding, completion) VALUES ($1,$2,$3,$4) RETURNING id"
+  "INSERT INTO apigtwycache (requestid, aiappname, prompt, embedding, completion) VALUES ($1,$2,$3,$4,$5) RETURNING id"
   ];
 
 class CacheDao {
@@ -97,7 +97,7 @@ class CacheDao {
       embedding = apiResp.embedding;
     };
 
-    console.log(`queryVectorDB():\n  Application ID: ${appId}\n  Request ID: ${rid}\n  User: ${reqBody.user}\n  Execution Time: ${Date.now() - stTime}\n*****`);
+    console.log(`${this.constructor.name}.queryVectorDB():\n  Application ID: ${appId}\n  Request ID: ${rid}\n  User: ${reqBody.user}\n  Execution Time: ${Date.now() - stTime}\n*****`);
 
     return {
       rowCount: rowno,
@@ -107,12 +107,12 @@ class CacheDao {
     };
   }
 
-  async storeEntity(rid, qidx, values, dbHandle) {
+  async storeEntity(qidx, values, dbHandle) {
     let stTime = Date.now();
 
-    await dbHandle.insertData(rid,insertStmts[qidx],values);
+    await dbHandle.insertData(insertStmts[qidx],values);
 
-    console.log(`storeEntity():\n  Application ID: ${values[0]}\n  Request ID: ${rid}\n  Execution Time: ${Date.now() - stTime}\n*****`);
+    console.log(`${this.constructor.name}.storeEntity():\n  Application ID: ${values[1]}\n  Request ID: ${values[0]}\n  Execution Time: ${Date.now() - stTime}\n*****`);
   }
 }
 

@@ -9,14 +9,19 @@
  * Notes:
  * ID02132024: ganrad : Use a single data plane to serve Azure OpenAI models for multiple AI applications.
  * ID02202024: ganrad : Introduced semantic caching / retrieval functionality.
+ * ID03012024: ganrad : Introduced prompt persistence.
+ *
 */
+
 const fetch = require("node-fetch");
 const express = require("express");
 const EndpointMetrics = require("./utilities/ep-metrics.js");
 const AppConnections = require("./utilities/app-connection.js");
 const AppCacheMetrics = require("./utilities/cache-metrics.js"); // ID02202024.n
 const CacheDao = require("./utilities/cache-dao.js"); // ID02202024.n
-const pgdb = require("./services/cp-pg.js"); // ID02202024.n
+const cachedb = require("./services/cp-pg.js"); // ID02202024.n
+const {tblNames, PersistDao} = require("./utilities/persist-dao.js"); // ID03012024.n
+const persistdb = require("./services/pp-pg.js"); // ID03012024.n
 const pgvector = require("pgvector/pg"); // ID02202024.n
 const router = express.Router();
 
@@ -156,11 +161,11 @@ router.post("/lb/:app_id", async (req, res) => {
   // Has caching been disabled on the request using query param ~
   // 'use_cache=false' ?
   if ( useCache && req.query.use_cache )
-    useCache = req.query.use_cache == 'false' ? false : useCache;  
+    useCache = req.query.use_cache === 'false' ? false : useCache;  
 
   let vecEndpoints = null;
   let embeddedPrompt = null;
-  let dao = null;
+  let cacheDao = null;
   if ( cdb.cacheResults && useCache ) { // Is caching enabled?
     for ( const application of eps.applications) {
       if ( application.appId == cdb.embeddApp ) {
@@ -171,7 +176,7 @@ router.post("/lb/:app_id", async (req, res) => {
     };
 
     // Perform semantic search using input prompt
-    dao = new CacheDao(
+    cacheDao = new CacheDao(
       appConnections.getConnection(cdb.embeddApp),
       vecEndpoints,
       srchType,
@@ -179,12 +184,11 @@ router.post("/lb/:app_id", async (req, res) => {
       srchContent);
 
     const {rowCount, simScore, completion, embeddings} = 
-      // await dao.queryDB(req.body.prompt,pgdb);
-      await dao.queryVectorDB(
+      await cacheDao.queryVectorDB(
         req.id,
         appId,
         req.body,
-        pgdb
+        cachedb
       );
 
     if ( rowCount === 1 ) { // Cache hit!
@@ -230,21 +234,45 @@ router.post("/lb/:app_id", async (req, res) => {
           data.usage.total_tokens,
           respTime);
 
-        if ( dao && embeddedPrompt ) { // Cache results ?
+        // ID02202024.sn
+        if ( cacheDao && embeddedPrompt ) { // Cache results ?
+          let prompt = req.body.prompt;
+          if ( ! prompt )
+            prompt = JSON.stringify(req.body.messages);
+
           let values = [
+            req.id,
             appId,
-            req.body.prompt,
+            // req.body.prompt,
+            prompt,
             pgvector.toSql(embeddedPrompt),
             data
           ];
 
-          await dao.storeEntity(
-            req.id,
+          await cacheDao.storeEntity(
             0,
             values,
-            pgdb
+            cachedb
           );
         };
+        // ID02202024.en
+
+        // ID03012024.sn
+        let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
+        if ( persistPrompts ) { // Persist prompts ?
+          let promptDao = new PersistDao(persistdb, tblNames.prompts);
+          let values = [
+            req.id,
+            appId,
+            req.body
+          ];
+
+          await promptDao.storeEntity(
+            0,
+            values
+          );
+        };
+        // ID03012024.en
 
         res.status(200).json(data); // 200 = All OK
 
@@ -269,7 +297,7 @@ router.post("/lb/:app_id", async (req, res) => {
       // throw new Error("Encountered exception", {cause: error});
       // metricsObj.updateFailedCalls();
       // req.log.warn({err: err_msg});
-      console.log(`*****\napirouter():\n  Encountered exception:\n  ${err_msg}\n*****`)
+      console.log(`*****\napirouter():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
     };
   }; // end of for
 

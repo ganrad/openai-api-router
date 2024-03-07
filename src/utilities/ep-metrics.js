@@ -75,7 +75,7 @@ class EndpointMetrics {
       this.hStack = Number(count); // Metrics history cache count
     else
       this.hStack = EndpointMetrics.DEF_METRICS_H_COUNT;
-    console.log(`*****\nEndpointMetrics():\n  Cache Interval (minutes): ${this.cInterval}\n  History Count: ${this.hStack}\n*****`);
+    console.log(`*****\nEndpointMetrics():\n  Endpoint:  ${this.endpoint}\n  Cache Interval (minutes): ${this.cInterval}\n  History Count: ${this.hStack}\n*****`);
 
     this.startTime = Date.now();
     this.endTime = this.startTime + (this.cInterval * 60 * 1000);

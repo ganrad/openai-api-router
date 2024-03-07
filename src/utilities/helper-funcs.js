@@ -78,8 +78,18 @@ function prepareTextToEmbedd(
   let content = "";
 
   let stTime = Date.now();
-  if ( term === "prompt" )
-    content = body.prompt;
+  if ( term === "prompt" ) {
+    let prompts = body.prompt;
+
+    if ( Array.isArray(prompts) ) {
+      for (const element of prompts) {
+        content += element;
+        content += " ";
+      };
+    }
+    else
+      content = prompts;
+  }
   else { // term === "messages"
     roles = roles.replace(/\s/g, ''); // remove spaces
     let roleArr = roles.split(','); // convert roles into an array
@@ -88,8 +98,6 @@ function prepareTextToEmbedd(
       if ( roleArr.includes(element.role) )
         if ( typeof element.content === "string" )
           content += element.content;
-        else {
-        };
     };
   };
 

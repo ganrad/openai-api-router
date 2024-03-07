@@ -10,6 +10,7 @@
  * ID02082024: ganrad : Added support for capturing gateway metrics using Azure Monitor OpenTelemetry.
  * ID02132024: ganrad : Provide a single data plane for multiple AI applications.
  * ID02202024: ganrad : Introduced semantic caching / retrieval functionality.
+ * ID03012024: ganrad : Introduced prompt persistence.
 */
 
 // ID02082024.sn: Configure Azure Monitor OpenTelemetry for instrumenting API gateway requests.
@@ -95,16 +96,23 @@ else {
 // ID02202024.sn
 // console.log(`*** ${cacheResults}; ${typeof cacheResults} ***`);
 (async () => {
+  let persistPrompts = process.env.API_GATEWAY_PERSIST_PROMPTS; // ID03012024.n
   let cacheResults = process.env.API_GATEWAY_USE_CACHE;
-  if ( cacheResults === "true" ) {
+  if ( (cacheResults === "true") || (persistPrompts === "true") ) {
     let retval = await pgdb.checkDbConnection();
-    if ( retval )
-      console.log("Server(): API Gateway results will be cached");
+    if ( retval ) {
+      if ( cacheResults === "true" )
+        console.log("Server(): Completions will be cached");
+      if ( persistPrompts === "true" )
+        console.log("Server(): Prompts will be persisted");
+    }
     else
       process.exit(1);
   }
-  else
-    console.log("Server(): API Gateway results will not be cached");
+  else {
+    console.log("Server(): Completions will not be cached");
+    console.log("Server(): Prompts will not be persisted");
+  };
 }
 )();
 
@@ -199,12 +207,13 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
   });
 
   let envvars = {
-    apiGatewayHost: host,
-    apiGatewayListenPort: port,
-    apiGatewayEnv: process.env.API_GATEWAY_ENV,
-    apiGatewayCollectInterval: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
-    apiGatewayCollectHistoryCount: Number(process.env.API_GATEWAY_METRICS_CHISTORY),
-    apiGatewayConfigFile: process.env.API_GATEWAY_CONFIG_FILE
+    host: host,
+    listenPort: port,
+    environment: process.env.API_GATEWAY_ENV,
+    persistPrompts: process.env.API_GATEWAY_PERSIST_PROMPTS,
+    collectInterval: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
+    collectHistoryCount: Number(process.env.API_GATEWAY_METRICS_CHISTORY),
+    configFile: process.env.API_GATEWAY_CONFIG_FILE
   };
 
   let platformInfo = {
@@ -224,7 +233,7 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
   resp_obj = {
     serverName: process.env.API_GATEWAY_NAME,
     serverVersion: srvVersion,
-    envVars: envvars,
+    serverConfig: envvars,
     cacheSettings: resultsConfig,
     appConnections: appcons,
     containerInfo: platformInfo,
