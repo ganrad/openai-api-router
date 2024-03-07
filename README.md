@@ -1,15 +1,19 @@
 # An Azure OpenAI Service *API Gateway*
-This API gateway can be used to distribute requests to OpenAI API Service endpoints deployed on Azure.  This project describes the steps for deploying the API Gateway on Azure.
+The API Gateway server can be used to distribute requests to Azure OpenAI Service deployment endpoints.  This repository describes the steps for deploying the API Gateway on Azure.
 
 **Advantages/Benefits:**
-- The API Gateway uses Nodejs as the runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
-- The API Gateway can be configured with multiple Azure OpenAI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
-- The API Gateway is AI Application *aware* meaning, Azure OpenAI Service backend endpoints can be configured separately for each AI Application.  This not only allows model deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing for each individual AI application.
-- The Gateway provides the flexibility to split OpenAI API traffic between multiple model deployments hosted on consumption based and reserved capacity units (Provisioned managed throughput) on Azure.
-- The Gateway can be easily configured with multiple backend endpoints using a JSON file.  Furthermore, the backend endpoints can be reconfigured at any time even when the server is running.  The gateway exposes a separate reconfig (/reconfig) endpoint that facilitates dynamic reconfiguration of backend endpoints.
-- The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the API workload to the desired backend endpoints based on available and consumed capacity.
-- The Gateway can also be configured with an Azure Application Insights *connection string*.  With this setting, the gateway sends API request and dependency (Azure OpenAI API) telemetry to Azure Monitor.
-- Azure OpenAI model deployments can be easily swapped (eg., gpt-35 to gpt-4-8k) or updated without having to take down the API Gateway instance thereby limiting (or completely eliminating) application downtime.  
+
+Feature/Capability | Description
+------------------ | -----------
+**Traffic Routing** | The API Gateway can be configured with multiple Azure OpenAI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
+**AI Application Aware** | Azure OpenAI Service backend endpoints can be configured separately for each AI Application.  This not only allows model deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing for each individual AI application.
+**Semantic Caching** |
+**Persistence** |
+**Traffic Splitting** | The Gateway provides the flexibility to split Azure OpenAI Service traffic between multiple model deployments hosted on consumption based and reserved capacity units (Provisioned Throughput Units).
+**Dynamic Gateway Server Configuration** | The gateway exposes a separate reconfig (/reconfig) endpoint to allow dynamic reconfiguration of backend endpoints. Backend endpoints can be reconfigured anytime even when the server is running thereby limiting AI application downtime.
+**API Metrics Collection** | The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the AI Application workload to the desired backend endpoints based on available and consumed capacity.
+**Observability and Traceability of API Calls** | The API Gateway can be configured to use Azure Application Insights. With this setting, the gateway sends detailed telemetry information on Azure OpenAI and dependent services, to Azure Monitor.
+**Robust Runtime** | The API Gateway is powered by tried and true Nodejs runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
 
 **Usage scenarios:**
 
