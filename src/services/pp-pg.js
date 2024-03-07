@@ -97,7 +97,7 @@ async function executeQuery(entity, requestid, query, params) {
   let rows = 0;
   let data = [];
 
-  let logLine = `executeQuery():\n  Entity: ${entity}\n  Request ID: ${requestid}\n  Query: ${query}`;
+  let logLine = `executeQuery():\n  Entity: ${entity}\n  Request ID: ${requestid}\n  Query: ${query}\n`;
 
   let stTime = Date.now();
   try {
