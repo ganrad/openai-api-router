@@ -219,15 +219,62 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    ```json
    {
      "serverName": "Gateway-Instance-01",
-     "serverVersion": "1.0.0",
-     "envVars": {
-        "apiGatewayHost": "localhost",
-        "apiGatewayListenPort": 8000,
-        "apiGatewayEnv": "dev",
-        "apiGatewayCollectInterval": 1,
-        "apiGatewayCollectHistoryCount": 2,
-        "apiGatewayConfigFile": "./api-router-config.json"
+     "serverVersion": "1.5.0",
+     "serverConfig": {
+        "host": "localhost",
+        "listenPort": 8000,
+        "environment": "dev",
+        "persistPrompts": "true",
+        "collectInterval": 60,
+        "collectHistoryCount": 168,
+        "configFile": "./api-router-config-test.json"
      },
+     "cacheSettings": {
+        "cacheEnabled": true,
+        "embeddAiApp": "vectorizedata",
+        "searchEngine": "Postgresql/pgvector"
+     },
+     "appConnections": [
+        {
+            "applicationId": "vectorizedata",
+            "cacheSettings": {
+                "useCache": false
+            },
+            "oaiEndpoints": {
+                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15"
+            }
+        },
+        {
+            "applicationId": "aichatbotapp",
+            "cacheSettings": {
+                "useCache": true,
+                "searchType": "CS",
+                "searchDistance": 0.9,
+                "searchContent": {
+                    "term": "messages",
+                    "includeRoles": "system,user,assistant"
+                }
+            },
+            "oaiEndpoints": {
+                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2023-05-15"
+            }
+        },
+        {
+            "applicationId": "aidocusearchapp",
+            "cacheSettings": {
+                "useCache": true,
+                "searchType": "CS",
+                "searchDistance": 0.9,
+                "searchContent": {
+                    "term": "prompt"
+                }
+            },
+            "oaiEndpoints": {
+                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
+                "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
+            }
+        }
+     ],
      "containerInfo": {},
      "nodejs": {
         "node": "20.11.0",
@@ -255,24 +302,9 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
         "v8": "11.3.244.8-node.17",
         "zlib": "1.2.13.1-motley-5daffc7"
      },
-     "appConnections": [
-        {
-            "applicationId": "aichatbotapp",
-            "oaiEndpoints": {
-                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
-                "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
-            }
-        },
-        {
-            "applicationId": "aidocusearchapp",
-            "oaiEndpoints": {
-                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
-            }
-        }
-     ],
      "apiGatewayUri": "/api/v1/dev/apirouter",
      "endpointUri": "/api/v1/dev/apirouter/instanceinfo",
-     "serverStartDate": "2/15/2024, 10:21:40 PM",
+     "serverStartDate": "3/8/2024, 10:58:21 PM",
      "status": "OK"
    }
    ```
