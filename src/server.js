@@ -133,10 +133,6 @@ function readApiGatewayConfigFile() {
 
     let srchEngine = ( process.env.API_GATEWAY_SRCH_ENGINE ) ? process.env.API_GATEWAY_SRCH_ENGINE : "Postgresql/pgvector";
 
-    // let srchType = ( process.env.API_GATEWAY_SRCH_TYPE ) ? process.env.API_GATEWAY_SRCH_TYPE : "L2";
-
-    // let srchDistance = ( process.env.API_GATEWAY_SRCH_DISTANCE ) ? Number(process.env.API_GATEWAY_SRCH_DISTANCE) : 5;
-
     cacheConfig = new CacheConfig(true,embeddApp,srchEngine);
   }
   else 

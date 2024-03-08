@@ -163,7 +163,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numeric value (<= 600)  
    APPLICATIONINSIGHTS_CONNECTION_STRING | Azure Monitor connection string | No | Assign the value of the Azure Application Insights resource *connection string* (from Azure Portal)
    API_GATEWAY_USE_CACHE | Global setting for enabling semantic caching | No | false
-   API_GATEWAY_VECTOR_AIAPP | Name of the AI application that exposes endpoints for *embedded* model. This value is required if semantic caching and/or prompt persistence is enabled | No | None
+   API_GATEWAY_PERSIST_PROMPTS | Global setting for persisting prompts in a database (PostgreSQL) | No | false
+   API_GATEWAY_VECTOR_AIAPP | Name of the AI application that exposes endpoints for *embedded* model. This value is required if semantic caching is enabled | No | None
    API_GATEWAY_SRCH_ENGINE | The vector search engine used by semantic caching feature | No | Postgresql/pgvector
 
    **NOTE**: You can update and run the shell script `./set-api-gtwy-env.sh` to set and export the environment variables.
@@ -184,19 +185,25 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    You will see the gateway server start up message in the terminal window as shown in the snippet below.
 
    ```bash
+   
    > openai-api-router@1.0.0 start
    > node ./src/server.js
 
-   Server(): Azure Application Monitor OpenTelemetry configured.
+   Server(): Azure Application Insights 'connection string' not found. No telemetry data will be sent to App Insights.
    Server(): OpenAI API Gateway server started successfully.
    Gateway uri: http://localhost:8000/api/v1/dev
    Server(): AI Application backend (Azure OpenAI Service) endpoints:
-   applicationId: aichatbotapp
+   applicationId: vectorizedata (useCache=false)
+     Priority: 0   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15
+   applicationId: aichatbotapp (useCache=true)
+     Priority: 0   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2023-05-15
+   applicationId: aidocusearchapp (useCache=true)
      Priority: 0   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15
      Priority: 1   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
-   applicationId: aidocusearchapp
-     Priority: 0   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
    Server(): Loaded backend Azure OpenAI API endpoints for applications
+   checkDbConnection(): Postgres DB connectivity OK!
+   Server(): Completions will be cached
+   Server(): Prompts will be persisted
    ```
 
    Leave the terminal window open.

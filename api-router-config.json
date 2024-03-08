@@ -17,7 +17,7 @@
       "cacheSettings": {
         "useCache": true,
         "searchType": "CS",
-        "searchDistance": 0.85,
+        "searchDistance": 0.90,
         "searchContent": {
           "term": "messages",
           "includeRoles": "system,user,assistant"
@@ -35,7 +35,7 @@
       "cacheSettings": {
         "useCache": true,
         "searchType": "CS",
-        "searchDistance": 0.85,
+        "searchDistance": 0.90,
         "searchContent": {
           "term": "prompt"
         }
