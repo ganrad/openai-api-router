@@ -100,7 +100,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    You can connect to the database using any one of the following options - 1) [Azure CLI](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/quickstart-create-server-cli) 2) [psql or Azure Cloud shell](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/quickstart-create-server-portal).
 
-   Next, go to the root directory of this project repository.  Updates values for the environment variables shown in the table below.  Export these environment variables.
+   Next, go to the root directory of this project repository.  Update values for the environment variables shown in the table below.  Export these environment variables.
 
    Environment Variable | Value
    -------------------- | -----
@@ -133,11 +133,11 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    For each AI Application, 
 
    - Add/Update the Azure OpenAI Service model deployment endpoints/URI's and corresponding API key values in this file.
-   - To enable caching of OpenAI Service completions (output), specify values for attribute **cacheSettings**.  Refer to the table below and set appropriate values.
+   - (Optional) To enable caching of OpenAI Service completions (output), specify values for attribute **cacheSettings**.  Refer to the table below and set appropriate values.
 
      Attribute Name | Description
      -------------- | -----------
-     useCache | API Gateway will cache OpenAI Service completions (output) based on this value.  If is caching is desired, set it to *true* or *false*.  Default is *false*.
+     useCache | API Gateway will cache OpenAI Service completions (output) based on this value.  If caching is desired, set it to *true* or *false*.  Default is *false*.
      searchType | This attribute is used to specify the similarity distance function/algorithm for vector search.  Supported values are a) CS (= *Cosine Similarity*).  This is the default. b) LS (= *Level2 or Euclidean distance*) c) IP (= *Inner Product*).
      searchDistance | This attribute is used to specify the search similarity threshold.  For instance, if the search type = CS, this value could be set to a value between 0 and 1.
      searchContent.term | This value specifies the attribute in the request payload which should be vectorized and used for semantic search. For OpenAI completions API, this value should be *prompt*.  For chat completions API, this value should be set to *messages*.
@@ -162,8 +162,11 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    API_GATEWAY_METRICS_CINTERVAL | Backend API metrics collection and aggregation interval (in minutes) | Yes | Set it to a numeric value eg., 60 (1 hour)
    API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numeric value (<= 600)  
    APPLICATIONINSIGHTS_CONNECTION_STRING | Azure Monitor connection string | No | Assign the value of the Azure Application Insights resource *connection string* (from Azure Portal)
+   API_GATEWAY_USE_CACHE | Global setting for enabling semantic caching | No | false
+   API_GATEWAY_VECTOR_AIAPP | Name of the AI application that exposes endpoints for *embedded* model. This value is required if semantic caching and/or prompt persistence is enabled | No | None
+   API_GATEWAY_SRCH_ENGINE | The vector search engine used by semantic caching feature | No | Postgresql/pgvector
 
-   **NOTE**: You can update and run the shell script `./set-api-gtwy-env.sh` to set the environment variables.
+   **NOTE**: You can update and run the shell script `./set-api-gtwy-env.sh` to set and export the environment variables.
 
 6. Run the API Gateway server.
 
