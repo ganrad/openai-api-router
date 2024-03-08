@@ -5,8 +5,8 @@ The API Gateway server can be used to distribute requests to Azure OpenAI Servic
 
 Feature/Capability | Description
 ------------------ | -----------
+**Unified Management Plane** | API Gateway provides a single unified management plane for a) Configuring OpenAI Service endpoints for each individual AI Application and b) Serving OpenAI Service requests and tracking metrics for each AI Application.  The gateway is *AI Application Aware* and Azure OpenAI Service backend endpoints can be configured for each *AI Application* separately.  This not only allows model deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing for each individual AI application.
 **Intelligent Traffic Routing** | The API Gateway can be configured with multiple Azure OpenAI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
-**AI Application Aware** | Azure OpenAI Service backend endpoints can be configured separately for each *AI Application*.  This not only allows model deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing for each individual AI application.
 **Semantic Caching** | This feature is seamlessly integrated into API Gateway and can be used to cache OpenAI Service prompts and responses. Cache hits are evaluated based on semantic similarity and the configured algorithm. With semantic caching, runtime performance of LLM/AI applications can be improved by up to 40%. This solution leverages the vectorization and semantic search features supported by the widely popular *PostgreSQL* open source database.
 **Prompt Persistence** | This optional feature can be used to persist OpenAI Service *Prompts* (inputs) in a relational database. With this feature, customers can analyze prompts and accordingly adjust the similarity distance for the chosen vector search algorithm to maximize performance (increase throughput).  The solution currently uses PostgreSQL database as the persistence provider.
 **Traffic Splitting** | The Gateway provides the flexibility to split Azure OpenAI Service traffic between multiple model deployments hosted on consumption based and reserved capacity units (Provisioned Throughput Units).
@@ -71,10 +71,10 @@ Readers are advised to refer to the following on-line resources as needed.
 
 The Sections below describe the steps to configure and deploy the API Gateway on Azure.  Although, there are multiple deployment options available on Azure, we will only describe the top two options recommended for production deployments.
 
-Deployment options recommended for *Usage Scenario 1*.
+**Deployment options recommended for Usage Scenario 1**.
 - Containerize the API Gateway and deploy it on a standalone *Virtual Machine*. Refer to Sections **A** and **B** below.
 
-Deployment options recommended for *Usage Scenario 2*.
+**Deployment options recommended for Usage Scenario 2**.
 1. Containerize the API Gateway and deploy it on a serverless container platform such as *Azure Container Apps*.
 
    We will not be describing the steps for this option here.  Readers can follow the deployment instructions described in Azure Container Apps documentation [here](https://learn.microsoft.com/en-us/azure/container-apps/tutorial-code-to-cloud?source=recommendations&tabs=bash%2Ccsharp&pivots=acr-remote).
@@ -92,13 +92,31 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    Refer to the installation instructions on [nodejs.org](https://nodejs.org/en/download/package-manager) for your specific Linux distribution.
 
-3. Update the API Gateway endpoint configuration file.
+3. Install PostgreSQL database server.
+
+   **NOTE**: If you do not intend to use *Semantic Caching* and/or *Prompt Persistence* features, you can safely skip this step and go to Step 4.
+
+   Refer to the installation instructions [here](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/quickstart-create-server-portal) to install *Azure Database for PostgreSQL*.  Create a new database and give it a suitable name.  Note down the database name, server user name and password.  Save it in a secure location as we will need this info. in a subsequent step (below).
+
+   You can connect to the database using any one of the following options - 1) [Azure CLI](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/quickstart-create-server-cli) 2) [psql or Azure Cloud shell](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/quickstart-create-server-portal).
+
+   Next, go to the root directory of this project repository.  Updates values for the environment variables shown in the table below.  Export these environment variables.
+
+   Environment Variable | Value
+   -------------------- | -----
+   VECTOR_DB_HOST | Name of Azure Database for PostgreSQL server.  You will find this info. in the *Overview* blade/tab of the PostgreSQL Server resource in Azure Portal (value of the field **Server name**).
+   VECTOR_DB_PORT | 5432 (This is the default PostgreSQL Server listen port)
+   VECTOR_DB_USER | Name of the database user (Saved in step above)
+   VECTOR_DB_UPWD | Password of the database user (Saved in step above)
+   VECTOR_DB_NAME | Name of the PostgreSQL Server (Saved in step above)
+
+4. Update the API Gateway endpoint configuration file.
 
    Edit the `./api-router-config.json` file. Each AI Application should have a unique *appId*. For each AI Application, add/update the Azure OpenAI Service model deployment endpoints/URI's and corresponding API key values in this file. Save the file.
 
    **IMPORTANT**: The model deployment endpoints/URI's should be listed in increasing order of priority (top down). Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  For each API Application, the API Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to OpenAI API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
 
-4. Set the gateway server environment variables.
+5. Set the gateway server environment variables.
 
    Set the environment variables to the correct values and export them before proceeding to the next step. Refer to the table below for descriptions of the environment variables.
 
@@ -116,7 +134,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    **NOTE**: You can update and run the shell script `./set-api-gtwy-env.sh` to set the environment variables.
 
-5. Run the API Gateway server.
+6. Run the API Gateway server.
 
    Switch to the project root directory. Then issue the command shown in the command snippet below.
 
@@ -149,7 +167,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    Leave the terminal window open.
 
-6. Retrieve the API Gateway Server info (/instanceinfo)
+7. Retrieve the API Gateway Server info (/instanceinfo)
 
    Use a web browser to access the API Gateway Server *info* endpoint - `/instanceinfo`. Specify correct values for the gateway listen port and environment. See below.
 
@@ -218,7 +236,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    }
    ```
 
-7. Access the API Gateway Server load balancer/router (/lb) endpoint
+8. Access the API Gateway Server load balancer/router (/lb) endpoint
 
    Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* endpoint - `/lb`.  Remember to substitute the correct value for *AI_APPLICATION_ID* in the URL below.  The AI Application ID value should be one of the unique *appId* values specified in API Gateway configuration file `./api-router-config.json`.
 
