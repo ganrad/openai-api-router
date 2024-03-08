@@ -110,9 +110,40 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    VECTOR_DB_UPWD | Password of the database user (Saved in step above)
    VECTOR_DB_NAME | Name of the PostgreSQL Server (Saved in step above)
 
+   Create the database tables using the script `./db-scripts/pg-test.js`. See command snippet below.
+
+   ```bash
+   # Make sure you are in the project's root directory.
+   #
+   $ node ./db-scripts/pg-test.js
+   #
+   ```
+
+   Connect to the database (using *psql*) and verify the database tables were created successfully. The following two tables should have been created.
+
+   Table Name | Description
+   ---------- | -----------
+   apigtwycache | This table stores vectorized prompts and completions
+   apigtwyprompts | This table stores prompts
+
 4. Update the API Gateway endpoint configuration file.
 
-   Edit the `./api-router-config.json` file. Each AI Application should have a unique *appId*. For each AI Application, add/update the Azure OpenAI Service model deployment endpoints/URI's and corresponding API key values in this file. Save the file.
+   Edit the `./api-router-config.json` file. Each AI Application should have a unique *appId*.
+
+   For each AI Application, 
+
+   - Add/Update the Azure OpenAI Service model deployment endpoints/URI's and corresponding API key values in this file.
+   - To enable caching of OpenAI Service completions (output), specify values for attribute **cacheSettings**.  Refer to the table below and set appropriate values.
+
+     Attribute Name | Description
+     -------------- | -----------
+     useCache | API Gateway will cache OpenAI Service completions (output) based on this value.  If is caching is desired, set it to *true* or *false*.  Default is *false*.
+     searchType | This attribute is used to specify the similarity distance function/algorithm for vector search.  Supported values are a) CS (= *Cosine Similarity*).  This is the default. b) LS (= *Level2 or Euclidean distance*) c) IP (= *Inner Product*).
+     searchDistance | This attribute is used to specify the search similarity threshold.  For instance, if the search type = CS, this value could be set to a value between 0 and 1.
+     searchContent.term | This value specifies the attribute in the request payload which should be vectorized and used for semantic search. For OpenAI completions API, this value should be *prompt*.  For chat completions API, this value should be set to *messages*.
+     searchContent.includeRoles | This attribute value should only be set for OpenAI models that expose chat completions API. Value can be a comma separated list.  Permissible values are system, user and assistant.
+
+   After making the changes, save the `./api-router-config.json` file.
 
    **IMPORTANT**: The model deployment endpoints/URI's should be listed in increasing order of priority (top down). Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  For each API Application, the API Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to OpenAI API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
 
