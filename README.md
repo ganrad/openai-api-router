@@ -186,7 +186,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    ```bash
    
-   > openai-api-router@1.0.0 start
+   > openai-api-router@1.5.0 start
    > node ./src/server.js
 
    Server(): Azure Application Insights 'connection string' not found. No telemetry data will be sent to App Insights.
@@ -227,7 +227,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
         "persistPrompts": "true",
         "collectInterval": 60,
         "collectHistoryCount": 168,
-        "configFile": "./api-router-config-test.json"
+        "configFile": "./api-router-config.json"
      },
      "cacheSettings": {
         "cacheEnabled": true,
@@ -334,7 +334,7 @@ Before getting started with this section, make sure you have installed a contain
 
    ```bash
    # Run the container image build
-   $ ./scripts/build-container.sh
+   $ . ./scripts/build-container.sh
    #
    # List the container images.  This command should list the images on the system.
    $ docker images
@@ -347,7 +347,7 @@ Before getting started with this section, make sure you have installed a contain
 
    ```bash
    # Run the API Gateway container instance
-   $ ./scripts/start-container.sh
+   $ . ./scripts/start-container.sh
    #
    # Leave this terminal window open
    ```
