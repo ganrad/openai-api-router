@@ -142,7 +142,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
      searchDistance | This attribute is used to specify the search similarity threshold.  For instance, if the search type = CS, this value could be set to a value between 0 and 1.
      searchContent.term | This value specifies the attribute in the request payload which should be vectorized and used for semantic search. For OpenAI completions API, this value should be *prompt*.  For chat completions API, this value should be set to *messages*.
      searchContent.includeRoles | This attribute value should only be set for OpenAI models that expose chat completions API. Value can be a comma separated list.  Permissible values are system, user and assistant.
-     entryExpiry | This value specifies when cached entries (*completions*) should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
+     entryExpiry | This attribute is used to specify when cached entries (*completions*) should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
 
    After making the changes, save the `./api-router-config.json` file.
 
@@ -257,7 +257,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
                 "searchContent": {
                     "term": "messages",
                     "includeRoles": "system,user,assistant"
-                }
+                },
+                "entryExpiry": "7 days"
             },
             "oaiEndpoints": {
                 "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2023-05-15"
@@ -271,7 +272,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
                 "searchDistance": 0.9,
                 "searchContent": {
                     "term": "prompt"
-                }
+                },
+                "entryExpiry": "1 hour"
             },
             "oaiEndpoints": {
                 "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
@@ -368,12 +370,28 @@ Before getting started with this section, make sure you have installed a contain
 
 **IMPORTANT**:
 
+**Gateway Router/Load Balancer**:
 It is important to understand how the API Gateway's load balancer distributes incoming API requests among configured Azure OpenAI backends (model deployment endpoints). Please read below.
 
 - The Gateway will strictly follow the priority order when forwarding OpenAI API requests to backends. Lower numeric values equate to higher priority. This implies, the gateway will forward requests to backends with priority of '0', '1' and then go in that order.  Priorities assigned to OpenAI backends can be viewed by invoking the *instanceinfo* endpoint - `/instanceinfo`. 
 - When a backend endpoint is busy or throttled (returns http status code = 429), the gateway will mark this endpoint as unavailable and **record** the 'retry-after' seconds value returned in the OpenAI API response header.  The gateway will not forward/proxy any more API requests to this backend until retry-after seconds has elapsed thereby ensuring the backend (OpenAI endpoint) doesn't get overloaded with too many requests.
 - When all configured backend endpoints are busy or throttled (return http status code = 429), the gateway will return the **lowest** 'retry-after' seconds value returned by one of the *throttled* OpenAI backends. This value (in seconds) will be returned in the API Gateway response header 'retry-after'.  Client applications should ideally wait the no. of seconds returned in the 'retry-after' response header before making a subsequent API call.
 - For as long as all the backend endpoints are busy/throttled, the API Gateway will perform global rate limiting and continue to return the **lowest** 'retry-after' seconds in it's response header ('retry-after').
+
+**Semantic Caching and Retrieval**:
+Cached completions are retrieved based on semantic similarity algorithm and distance threshold configured for each AI Application.  Caching and retrieval of Azure OpenAI Service responses (completions) can be enabled at 3 levels.  Please read below.
+
+1. Global level
+   To enable caching of OpenAI Service responses/completions, the environment variable *API_GATEWAY_USE_CACHE* must be set to "true".  If this variable is empty or not set, caching and retrieval of cached responses will be disabled for all AI Applications. In this case, semantic caching and retrieval will be disabled for all configured AI Applications.
+2. AI Application level
+   To enable caching at AI Application level, the configuration attribute *cacheSettings.useCache* must be set to "true".  If this variable is empty or not set or set to "false", caching and retrieval of cached responses will be disabled for the said AI Application (only).
+3. HTTP Request level
+   Caching and retrieval of cached completions can be disabled for each individual API request by passing in a query parameter *use_cache* and setting its value to *false* (eg., `?use_cache=false`).
+
+**Invalidating Cached Entries**:
+
+- When semantic caching and retrieval is enabled at the global level (*API_GATEWAY_USE_CACHE=true*), the API Gateway periodically runs a cache entry invalidator process on a pre-configured schedule.  The default schedule runs the invalidator process every 45 minutes.  The default schedule can be overridden by setting the environment variable *API_GATEWAY_CACHE_INVAL_SCHEDULE*.
+- For each AI Application, cached entries can be invalidated (deleted) by setting the configuration attribute *cacheSettings.entryExpiry*. This attribute must be set to a value that conforms to PostgreSQL *Interval* data type. If this attribute value is empty or not set, cache invalidation will be skipped.  Refer to the documentation [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT) to configure the cache invalidation interval to an appropriate value.
 
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
 

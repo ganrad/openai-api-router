@@ -16,15 +16,17 @@ function runCacheInvalidator(schedule, ctx) {
     let query;
 
     context.applications.forEach(async (app) => {
-      let entryExpiry = app.cacheSettings.entryExpiry;
+      if ( app.cacheSettings.useCache ) {
+        let entryExpiry = app.cacheSettings.entryExpiry;
 
-      if ( entryExpiry ) {
+        if ( entryExpiry ) {
         // values = [app.appId, entryExpiry]
         // await cacheTbl.deleteData(deleteRowStmts[0],values);
 
-        query = `DELETE FROM apigtwycache WHERE (aiappname = '${app.appId}') AND (timestamp_ < CURRENT_TIMESTAMP - INTERVAL '${entryExpiry}')`
-        // console.log(`  appId=${app.appId}\n  entryExpiry=${entryExpiry}\n  query=${query}`);
-        await cacheTbl.deleteData(query,null);
+          query = `DELETE FROM apigtwycache WHERE (aiappname = '${app.appId}') AND (timestamp_ < CURRENT_TIMESTAMP - INTERVAL '${entryExpiry}')`
+          // console.log(`  appId=${app.appId}\n  entryExpiry=${entryExpiry}\n  query=${query}`);
+          await cacheTbl.deleteData(query,null);
+        };
       };
     });
   });
