@@ -371,6 +371,7 @@ Before getting started with this section, make sure you have installed a contain
 **IMPORTANT**:
 
 **Gateway Router/Load Balancer**:
+
 It is important to understand how the API Gateway's load balancer distributes incoming API requests among configured Azure OpenAI backends (model deployment endpoints). Please read below.
 
 - The Gateway will strictly follow the priority order when forwarding OpenAI API requests to backends. Lower numeric values equate to higher priority. This implies, the gateway will forward requests to backends with priority of '0', '1' and then go in that order.  Priorities assigned to OpenAI backends can be viewed by invoking the *instanceinfo* endpoint - `/instanceinfo`. 
@@ -379,13 +380,17 @@ It is important to understand how the API Gateway's load balancer distributes in
 - For as long as all the backend endpoints are busy/throttled, the API Gateway will perform global rate limiting and continue to return the **lowest** 'retry-after' seconds in it's response header ('retry-after').
 
 **Semantic Caching and Retrieval**:
-Cached completions are retrieved based on semantic similarity algorithm and distance threshold configured for each AI Application.  Caching and retrieval of Azure OpenAI Service responses (completions) can be enabled at 3 levels.  Please read below.
+
+Cached completions are retrieved based on semantic similarity algorithm and distance threshold configured for each AI Application.  Caching and retrieval of Azure OpenAI Service responses (completions) can be enabled at 3 levels. 
 
 1. Global level
+
    To enable caching of OpenAI Service responses/completions, the environment variable *API_GATEWAY_USE_CACHE* must be set to "true".  If this variable is empty or not set, caching and retrieval of cached responses will be disabled for all AI Applications. In this case, semantic caching and retrieval will be disabled for all configured AI Applications.
 2. AI Application level
+
    To enable caching at AI Application level, the configuration attribute *cacheSettings.useCache* must be set to "true".  If this variable is empty or not set or set to "false", caching and retrieval of cached responses will be disabled for the said AI Application (only).
 3. HTTP Request level
+
    Caching and retrieval of cached completions can be disabled for each individual API request by passing in a query parameter *use_cache* and setting its value to *false* (eg., `?use_cache=false`).
 
 **Invalidating Cached Entries**:
