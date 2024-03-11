@@ -207,7 +207,8 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
       useCache: app.cacheSettings.useCache,
       searchType: app.cacheSettings.searchType,
       searchDistance: app.cacheSettings.searchDistance,
-      searchContent: app.cacheSettings.searchContent
+      searchContent: app.cacheSettings.searchContent,
+      entryExpiry: app.cacheSettings.entryExpiry
     };
 
     let appeps = new Map();
@@ -239,6 +240,7 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
     cacheEnabled: cacheConfig.cacheResults,
     embeddAiApp: cacheConfig.embeddApp,
     searchEngine: cacheConfig.srchEngine,
+    cacheInvalidationSchedule: process.env.API_GATEWAY_CACHE_INVAL_SCHEDULE,
   };
 
   resp_obj = {

@@ -142,6 +142,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
      searchDistance | This attribute is used to specify the search similarity threshold.  For instance, if the search type = CS, this value could be set to a value between 0 and 1.
      searchContent.term | This value specifies the attribute in the request payload which should be vectorized and used for semantic search. For OpenAI completions API, this value should be *prompt*.  For chat completions API, this value should be set to *messages*.
      searchContent.includeRoles | This attribute value should only be set for OpenAI models that expose chat completions API. Value can be a comma separated list.  Permissible values are system, user and assistant.
+     entryExpiry | This value specifies when cached entries (*completions*) should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
 
    After making the changes, save the `./api-router-config.json` file.
 
@@ -163,6 +164,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numeric value (<= 600)  
    APPLICATIONINSIGHTS_CONNECTION_STRING | Azure Monitor connection string | No | Assign the value of the Azure Application Insights resource *connection string* (from Azure Portal)
    API_GATEWAY_USE_CACHE | Global setting for enabling semantic caching | No | false
+   API_GATEWAY_CACHE_INVAL_SCHEDULE | Global setting for configuring the frequency of *cache invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/45 * * * *"
    API_GATEWAY_PERSIST_PROMPTS | Global setting for persisting prompts in a database (PostgreSQL) | No | false
    API_GATEWAY_VECTOR_AIAPP | Name of the AI application that exposes endpoints for *embedded* model. This value is required if semantic caching is enabled | No | None
    API_GATEWAY_SRCH_ENGINE | The vector search engine used by semantic caching feature | No | Postgresql/pgvector
@@ -201,6 +203,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
      Priority: 0   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15
      Priority: 1   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
    Server(): Loaded backend Azure OpenAI API endpoints for applications
+   Server(): Cache invalidator run schedule (Cron) - */45 * * * *
    checkDbConnection(): Postgres DB connectivity OK!
    Server(): Completions will be cached
    Server(): Prompts will be persisted
@@ -232,7 +235,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
      "cacheSettings": {
         "cacheEnabled": true,
         "embeddAiApp": "vectorizedata",
-        "searchEngine": "Postgresql/pgvector"
+        "searchEngine": "Postgresql/pgvector",
+        "cacheInvalidationSchedule": "*/45 * * * *",
      },
      "appConnections": [
         {
