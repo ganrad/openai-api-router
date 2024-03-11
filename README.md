@@ -385,13 +385,13 @@ Cached completions are retrieved based on semantic similarity algorithm and dist
 
 1. Global level
 
-   To enable caching of OpenAI Service responses/completions, the environment variable *API_GATEWAY_USE_CACHE* must be set to "true".  If this variable is empty or not set, caching and retrieval of cached responses will be disabled for all AI Applications. In this case, semantic caching and retrieval will be disabled for all configured AI Applications.
+   To enable caching of OpenAI Service responses/completions, the environment variable *API_GATEWAY_USE_CACHE* must be set to "true".  If this variable is empty or not set, caching and retrieval of cached responses will be disabled for all configured AI Applications.
 2. AI Application level
 
-   To enable caching at AI Application level, the configuration attribute *cacheSettings.useCache* must be set to "true".  If this variable is empty or not set or set to "false", caching and retrieval of cached responses will be disabled for the said AI Application (only).
+   To enable caching at AI Application level, the configuration attribute *cacheSettings.useCache* must be set to "true".  If this variable is empty or not set (or set to "false"), caching and retrieval of cached responses will be disabled for the AI Application (only).
 3. HTTP Request level
 
-   Caching and retrieval of cached completions can be disabled for each individual API request by passing in a query parameter *use_cache* and setting its value to *false* (eg., `?use_cache=false`).
+   Caching and retrieval of cached completions can be disabled for each individual API Gateway request by passing in a query parameter *use_cache* and setting its value to *false* (eg., `?use_cache=false`).
 
 **Invalidating Cached Entries**:
 
@@ -416,66 +416,71 @@ Cached completions are retrieved based on semantic similarity algorithm and dist
      "historyCount": 2,
      "applicationMetrics": [
         {
-            "applicationId": "aichatbotapp",
+            "applicationId": "vectorizedata",
             "endpointMetrics": [
                 {
-                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
+                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15",
                     "priority": 0,
                     "metrics": {
-                        "apiCalls": 3,
+                        "apiCalls": 7,
                         "failedCalls": 0,
-                        "totalCalls": 3,
-                        "kInferenceTokens": 1.158,
+                        "totalCalls": 7,
+                        "kInferenceTokens": 143,
                         "history": {
-                            "0": {
-                                "collectionTime": "2/15/2024, 10:51:06 PM",
+                            "3": {
+                                "collectionTime": "3/11/2024, 10:21:17 PM",
                                 "collectedMetrics": {
-                                    "noOfApiCalls": 10,
-                                    "noOfFailedCalls": 1,
+                                    "noOfApiCalls": 6,
+                                    "noOfFailedCalls": 0,
                                     "throughput": {
-                                        "kTokensPerWindow": 3.944,
-                                        "requestsPerWindow": 23.664,
-                                        "avgTokensPerCall": 394.4,
-                                        "avgRequestsPerCall": 2.3663999999999996
+                                        "kTokensPerWindow": 121,
+                                        "requestsPerWindow": 726,
+                                        "avgTokensPerCall": 20.166666666666668,
+                                        "avgRequestsPerCall": 0.121
                                     },
                                     "latency": {
-                                        "avgResponseTimeMsec": 2672.5
+                                        "avgResponseTimeMsec": 133.83333333333334
                                     }
                                 }
                             },
-                            "1": {
-                                "collectionTime": "2/15/2024, 10:52:20 PM",
+                            "4": {
+                                "collectionTime": "3/11/2024, 10:25:48 PM",
                                 "collectedMetrics": {
-                                    "noOfApiCalls": 10,
-                                    "noOfFailedCalls": 1,
+                                    "noOfApiCalls": 11,
+                                    "noOfFailedCalls": 0,
                                     "throughput": {
-                                        "kTokensPerWindow": 4.026,
-                                        "requestsPerWindow": 24.156,
-                                        "avgTokensPerCall": 402.6,
-                                        "avgRequestsPerCall": 2.4156000000000004
+                                        "kTokensPerWindow": 117,
+                                        "requestsPerWindow": 702,
+                                        "avgTokensPerCall": 10.636363636363637,
+                                        "avgRequestsPerCall": 0.06381818181818182
                                     },
                                     "latency": {
-                                        "avgResponseTimeMsec": 2729.3
+                                        "avgResponseTimeMsec": 114.63636363636364
                                     }
                                 }
                             }
                         }
                     }
-                },
+                }
+            ]
+        },
+        {
+            "applicationId": "aichatbotapp",
+            "endpointMetrics": [
                 {
-                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15",
-                    "priority": 1,
+                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2023-05-15",
+                    "priority": 0,
                     "metrics": {
                         "apiCalls": 1,
                         "failedCalls": 0,
                         "totalCalls": 1,
-                        "kInferenceTokens": 504,
+                        "kInferenceTokens": 393,
                         "history": {
                             "0": {
-                                "collectionTime": "2/15/2024, 10:51:06 PM",
+                                "collectionTime": "3/11/2024, 10:11:11 PM",
                                 "collectedMetrics": {
                                     "noOfApiCalls": 0,
-                                    "noOfFailedCalls": 1,
+                                    "noOfFailedCalls": 0,
                                     "throughput": {
                                         "kTokensPerWindow": 0,
                                         "requestsPerWindow": 0,
@@ -488,18 +493,18 @@ Cached completions are retrieved based on semantic similarity algorithm and dist
                                 }
                             },
                             "1": {
-                                "collectionTime": "2/15/2024, 10:52:15 PM",
+                                "collectionTime": "3/11/2024, 10:21:23 PM",
                                 "collectedMetrics": {
-                                    "noOfApiCalls": 1,
-                                    "noOfFailedCalls": 1,
+                                    "noOfApiCalls": 4,
+                                    "noOfFailedCalls": 0,
                                     "throughput": {
-                                        "kTokensPerWindow": 497,
-                                        "requestsPerWindow": 2982,
-                                        "avgTokensPerCall": 497,
-                                        "avgRequestsPerCall": 2.982
+                                        "kTokensPerWindow": 1.258,
+                                        "requestsPerWindow": 7.548,
+                                        "avgTokensPerCall": 314.5,
+                                        "avgRequestsPerCall": 1.887
                                     },
                                     "latency": {
-                                        "avgResponseTimeMsec": 8585
+                                        "avgResponseTimeMsec": 2754
                                     }
                                 }
                             }
@@ -512,57 +517,79 @@ Cached completions are retrieved based on semantic similarity algorithm and dist
             "applicationId": "aidocusearchapp",
             "endpointMetrics": [
                 {
-                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15",
+                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
                     "priority": 0,
                     "metrics": {
-                        "apiCalls": 3,
+                        "apiCalls": 2,
                         "failedCalls": 0,
-                        "totalCalls": 3,
-                        "kInferenceTokens": 1.354,
+                        "totalCalls": 2,
+                        "kInferenceTokens": 791,
                         "history": {
                             "0": {
-                                "collectionTime": "2/15/2024, 10:51:06 PM",
+                                "collectionTime": "3/11/2024, 10:11:11 PM",
                                 "collectedMetrics": {
-                                    "noOfApiCalls": 6,
-                                    "noOfFailedCalls": 1,
+                                    "noOfApiCalls": 0,
+                                    "noOfFailedCalls": 0,
                                     "throughput": {
-                                        "kTokensPerWindow": 2.898,
-                                        "requestsPerWindow": 17.388,
-                                        "avgTokensPerCall": 483,
-                                        "avgRequestsPerCall": 2.898
+                                        "kTokensPerWindow": 0,
+                                        "requestsPerWindow": 0,
+                                        "avgTokensPerCall": 0,
+                                        "avgRequestsPerCall": 0
                                     },
                                     "latency": {
-                                        "avgResponseTimeMsec": 3320.1666666666665
+                                        "avgResponseTimeMsec": 0
                                     }
                                 }
                             },
                             "1": {
-                                "collectionTime": "2/15/2024, 10:52:17 PM",
+                                "collectionTime": "3/11/2024, 10:12:40 PM",
                                 "collectedMetrics": {
-                                    "noOfApiCalls": 5,
-                                    "noOfFailedCalls": 1,
+                                    "noOfApiCalls": 2,
+                                    "noOfFailedCalls": 0,
                                     "throughput": {
-                                        "kTokensPerWindow": 1.926,
-                                        "requestsPerWindow": 11.556,
-                                        "avgTokensPerCall": 385.2,
-                                        "avgRequestsPerCall": 2.3112
+                                        "kTokensPerWindow": 557,
+                                        "requestsPerWindow": 3342,
+                                        "avgTokensPerCall": 278.5,
+                                        "avgRequestsPerCall": 1.671
                                     },
                                     "latency": {
-                                        "avgResponseTimeMsec": 2745.6
+                                        "avgResponseTimeMsec": 2056
                                     }
                                 }
                             }
                         }
                     }
+                },
+                {
+                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15",
+                    "priority": 1,
+                    "metrics": {
+                        "apiCalls": 0,
+                        "failedCalls": 0,
+                        "totalCalls": 0,
+                        "kInferenceTokens": 0,
+                        "history": {}
+                    }
                 }
             ]
         }
      ],
-     "successApiCalls": 40,
-     "failedApiCalls": 87,
-     "totalApiCalls": 127,
+     "cacheMetrics": {
+        "aichatbotapp": {
+            "hitCount": 20,
+            "avgScore": 0.9952505232611696
+        },
+        "aidocusearchapp": {
+            "hitCount": 38,
+            "avgScore": 0.9999999247099091
+        }
+     },
+     "successApiCalls": 67,
+     "cachedApiCalls": 58,
+     "failedApiCalls": 0,
+     "totalApiCalls": 67,
      "endpointUri": "/api/v1/dev/apirouter/metrics",
-     "currentDate": "2/15/2024, 10:53:37 PM",
+     "currentDate": "3/11/2024, 10:28:37 PM",
      "status": "OK"
    }
    ```

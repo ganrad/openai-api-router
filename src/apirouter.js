@@ -97,8 +97,10 @@ router.post("/lb/:app_id", async (req, res) => {
 
   let appId = req.params.app_id; // The AI Application ID
   if ( ! appConnections.loaded ) {
+    console.log("Endpoint Metrics:");
     for (const application of eps.applications) {
       // Target endpoint metrics cache -
+      console.log(`*****\n  AI Application: ${application.appId}`);
       let epinfo = new Map();
       for (const element of application.endpoints) {
         epinfo.set(
@@ -293,7 +295,7 @@ router.post("/lb/:app_id", async (req, res) => {
       };
     }
     catch (error) {
-      err_msg = {targetUri: element.uri, cause: error};
+      err_msg = {reqId: req.id, targetUri: element.uri, cause: error};
       // throw new Error("Encountered exception", {cause: error});
       // metricsObj.updateFailedCalls();
       // req.log.warn({err: err_msg});

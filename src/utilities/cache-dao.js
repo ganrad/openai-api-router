@@ -59,45 +59,50 @@ class CacheDao {
     let data = null;
 
     let stTime = Date.now();
-    // 1) Pre-process query before vectorization
-    let queryContent = helper.prepareTextToEmbedd(
-      rid,
-      this.srchTerm,
-      this.srchTermRoles,
-      reqBody);
+    try {
+      // 1) Pre-process query before vectorization
+      let queryContent = helper.prepareTextToEmbedd(
+        rid,
+        this.srchTerm,
+        this.srchTermRoles,
+        reqBody);
 
-    // 2) Convert query to embedded vector using Azure OpenAI ADA model
-    let apiResp = await helper.callRestApi(
-      rid,
-      reqBody.user,
-      this.endPointInfo,
-      this.endpoints,
-      queryContent);
+      // 2) Convert query to embedded vector using Azure OpenAI ADA model
+      let apiResp = await helper.callRestApi(
+        rid,
+        reqBody.user,
+        this.endPointInfo,
+        this.endpoints,
+        queryContent);
 
-    if ( apiResp ) { // Use the embedded vector to query against the Vector DB
-      // const query = queryStmts[0] + ` ${srchTypes.get(this.srchType)}` + " $1 < " + `${this.srchDistance}`;
-      // const query = queryStmts[1] + ` ${srchTypes.get(this.srchType)}` + " $1 LIMIT 1"
-      const query = queryStmts[0];
+      if ( apiResp ) { // Use the embedded vector to query against the Vector DB
+        // const query = queryStmts[0] + ` ${srchTypes.get(this.srchType)}` + " $1 < " + `${this.srchDistance}`;
+        // const query = queryStmts[1] + ` ${srchTypes.get(this.srchType)}` + " $1 LIMIT 1"
+        const query = queryStmts[0];
 
-      // 3) Execute vector query on DB
-      const {rowCount, simScore, completion} = 
-        await dbHandle.executeQuery(
-          rid,
-          query,
-          [
-            pgvector.toSql(apiResp.embedding),
-            this.srchDistance,
-            1
-          ]
-        );
+        // 3) Execute vector query on DB
+        const {rowCount, simScore, completion} = 
+          await dbHandle.executeQuery(
+            rid,
+            query,
+            [
+              pgvector.toSql(apiResp.embedding),
+              this.srchDistance,
+              1
+            ]
+          );
 
-      rowno = rowCount,
-      score = simScore,
-      data = completion,
-      embedding = apiResp.embedding;
+        rowno = rowCount,
+        score = simScore,
+        data = completion,
+        embedding = apiResp.embedding;
+      };
+      console.log(`${this.constructor.name}.queryVectorDB():\n  Application ID: ${appId}\n  Request ID: ${rid}\n  User: ${reqBody.user}\n  Execution Time: ${Date.now() - stTime}\n*****`);
+    }
+    catch (error) {
+      let err_msg = {reqId: rid, appId: appId, body: reqBody, cause: error};
+      console.log(`*****\nCacheDao.queryVectorDB():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
     };
-
-    console.log(`${this.constructor.name}.queryVectorDB():\n  Application ID: ${appId}\n  Request ID: ${rid}\n  User: ${reqBody.user}\n  Execution Time: ${Date.now() - stTime}\n*****`);
 
     return {
       rowCount: rowno,
