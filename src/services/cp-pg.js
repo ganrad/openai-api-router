@@ -13,11 +13,12 @@
 const pg = require('pg');
 const pgvector = require('pgvector/pg');
 const pgConfig = require('./pg-config');
+var cron = require('node-cron');
 
 const createTblStmts = [
   // Use this DDL for testing only!
   "CREATE TABLE apigtwycache (id serial PRIMARY KEY, aiappname VARCHAR(100), prompt text, embedding vector(3), completion JSON, timestamp_ TIMESTAMPTZ default current_timestamp)",
-  "CREATE TABLE apigtwycache (id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, requestid VARCHAR(50), aiappname VARCHAR(100), prompt text, embedding vector(1536), completion JSON, timestamp_ TIMESTAMP default current_timestamp)"
+  "CREATE TABLE apigtwycache (id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, requestid VARCHAR(50), aiappname VARCHAR(100), prompt text, embedding vector(1536), completion JSON, timestamp_ TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
   ];
 
 const dropTblStmts = [
@@ -110,6 +111,30 @@ async function insertData(query, params) {
   };
 }
 
+// Delete records
+async function deleteData(query, params) {
+  let stTime = Date.now();
+  let logLine = `deleteData():\n`;
+
+  try {
+    const client = await pool.connect();
+    const res = (params) ? await client.query(query, params) : await client.query(query);
+
+    logLine += `  Query: ${query}\n`;
+    if ( params )
+      logLine += `  App. Id: ${params[0]}\n  Entity Expiry: ${params[1]}\n`
+
+    logLine += `  Entity: Cache\n  Deleted recs: [${res.rowCount}]\n  Execution time: ${Date.now() - stTime}\n*****`;
+
+    console.log(logLine);
+
+    client.release();
+  }
+  catch (err) {
+    console.log("*****\ndeleteData():\n  Encountered exception:\n  " + err.stack);
+  };
+}
+
 // Execute query
 async function executeQuery(requestid,query, params) {
   let result;
@@ -152,5 +177,6 @@ module.exports = {
   dropTable,
   createTable,
   insertData,
-  executeQuery
+  deleteData,
+  executeQuery,
 }

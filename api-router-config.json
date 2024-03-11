@@ -21,7 +21,8 @@
         "searchContent": {
           "term": "messages",
           "includeRoles": "system,user,assistant"
-        }
+        },
+        "entryExpiry": "7 days"
       },
       "endpoints": [
         {
@@ -38,7 +39,8 @@
         "searchDistance": 0.90,
         "searchContent": {
           "term": "prompt"
-        }
+        },
+        "entryExpiry": "30 minutes"
       },
       "endpoints": [
         {

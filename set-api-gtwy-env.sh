@@ -21,6 +21,9 @@ export APPLICATIONINSIGHTS_CONNECTION_STRING=""
 # (Optional) Global setting - Use cached retrieval?
 export API_GATEWAY_USE_CACHE="true"
 
+# (Optional) Cache entry invalidator run schedule (Cron schedule syntax)
+export API_GATEWAY_CACHE_INVAL_SCHEDULE="*/45 * * * *"
+
 # (Optional) Global setting - Persist prompts in a DB?
 export API_GATEWAY_PERSIST_PROMPTS="true"
 

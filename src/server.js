@@ -28,7 +28,8 @@ const fs = require("fs");
 const express = require("express");
 const { apirouter, reconfigEndpoints } = require("./apirouter");
 const pgdb = require("./services/cp-pg.js");
-const CacheConfig = require("./utilities/cache-config.js");
+const CacheConfig = require("./utilities/cache-config");
+const { runCacheInvalidator } = require("./utilities/cache-invalidator");
 const app = express();
 var bodyParser = require('body-parser');
 // var morgan = require('morgan');
@@ -94,6 +95,10 @@ else {
 };
 
 // ID02202024.sn
+const serverDefaults = {
+  runSchedule: "*/45 * * * *"
+};
+
 // console.log(`*** ${cacheResults}; ${typeof cacheResults} ***`);
 (async () => {
   let persistPrompts = process.env.API_GATEWAY_PERSIST_PROMPTS; // ID03012024.n
@@ -116,7 +121,7 @@ else {
 }
 )();
 
-var context;
+var context; // AI Applications Context
 var cacheConfig;
 function readApiGatewayConfigFile() {
   let vectorAppFound = false;
@@ -138,7 +143,7 @@ function readApiGatewayConfigFile() {
   else 
     cacheConfig = new CacheConfig(false,null,null);
 
-  fs.readFile(process.env.API_GATEWAY_CONFIG_FILE, (error, data) => {
+  fs.readFile(process.env.API_GATEWAY_CONFIG_FILE, async (error, data) => {
     if (error) {
       console.log(`Server(): Error loading gateway config file. Error=${error}`);
       // exit program
@@ -166,6 +171,16 @@ function readApiGatewayConfigFile() {
       console.log(`Server(): AI Embedding Application [${cacheConfig.embeddApp}] not defined in API Gateway Configuration file! Aborting server initialization`); 
 
       process.exit(1);
+    };
+
+    if ( cacheConfig.cacheResults ) {
+      // Start the cache invalidator cron job and set it's run schedule
+      let schedule = process.env.API_GATEWAY_CACHE_INVAL_SCHEDULE;
+      if ( ! schedule ) // schedule is empty, undefined, null
+        schedule = serverDefaults.runSchedule;
+      console.log(`Server(): Cache invalidator run schedule (Cron) - ${schedule}`);
+
+      await runCacheInvalidator(schedule, context);
     };
   });
 };
