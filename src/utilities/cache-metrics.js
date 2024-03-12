@@ -41,8 +41,14 @@ class AppCacheMetrics {
     this.cacheMetrics.get(aiapp).updateCacheHitCount(score);
   }
 
+  /**
   getCacheMetrics() {
     return Object.fromEntries(this.cacheMetrics);
+  }
+  */
+
+  getCacheMetrics(aiapp) {
+    return this.cacheMetrics.get(aiapp);
   }
 }
 

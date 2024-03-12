@@ -381,21 +381,21 @@ It is important to understand how the API Gateway's load balancer distributes in
 
 **Semantic Caching and Retrieval**:
 
-Cached completions are retrieved based on semantic similarity algorithm and distance threshold configured for each AI Application.  Caching and retrieval of Azure OpenAI Service responses (completions) can be enabled at 3 levels. 
+Cached completions are retrieved based on semantic text similarity algorithm and distance threshold configured for each AI Application.  Caching and retrieval of Azure OpenAI Service responses (completions) can be enabled at 3 levels. 
 
-1. Global level
+1. Global Setting
 
-   To enable caching of OpenAI Service responses/completions, the environment variable *API_GATEWAY_USE_CACHE* must be set to "true".  If this variable is empty or not set, caching and retrieval of cached responses will be disabled for all configured AI Applications.
-2. AI Application level
+   To enable caching of OpenAI Service responses/completions, the environment variable *API_GATEWAY_USE_CACHE* must be set to "true".  If this variable is empty or not set, caching and retrieval of OpenAI Service completions (responses) will be disabled for all configured AI Applications.
+2. AI Application
 
-   To enable caching at AI Application level, the configuration attribute *cacheSettings.useCache* must be set to "true".  If this variable is empty or not set (or set to "false"), caching and retrieval of cached responses will be disabled for the AI Application (only).
-3. HTTP Request level
+   To enable caching at AI Application level, the configuration attribute *cacheSettings.useCache* must be set to "true".  If this variable is empty or not set (or set to "false"), caching and retrieval of OpenAI Service completions (responses) will be disabled for the AI Application (only).
+3. API Gateway (HTTP) Request
 
-   Caching and retrieval of cached completions can be disabled for each individual API Gateway request by passing in a query parameter *use_cache* and setting its value to *false* (eg., `?use_cache=false`).
+   Caching and retrieval of completions can be disabled for each individual API Gateway request by passing in a query parameter *use_cache* and setting its value to *false* (eg., `?use_cache=false`).  Setting this parameter value to "true" has no effect.
 
 **Invalidating Cached Entries**:
 
-- When semantic caching and retrieval is enabled at the global level (*API_GATEWAY_USE_CACHE=true*), the API Gateway periodically runs a cache entry invalidator process on a pre-configured schedule.  The default schedule runs the invalidator process every 45 minutes.  The default schedule can be overridden by setting the environment variable *API_GATEWAY_CACHE_INVAL_SCHEDULE*.
+- When semantic caching and retrieval is enabled at the global level (*API_GATEWAY_USE_CACHE=true*), the API Gateway periodically runs a cache entry invalidator process based on a configured schedule.  If no schedule is configured, the cache invalidator process is run on a default schedule every 45 minutes.  This default schedule can be overridden by setting the environment variable *API_GATEWAY_CACHE_INVAL_SCHEDULE* as described in Section **A** above.
 - For each AI Application, cached entries can be invalidated (deleted) by setting the configuration attribute *cacheSettings.entryExpiry*. This attribute must be set to a value that conforms to PostgreSQL *Interval* data type. If this attribute value is empty or not set, cache invalidation will be skipped.  Refer to the documentation [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT) to configure the cache invalidation interval to an appropriate value.
 
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
@@ -466,6 +466,10 @@ Cached completions are retrieved based on semantic similarity algorithm and dist
         },
         {
             "applicationId": "aichatbotapp",
+            "cacheMetrics": {
+               "hitCount": 20,
+               "avgScore": 0.9952505232611696
+            },
             "endpointMetrics": [
                 {
                     "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2023-05-15",
@@ -515,6 +519,10 @@ Cached completions are retrieved based on semantic similarity algorithm and dist
         },
         {
             "applicationId": "aidocusearchapp",
+            "cacheMetrics": {
+               "hitCount": 38,
+               "avgScore": 0.9999999247099091
+            },
             "endpointMetrics": [
                 {
                     "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
@@ -574,16 +582,6 @@ Cached completions are retrieved based on semantic similarity algorithm and dist
             ]
         }
      ],
-     "cacheMetrics": {
-        "aichatbotapp": {
-            "hitCount": 20,
-            "avgScore": 0.9952505232611696
-        },
-        "aidocusearchapp": {
-            "hitCount": 38,
-            "avgScore": 0.9999999247099091
-        }
-     },
      "successApiCalls": 67,
      "cachedApiCalls": 58,
      "failedApiCalls": 0,
@@ -602,7 +600,14 @@ Cached completions are retrieved based on semantic similarity algorithm and dist
    failedApiCalls | Number of backend API calls which couldn't be completed. Reason here could be that all backend endpoints were busy/throttled.
    totalApiCalls | Total number of backend API calls received by this API Gateway Server instance.
 
-   Description of backend endpoint metrics are provided in the table below.
+   Description of AI Application cache hit metrics are provided in the table below.
+
+   Metric name | Description
+   ----------- | -----------
+   hitCount | Number of API calls which were served from the gateway cache
+   avgScore | Average similarity search score 
+
+   Description of AI Application (backend) endpoint metrics are provided in the table below.
 
    Metric name | Description
    ----------- | -----------
@@ -611,7 +616,7 @@ Cached completions are retrieved based on semantic similarity algorithm and dist
    totalCalls | Total number of OpenAI API calls received by this backend endpoint in the current metrics collection interval
    kInferenceTokens | Total tokens (K) processed/handled by this backend OpenAI endpoint in the current metrics collection interval
 
-   Description of backend endpoint history metrics are provided in the table below.
+   Description of AI Application (backend) endpoint history metrics are provided in the table below.
 
    Metric name | Description
    ----------- | -----------

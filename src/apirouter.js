@@ -60,6 +60,7 @@ router.get("/metrics", (req, res) => {
 
     let conObject = {
       applicationId: ky,
+      cacheMetrics: cacheMetrics.getCacheMetrics(ky),
       endpointMetrics: epDict
     };
     conList.push(conObject);
@@ -72,7 +73,6 @@ router.get("/metrics", (req, res) => {
     collectionInterval: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
     historyCount: Number(process.env.API_GATEWAY_METRICS_CHISTORY),
     applicationMetrics: conList,
-    cacheMetrics: cacheMetrics.getCacheMetrics(),
     successApiCalls: (instanceCalls - instanceFailedCalls),
     cachedApiCalls: cachedCalls, // ID02202024.n
     failedApiCalls: instanceFailedCalls,
