@@ -280,7 +280,7 @@ router.post("/lb/:app_id", async (req, res) => {
 
         return;
       }
-      else if ( status === 429 ) {
+      else if ( status === 429 ) { // endpoint is busy so try next one
 	let retryAfterSecs = headers.get('retry-after');
 	// let retryAfterMs = headers.get('retry-after-ms');
 
@@ -292,6 +292,13 @@ router.post("/lb/:app_id", async (req, res) => {
 	metricsObj.updateFailedCalls(retryAfterSecs);
 
         console.log(`*****\napirouter():\n  App Id=${appId}\n  Target Endpoint=${element.uri}\n  Status=${status}\n  Message=${JSON.stringify(data)}\n  Status Text=${statusText}\n  Retry seconds=${retryAfterSecs}\n*****`);
+      }
+      else if ( status === 400 ) {
+
+        console.log(`*****\napirouter():\n  App Id=${appId}\n  Target Endpoint=${element.uri}\n  Status=${status}\n  Message=${JSON.stringify(data)}\n  Status Text=${statusText}\n*****`);
+
+        res.status(status).json(data); // 400 = Bad Request
+        return;
       };
     }
     catch (error) {
