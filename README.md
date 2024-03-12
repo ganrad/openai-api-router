@@ -736,11 +736,24 @@ Additionally, the following resources should be deployed/configured.
    replicaCount | Number of Pod instances (gateway instances) | 1
    image.repository | ACR location of the API Gateway container image. Specify the correct values for `acr-name` and `api-gateway-repo-name`. | [acr-name].azurecr.io/[api-gateway-repo-name]
    image.tag | API Gateway container image tag. Specify correct value for the image tag. | v1.xxxxxx
-   name | The name of API Gateway server instance.  Can be set to any string. Use the model version as prefix or suffix to easily identify which models are served by specific gateway server instances. | aoai-api-gateway-gpt35
-   secretKey | API Gateway private key. This key is required for reconfiguring the gateway with updated endpoint info. | None.
-   metricsCInterval | Backend API metrics collection and aggregation interval (in minutes) | 60 minutes (1 hour)
-   metricsCHistory | Backend API metrics collection history count | 168 (Max. <= 600)  
-   appInsightsConnectionString | (Optional) To collect API request telemetry, set this value to the Azure Application Insights resource *connection string* | None.
+   apigateway.name | The deployment name of API Gateway server instance. | aoai-api-gateway-v1.5
+   apigateway.instanceName | The name of API Gateway server instance.  Can be set to any string. Use the model version as prefix or suffix to easily identify which models are served by specific gateway server instances. | aoai-api-gateway-gpt35
+   apigateway.configFile | Path to API Gateway configuration file | /home/node/app/files/api-router-config.json
+   apigateway.secretKey | API Gateway private key. This key is required for reconfiguring the gateway with updated endpoint info. | None.
+   apigateway.env | API Gateway environment (eg., dev, test, pre-prod, prod) | dev
+   apigateway.metricsCInterval | Backend API metrics collection and aggregation interval (in minutes) | 60 minutes (1 hour)
+   apigateway.metricsCHistory | Backend API metrics collection history count | 168 (Max. <= 600)  
+   apigateway.appInsightsConnectionString | (Optional) To collect API request telemetry, set this value to the Azure Application Insights resource *connection string* | None.
+   apigateway.useCache | Global setting to enable semantic caching | false (true/false)
+   apigateway.cacheInvalSchedule | Used to specify run schedule for cache entry invalidator | "*/45 * * * *"
+   apigateway.persistPrompts | Global setting to persist prompts in database table | false (true/false)
+   apigateway.vectorAiApp | Used to specify name of AI application for embedding prompts. This value is required if semantic caching feature is enabled. | None
+   apigateway.searchEngine | Used to specify vector search engine for semantic caching feature | Postgresql/pgvector
+   database.host | PostgreSQL server/host name. Database connection parameter values are required if semantic caching or prompt persistence features are enabled | None
+   database.port | PostgreSQL server listen port | 5432
+   database.user | PostgreSQL database user name | None
+   database.password | PostgreSQL database user password | None
+   database.name | PostgreSQL database name | None
 
 4. Assign required compute resources to API Gateway pods.
 
