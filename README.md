@@ -803,19 +803,69 @@ Additionally, the following resources should be deployed/configured.
    ```json
    {
      "serverName": "AOAI-API-Gateway-01",
-     "serverVersion": "1.0.0",
-     "envVars": {
-        "apiGatewayHost": "10.244.4.6",
-        "apiGatewayListenPort": 8000,
-        "apiGatewayEnv": "dev",
-        "apiGatewayCollectInterval": 1,
-        "apiGatewayCollectHistoryCount": 2,
-        "apiGatewayConfigFile": "/home/node/app/files/api-router-config.json"
+     "serverVersion": "1.5.0",
+     "serverConfig": {
+        "host": "10.244.2.6",
+        "listenPort": 8000,
+        "environment": "dev",
+        "persistPrompts": "true",
+        "collectInterval": 60,
+        "collectHistoryCount": 8,
+        "configFile": "/home/node/app/files/api-router-config.json"
      },
+     "cacheSettings": {
+        "cacheEnabled": true,
+        "embeddAiApp": "vectorizedata",
+        "searchEngine": "Postgresql/pgvector",
+        "cacheInvalidationSchedule": "*/45 * * * *"
+     },
+     "appConnections": [
+        {
+            "applicationId": "vectorizedata",
+            "cacheSettings": {
+                "useCache": false
+            },
+            "oaiEndpoints": {
+                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15"
+            }
+        },
+        {
+            "applicationId": "aichatbotapp",
+            "cacheSettings": {
+                "useCache": true,
+                "searchType": "CS",
+                "searchDistance": 0.95,
+                "searchContent": {
+                    "term": "messages",
+                    "includeRoles": "system,user,assistant"
+                },
+                "entryExpiry": "7 days"
+            },
+            "oaiEndpoints": {
+                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2023-05-15"
+            }
+        },
+        {
+            "applicationId": "aidocusearchapp",
+            "cacheSettings": {
+                "useCache": true,
+                "searchType": "CS",
+                "searchDistance": 0.95,
+                "searchContent": {
+                    "term": "prompt"
+                },
+                "entryExpiry": "1 hour"
+            },
+            "oaiEndpoints": {
+                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
+                "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
+            }
+        }
+     ],
      "containerInfo": {
-        "imageID": "oaiapigateway.azurecr.io/az-oai-api-gateway:v1.021524",
+        "imageID": "oaiapigateway.azurecr.io/az-oai-api-gateway:v1.5.031224",
         "nodeName": "aks-nodepool1-35747021-vmss000001",
-        "podName": "aoai-api-gateway-v1-57b5946666-7zrg2",
+        "podName": "aoai-api-gateway-v1-7777f5d8bd-tt7kq",
         "podNamespace": "apigateway",
         "podServiceAccount": "default"
      },
@@ -845,24 +895,9 @@ Additionally, the following resources should be deployed/configured.
         "v8": "11.3.244.8-node.17",
         "zlib": "1.2.13.1-motley-5daffc7"
      },
-     "appConnections": [
-        {
-            "applicationId": "aichatbotapp",
-            "oaiEndpoints": {
-                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
-                "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
-            }
-        },
-        {
-            "applicationId": "aidocusearchapp",
-            "oaiEndpoints": {
-                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
-            }
-        }
-     ],
      "apiGatewayUri": "/api/v1/dev/apirouter",
      "endpointUri": "/api/v1/dev/apirouter/instanceinfo",
-     "serverStartDate": "2/16/2024, 6:07:55 AM",
+     "serverStartDate": "3/12/2024, 11:45:10 PM",
      "status": "OK"
    }
    ```

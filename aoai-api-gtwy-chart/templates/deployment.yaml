@@ -56,7 +56,27 @@ spec:
             - name: API_GATEWAY_METRICS_CHISTORY
               value: "{{ .Values.apigateway.metricsCHistory }}"
             - name: APPLICATIONINSIGHTS_CONNECTION_STRING
-              value: {{ .Values.apigateway.appInsightsConnectionString }}
+              value: "{{ .Values.apigateway.appInsightsConnectionString }}"
+            - name: API_GATEWAY_USE_CACHE
+              value: "{{ .Values.apigateway.useCache }}"
+            - name: API_GATEWAY_CACHE_INVAL_SCHEDULE
+              value: "{{ .Values.apigateway.cacheInvalSchedule }}"
+            - name: API_GATEWAY_PERSIST_PROMPTS
+              value: "{{ .Values.apigateway.persistPrompts }}"
+            - name: API_GATEWAY_VECTOR_AIAPP
+              value: "{{ .Values.apigateway.vectorAiApp }}"
+            - name: API_GATEWAY_SRCH_ENGINE
+              value: "{{ .Values.apigateway.searchEngine }}"
+            - name: VECTOR_DB_HOST
+              value: "{{ .Values.database.host }}"
+            - name: VECTOR_DB_PORT
+              value: "{{ .Values.database.port }}"
+            - name: VECTOR_DB_USER
+              value: "{{ .Values.database.user }}"
+            - name: VECTOR_DB_UPWD
+              value: "{{ .Values.database.password }}"
+            - name: VECTOR_DB_NAME
+              value: "{{ .Values.database.name }}"
             - name: IMAGE_ID
               value: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
             - name: NODE_NAME
