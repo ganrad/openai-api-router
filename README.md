@@ -82,7 +82,7 @@ The Sections below describe the steps to configure and deploy the API Gateway on
 
 ### A. Configure and run the API Gateway on a standalone *Virtual Machine*
 
-Before we can get started, you will need a Linux Virtual Machine to run the API Gateway. If you haven't already, provision a Virtual Machine with a Linux flavor of your choice.
+Before we can get started, you will need a Linux Virtual Machine to run the API Gateway. If you haven't already, provision a Virtual Machine with a Linux flavor of your choice on Azure.
 
 1. Clone or fork this GitHub repository into a directory on the VM.
 
@@ -108,7 +108,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    VECTOR_DB_PORT | 5432 (This is the default PostgreSQL Server listen port)
    VECTOR_DB_USER | Name of the database user (Saved in step above)
    VECTOR_DB_UPWD | Password of the database user (Saved in step above)
-   VECTOR_DB_NAME | Name of the PostgreSQL Server (Saved in step above)
+   VECTOR_DB_NAME | Name of the database (Saved in step above)
 
    Create the database tables using the script `./db-scripts/pg-test.js`. See command snippet below.
 
@@ -126,27 +126,29 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    apigtwycache | This table stores vectorized prompts and completions
    apigtwyprompts | This table stores prompts
 
-4. Update the API Gateway endpoint configuration file.
+4. Update the API Gateway configuration file.
 
    Edit the `./api-router-config.json` file. Each AI Application should have a unique *appId*.
 
    For each AI Application, 
 
    - Add/Update the Azure OpenAI Service model deployment endpoints/URI's and corresponding API key values in this file.
-   - (Optional) To enable caching of OpenAI Service completions (output), specify values for attribute **cacheSettings**.  Refer to the table below and set appropriate values.
+   - (Optional) To enable caching and retrieval of OpenAI Service completions (Semantic Caching feature), specify values for attributes contained within **cacheSettings** attribute.  Refer to the table below and set appropriate values.
 
      Attribute Name | Description
      -------------- | -----------
-     useCache | API Gateway will cache OpenAI Service completions (output) based on this value.  If caching is desired, set it to *true* or *false*.  Default is *false*.
-     searchType | This attribute is used to specify the similarity distance function/algorithm for vector search.  Supported values are a) CS (= *Cosine Similarity*).  This is the default. b) LS (= *Level2 or Euclidean distance*) c) IP (= *Inner Product*).
-     searchDistance | This attribute is used to specify the search similarity threshold.  For instance, if the search type = CS, this value could be set to a value between 0 and 1.
+     useCache | API Gateway will cache OpenAI Service completions (output) based on this value.  If caching is desired, set it to *true*.  Default is *false*.
+     searchType | API Gateway will search and retrieve OpenAI Service completions based on a semantic text similarity algorithm.<br>This attribute is used to specify the similarity distance function/algorithm for vector search.  Supported values are a) CS (= *Cosine Similarity*).  This is the default. b) LS (= *Level2 or Euclidean distance*) c) IP (= *Inner Product*).
+     searchDistance | This attribute is used to specify the search similarity threshold.  For instance, if the search type = CS, this value should be set to a value between 0 and 1.
      searchContent.term | This value specifies the attribute in the request payload which should be vectorized and used for semantic search. For OpenAI completions API, this value should be *prompt*.  For chat completions API, this value should be set to *messages*.
      searchContent.includeRoles | This attribute value should only be set for OpenAI models that expose chat completions API. Value can be a comma separated list.  Permissible values are system, user and assistant.
      entryExpiry | This attribute is used to specify when cached entries (*completions*) should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
 
    After making the changes, save the `./api-router-config.json` file.
 
-   **IMPORTANT**: The model deployment endpoints/URI's should be listed in increasing order of priority (top down). Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  For each API Application, the API Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to OpenAI API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
+**IMPORTANT**:
+
+The model deployment endpoints/URI's should be listed in increasing order of priority (top down). Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  For each API Application, the API Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to OpenAI API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
 
 5. Set the gateway server environment variables.
 
@@ -164,16 +166,16 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numeric value (<= 600)  
    APPLICATIONINSIGHTS_CONNECTION_STRING | Azure Monitor connection string | No | Assign the value of the Azure Application Insights resource *connection string* (from Azure Portal)
    API_GATEWAY_USE_CACHE | Global setting for enabling semantic caching | No | false
-   API_GATEWAY_CACHE_INVAL_SCHEDULE | Global setting for configuring the frequency of *cache invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/45 * * * *"
-   API_GATEWAY_PERSIST_PROMPTS | Global setting for persisting prompts in a database (PostgreSQL) table | No | false
-   API_GATEWAY_VECTOR_AIAPP | Name of the AI application that exposes endpoints for *embedded* model. This value is required if semantic caching is enabled | No | None
+   API_GATEWAY_CACHE_INVAL_SCHEDULE | Global setting for configuring the frequency of *Cache Invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/45 * * * *"
+   API_GATEWAY_PERSIST_PROMPTS | Global setting for persisting prompts in a database table (PostgreSQL) | No | false
+   API_GATEWAY_VECTOR_AIAPP | Name of the AI application that exposes endpoints for data *embedding* model. This value is required if semantic caching feature is enabled | No | None
    API_GATEWAY_SRCH_ENGINE | The vector search engine used by semantic caching feature | No | Postgresql/pgvector
 
    **NOTE**: You can update and run the shell script `./set-api-gtwy-env.sh` to set and export the environment variables.
 
 6. Run the API Gateway server.
 
-   Switch to the project root directory. Then issue the command shown in the command snippet below.
+   Switch to the project root directory. Then issue the command shown in the snippet below.
 
    ```bash
    # Use the node package manager (npm) to install the server dependencies
@@ -217,7 +219,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/instanceinfo
 
-   If you get a json response similar to the one shown in the snippet below then the server is ready to accept Azure OpenAI service requests.
+   If you get a json response similar to the one shown in the snippet below then the API Gateway server is ready to accept Azure OpenAI service requests.
 
    ```json
    {
@@ -395,7 +397,7 @@ Cached completions are retrieved based on semantic text similarity algorithm and
 
 **Invalidating Cached Entries**:
 
-- When semantic caching and retrieval is enabled at the global level (*API_GATEWAY_USE_CACHE=true*), the API Gateway periodically runs a cache entry invalidator process based on a configured schedule.  If no schedule is configured, the cache invalidator process is run on a default schedule every 45 minutes.  This default schedule can be overridden by setting the environment variable *API_GATEWAY_CACHE_INVAL_SCHEDULE* as described in Section **A** above.
+- When semantic caching and retrieval is enabled at the global level (*API_GATEWAY_USE_CACHE=true*), the API Gateway periodically runs a cache entry invalidator process on a pre-configured schedule.  If no schedule is configured, the cache invalidator process is run on a default schedule every 45 minutes.  This default schedule can be overridden by setting the environment variable *API_GATEWAY_CACHE_INVAL_SCHEDULE* as described in Section **A** above.
 - For each AI Application, cached entries can be invalidated (deleted) by setting the configuration attribute *cacheSettings.entryExpiry*. This attribute must be set to a value that conforms to PostgreSQL *Interval* data type. If this attribute value is empty or not set, cache entry invalidation will be skipped.  Refer to the documentation [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT) to configure the cache invalidation interval to an appropriate value.
 
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
@@ -596,16 +598,16 @@ Cached completions are retrieved based on semantic text similarity algorithm and
 
    Metric name | Description
    ----------- | -----------
-   successApiCalls | Number of backend API calls successfully handled by the API Gateway.
-   failedApiCalls | Number of backend API calls which couldn't be completed. Reason here could be that all backend endpoints were busy/throttled.
-   totalApiCalls | Total number of backend API calls received by this API Gateway Server instance.
+   successApiCalls | Number of API calls successfully processed by the API Gateway.
+   failedApiCalls | Number of API calls which couldn't be completed. One of the reasons could be that all backend endpoints were busy/throttled.
+   totalApiCalls | Total number of API calls received by this API Gateway Server instance.
 
    Description of AI Application cache hit metrics are provided in the table below.
 
    Metric name | Description
    ----------- | -----------
-   hitCount | Number of API calls which were served from the gateway cache
-   avgScore | Average similarity search score 
+   hitCount | Number of API calls where responses were served from the gateway cache
+   avgScore | Average similarity search score for cached responses
 
    Description of AI Application (backend) endpoint metrics are provided in the table below.
 
