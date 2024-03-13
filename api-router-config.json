@@ -1,21 +1,52 @@
 {
   "applications": [
     {
-      "appId": "aichatbotapp",
+      "appId": "vectorizedata",
+      "cacheSettings": {
+        "useCache": false
+      },
       "endpoints": [
         {
-          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
-          "apikey": "2f0d266d"
-	},
-        {
-          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15",
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15",
           "apikey": "9eca9ec1"
         }
       ]
     },
     {
-      "appId": "aidocusearchapp",
+      "appId": "aichatbotapp",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CS",
+        "searchDistance": 0.90,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "system,user,assistant"
+        },
+        "entryExpiry": "7 days"
+      },
       "endpoints": [
+        {
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2023-05-15",
+          "apikey": "2f0d266d"
+        }
+      ]
+    },
+    {
+      "appId": "aidocusearchapp",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CS",
+        "searchDistance": 0.90,
+        "searchContent": {
+          "term": "prompt"
+        },
+        "entryExpiry": "30 minutes"
+      },
+      "endpoints": [
+        {
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
+          "apikey": "9eca9ec1"
+	},
         {
           "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15",
           "apikey": "9eca9ec1"

@@ -26,7 +26,7 @@ LABEL description="This container image exposes endpoints to 1) Track API usage 
 LABEL author="Ganesh Radhakrishnan" email="ganrad01@gmail.com" dated="01-28-2024" license="MIT"
 
 # (Required) API Gateway config file
-ARG config_file=./api-router-config-test.json
+ARG config_file=./api-router-config.json
 ENV API_GATEWAY_CONFIG_FILE=$config_file
 
 # (Required) API Gateway secret key.

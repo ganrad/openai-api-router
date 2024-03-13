@@ -41,6 +41,18 @@ apigateway:
   metricsCHistory: 168
   # (Optional) Azure Monitor OpenTelemetry connection string
   appInsightsConnectionString: ""
+  useCache: false
+  cacheInvalSchedule: "*/45 * * * *"
+  persistPrompts: false
+  vectorAiApp: vectorizedata
+  searchEngine: Postgresql/pgvector
+
+database:
+  name: aoaisvc
+  host: [db].postgres.database.azure.com
+  port: 5432
+  user: user01
+  password: semantic-cache
 
 podAnnotations: {}
 podLabels: {}
