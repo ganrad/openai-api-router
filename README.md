@@ -400,7 +400,7 @@ Cached completions are retrieved based on semantic text similarity algorithm and
 
 A few limitations/caveats with semantic caching feature is described below.  It is important to keep these in mind prior to enabling this feature for an AI Application.
 
-- The semantic caching feature utilizes an Azure OpenAI *embedding* model to vectorize prompts.  Any of the three embedding models offered by Azure OpenAI Service can be used to vectorize/embedd prompt data.  The embedding models have a request token size restriction of 8K and output dimension of 1536 tokens. This implies, any request payload containing more than 8K tokens (prompt) will likely be truncated and result in faulty search results.
+- The semantic caching feature utilizes an Azure OpenAI *embedding* model to vectorize prompts.  Any of the three embedding models offered by Azure OpenAI Service can be used to vectorize/embedd prompt data.  The embedding models have a request token size limit of 8K and output dimension of 1536 tokens. This implies, any request payload containing more than 8K tokens (prompt) will likely be truncated and result in faulty search results.
 - During functional tests, setting the similarity score threshold to a higher value *> 0.95* was found to deliver more accurate search results. 
 
 **Invalidating Cached Entries**
@@ -411,8 +411,8 @@ A few limitations/caveats with semantic caching feature is described below.  It 
 **Persisting Prompts**
 
 - When global environment variable *API_GATEWAY_PERSIST_PROMPTS* is set to *true*, prompts along with other API request related metadata will be persisted in database table *apigtwyprompts*.
-- API Request *prompts* will not be persisted under the following conditions a) All backend endpoints for a given API Application are busy/throttled.  In this case, the API Gateway returns an HTTP status code 503. b) API Gateway encounters an internal error while handling a request.  In this case, the API Gateway returns HTTP status code 500.
-- The API Gateway returns a unique (GUID) id *x-request-id* in the HTTP response header for every request.  This header value along with the *user* value sent in the API request payload can be used to query table *apigtwyprompts* in order to troubleshoot discrepancies in the API request and corresponding response (prompt and completion).
+- API Request *prompts* will not be persisted under the following conditions a) All backend endpoints for a given AI Application are busy/throttled.  In this case, the API Gateway will return HTTP status code 503. b) API Gateway encounters an internal error while handling a request.  In this case, the API Gateway will return HTTP status code 500.
+- The API Gateway returns a unique (GUID) id *x-request-id* in the HTTP response header for every request.  This header value along with the *user* value sent in the API request payload can be used to query table *apigtwyprompts* in order to troubleshoot and ascertain if a content filter was applied to either the prompt (request) or completion (response).
 
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
 
