@@ -5,7 +5,7 @@ The API Gateway server can be used to distribute requests to Azure OpenAI Servic
 
 Feature/Capability | Description
 ------------------ | -----------
-**Unified Management Plane** | API Gateway provides a unified management plane for a) Configuring OpenAI Service endpoints for multiple AI Applications and b) Serving OpenAI Service requests and tracking metrics for each AI Application.  The gateway is *AI Application Aware* meaning Azure OpenAI Service endpoints can be configured separately for each *AI Application*.  This not only allows model deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing for each specific AI use case.
+**Unified Management Plane** | API Gateway provides a unified management plane for a) Sharing OpenAI Service model deployment endpoints among multiple AI Applications and b) Serving OpenAI Service requests and tracking metrics for each AI Application.  The gateway is *AI Application Aware* meaning Azure OpenAI Service endpoints can be configured separately for each *AI Application*.  This not only allows model deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing for each specific AI use case.
 **Intelligent Traffic Routing** | The API Gateway can be configured with multiple Azure OpenAI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
 **Semantic Caching** | This feature is seamlessly integrated into API Gateway and can be used to cache OpenAI Service prompts and responses. Cache hits are evaluated based on semantic similarity and the configured algorithm. With semantic caching, runtime performance of LLM/AI applications can be improved by up to 40%. This solution leverages the vectorization and semantic search features supported by the widely popular *PostgreSQL* open source database.
 **Prompt Persistence** | This optional feature can be used to persist OpenAI Service *Prompts* (inputs) in a relational database. With this feature, customers can analyze prompts and accordingly adjust the similarity distance for the chosen vector search algorithm to maximize performance (increase throughput).  The solution currently uses PostgreSQL database as the persistence provider.
@@ -37,7 +37,7 @@ The API Gateway can be used in two scenarios.
 ### Prerequisites
 1.  An Azure **Resource Group** with **Owner** *Role* permission.  All Azure resources can be deloyed into this resource group.
 2.  A **GitHub** Account to fork and clone this GitHub repository.
-3.  Review [Overview of Azure Cloud Shell](https://docs.microsoft.com/en-us/azure/cloud-shell/overview).  **Azure Cloud Shell** is an interactive, browser accessible shell for managing Azure resources.  You will be using the Cloud Shell to create the Bastion Host (Linux VM).
+3.  Review [Overview of Azure Cloud Shell](https://docs.microsoft.com/en-us/azure/cloud-shell/overview).  **Azure Cloud Shell** is an interactive, browser accessible shell for managing Azure resources.  You will be using the Cloud Shell to create the Jumpbox VM (Linux VM).
 4.  This project assumes readers are familiar with Linux fundamentals, Git SCM, Linux Containers (*docker engine*) and Kubernetes.  If you are new to any of these technologies, go thru the resources below.
     - [Learn Linux, 101: A roadmap for LPIC-1](https://developer.ibm.com/tutorials/l-lpic1-map/)
 
@@ -69,12 +69,15 @@ Readers are advised to refer to the following on-line resources as needed.
 - The software (API Gateway) is provided "as is" without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non infringement.  In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software. Use at your own risk.
 - The API Gateway does not currently secure the exposed API's by means of security tokens or API keys. Hence it's usage should be limited to private virtual network deployments on Azure.  That said, the gateway can be easily deployed behind an application gateway or firewall appliance that provides advanced and sophisticated security features.
 
+### Deployment Options
 The Sections below describe the steps to configure and deploy the API Gateway on Azure.  Although, there are multiple deployment options available on Azure, we will only describe the top two options recommended for production deployments.
 
-**Deployment options recommended for Usage Scenario 1**.
+**Recommended for Usage Scenario 1**
+
 - Containerize the API Gateway and deploy it on a standalone *Virtual Machine*. Refer to Sections **A** and **B** below.
 
-**Deployment options recommended for Usage Scenario 2**.
+**Recommended for Usage Scenario 2**
+
 1. Containerize the API Gateway and deploy it on a serverless container platform such as *Azure Container Apps*.
 
    We will not be describing the steps for this option here.  Readers can follow the deployment instructions described in Azure Container Apps documentation [here](https://learn.microsoft.com/en-us/azure/container-apps/tutorial-code-to-cloud?source=recommendations&tabs=bash%2Ccsharp&pivots=acr-remote).

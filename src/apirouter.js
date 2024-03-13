@@ -295,6 +295,23 @@ router.post("/lb/:app_id", async (req, res) => {
       }
       else if ( status === 400 ) {
 
+        // ID03012024.sn
+        let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
+        if ( persistPrompts ) { // Persist prompts ?
+          let promptDao = new PersistDao(persistdb, tblNames.prompts);
+          let values = [
+            req.id,
+            appId,
+            req.body
+          ];
+
+          await promptDao.storeEntity(
+            0,
+            values
+          );
+        };
+        // ID03012024.en
+
         console.log(`*****\napirouter():\n  App Id=${appId}\n  Target Endpoint=${element.uri}\n  Status=${status}\n  Message=${JSON.stringify(data)}\n  Status Text=${statusText}\n*****`);
 
         res.status(status).json(data); // 400 = Bad Request
