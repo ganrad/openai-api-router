@@ -127,7 +127,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    Table Name | Description
    ---------- | -----------
    apigtwycache | This table stores vectorized prompts and completions
-   apigtwyprompts | This table stores prompts
+   apigtwyprompts | This table stores prompts only
 
 4. Update the API Gateway configuration file.
 
@@ -149,9 +149,9 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    After making the changes, save the `./api-router-config.json` file.
 
-**IMPORTANT**:
+   **IMPORTANT**:
 
-The model deployment endpoints/URI's should be listed in increasing order of priority (top down). Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  For each API Application, the API Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to OpenAI API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
+   The model deployment endpoints/URI's should be listed in increasing order of priority (top down). Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  For each API Application, the API Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to OpenAI API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
 
 5. Set the gateway server environment variables.
 
@@ -375,7 +375,7 @@ Before getting started with this section, make sure you have installed a contain
 
 **IMPORTANT**:
 
-**Gateway Router/Load Balancer**:
+**Gateway Router/Load Balancer**
 
 It is important to understand how the API Gateway's load balancer distributes incoming API requests among configured Azure OpenAI backends (model deployment endpoints). Please read below.
 
@@ -384,7 +384,7 @@ It is important to understand how the API Gateway's load balancer distributes in
 - When all configured backend endpoints are busy or throttled (return http status code = 429), the gateway will return the **lowest** 'retry-after' seconds value returned by one of the *throttled* OpenAI backends. This value (in seconds) will be returned in the API Gateway response header 'retry-after'.  Client applications should ideally wait the no. of seconds returned in the 'retry-after' response header before making a subsequent API call.
 - For as long as all the backend endpoints are busy/throttled, the API Gateway will perform global rate limiting and continue to return the **lowest** 'retry-after' seconds in it's response header ('retry-after').
 
-**Semantic Caching and Retrieval**:
+**Semantic Caching and Retrieval**
 
 Cached completions are retrieved based on semantic text similarity algorithm and distance threshold configured for each AI Application.  Caching and retrieval of Azure OpenAI Service responses (completions) can be enabled at 3 levels. 
 
@@ -398,10 +398,21 @@ Cached completions are retrieved based on semantic text similarity algorithm and
 
    Caching and retrieval of completions can be disabled for each individual API Gateway request by passing in a query parameter *use_cache* and setting its value to *false* (eg., `?use_cache=false`).  Setting this parameter value to "true" has no effect.
 
-**Invalidating Cached Entries**:
+A few limitations/caveats with semantic caching feature is described below.  It is important to keep these in mind prior to enabling this feature for an AI Application.
+
+- The semantic caching feature utilizes an Azure OpenAI *embedding* model to vectorize prompts.  Any of the three embedding models offered by Azure OpenAI Service can be used to vectorize/embedd prompt data.  The embedding models have a request token size restriction of 8K and output dimension of 1536 tokens. This implies, any request payload containing more than 8K tokens (prompt) will likely be truncated and result in faulty search results.
+- During functional tests, setting the similarity score threshold to a higher value *> 0.95* was found to deliver more accurate search results. 
+
+**Invalidating Cached Entries**
 
 - When semantic caching and retrieval is enabled at the global level (*API_GATEWAY_USE_CACHE=true*), the API Gateway periodically runs a cache entry invalidator process on a pre-configured schedule.  If no schedule is configured, the cache invalidator process is run on a default schedule every 45 minutes.  This default schedule can be overridden by setting the environment variable *API_GATEWAY_CACHE_INVAL_SCHEDULE* as described in Section **A** above.
 - For each AI Application, cached entries can be invalidated (deleted) by setting the configuration attribute *cacheSettings.entryExpiry*. This attribute must be set to a value that conforms to PostgreSQL *Interval* data type. If this attribute value is empty or not set, cache entry invalidation will be skipped.  Refer to the documentation [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT) to configure the cache invalidation interval to an appropriate value.
+
+**Persisting Prompts**
+
+- When global environment variable *API_GATEWAY_PERSIST_PROMPTS* is set to *true*, prompts along with other API request related metadata will be persisted in database table *apigtwyprompts*.
+- API Request *prompts* will not be persisted under the following conditions a) All backend endpoints for a given API Application are busy/throttled.  In this case, the API Gateway returns an HTTP status code 503. b) API Gateway encounters an internal error while handling a request.  In this case, the API Gateway returns HTTP status code 500.
+- The API Gateway returns a unique (GUID) id *x-request-id* in the HTTP response header for every request.  This header value along with the *user* value sent in the API request payload can be used to query table *apigtwyprompts* in order to troubleshoot discrepancies in the API request and corresponding response (prompt and completion).
 
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
 

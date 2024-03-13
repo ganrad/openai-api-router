@@ -230,7 +230,7 @@ router.post("/lb/:app_id", async (req, res) => {
       data = await response.json();
 
       let { status, statusText, headers } = response;
-      if ( status === 200 ) {
+      if ( status === 200 ) { // All Ok
         let respTime = Date.now() - stTime;
 	metricsObj.updateApiCallsAndTokens(
           data.usage.total_tokens,
@@ -293,7 +293,7 @@ router.post("/lb/:app_id", async (req, res) => {
 
         console.log(`*****\napirouter():\n  App Id=${appId}\n  Target Endpoint=${element.uri}\n  Status=${status}\n  Message=${JSON.stringify(data)}\n  Status Text=${statusText}\n  Retry seconds=${retryAfterSecs}\n*****`);
       }
-      else if ( status === 400 ) {
+      else if ( status === 400 ) { // Invalid prompt
 
         // ID03012024.sn
         let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
