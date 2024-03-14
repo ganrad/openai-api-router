@@ -376,6 +376,7 @@ Before getting started with this section, make sure you have installed a contain
    **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
 
 **IMPORTANT**:
+**Please review the sections below before proceeding to Section **C**.
 
 **Gateway Router/Load Balancer**
 
@@ -407,7 +408,7 @@ Prior to turning on *Semantic Caching* feature for an AI Application (in Product
   ```bash
   # Create HNSW index for cosine similarity distance function.
   #
-  => CREATE INDEX ON apigtwycache USING hnsw (embedding vector_cosine_ops)
+  => CREATE INDEX ON apigtwycache USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
   #
   # To use L2 distance, set the distance function to 'vector_l2_ops'. Similarly, for IP distance function use 'vector_ip_ops'.
   ```
@@ -423,7 +424,7 @@ Prior to turning on *Semantic Caching* feature for an AI Application (in Product
 
 - When global environment variable *API_GATEWAY_PERSIST_PROMPTS* is set to *true*, prompts along with other API request related metadata will be persisted in database table *apigtwyprompts*.
 - API Request *prompts* will not be persisted under the following conditions a) All backend endpoints for a given AI Application are busy/throttled.  In this case, the API Gateway will return HTTP status code 503. b) API Gateway encounters an internal error while handling a request.  In this case, the API Gateway will return HTTP status code 500.
-- The API Gateway returns a unique (GUID) id *x-request-id* in the HTTP response header for every request.  This header value along with the *user* value sent in the API request payload can be used to query table *apigtwyprompts* to troubleshoot and ascertain if a content filter was applied to either the prompt (request) or completion (response).
+- The API Gateway returns a unique (GUID) id *x-request-id* in the HTTP response header for every request.  This header value along with the *user* value sent in the API request (body) can be used to query table *apigtwyprompts* in order to troubleshoot issues.  For instance, these values could be used to query a request that failed due to application of a content filter (HTTP status = 400).
 
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
 
