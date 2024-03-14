@@ -26,7 +26,7 @@ function constructQuery(strings, operator, srchDistance) {
 
 const queryStmts = [
   "SELECT completion, 1 - (embedding <=> $1) as similarity FROM apigtwycache WHERE 1 - (embedding <=> $1) > $2 ORDER BY embedding <=> $1 LIMIT $3",
-  "SELECT completion FROM apigtwycache WHERE embedding",
+  "SELECT completion, embedding <-> $1 as similarity FROM apigtwycache WHERE embedding <-> $1 < $2 ORDER BY embedding <-> $1 LIMIT $3",
   "SELECT completion FROM apigtwycache ORDER BY embedding" // Requires an index!
 ];
 
@@ -78,7 +78,15 @@ class CacheDao {
       if ( apiResp ) { // Use the embedded vector to query against the Vector DB
         // const query = queryStmts[0] + ` ${srchTypes.get(this.srchType)}` + " $1 < " + `${this.srchDistance}`;
         // const query = queryStmts[1] + ` ${srchTypes.get(this.srchType)}` + " $1 LIMIT 1"
-        const query = queryStmts[0];
+        var query = "";
+	if ( this.srchType === "CS" ) // cosine similarity search
+	  query = queryStmts[0];
+	else if ( this.srchType === "L2" ) // L2 or Euclidean search
+	  query = queryStmts[1];
+	else if ( this.srchType === "IP" ) // Inner product
+	  query = queryStmts[0]; // Not tested yet!
+	else
+	  query = queryStmts[0]; // Default cosine similarity search
 
         // 3) Execute vector query on DB
         const {rowCount, simScore, completion} = 
