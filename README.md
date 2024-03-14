@@ -424,7 +424,7 @@ Prior to turning on *Semantic Caching* feature for an AI Application (in Product
 
 - When global environment variable *API_GATEWAY_PERSIST_PROMPTS* is set to *true*, prompts along with other API request related metadata will be persisted in database table *apigtwyprompts*.
 - API Request *prompts* will not be persisted under the following conditions a) All backend endpoints for a given AI Application are busy/throttled.  In this case, the API Gateway will return HTTP status code 503. b) API Gateway encounters an internal error while handling a request.  In this case, the API Gateway will return HTTP status code 500.
-- The API Gateway returns a unique (GUID) id *x-request-id* in the HTTP response header for every request.  This header value along with the *user* value sent in the API request (body) can be used to query table *apigtwyprompts* in order to troubleshoot issues.  For instance, these values could be used to query a request that failed due to application of a content filter (HTTP status = 400).
+- The API Gateway returns a unique (GUID) id *x-request-id* in the HTTP response header for every request.  This header value along with the *user* value sent in the API request (body) can be used to query table *apigtwyprompts* and troubleshoot issues.  For instance, these values could be used to query a request that failed due to application of a content filter (HTTP status = 400).
 
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
 
