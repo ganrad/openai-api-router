@@ -67,9 +67,11 @@ Readers are advised to refer to the following on-line resources as needed.
 
 ## Disclaimer:
 - The software (API Gateway) is provided "as is" without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non infringement.  In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software. Use at your own risk.
-- The API Gateway does not currently secure the exposed API's by means of security tokens or API keys. Hence it's usage should be limited to private virtual network deployments on Azure.  That said, the gateway can be easily deployed behind an application gateway or firewall appliance that provides advanced and sophisticated security features.
+- The API Gateway does not currently secure the exposed API's by means of security tokens or API keys. Hence it's usage should be limited to private virtual network deployments on Azure.  That said, the gateway can be easily deployed behind an application gateway or firewall appliance (WAF) that provides advanced and sophisticated security features.
 
 ### Deployment Options
+Deploy the API Gateway server in a pre-production environment first and configure the desired features by setting the configuration parameters to appropriate values. The pre-production environment should be as close as possible to an actual production environment.  Thoroughly test the routing, caching and persistence features to ensure everything is working properly as expected.
+
 The Sections below describe the steps to configure and deploy the API Gateway on Azure.  Although, there are multiple deployment options available on Azure, we will only describe the top two options recommended for production deployments.
 
 **Recommended for Usage Scenario 1**
@@ -398,10 +400,10 @@ Cached completions are retrieved based on semantic text similarity algorithm and
 
    Caching and retrieval of completions can be disabled for each individual API Gateway request by passing in a query parameter *use_cache* and setting its value to *false* (eg., `?use_cache=false`).  Setting this parameter value to "true" has no effect.
 
-A few caveats/considerations for semantic caching feature are described below.  It is important to keep these in mind prior to enabling this feature for an AI Application.
+Prior to turning on *Semantic Caching* feature for an AI Application (in Production), please review the following notes.
 
 - The semantic caching feature utilizes an Azure OpenAI *embedding* model to vectorize prompts.  Any of the three embedding models offered by Azure OpenAI Service can be used to vectorize/embedd prompt data.  The embedding models have a request token size limit of 8K and output dimension of 1536 tokens. This implies, any request payload containing more than 8K tokens (prompt) will likely be truncated and result in faulty search results.
-- By default, *pgvector* extension performs exact nearest neighbor search which provides excellent recall. However, search performance is likely to take a hit (degrade) as the number of records in the table go above 1K. To trade some recall for query performance, its better to add an index and use approximate nearest neighbor search.  *pgvector* extension supports two index types - *HNSW* and *IVFFlat*.  Between the two, HNSW has better query performance. Refer to the snippet below to add an HNSW index to the *apigtwycache* table.  Use `psql` to add the index.
+- By default, *pgvector* extension performs exact nearest neighbor search which provides excellent recall. However, search performance is likely to take a hit (degrade) as the number of records in the table go above 1K. To trade some recall for query performance, its recommended to add an index and use approximate nearest neighbor search.  *pgvector* extension supports two index types - *HNSW* and *IVFFlat*.  Between the two, HNSW has better query performance. Refer to the snippet below to add an HNSW index to the *apigtwycache* table.  Use `psql` to add the index.
   ```bash
   # Create HNSW index for cosine similarity distance function.
   #
@@ -410,6 +412,7 @@ A few caveats/considerations for semantic caching feature are described below.  
   # To use L2 distance, set the distance function to 'vector_l2_ops'. Similarly, for IP distance function use 'vector_ip_ops'.
   ```
 - During functional tests, setting the cosine similarity score threshold to a higher value *> 0.95* was found to deliver more accurate search results. 
+- The *Inner Product* distance function has not be thoroughly tested with sample data.  Prior to using this function, it is advised to run functional tests and verify results.
 
 **Invalidating Cached Entries**
 
@@ -420,7 +423,7 @@ A few caveats/considerations for semantic caching feature are described below.  
 
 - When global environment variable *API_GATEWAY_PERSIST_PROMPTS* is set to *true*, prompts along with other API request related metadata will be persisted in database table *apigtwyprompts*.
 - API Request *prompts* will not be persisted under the following conditions a) All backend endpoints for a given AI Application are busy/throttled.  In this case, the API Gateway will return HTTP status code 503. b) API Gateway encounters an internal error while handling a request.  In this case, the API Gateway will return HTTP status code 500.
-- The API Gateway returns a unique (GUID) id *x-request-id* in the HTTP response header for every request.  This header value along with the *user* value sent in the API request payload can be used to query table *apigtwyprompts* in order to troubleshoot and ascertain if a content filter was applied to either the prompt (request) or completion (response).
+- The API Gateway returns a unique (GUID) id *x-request-id* in the HTTP response header for every request.  This header value along with the *user* value sent in the API request payload can be used to query table *apigtwyprompts* to troubleshoot and ascertain if a content filter was applied to either the prompt (request) or completion (response).
 
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
 
