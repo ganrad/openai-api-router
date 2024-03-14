@@ -398,10 +398,18 @@ Cached completions are retrieved based on semantic text similarity algorithm and
 
    Caching and retrieval of completions can be disabled for each individual API Gateway request by passing in a query parameter *use_cache* and setting its value to *false* (eg., `?use_cache=false`).  Setting this parameter value to "true" has no effect.
 
-A few limitations/caveats with semantic caching feature is described below.  It is important to keep these in mind prior to enabling this feature for an AI Application.
+A few caveats/considerations for semantic caching feature are described below.  It is important to keep these in mind prior to enabling this feature for an AI Application.
 
 - The semantic caching feature utilizes an Azure OpenAI *embedding* model to vectorize prompts.  Any of the three embedding models offered by Azure OpenAI Service can be used to vectorize/embedd prompt data.  The embedding models have a request token size limit of 8K and output dimension of 1536 tokens. This implies, any request payload containing more than 8K tokens (prompt) will likely be truncated and result in faulty search results.
-- During functional tests, setting the similarity score threshold to a higher value *> 0.95* was found to deliver more accurate search results. 
+- By default, *pgvector* extension performs exact nearest neighbor search which provides excellent recall. However, search performance is likely to take a hit (degrade) as the number of records in the table go above 1K. To trade some recall for query performance, its better to add an index and use approximate nearest neighbor search.  *pgvector* extension supports two index types - *HNSW* and *IVFFlat*.  Between the two, HNSW has better query performance. Refer to the snippet below to add an HNSW index to the *apigtwycache* table.  Use `psql` to add the index.
+  ```bash
+  # Create HNSW index for cosine similarity distance function.
+  #
+  => CREATE INDEX ON apigtwycache USING hnsw (embedding vector_cosine_ops)
+  #
+  # To use L2 distance, set the distance function to 'vector_l2_ops'. Similarly, for IP distance function use 'vector_ip_ops'.
+  ```
+- During functional tests, setting the cosine similarity score threshold to a higher value *> 0.95* was found to deliver more accurate search results. 
 
 **Invalidating Cached Entries**
 
