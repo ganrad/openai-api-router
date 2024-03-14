@@ -376,7 +376,8 @@ Before getting started with this section, make sure you have installed a contain
    **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
 
 **IMPORTANT**:
-**Please review the sections below before proceeding to Section **C**.
+
+Please review the sections below before proceeding to Section **C**.
 
 **Gateway Router/Load Balancer**
 
