@@ -17,6 +17,7 @@
 # to scale and support 10s ... 1000's of concurrent API requests/connections.
 #
 # NOTES:
+# ID03152024 : ganrad : Added ARG and ENV variables for semantic caching
 # ----------------------------------------------------------------
 #
 FROM public.ecr.aws/docker/library/node:20.11.0-alpine3.19
@@ -56,6 +57,10 @@ ENV API_GATEWAY_METRICS_CINTERVAL=$metrics_interval
 # (Required) API Gateway metrics history cache count
 ARG metrics_history=5
 ENV API_GATEWAY_METRICS_CHISTORY=$metrics_history
+
+# (Required) API Gateway metrics history cache count
+ARG use_cache="false"
+ENV API_GATEWAY_USE_CACHE=$use_cache
 
 RUN mkdir -p /home/node/app/node_modules && chown -R node:node /home/node/app
 RUN mkdir -p /home/node/app/src
