@@ -78,7 +78,7 @@ class CacheDao {
       if ( apiResp ) { // Use the embedded vector to query against the Vector DB
         // const query = queryStmts[0] + ` ${srchTypes.get(this.srchType)}` + " $1 < " + `${this.srchDistance}`;
         // const query = queryStmts[1] + ` ${srchTypes.get(this.srchType)}` + " $1 LIMIT 1"
-        var query = "";
+        let query = "";
 	if ( this.srchType === "CS" ) // cosine similarity search
 	  query = queryStmts[0];
 	else if ( this.srchType === "L2" ) // L2 or Euclidean search

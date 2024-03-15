@@ -1,13 +1,12 @@
 const cacheTbl = require("../services/cp-pg.js");
 var cron = require('node-cron');
-var context;
 
 const deleteRowStmts = [
   "DELETE FROM apigtwycache WHERE (aiappname = $1) AND (timestamp_ < CURRENT_TIMESTAMP - INTERVAL $2)"
   ];
 
 function runCacheInvalidator(schedule, ctx) {
-  context = ctx
+  let context = ctx
 
   cron.schedule(schedule, () => {
     console.log("*****\nrunCacheInvalidator():");
