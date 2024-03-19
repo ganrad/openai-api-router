@@ -332,9 +332,10 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
 **IMPORTANT**:
 
-- For invoking the model deployment endpoints exposed by API Gateway from a ***LangChain*** LLM application (/framework), two environment variables will must be set. See below.
-  - _AZURE_OPENAI_BASE_PATH_: Set the value of this variable to the API Gateway load balancer / router endpoint URI. This URI can also be specified as part of the OpenAI configuration object (in code).
-  - _AZURE_OPENAI_API_DEPLOYMENT_NAME: Set the value of this variable to the *AI Application* name/ID configured in the API Gateway. This value can also be specified as part of the OpenAI configuration object (in code).
+- For invoking the model deployment endpoints exposed by API Gateway from a ***LangChain*** LLM application (/framework), two environment variables must be set. See below.
+  - _AZURE_OPENAI_BASE_PATH_: Set the value of this variable to the API Gateway load balancer / router endpoint URI (/lb). This URI can also be specified as part of the OpenAI configuration object (in code).
+  - _AZURE_OPENAI_API_DEPLOYMENT_NAME_: Set the value of this variable to the *AI Application* name/ID configured in the API Gateway. This value can also be specified as part of the OpenAI configuration object (in code).
+
   Refer to the sample script provided in `./samples/lang-chain` directory for details.
 
 - For generating OpenAI API traffic and/or simulating API workload, one of the following methods can be used.  See below.
