@@ -10,6 +10,7 @@
  * ID02132024: ganrad : Use a single data plane to serve Azure OpenAI models for multiple AI applications.
  * ID02202024: ganrad : Introduced semantic caching / retrieval functionality.
  * ID03012024: ganrad : Introduced prompt persistence.
+ * ID03192024: ganrad : Added support for LangChain SDK (OpenAI)
  *
 */
 
@@ -86,7 +87,10 @@ router.get("/metrics", (req, res) => {
 });
 
 // Intelligent router endpoint
-router.post("/lb/:app_id", async (req, res) => {
+// router.post("/lb/:app_id", async (req, res) => { // ID03192024.o
+router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024.n
+  console.log(`*****\napirouter(): Request\n  URI: ${req.originalUrl}\n  ID: ${req.id}\n*****`); // ID03192024.n
+
   const eps = req.targeturis;
   const cdb = req.cacheconfig;
 
@@ -291,7 +295,7 @@ router.post("/lb/:app_id", async (req, res) => {
 
 	metricsObj.updateFailedCalls(retryAfterSecs);
 
-        console.log(`*****\napirouter():\n  App Id=${appId}\n  Target Endpoint=${element.uri}\n  Status=${status}\n  Message=${JSON.stringify(data)}\n  Status Text=${statusText}\n  Retry seconds=${retryAfterSecs}\n*****`);
+        console.log(`*****\napirouter():\n  App Id: ${appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n  Retry seconds: ${retryAfterSecs}\n*****`);
       }
       else if ( status === 400 ) { // Invalid prompt
 
@@ -312,14 +316,14 @@ router.post("/lb/:app_id", async (req, res) => {
         };
         // ID03012024.en
 
-        console.log(`*****\napirouter():\n  App Id=${appId}\n  Target Endpoint=${element.uri}\n  Status=${status}\n  Message=${JSON.stringify(data)}\n  Status Text=${statusText}\n*****`);
+        console.log(`*****\napirouter():\n  App Id: ${appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n*****`);
 
         res.status(status).json(data); // 400 = Bad Request
         return;
       };
     }
     catch (error) {
-      err_msg = {reqId: req.id, targetUri: element.uri, cause: error};
+      err_msg = {appId: appId, reqId: req.id, targetUri: element.uri, cause: error};
       // throw new Error("Encountered exception", {cause: error});
       // metricsObj.updateFailedCalls();
       // req.log.warn({err: err_msg});
