@@ -295,7 +295,7 @@ router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024
 
 	metricsObj.updateFailedCalls(retryAfterSecs);
 
-        console.log(`*****\napirouter():\n  App Id=${appId}\n  Target Endpoint=${element.uri}\n  Status=${status}\n  Message=${JSON.stringify(data)}\n  Status Text=${statusText}\n  Retry seconds=${retryAfterSecs}\n*****`);
+        console.log(`*****\napirouter():\n  App Id: ${appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n  Retry seconds: ${retryAfterSecs}\n*****`);
       }
       else if ( status === 400 ) { // Invalid prompt
 
@@ -316,14 +316,14 @@ router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024
         };
         // ID03012024.en
 
-        console.log(`*****\napirouter():\n  App Id=${appId}\n  Target Endpoint=${element.uri}\n  Status=${status}\n  Message=${JSON.stringify(data)}\n  Status Text=${statusText}\n*****`);
+        console.log(`*****\napirouter():\n  App Id: ${appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n*****`);
 
         res.status(status).json(data); // 400 = Bad Request
         return;
       };
     }
     catch (error) {
-      err_msg = {reqId: req.id, targetUri: element.uri, cause: error};
+      err_msg = {appId: appId, reqId: req.id, targetUri: element.uri, cause: error};
       // throw new Error("Encountered exception", {cause: error});
       // metricsObj.updateFailedCalls();
       // req.log.warn({err: err_msg});
