@@ -332,10 +332,11 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
 **IMPORTANT**:
 
-For generating OpenAI API traffic and/or simulating API workload, one of the following methods can be used.  See below.
+- For invoking the model endpoints exposed by API Gateway from ***LangChain*** application/framework, the OpenAI base URL will need to be set to the API Gateway load balancer / router (/lb) endpoint as described above.  This URL can be specified as the value of the environment variable _AZURE_OPENAI_BASE_PATH_ or specified as part of the OpenAI configuration object. Refer to sample script in `./samples/lang-chain` directory.
 
-- Update and use the provided shell script `./tests/test-oai-api-gateway.sh` with sample data.  For an AI Application, observe how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
-- For simulating continuous API traffic and performing comprehensive load testing (capacity planning), use *Azure Load Testing* PaaS service.
+- For generating OpenAI API traffic and/or simulating API workload, one of the following methods can be used.  See below.
+  - Update and use the provided shell script `./tests/test-oai-api-gateway.sh` with sample data.  For an AI Application, observe how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
+  - For simulating continuous API traffic and performing comprehensive load testing (capacity planning), use *Azure Load Testing* PaaS service.
 
 ### B. Containerize the API Gateway and deploy it on the Virtual Machine
 

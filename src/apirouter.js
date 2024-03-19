@@ -10,6 +10,7 @@
  * ID02132024: ganrad : Use a single data plane to serve Azure OpenAI models for multiple AI applications.
  * ID02202024: ganrad : Introduced semantic caching / retrieval functionality.
  * ID03012024: ganrad : Introduced prompt persistence.
+ * ID03192024: ganrad : Added support for LangChain SDK (OpenAI)
  *
 */
 
@@ -86,7 +87,10 @@ router.get("/metrics", (req, res) => {
 });
 
 // Intelligent router endpoint
-router.post("/lb/:app_id", async (req, res) => {
+// router.post("/lb/:app_id", async (req, res) => { // ID03192024.o
+router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024.n
+  console.log(`*****\napirouter(): Request\n  URI: ${req.originalUrl}\n  ID: ${req.id}\n*****`); // ID03192024.n
+
   const eps = req.targeturis;
   const cdb = req.cacheconfig;
 
