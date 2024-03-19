@@ -414,7 +414,7 @@ Prior to turning on *Semantic Caching* feature for an AI Application (in Product
   # To use L2 distance, set the distance function to 'vector_l2_ops'. Similarly, for IP distance function use 'vector_ip_ops'.
   ```
 - During functional tests, setting the cosine similarity score threshold to a higher value *> 0.95* was found to deliver more accurate search results. 
-- The *Inner Product* distance function has not be thoroughly tested with sample data.  Prior to using this function, it is advised to run functional tests and verify results.
+- The *Inner Product* distance function has not been thoroughly tested with sample data.  Prior to using this function, it is advised to run functional tests and verify results.
 
 **Invalidating Cached Entries**
 
@@ -626,6 +626,7 @@ Prior to turning on *Semantic Caching* feature for an AI Application (in Product
    Metric name | Description
    ----------- | -----------
    successApiCalls | Number of API calls successfully processed by the API Gateway.
+   cachedApiCalls | Number of API call responses served from the API Gateway cache.
    failedApiCalls | Number of API calls which couldn't be completed. One of the reasons could be that all backend endpoints were busy/throttled.
    totalApiCalls | Total number of API calls received by this API Gateway Server instance.
 
