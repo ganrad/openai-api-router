@@ -6,7 +6,7 @@
  * Date: 03-01-2024
  *
  * Notes:
- *
+ * ID04112024: ganrad: Added 'completion' and 'user' columns to table 'apigtwyprompts'
  *
 */
 
@@ -15,7 +15,8 @@ const pgvector = require('pgvector/pg');
 const pgConfig = require('./pg-config');
 
 const createTblStmts = [
-  "CREATE TABLE apigtwyprompts (id serial PRIMARY KEY, requestid VARCHAR(100), aiappname VARCHAR(100), prompt JSON, timestamp_ TIMESTAMPTZ default current_timestamp)"
+  // "CREATE TABLE apigtwyprompts (id serial PRIMARY KEY, requestid VARCHAR(100), aiappname VARCHAR(100), prompt JSON, timestamp_ TIMESTAMPTZ default current_timestamp)" // ID04112024.o
+  "CREATE TABLE apigtwyprompts (id serial PRIMARY KEY, requestid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, timestamp_ TIMESTAMPTZ default current_timestamp)" // ID04112024.n
   ];
 
 const dropTblStmts = [

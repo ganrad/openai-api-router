@@ -9,6 +9,7 @@
  * Date: 02-20-2024
  *
  * Notes:
+ * ID04112024: ganrad: Match AI app name/id when selecting cached entries
  *
 */
 const pgvector = require('pgvector/pg');
@@ -25,8 +26,12 @@ function constructQuery(strings, operator, srchDistance) {
 }
 
 const queryStmts = [
-  "SELECT completion, 1 - (embedding <=> $1) as similarity FROM apigtwycache WHERE 1 - (embedding <=> $1) > $2 ORDER BY embedding <=> $1 LIMIT $3",
-  "SELECT completion, embedding <-> $1 as similarity FROM apigtwycache WHERE embedding <-> $1 < $2 ORDER BY embedding <-> $1 LIMIT $3",
+  // "SELECT completion, 1 - (embedding <=> $1) as similarity FROM apigtwycache WHERE 1 - (embedding <=> $1) > $2 ORDER BY embedding <=> $1 LIMIT $3", ID04112024.o
+  // Cosine similarity search
+  "SELECT completion, 1 - (embedding <=> $1) as similarity FROM apigtwycache WHERE (aiappname = $4) AND (1 - (embedding <=> $1) > $2) ORDER BY embedding <=> $1 LIMIT $3", // ID04112024.n
+  // "SELECT completion, embedding <-> $1 as similarity FROM apigtwycache WHERE embedding <-> $1 < $2 ORDER BY embedding <-> $1 LIMIT $3", ID04112024.o
+  // Euclidean or L2 search
+  "SELECT completion, embedding <-> $1 as similarity FROM apigtwycache WHERE (aiappname = $4) AND (embedding <-> $1 < $2) ORDER BY embedding <-> $1 LIMIT $3", // ID04112024.n
   "SELECT completion FROM apigtwycache ORDER BY embedding" // Requires an index!
 ];
 
@@ -96,7 +101,8 @@ class CacheDao {
             [
               pgvector.toSql(apiResp.embedding),
               this.srchDistance,
-              1
+              1,
+	      appId // ID04112024.n
             ]
           );
 

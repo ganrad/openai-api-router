@@ -3,12 +3,13 @@
  * Description: This class serves as a data access object (DAO) for all 
  * entities used by API Gateway - Prompts. Contains methods to 
  *   1) Query and retrieve persisted entities and 
- *   2) Store entities in the underlying database
+ *   2) Store entities in the underlying database table
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 03-01-2024
  *
  * Notes:
+ * ID04112024: ganrad: Save completion (OAI Response) and uname (user name) in 'apigtwyprompts' table
  *
 */
 const pgvector = require('pgvector/pg');
@@ -28,7 +29,8 @@ const promptQueryStmts = [
 ];
 
 const promptInsertStmts = [
-  "INSERT INTO apigtwyprompts (requestid, aiappname, prompt) VALUES ($1,$2,$3) RETURNING id"
+  // "INSERT INTO apigtwyprompts (requestid, aiappname, prompt) VALUES ($1,$2,$3) RETURNING id" ID04112024.o
+  "INSERT INTO apigtwyprompts (requestid, aiappname, prompt, completion, uname) VALUES ($1,$2,$3,$4,$5) RETURNING id" // ID04112024.n
   ];
 
 class PersistDao {
