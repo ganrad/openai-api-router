@@ -1,0 +1,29 @@
+$schema: https://azuremlschemas.azureedge.net/promptflow/latest/Flow.schema.json
+environment:
+  python_requirements_txt: requirements.txt
+inputs:
+  topic:
+    type: string
+    default: Twins 
+outputs:
+  output:
+    type: string
+    reference: ${llm.output}
+nodes:
+- name: topic_prompt
+  type: prompt
+  source:
+    type: code
+    path: test-flow.jinja2
+  inputs:
+    text: ${inputs.topic}
+- name: llm
+  type: python
+  source:
+    type: code
+    path: test-flow.py
+  inputs:
+    prompt: ${topic_prompt.output}
+    # Set the deployment_name to the AI Application ID configured in the API Gateway!
+    deployment_name: aidocusearchapp
+    max_tokens: "120"

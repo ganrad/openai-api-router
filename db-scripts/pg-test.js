@@ -16,10 +16,10 @@ async function createDBResources() {
   let cacheDao = new PersistDao(pdb,tblNames.cache);
   await cacheDao.queryTable('001',1,null);
 
+  console.log("***** End of Cache Table; Begin Prompts Table; *****");
+
   await pdb.dropTable();
   await pdb.createTable(0);
-
-  console.log("***** End of Cache Table; Begin Prompts Table; *****");
 
   // Query rows in 'Prompts' table
   let promptDao = new PersistDao(pdb,tblNames.prompts);

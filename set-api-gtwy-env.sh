@@ -9,10 +9,11 @@ export API_GATEWAY_KEY="abcxyz"
 
 # Metrics collection env variables
 
-# Collect metrics hourly
+# Specify metrics collection interval in minutes
 export API_GATEWAY_METRICS_CINTERVAL=60
 
-# Store metrics for the past one week (24 * 7)
+# Specify the number of metrics collection buckets to save (in memory).
+# For instance, the example below stores metrics for the past one week (24 * 7)
 export API_GATEWAY_METRICS_CHISTORY=168
 
 # (Optional) Set this value to Azure Application Insights resource connection string

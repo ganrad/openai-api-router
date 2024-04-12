@@ -11,7 +11,8 @@
  * ID02202024: ganrad : Introduced semantic caching / retrieval functionality.
  * ID03012024: ganrad : Introduced prompt persistence.
  * ID03192024: ganrad : Added support for LangChain SDK (OpenAI)
- *
+ * ID04102024: ganrad : Added support for Azure OpenAI SDK, PromptFlow SDK (Azure AI Studio)
+ * ID04112024: ganrad : Save completion (OAI Response) and user in 'apigtwyprompts' table
 */
 
 const fetch = require("node-fetch");
@@ -88,9 +89,8 @@ router.get("/metrics", (req, res) => {
 
 // Intelligent router endpoint
 // router.post("/lb/:app_id", async (req, res) => { // ID03192024.o
-router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024.n
-  console.log(`*****\napirouter(): Request\n  URI: ${req.originalUrl}\n  ID: ${req.id}\n*****`); // ID03192024.n
-
+// router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024.n, ID04102024.o
+router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], async (req, res) => { // ID04102024.n
   const eps = req.targeturis;
   const cdb = req.cacheconfig;
 
@@ -120,12 +120,13 @@ router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024
     };
     appConnections.loaded = true;
   };
+  console.log(`*****\napirouter(): Request\n  URI: ${req.originalUrl}\n  Request ID: ${req.id}\n  Application ID: ${appId}`); // ID04102024.n
 
   if ( ! appConnections.getAllConnections().has(appId) ) {
     err_obj = {
       endpointUri: req.originalUrl,
       currentDate: new Date().toLocaleString(),
-      err_msg: `Application ID [${appId}] not found. Unable to process request.`
+      err_msg: `AI Application ID [${appId}] not found. Unable to process request.`
     };
 
     res.status(400).json(err_obj); // 400 = Bad request
@@ -270,7 +271,9 @@ router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024
           let values = [
             req.id,
             appId,
-            req.body
+            req.body,
+	    data, // ID04112024.n
+	    req.body.user // ID04112024.n
           ];
 
           await promptDao.storeEntity(
@@ -297,7 +300,7 @@ router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024
 
         console.log(`*****\napirouter():\n  App Id: ${appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n  Retry seconds: ${retryAfterSecs}\n*****`);
       }
-      else if ( status === 400 ) { // Invalid prompt
+      else if ( status === 400 ) { // Invalid prompt ~ content filtered
 
         // ID03012024.sn
         let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
@@ -306,7 +309,9 @@ router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024
           let values = [
             req.id,
             appId,
-            req.body
+            req.body,
+	    data, // ID04112024.n
+	    req.body.user // ID04112024.n
           ];
 
           await promptDao.storeEntity(
