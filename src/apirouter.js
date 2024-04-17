@@ -13,6 +13,8 @@
  * ID03192024: ganrad : Added support for LangChain SDK (OpenAI)
  * ID04102024: ganrad : Added support for Azure OpenAI SDK, PromptFlow SDK (Azure AI Studio)
  * ID04112024: ganrad : Save completion (OAI Response) and user in 'apigtwyprompts' table
+ * ID04172024: ganrad : Return http status 429 when all backend endpoints are busy (instead of 503 ~ server busy). Azure OAI SDK expects 429 for retries!
+ *
 */
 
 const fetch = require("node-fetch");
@@ -97,7 +99,7 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
   let response;
   let data;
   let retryAfter = 0;
-  let err_obj = null;
+  let err_obj = null, err_msg = null;
 
   let appId = req.params.app_id; // The AI Application ID
   if ( ! appConnections.loaded ) {
@@ -126,7 +128,7 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
     err_obj = {
       endpointUri: req.originalUrl,
       currentDate: new Date().toLocaleString(),
-      err_msg: `AI Application ID [${appId}] not found. Unable to process request.`
+      errorMessage: `AI Application ID [${appId}] not found. Unable to process request.`
     };
 
     res.status(400).json(err_obj); // 400 = Bad request
@@ -138,7 +140,7 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
     err_obj = {
       endpointUri: req.originalUrl,
       currentDate: new Date().toLocaleString(),
-      err_msg: "Stream mode is not yet supported! Unable to process request."
+      errorMessage: "Stream mode is not yet supported! Unable to process request."
     };
 
     res.status(400).json(err_obj); // 400 = Bad request
@@ -333,26 +335,33 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
       // metricsObj.updateFailedCalls();
       // req.log.warn({err: err_msg});
       console.log(`*****\napirouter():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
+      break; // ID04172024.n
     };
   }; // end of for
 
   instanceFailedCalls++;
-  let http_code = 503; // 503 = (Default) Server is busy!
+  // let http_code = 503; // 503 = (Default) Server is busy! ID04172024.o
+  let http_code = 429; // 503 = (Default) Server is busy! // ID04172024.n
 
   if ( retryAfter > 0 ) {
     err_obj = {
       endpointUri: req.originalUrl,
       currentDate: new Date().toLocaleString(),
-      err_msg: `All backend servers are too busy! Retry after [${retryAfter}] seconds ...`
+      errorMessage: `All backend OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`
     };
 
     res.set('retry-after', retryAfter); // Set the retry-after response header
   }
   else {
+    // ID04172024.sn
+    if ( err_msg == null )
+      err_msg = "Internal server error. Unable to process request. Check logs."
+    // ID04172024.en
     err_obj = {
       endpointUri: req.originalUrl,
       currentDate: new Date().toLocaleString(),
-      err_msg: "Internal server error. Unable to process request. Check logs."
+      // err_msg: "Internal server error. Unable to process request. Check logs." ID04172024.o
+      errorMessage: err_msg
     };
 
     http_code = 500 // 500 = Internal server error
