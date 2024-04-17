@@ -100,7 +100,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
 3. Install PostgreSQL database server.
 
-   **NOTE**: If you do not intend to use *Semantic Caching* and/or *Prompt Persistence* features, you can safely skip this step and go to Step 4.
+   > [!NOTE]
+   > If you do not intend to use *Semantic Caching* and/or *Prompt Persistence* features, you can safely skip this step and go to Step 4.
 
    Refer to the installation instructions [here](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/quickstart-create-server-portal) to install *Azure Database for PostgreSQL*.  Create a new database and give it a suitable name.  Note down the database name, server user name and password.  Save it in a secure location as we will need this info. in a subsequent step (below).
 
@@ -177,7 +178,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    API_GATEWAY_VECTOR_AIAPP | Name of the AI application that exposes endpoints for data *embedding* model. This value is required if semantic caching feature is enabled | No | None
    API_GATEWAY_SRCH_ENGINE | The vector search engine used by semantic caching feature | No | Postgresql/pgvector
 
-   **NOTE**: You can update and run the shell script `./set-api-gtwy-env.sh` to set and export the environment variables.
+   > [!NOTE]
+   > You can update and run the shell script `./set-api-gtwy-env.sh` to set and export the environment variables.
 
 6. Run the API Gateway server.
 
@@ -379,7 +381,8 @@ Before getting started with this section, make sure you have installed a contain
 
    Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
 
-   **NOTE**: You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
+   > [!TIP]
+   > You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
 
 **IMPORTANT**:
 
