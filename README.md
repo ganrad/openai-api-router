@@ -100,7 +100,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
 3. Install PostgreSQL database server.
 
-   > [!NOTE]
+   > **NOTE**:
    > If you do not intend to use *Semantic Caching* and/or *Prompt Persistence* features, you can safely skip this step and go to Step 4.
 
    Refer to the installation instructions [here](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/quickstart-create-server-portal) to install *Azure Database for PostgreSQL*.  Create a new database and give it a suitable name.  Note down the database name, server user name and password.  Save it in a secure location as we will need this info. in a subsequent step (below).
@@ -178,7 +178,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    API_GATEWAY_VECTOR_AIAPP | Name of the AI application that exposes endpoints for data *embedding* model. This value is required if semantic caching feature is enabled | No | None
    API_GATEWAY_SRCH_ENGINE | The vector search engine used by semantic caching feature | No | Postgresql/pgvector
 
-   > [!NOTE]
+   > **NOTE**:
    > You can update and run the shell script `./set-api-gtwy-env.sh` to set and export the environment variables.
 
 6. Run the API Gateway server.
@@ -333,17 +333,17 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
 
-> [!IMPORTANT]
+**IMPORTANT**:
 
-> - For invoking the model deployment endpoints exposed by API Gateway from a ***LangChain*** LLM application (/framework), two environment variables must be set. See below.
->  - _AZURE_OPENAI_BASE_PATH_: Set the value of this variable to the API Gateway load balancer / router endpoint URI (/lb). This URI can also be specified as part of the OpenAI configuration object (in code).
->  - _AZURE_OPENAI_API_DEPLOYMENT_NAME_: Set the value of this variable to the *AI Application* name/ID configured in the API Gateway. This value can also be specified as part of the OpenAI configuration object (in code).
+- For invoking the model deployment endpoints exposed by API Gateway from a ***LangChain*** LLM application (/framework), two environment variables must be set. See below.
+  - _AZURE_OPENAI_BASE_PATH_: Set the value of this variable to the API Gateway load balancer / router endpoint URI (/lb). This URI can also be specified as part of the OpenAI configuration object (in code).
+  - _AZURE_OPENAI_API_DEPLOYMENT_NAME_: Set the value of this variable to the *AI Application* name/ID configured in the API Gateway. This value can also be specified as part of the OpenAI configuration object (in code).
 
->  Refer to the sample script provided in `./samples/lang-chain` directory for details.
+Refer to the sample script provided in `./samples/lang-chain` directory for details.
 
-> - For generating OpenAI API traffic and/or simulating API workload, one of the following methods can be used.  See below.
->  - Update and use the provided shell script `./tests/test-oai-api-gateway.sh` with sample data.  For an AI Application, observe how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
->  - For simulating continuous API traffic and performing comprehensive load testing (capacity planning), use *Azure Load Testing* PaaS service.
+- For generating OpenAI API traffic and/or simulating API workload, one of the following methods can be used.  See below.
+  - Update and use the provided shell script `./tests/test-oai-api-gateway.sh` with sample data.  For an AI Application, observe how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
+  - For simulating continuous API traffic and performing comprehensive load testing (capacity planning), use *Azure Load Testing* PaaS service.
 
 ### B. Containerize the API Gateway and deploy it on the Virtual Machine
 
@@ -381,7 +381,7 @@ Before getting started with this section, make sure you have installed a contain
 
    Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
 
-   > [!TIP]
+   > **TIP**:
    > You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the API Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
 
 **IMPORTANT**:
