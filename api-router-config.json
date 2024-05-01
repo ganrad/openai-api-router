@@ -1,7 +1,65 @@
 {
   "applications": [
     {
+      "appId": "language-app",
+      "description": "Azure AI Language Service test application",
+      "appType": "azure_language",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "endpoints": [
+        {
+          "uri": "https://gr-dev-lang.cognitiveservices.azure.com/language/:analyze-text?api-version=2022-05-01",
+          "apikey": "d3aa1fa1"
+        }
+      ]
+    },
+    {
+      "appId": "translate-app",
+      "description": "Azure AI Translator Service test application",
+      "appType": "azure_translator",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "endpoints": [
+        {
+          "uri": "https://api.cognitive.microsofttranslator.com/",
+          "apikey": "644b68dc"
+        }
+      ]
+    },
+    {
+      "appId": "search-app-ak-stip-v2",
+      "description": "Azure AI Search Service test application - I",
+      "appType": "azure_search",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "endpoints": [
+        {
+          "uri": "https://gr-dev-rag-ais.search.windows.net/indexes/ak-stip-v2/docs/search?api-version=2023-11-01",
+          "apikey": "PjIU2Q44"
+        }
+      ]
+    },
+    {
+      "appId": "search-app-ak-stip-aisrch-iv",
+      "description": "Azure AI Search Service test application - II (Uses integrated vectorization)",
+      "appType": "azure_search",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "endpoints": [
+        {
+          "uri": "https://gr-dev-rag-ais.search.windows.net/indexes/ak-stip-aisrch-iv/docs/search?api-version=2023-10-01-preview",
+          "apikey": "SeAK34Yj"
+        }
+      ]
+    },
+    {
       "appId": "vectorizedata",
+      "description": "Application that uses OAI model to generate data embeddings/vectors",
+      "appType": "azure_oai",
       "cacheSettings": {
         "useCache": false
       },
@@ -14,38 +72,42 @@
     },
     {
       "appId": "aichatbotapp",
+      "description": "A test AI Assistant / Chatbot application",
+      "appType": "azure_oai",
       "cacheSettings": {
         "useCache": true,
         "searchType": "CS",
-        "searchDistance": 0.90,
+        "searchDistance": 0.95,
         "searchContent": {
           "term": "messages",
           "includeRoles": "system,user,assistant"
         },
-        "entryExpiry": "7 days"
+	"entryExpiry": "2 days"
       },
       "endpoints": [
         {
-          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2023-05-15",
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01",
           "apikey": "2f0d266d"
-        }
+	}
       ]
     },
     {
       "appId": "aidocusearchapp",
+      "description": "A test AI text generation application",
+      "appType": "azure_oai",
       "cacheSettings": {
         "useCache": true,
         "searchType": "CS",
-        "searchDistance": 0.90,
+        "searchDistance": 0.95,
         "searchContent": {
           "term": "prompt"
         },
-        "entryExpiry": "30 minutes"
+	"entryExpiry": "5 minutes"
       },
       "endpoints": [
         {
           "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
-          "apikey": "9eca9ec1"
+          "apikey": "2e1e4be4"
 	},
         {
           "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15",

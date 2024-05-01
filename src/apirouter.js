@@ -14,19 +14,28 @@
  * ID04102024: ganrad : Added support for Azure OpenAI SDK, PromptFlow SDK (Azure AI Studio)
  * ID04112024: ganrad : Save completion (OAI Response) and user in 'apigtwyprompts' table
  * ID04172024: ganrad : Return http status 429 when all backend endpoints are busy (instead of 503 ~ server busy). Azure OAI SDK expects 429 for retries!
+ * ID04222024: ganrad : Implemented multiple enhancements:
+ * 			- Renamed solution to Azure 'AI Application' API Gateway
+ * 			- Router config updates - added appType and description fields to router config
+ * 			- Added support for AI Language service APIs
+ * 			- Added support for AI Translator service APIs
+ * 			- Added support for AI Search service APIs
+ * 			- More robust exception handling
+ * 			- Re-structured and streamlined code
+ * ID04272024: ganrad : Centralized logging with winstonjs
  *
 */
 
-const fetch = require("node-fetch");
+const path = require('path');
+const scriptName = path.basename(__filename);
+
 const express = require("express");
-const EndpointMetrics = require("./utilities/ep-metrics.js");
+const EndpointMetricsFactory = require("./utilities/ep-metrics-factory.js"); // ID04222024.n
 const AppConnections = require("./utilities/app-connection.js");
 const AppCacheMetrics = require("./utilities/cache-metrics.js"); // ID02202024.n
-const CacheDao = require("./utilities/cache-dao.js"); // ID02202024.n
-const cachedb = require("./services/cp-pg.js"); // ID02202024.n
-const {tblNames, PersistDao} = require("./utilities/persist-dao.js"); // ID03012024.n
-const persistdb = require("./services/pp-pg.js"); // ID03012024.n
-const pgvector = require("pgvector/pg"); // ID02202024.n
+const { AzAiServices } = require("./utilities/app-gtwy-constants.js");
+const AiProcessorFactory = require("./processors/ai-processor-factory.js"); // ID04222024.n
+const logger = require("./utilities/logger.js"); // ID04272024.n
 const router = express.Router();
 
 // Total API calls handled by this router instance
@@ -74,10 +83,10 @@ router.get("/metrics", (req, res) => {
     hostName: process.env.API_GATEWAY_HOST,
     listenPort: process.env.API_GATEWAY_PORT,
     instanceName: process.env.API_GATEWAY_NAME,
-    collectionInterval: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
+    collectionIntervalMins: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
     historyCount: Number(process.env.API_GATEWAY_METRICS_CHISTORY),
     applicationMetrics: conList,
-    successApiCalls: (instanceCalls - instanceFailedCalls),
+    successApiCalls: (instanceCalls - instanceFailedCalls) - cachedCalls, // ID04222024.n
     cachedApiCalls: cachedCalls, // ID02202024.n
     failedApiCalls: instanceFailedCalls,
     totalApiCalls: instanceCalls,
@@ -93,36 +102,31 @@ router.get("/metrics", (req, res) => {
 // router.post("/lb/:app_id", async (req, res) => { // ID03192024.o
 // router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024.n, ID04102024.o
 router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], async (req, res) => { // ID04102024.n
-  const eps = req.targeturis;
-  const cdb = req.cacheconfig;
+  const eps = req.targeturis; // AI application configuration
+  const cdb = req.cacheconfig; // Global cache configuration
 
-  let response;
-  let data;
-  let retryAfter = 0;
-  let err_obj = null, err_msg = null;
-
+  let err_obj = null;
   let appId = req.params.app_id; // The AI Application ID
+
   if ( ! appConnections.loaded ) {
-    console.log("Endpoint Metrics:");
+    // console.log("apirouter(): Endpoint Metrics");
     for (const application of eps.applications) {
       // Target endpoint metrics cache -
-      console.log(`*****\n  AI Application: ${application.appId}`);
+      // console.log(`*****\n  AI Application: ${application.appId}\n  Description: ${application.description}\n  App Type: ${application.appType}`);
+      logger.log({level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName,application.appId,application.description,application.appType]});
       let epinfo = new Map();
+      let epmetrics = null;
       for (const element of application.endpoints) {
-        epinfo.set(
-          element.uri,
-          new EndpointMetrics(
-            element.uri,
-            process.env.API_GATEWAY_METRICS_CINTERVAL,
-            process.env.API_GATEWAY_METRICS_CHISTORY));
+	epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType,element.uri);
+
+        epinfo.set(element.uri,epmetrics);
       };
       appConnections.addConnection(application.appId, epinfo);
-      if ( cdb.cacheResults && (application.appId !== cdb.embeddApp) )
+      if ( cdb.cacheResults && (application.appId !== cdb.embeddApp) && (application.appType === AzAiServices.OAI) )
         cacheMetrics.addAiApplication(application.appId); // ID02202024.n
     };
     appConnections.loaded = true;
   };
-  console.log(`*****\napirouter(): Request\n  URI: ${req.originalUrl}\n  Request ID: ${req.id}\n  Application ID: ${appId}`); // ID04102024.n
 
   if ( ! appConnections.getAllConnections().has(appId) ) {
     err_obj = {
@@ -149,225 +153,75 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
 
   instanceCalls++;
   
-  // ID02202024.sn
-  let appEndpoints = null;
-  let useCache = false;
-  let srchType = null;
-  let srchDistance = null;
-  let srchContent = null;
+  let appConfig = null;
   for (const application of eps.applications) {
     if ( application.appId === appId ) {
-      appEndpoints = application.endpoints;
-      useCache = application.cacheSettings.useCache;
-      srchType = application.cacheSettings.searchType;
-      srchDistance = application.cacheSettings.searchDistance;
-      srchContent = application.cacheSettings.searchContent;
+      if ( application.appType === AzAiServices.OAI )
+        appConfig = {
+          appId: application.appId,
+          appType: application.appType,
+	  appEndpoints: application.endpoints,
+	  useCache: application.cacheSettings.useCache,
+	  srchType: application.cacheSettings.searchType,
+	  srchDistance: application.cacheSettings.searchDistance,
+	  srchContent: application.cacheSettings.searchContent
+	};
+      else
+        appConfig = {
+          appId: application.appId,
+          appType: application.appType,
+	  appEndpoints: application.endpoints
+	};
 
       break;
     };
   };
 
-  // Has caching been disabled on the request using query param ~
-  // 'use_cache=false' ?
-  if ( useCache && req.query.use_cache )
-    useCache = req.query.use_cache === 'false' ? false : useCache;  
-
-  let vecEndpoints = null;
-  let embeddedPrompt = null;
-  let cacheDao = null;
-  if ( cdb.cacheResults && useCache ) { // Is caching enabled?
-    for ( const application of eps.applications) {
-      if ( application.appId == cdb.embeddApp ) {
-        vecEndpoints = application.endpoints;
-
-        break;
-      };
+  let response;
+  let processor =  new AiProcessorFactory().getProcessor(appConfig.appType);
+  if ( processor ) {
+    switch (appConfig.appType) {
+      case AzAiServices.OAI:
+        response = await processor.processRequest(
+          req,
+          appConfig,
+          appConnections,
+	  cacheMetrics);
+	break;
+      case AzAiServices.AiSearch:
+      case AzAiServices.Language:
+      case AzAiServices.Translator:
+	response = await processor.processRequest(
+	  req,
+	  appConfig,
+	  appConnections);
+        break;     
     };
-
-    // Perform semantic search using input prompt
-    cacheDao = new CacheDao(
-      appConnections.getConnection(cdb.embeddApp),
-      vecEndpoints,
-      srchType,
-      srchDistance,
-      srchContent);
-
-    const {rowCount, simScore, completion, embeddings} = 
-      await cacheDao.queryVectorDB(
-        req.id,
-        appId,
-        req.body,
-        cachedb
-      );
-
-    if ( rowCount === 1 ) { // Cache hit!
-      cachedCalls++;
-      cacheMetrics.updateCacheMetrics(appId, simScore);
-
-      res.status(200).json(completion); // 200 = All OK
-
-      return;
-    }
-    else
-      embeddedPrompt = embeddings;
-  };
-  // ID02202024.en
-
-  let epdata = appConnections.getConnection(appId);
-  let stTime = Date.now();
-  for (const element of appEndpoints) {
-    let metricsObj = epdata.get(element.uri); 
-    let healthArr = metricsObj.isEndpointHealthy();
-    // console.log(`******isAvailable=${healthArr[0]}; retryAfter=${healthArr[1]}`);
-    if ( ! healthArr[0] ) {
-      if ( retryAfter > 0 )
-	  retryAfter = (healthArr[1] < retryAfter) ? healthArr[1] : retryAfter;
-	else
-	  retryAfter = healthArr[1];
-      continue;
-    };
-
-    try {
-      // req.pipe(request(targetUrl)).pipe(res);
-      response = await fetch(element.uri, {
-        method: req.method,
-	headers: {'Content-Type': 'application/json', 'api-key': element.apikey},
-        body: JSON.stringify(req.body)
-      });
-      data = await response.json();
-
-      let { status, statusText, headers } = response;
-      if ( status === 200 ) { // All Ok
-        let respTime = Date.now() - stTime;
-	metricsObj.updateApiCallsAndTokens(
-          data.usage.total_tokens,
-          respTime);
-
-        // ID02202024.sn
-        if ( cacheDao && embeddedPrompt ) { // Cache results ?
-          let prompt = req.body.prompt;
-          if ( ! prompt )
-            prompt = JSON.stringify(req.body.messages);
-
-          let values = [
-            req.id,
-            appId,
-            // req.body.prompt,
-            prompt,
-            pgvector.toSql(embeddedPrompt),
-            data
-          ];
-
-          await cacheDao.storeEntity(
-            0,
-            values,
-            cachedb
-          );
-        };
-        // ID02202024.en
-
-        // ID03012024.sn
-        let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
-        if ( persistPrompts ) { // Persist prompts ?
-          let promptDao = new PersistDao(persistdb, tblNames.prompts);
-          let values = [
-            req.id,
-            appId,
-            req.body,
-	    data, // ID04112024.n
-	    req.body.user // ID04112024.n
-          ];
-
-          await promptDao.storeEntity(
-            0,
-            values
-          );
-        };
-        // ID03012024.en
-
-        res.status(200).json(data); // 200 = All OK
-
-        return;
-      }
-      else if ( status === 429 ) { // endpoint is busy so try next one
-	let retryAfterSecs = headers.get('retry-after');
-	// let retryAfterMs = headers.get('retry-after-ms');
-
-	if ( retryAfter > 0 )
-	  retryAfter = (retryAfterSecs < retryAfter) ? retryAfterSecs : retryAfter;
-	else
-	  retryAfter = retryAfterSecs;
-
-	metricsObj.updateFailedCalls(retryAfterSecs);
-
-        console.log(`*****\napirouter():\n  App Id: ${appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n  Retry seconds: ${retryAfterSecs}\n*****`);
-      }
-      else if ( status === 400 ) { // Invalid prompt ~ content filtered
-
-        // ID03012024.sn
-        let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
-        if ( persistPrompts ) { // Persist prompts ?
-          let promptDao = new PersistDao(persistdb, tblNames.prompts);
-          let values = [
-            req.id,
-            appId,
-            req.body,
-	    data, // ID04112024.n
-	    req.body.user // ID04112024.n
-          ];
-
-          await promptDao.storeEntity(
-            0,
-            values
-          );
-        };
-        // ID03012024.en
-
-        console.log(`*****\napirouter():\n  App Id: ${appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n*****`);
-
-        res.status(status).json(data); // 400 = Bad Request
-        return;
-      };
-    }
-    catch (error) {
-      err_msg = {appId: appId, reqId: req.id, targetUri: element.uri, cause: error};
-      // throw new Error("Encountered exception", {cause: error});
-      // metricsObj.updateFailedCalls();
-      // req.log.warn({err: err_msg});
-      console.log(`*****\napirouter():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
-      break; // ID04172024.n
-    };
-  }; // end of for
-
-  instanceFailedCalls++;
-  // let http_code = 503; // 503 = (Default) Server is busy! ID04172024.o
-  let http_code = 429; // 503 = (Default) Server is busy! // ID04172024.n
-
-  if ( retryAfter > 0 ) {
-    err_obj = {
-      endpointUri: req.originalUrl,
-      currentDate: new Date().toLocaleString(),
-      errorMessage: `All backend OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`
-    };
-
-    res.set('retry-after', retryAfter); // Set the retry-after response header
   }
   else {
-    // ID04172024.sn
-    if ( err_msg == null )
-      err_msg = "Internal server error. Unable to process request. Check logs."
-    // ID04172024.en
-    err_obj = {
-      endpointUri: req.originalUrl,
-      currentDate: new Date().toLocaleString(),
-      // err_msg: "Internal server error. Unable to process request. Check logs." ID04172024.o
-      errorMessage: err_msg
+     err_obj = {
+       endpointUri: req.originalUrl,
+       currentDate: new Date().toLocaleString(),
+       errorMessage: `Application type [${appConfig.appType}] is not yet supported. Check the router configuration for AI application [${appId}].`
     };
 
-    http_code = 500 // 500 = Internal server error
+    response = {
+      http_code: 400,
+      data: err_obj
+    };
   };
-    
-  res.status(http_code).json(err_obj);
+
+  if ( response.cached )
+    cachedCalls++;
+
+  if ( response.http_code !== 200 ) {
+    instanceFailedCalls++;
+
+    if ( response.http_code === 429 )
+      res.set('retry-after', response.retry_after); // Set the retry-after response header
+  };
+
+  res.status(response.http_code).json(response.data);
 });
 
 module.exports.apirouter = router;
@@ -379,5 +233,6 @@ module.exports.reconfigEndpoints = function () {
 
   appConnections = new AppConnections(); // reset the application connections cache;
   cacheMetrics = new AppCacheMetrics(); // reset the application cache metrics
-  console.log("apirouter(): Application connections and metrics cache has been successfully reset");
+  // console.log("apirouter(): Application connections and metrics cache has been successfully reset");
+  logger.log({level: "info", message: "[%s] apirouter(): Application connections and metrics cache has been successfully reset", splat: [scriptName]});
 }

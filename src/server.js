@@ -1,7 +1,7 @@
 /**
- * Name: Azure OpenAI API Gateway/Router
- * Description: A light-weight API Gateway that intelligently distributes incoming OpenAI requests
- * to backend model deployments on Azure.
+ * Name: AI Application API Gateway/Router
+ * Description: A light-weight API Gateway that intelligently distributes AI Application API requests
+ * to backend AI Services endpoints on Azure.
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 01-26-2024
@@ -11,43 +11,56 @@
  * ID02132024: ganrad : Provide a single data plane for multiple AI applications.
  * ID02202024: ganrad : Introduced semantic caching / retrieval functionality.
  * ID03012024: ganrad : Introduced prompt persistence.
+ * ID04272024: ganrad : 90% server logging moved to winstonjs.
+ * ID04302024: ganrad : (Bugfix) Each time 'reconfig' endpoint is invoked, a new cron scheduler is started. There should only
+ * be one cache invalidator running per gateway/router instance.
 */
+
+// ID04272024.sn
+const path = require('path');
+const scriptName = path.basename(__filename);
+
+const wlogger = require('./utilities/logger.js');
+wlogger.log({level: "info", message: "[%s] Starting initialization of Azure AI Services Gateway ...", splat: [scriptName]});
+// ID04272024.sn
 
 // ID02082024.sn: Configure Azure Monitor OpenTelemetry for instrumenting API gateway requests.
 const { useAzureMonitor } = require("@azure/monitor-opentelemetry");
 let azAppInsightsConString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
 if ( azAppInsightsConString ) {
    useAzureMonitor();
-   console.log("Server(): Azure Application Monitor OpenTelemetry configured.");
+   // console.log("Server(): Azure Application Monitor OpenTelemetry configured.");
+   wlogger.log({level: "info", message: "[%s] Azure Application Monitor OpenTelemetry configured.", splat: [scriptName]});
 }
 else
-   console.log("Server(): Azure Application Insights 'connection string' not found. No telemetry data will be sent to App Insights.");
+   // console.log("Server(): Azure Application Insights 'connection string' not found. No telemetry data will be sent to App Insights.");
+   wlogger.log({level: "info", message: "[%s] Azure Application Insights 'Connection string' not found. No telemetry data will be sent to App Insights.", splat: [scriptName]});
 // ID02082024.en
 
 const fs = require("fs");
 const express = require("express");
+const { ServerDefaults, AzAiServices } = require("./utilities/app-gtwy-constants");
 const { apirouter, reconfigEndpoints } = require("./apirouter");
 const pgdb = require("./services/cp-pg.js");
 const CacheConfig = require("./utilities/cache-config");
-const { runCacheInvalidator } = require("./utilities/cache-invalidator");
+const runCacheInvalidator = require("./utilities/cache-invalidator");
+
 const app = express();
 var bodyParser = require('body-parser');
 // var morgan = require('morgan');
 
-// Server version
-const srvVersion = "1.5.0";
+// Server version v1.6 ~ 04272024
+const srvVersion = "1.6.0";
 // Server start date
 const srvStartDate = new Date().toLocaleString();
 
 // Init. random uuid generator
 const { randomUUID } = require('node:crypto');
 
-// Configure pinojs logger
-const pino = require('pino');
+// Configure pinojs logger - logs http request/response only
+// const pino = require('pino');
 
-const log_level = process.env.API_GATEWAY_LOG_LEVEL;
 const logger = require('pino-http')({
-  useLevel: log_level ? log_level : 'info',
   // Define a custom request id function
   genReqId: function (req, res) {
     const existingID = req.id ?? req.headers["x-request-id"]
@@ -56,6 +69,7 @@ const logger = require('pino-http')({
     res.setHeader('X-Request-Id', id)
     return id
   },
+  useLevel: 'info',
   transport: {
     target: 'pino-pretty',
     options: {
@@ -80,7 +94,8 @@ var endpoint; // API Gateway base URI
 if ( process.env.API_GATEWAY_ENV )
   endpoint = "/api/v1/" + process.env.API_GATEWAY_ENV;
 else {
-  console.log("Server(): Env. variable [API_GATEWAY_ENV] not set, aborting ...");
+  // console.log("Server(): Env. variable [API_GATEWAY_ENV] not set, aborting ...");
+  wlogger.log({level: "error", message: "[%s] Env. variable [API_GATEWAY_ENV] not set, aborting ...", splat: [scriptName]});
   // exit program
   process.exit(1);
 };
@@ -89,16 +104,13 @@ var pkey; // API Gateway private key (used for reconfiguring endpoints)
 if ( process.env.API_GATEWAY_KEY )
   pkey = process.env.API_GATEWAY_KEY;
 else {
-  console.log("Server(): Env. variable [API_GATEWAY_KEY] not set, aborting ...");
+  // console.log("Server(): Env. variable [API_GATEWAY_KEY] not set, aborting ...");
+  wlogger.log({level: "error", message: "[%s] Env. variable [API_GATEWAY_KEY] not set, aborting ...", splat: [scriptName]});
   // exit program
   process.exit(1);
 };
 
 // ID02202024.sn
-const serverDefaults = {
-  runSchedule: "*/45 * * * *"
-};
-
 // console.log(`*** ${cacheResults}; ${typeof cacheResults} ***`);
 (async () => {
   let persistPrompts = process.env.API_GATEWAY_PERSIST_PROMPTS; // ID03012024.n
@@ -107,23 +119,31 @@ const serverDefaults = {
     let retval = await pgdb.checkDbConnection();
     if ( retval ) {
       if ( cacheResults === "true" )
-        console.log("Server(): Completions will be cached");
+        // console.log("Server(): Completions will be cached");
+        wlogger.log({level: "info", message: "[%s] Completions will be cached", splat: [scriptName]});
+      else
+        wlogger.log({level: "info", message: "[%s] Completions will not be cached", splat: [scriptName]});
       if ( persistPrompts === "true" )
-        console.log("Server(): Prompts will be persisted");
+        // console.log("Server(): Prompts will be persisted");
+        wlogger.log({level: "info", message: "[%s] Prompts will be persisted", splat: [scriptName]});
+      else
+        wlogger.log({level: "info", message: "[%s] Prompts will not be persisted", splat: [scriptName]});
     }
     else
       process.exit(1);
   }
   else {
-    console.log("Server(): Completions will not be cached");
-    console.log("Server(): Prompts will not be persisted");
+    // console.log("Server(): Completions will not be cached");
+    // console.log("Server(): Prompts will not be persisted");
+    wlogger.log({level: "info", message: "[%s] Completions will not be cached", splat: [scriptName]});
+    wlogger.log({level: "info", message: "[%s] Prompts will not be persisted", splat: [scriptName]});
   };
 }
 )();
 
 var context; // AI Applications Context
 var cacheConfig;
-function readApiGatewayConfigFile() {
+function readApiGatewayConfigFile(startCacheInvalidator) {
   let vectorAppFound = false;
 
   let cacheResults = process.env.API_GATEWAY_USE_CACHE;
@@ -132,60 +152,76 @@ function readApiGatewayConfigFile() {
     if  ( process.env.API_GATEWAY_VECTOR_AIAPP ) 
       embeddApp = process.env.API_GATEWAY_VECTOR_AIAPP;
     else {
-      console.log("Server(): AI Embedding Application cannot be empty! Aborting server initialization.");
+      // console.log("Server(): AI Embedding Application cannot be empty! Aborting server initialization.");
+      wlogger.log({level: "error", message: "[%s] Env. variable for AI Embedding Application [API_GATEWAY_VECTOR_AIAPP] not set, aborting ...", splat: [scriptName]});
       process.exit(1);
     };
 
-    let srchEngine = ( process.env.API_GATEWAY_SRCH_ENGINE ) ? process.env.API_GATEWAY_SRCH_ENGINE : "Postgresql/pgvector";
+    let srchEngine = process.env.API_GATEWAY_SRCH_ENGINE ?? "Postgresql/pgvector";
 
     cacheConfig = new CacheConfig(true,embeddApp,srchEngine);
   }
   else 
     cacheConfig = new CacheConfig(false,null,null);
 
+  if ( ! process.env.API_GATEWAY_CONFIG_FILE ) {
+      wlogger.log({level: "error", message: "[%s] Env. variable [API_GATEWAY_CONFIG_FILE] not set, aborting ...", splat: [scriptName]});
+      // exit program
+      process.exit(1);
+  };
+
   fs.readFile(process.env.API_GATEWAY_CONFIG_FILE, async (error, data) => {
     if (error) {
-      console.log(`Server(): Error loading gateway config file. Error=${error}`);
+      // console.log(`Server(): Error loading gateway config file. Error=${error}`);
+      wlogger.log({level: "error", message: "[%s] Error loading gateway config file. Error=%s", splat: [scriptName, error]});
       // exit program
       process.exit(1);
     };
     context = JSON.parse(data);
   
-    console.log("Server(): AI Application backend (Azure OpenAI Service) endpoints:");
+    // console.log("Server(): AI Application backend (Azure OpenAI Service) endpoints:");
+    wlogger.log({level: "info", message: "[%s] AI Application backend (Azure AI Service) endpoints:", splat: [scriptName]});
     context.applications.forEach((app) => {
       let pidx = 0;
-      console.log(`applicationId: ${app.appId} (useCache=${app.cacheSettings.useCache})`);
+      if ( app.appType === AzAiServices.OAI )
+        console.log(`Application ID: ${app.appId}; Type: ${app.appType}; useCache=${app.cacheSettings.useCache}`);
+      else
+        console.log(`Application ID: ${app.appId}; Type: ${app.appType}`);
 
       if ( (cacheConfig.cacheResults) && (app.appId === cacheConfig.embeddApp) )
         vectorAppFound = true;
 
       app.endpoints.forEach((element) => {
-        console.log(`  Priority: ${pidx}\turi: ${element.uri}`);
+        console.log(`  Priority: ${pidx}\tUri: ${element.uri}`);
 	pidx++;
       });
     });
 
-    console.log("Server(): Loaded backend Azure OpenAI API endpoints for applications");
+    // console.log("Server(): Loaded backend Azure OpenAI API endpoints for applications");
+    wlogger.log({level: "info", message: "[%s] Loaded backend Azure OpenAI API endpoints for applications", splat: [scriptName]});
 
     if ( cacheConfig.cacheResults && !vectorAppFound ) {
-      console.log(`Server(): AI Embedding Application [${cacheConfig.embeddApp}] not defined in API Gateway Configuration file! Aborting server initialization`); 
+      // console.log(`Server(): AI Embedding Application [${cacheConfig.embeddApp}] not defined in API Gateway Configuration file! Aborting server initialization.`); 
+      wlogger.log({level: "error", message: "[%s] AI Embedding Application [%s] not defined in API Gateway Configuration file! Aborting server initialization.", splat: [scriptName, cacheConfig.embeddApp]}); 
 
       process.exit(1);
     };
 
-    if ( cacheConfig.cacheResults ) {
+    if ( cacheConfig.cacheResults && startCacheInvalidator ) {
       // Start the cache invalidator cron job and set it's run schedule
       let schedule = process.env.API_GATEWAY_CACHE_INVAL_SCHEDULE;
       if ( ! schedule ) // schedule is empty, undefined, null
-        schedule = serverDefaults.runSchedule;
-      console.log(`Server(): Cache invalidator run schedule (Cron) - ${schedule}`);
+        schedule = ServerDefaults.runSchedule;
+      // console.log(`Server(): Cache invalidator run schedule (Cron) - ${schedule}`);
+      wlogger.log({level: "info", message: "[%s] Cache invalidator run schedule (Cron) - %s", splat: [scriptName, schedule]});
 
       await runCacheInvalidator(schedule, context);
     };
   });
 };
 // ID02202024.en
-readApiGatewayConfigFile();
+// readApiGatewayConfigFile(); // ID04302024.o
+readApiGatewayConfigFile(true); // ID04302024.n
 
 // app.use(morgan(log_mode ? log_mode : 'combined'));
 app.use(bodyParser.json());
@@ -213,8 +249,10 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
 
     let appeps = new Map();
     appeps.set("applicationId", app.appId);
+    appeps.set("description", app.description);
+    appeps.set("type", app.appType);
     appeps.set("cacheSettings", csettings);
-    appeps.set("oaiEndpoints", Object.fromEntries(eps));
+    appeps.set("endpoints", Object.fromEntries(eps));
     appcons.push(Object.fromEntries(appeps));
   });
 
@@ -248,7 +286,7 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
     serverVersion: srvVersion,
     serverConfig: envvars,
     cacheSettings: resultsConfig,
-    appConnections: appcons,
+    aiApplications: appcons,
     containerInfo: platformInfo,
     nodejs: process.versions,
     apiGatewayUri: endpoint + "/apirouter",
@@ -286,7 +324,8 @@ app.use(endpoint + "/apirouter/reconfig/:pkey", function(req, res, next) {
     return;
   };
 
-  readApiGatewayConfigFile();
+  // readApiGatewayConfigFile(); // ID04302024.o
+  readApiGatewayConfigFile(false); // ID04302024.n
   reconfigEndpoints();
 
   resp_obj = {

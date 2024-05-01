@@ -1,37 +1,43 @@
-# An Azure OpenAI Service *API Gateway*
-The API Gateway server can be used to distribute requests to Azure OpenAI Service deployment endpoints.  This repository describes the steps for deploying the API Gateway on Azure.
+# An Azure AI Services *API Gateway*
+The API Gateway can be used to intelligently distribute AI application requests to Azure AI Service deployment endpoints. The gateway currently supports proxying requests to the following Azure AI Services.
+- Azure OpenAI Service (Full API support)
+- Azure AI Search (Full API support)
+- Azure AI Language (Limited API support - Entity Linking, Language detection, Key phrase extraction, NER, PII, Sentiment analysis and opinion mining only)
+- Azure AI Translator (Limited API support - Text Translation only)
+
+The remainder of this readme describes the supported features, how to configure/enable them and finally deploy the gateway on Azure.
 
 ### Supported Features At A Glance
 
-Feature/Capability | Description
------------------- | -----------
-**Unified Management Plane** | API Gateway provides a unified management plane for a) Sharing OpenAI Service model deployment endpoints among multiple AI Applications and b) Serving OpenAI Service requests and tracking metrics for each AI Application.  The gateway is *AI Application Aware* meaning Azure OpenAI Service endpoints can be configured separately for each *AI Application*.  This not only allows model deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing for each specific AI use case.
-**Intelligent Traffic Routing** | The API Gateway can be configured with multiple Azure OpenAI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
-**Semantic Caching** | This feature is seamlessly integrated into API Gateway and can be used to cache OpenAI Service prompts and responses. Cache hits are evaluated based on semantic similarity and the configured algorithm. With semantic caching, runtime performance of LLM/AI applications can be improved by up to 40%. This solution leverages the vectorization and semantic search features supported by the widely popular *PostgreSQL* open source database.
-**Prompt Persistence** | This optional feature can be used to persist OpenAI Service *Prompts* (inputs) and *Completions* (responses) in a relational database table. With this feature, customers can analyze prompts and accordingly adjust the similarity distance for the chosen vector search algorithm to maximize performance (increase throughput).  This feature can also be used to introspect the prompt and completion tokens associated with a particular API request (Request ID) and troubleshoot content filteration issues quickly. The gateway currently supports PostgreSQL database as the persistence provider.
-**Traffic Splitting** | The Gateway provides the flexibility to split Azure OpenAI Service traffic between multiple *Paygo* (tokens per minute) and *Provisioned Throughput Unit* (reserved capacity) model deployments.
-**Dynamic Server Configuration** | The gateway exposes a separate reconfig (/reconfig) endpoint to allow dynamic reconfiguration of backend endpoints. Backend endpoints can be reconfigured anytime even when the server is running thereby limiting AI application downtime.
-**API Metrics Collection** | The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the AI Application workload to the desired backend endpoints based on available and consumed capacity.
-**Observability and Traceability** | The API Gateway is instrumented with Azure Application Insights SDK. When this setting is enabled, detailed telemetry information on Azure OpenAI and dependent services is collected and sent to Azure Monitor.
-**Client SDK's and AI Application (LLM) Frameworks** | The API Gateway server supports [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints) Client SDK.  The gateway has also been tested to work with [Prompt Flow](https://github.com/microsoft/promptflow) and [Langchain](https://python.langchain.com/docs/integrations/llms/azure_openai/) LLM frameworks.
-**Robust Runtime** | The API Gateway is powered by tried and true Nodejs runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
+Feature/Capability | Azure AI Service | Description
+------------------ | ---------------- | -----------
+**Unified Management Plane** | All | API Gateway provides a unified management plane for a) Sharing AI Service deployment endpoints among multiple AI Applications and b) Tracking AI Service API metrics such as throughput and latency for each AI Application.  The gateway is *AI Application Aware* meaning Azure AI Service endpoints can be configured separately for each *AI Application*.  This not only allows AI service deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing for each specific AI use case.
+**Intelligent Traffic Routing** | Azure OpenAI Service | The API Gateway can be configured with multiple Azure AI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
+**Semantic Caching** | Azure OpenAI Service | This feature is seamlessly integrated into API Gateway and can be used to cache OpenAI Service prompts and responses. Cache hits are evaluated based on semantic similarity and the configured algorithm. With semantic caching, runtime performance of LLM/AI applications can be improved by up to 40%. This solution leverages the vectorization and semantic search features supported by the widely popular *PostgreSQL* open source database.
+**Prompt Persistence** | Azure OpenAI Service | This optional feature can be used to persist OpenAI Service *Prompts* (inputs) and *Completions* (responses) in a relational database table. With this feature, customers can analyze prompts and accordingly adjust the similarity distance for the chosen vector search algorithm to maximize performance (increase throughput).  This feature can also be used to introspect the prompt and completion tokens associated with a particular API request (Request ID) and troubleshoot content filteration issues quickly. The gateway currently supports PostgreSQL database as the persistence provider.
+**Traffic Splitting** | All | The Gateway provides the flexibility to split AI application traffic between multiple Azure AI Service deployment endpoints. In the case of Azure OpenAI Service, the AI application traffic can be split among multiple *Paygo* (tokens per minute) and *Provisioned Throughput Unit* (reserved capacity) model deployments.
+**Dynamic Server Configuration** | All | The gateway exposes a separate reconfig (/reconfig) endpoint to allow dynamic reconfiguration of backend endpoints. Backend endpoints can be reconfigured anytime even when the server is running thereby limiting AI application downtime.
+**API Metrics Collection** | All | The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the AI Application workload to the desired backend endpoints based on available and consumed capacity.
+**Observability and Traceability** | All | The API Gateway is instrumented with Azure Application Insights SDK. When this setting is enabled, detailed telemetry information on Azure OpenAI and dependent services is collected and sent to Azure Monitor.
+**Client SDK's and AI Application (LLM) Frameworks** | Azure OpenAI Service | The API Gateway server supports [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints) Client SDK.  The gateway has also been tested to work with [Prompt Flow](https://github.com/microsoft/promptflow) and [Langchain](https://python.langchain.com/docs/integrations/llms/azure_openai/) LLM frameworks.
+**Robust Runtime** | All | The API Gateway is powered by tried and true Nodejs runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
 
 ### Usage scenarios
 
 The API Gateway can be used in two scenarios.
-1. **Estimating capacity for Azure OpenAI workloads**
+1. **Capturing Azure AI Service API usage metrics and estimating capacity for AI applications/workloads**
 
-   For each AI Application (/OpenAI Workload), the API Gateway collects various backend API metrics.  The metrics are collected for pre-configured time intervals and can be used to compute the required throughput a.k.a *Tokens per minute* (TPM). TPM can then be used to estimate *Provisioned Throughput Units* for each OpenAI workload.
+   For each AI Application, the API Gateway collects Azure AI Service endpoint usage metrics.  The metrics are collected for each AI application based on pre-configured time intervals. In the case of OpenAI Service, these metrics can be used to compute the required throughput a.k.a *Tokens per minute* (TPM). TPM can then be used to estimate *Provisioned Throughput Units* for each OpenAI workload.
 
-2. **Intelligently route AI Application requests to Azure OpenAI deployments/backends**
+2. **Intelligently route AI Application requests to Azure AI Service deployments/backends**
 
-   For each AI Application, the API Gateway functions as an intelligent router and redirects OpenAI API traffic among multiple backend endpoints.  The gateway keeps track of unavailable/busy backend endpoints and automatically redirects traffic to available endpoints thereby distributing the API traffic load evenly and not overloading a given endpoint with too many requests.  
+   For each AI Application, the API Gateway functions as an intelligent router and distributes AI Service API traffic among multiple backend endpoints.  The gateway keeps track of unavailable/busy backend endpoints and automatically redirects traffic to available endpoints thereby distributing the API traffic load evenly and not overloading a given endpoint with too many requests.  
 
 ### Reference Architecture
 
 ![alt tag](./images/az-openai-api-gateway-ra.PNG)
 
-### API Gateway Workflow
+### Router workflow for processing Azure OpenAI Service API requests
 
 ![alt tag](./images/aoai-api-gtwy-flow-chart.png)
 
@@ -198,25 +204,34 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
    ```bash
    
-   > openai-api-router@1.5.0 start
+   > openai-api-router@1.6.0 start
    > node ./src/server.js
 
-   Server(): Azure Application Insights 'connection string' not found. No telemetry data will be sent to App Insights.
+   30-Apr-2024 21:52:20 [info] [server.js] Starting initialization of Azure AI Services Gateway ...
+   30-Apr-2024 21:52:20 [info] [server.js] Azure Application Insights 'Connection string' not found. No telemetry data will be sent to App Insights.
    Server(): OpenAI API Gateway server started successfully.
    Gateway uri: http://localhost:8000/api/v1/dev
-   Server(): AI Application backend (Azure OpenAI Service) endpoints:
-   applicationId: vectorizedata (useCache=false)
-     Priority: 0   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15
-   applicationId: aichatbotapp (useCache=true)
-     Priority: 0   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2023-05-15
-   applicationId: aidocusearchapp (useCache=true)
-     Priority: 0   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15
-     Priority: 1   uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
-   Server(): Loaded backend Azure OpenAI API endpoints for applications
-   Server(): Cache invalidator run schedule (Cron) - */45 * * * *
-   checkDbConnection(): Postgres DB connectivity OK!
-   Server(): Completions will be cached
-   Server(): Prompts will be persisted
+   30-Apr-2024 21:52:20 [info] [server.js] AI Application backend (Azure AI Service) endpoints:
+   Application ID: language-app; Type: azure_language
+     Priority: 0   Uri: https://gr-dev-lang.cognitiveservices.azure.com/language/:analyze-text?api-version=2022-05-01
+   Application ID: translate-app; Type: azure_translator
+     Priority: 0   Uri: https://api.cognitive.microsofttranslator.com/
+   Application ID: search-app-ak-stip-v2; Type: azure_search
+     Priority: 0   Uri: https://gr-dev-rag-ais.search.windows.net/indexes/ak-stip-v2/docs/search?api-version=2023-11-01
+   Application ID: search-app-ak-stip-aisrch-iv; Type: azure_search
+     Priority: 0   Uri: https://gr-dev-rag-ais.search.windows.net/indexes/ak-stip-aisrch-iv/docs/search?api-version=2023-10-01-preview
+   Application ID: vectorizedata; Type: azure_oai; useCache=false
+     Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15
+   Application ID: aichatbotapp; Type: azure_oai; useCache=true
+     Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01
+   Application ID: aidocusearchapp; Type: azure_oai; useCache=true
+     Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15
+     Priority: 1   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
+   30-Apr-2024 21:52:20 [info] [server.js] Loaded backend Azure OpenAI API endpoints for applications
+   30-Apr-2024 21:52:20 [info] [server.js] Cache invalidator run schedule (Cron) - */5 * * * *
+   30-Apr-2024 21:52:20 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
+   30-Apr-2024 21:52:20 [info] [server.js] Completions will be cached
+   30-Apr-2024 21:52:20 [info] [server.js] Prompts will be persisted
    ```
 
    Leave the terminal window open.
@@ -232,7 +247,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    ```json
    {
      "serverName": "Gateway-Instance-01",
-     "serverVersion": "1.5.0",
+     "serverVersion": "1.6.0",
      "serverConfig": {
         "host": "localhost",
         "listenPort": 8000,
@@ -251,6 +266,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
      "appConnections": [
         {
             "applicationId": "vectorizedata",
+            "description": "Application that uses OAI model to generate data embeddings/vectors",
+            "appType": "azure_oai",
             "cacheSettings": {
                 "useCache": false
             },
@@ -260,6 +277,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
         },
         {
             "applicationId": "aichatbotapp",
+            "description": "A test AI Assistant / Chatbot application",
+            "appType": "azure_oai",
             "cacheSettings": {
                 "useCache": true,
                 "searchType": "CS",
@@ -276,6 +295,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
         },
         {
             "applicationId": "aidocusearchapp",
+            "description": "A test AI text generation application",
+            "appType": "azure_oai",
             "cacheSettings": {
                 "useCache": true,
                 "searchType": "CS",

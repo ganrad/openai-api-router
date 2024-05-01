@@ -1,6 +1,6 @@
 {
   "name": "openai-api-router",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "An intelligent gateway/router that evenly distributes API requests among backend Openai API endpoints deployed on Azure.",
   "main": "src/server.js",
   "scripts": {
@@ -24,7 +24,8 @@
     "pg": "^8.11.3",
     "pgvector": "^0.1.8",
     "pino-http": "^9.0.0",
-    "pino-pretty": "^10.3.1"
+    "pino-pretty": "^10.3.1",
+    "winston": "^3.13.0"
   },
   "devDependencies": {
     "eslint": "^8.56.0"

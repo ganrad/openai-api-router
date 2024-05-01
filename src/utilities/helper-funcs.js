@@ -6,8 +6,13 @@
  * Date: 02-20-2024
  *
  * Notes:
+ * ID04272024: ganrad: Centralized logging with winstonjs
  *
 */
+const path = require('path');
+const scriptName = path.basename(__filename);
+const logger = require('./logger');
+
 const fetch = require("node-fetch");
 
 async function callRestApi(requestid, uname, epinfo, endpoints, prompt) {
@@ -17,6 +22,7 @@ async function callRestApi(requestid, uname, epinfo, endpoints, prompt) {
     user: uname
   };
 
+  let data;
   for (const element of endpoints) {
     let metricsObj = epinfo.get(element.uri);
     let healthArr = metricsObj.isEndpointHealthy();
@@ -37,33 +43,45 @@ async function callRestApi(requestid, uname, epinfo, endpoints, prompt) {
         headers: {'Content-Type': 'application/json', 'api-key': element.apikey},
         body: JSON.stringify(reqBody)
       });
-      data = await response.json();
 
-      let { status, statusText, headers } = response;
+      let status = response.status;
       if ( status === 200 ) {
+        data = await response.json();
+
         let respTime = Date.now() - stTime;
         metricsObj.updateApiCallsAndTokens(
           data.usage.total_tokens,
           respTime);
 
-        console.log(`callRestApi():\n  Request ID: ${requestid}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Status Text: ${statusText}\n  Execution Time: ${Date.now() - stTime}\n*****`);
+        // console.log(`callRestApi():\n  Request ID: ${requestid}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Status Text: ${statusText}\n  Execution Time: ${Date.now() - stTime}\n*****`);
+        logger.log({level: "info", message: "[%s] callRestApi():\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Execution Time: %d", splat: [scriptName,requestid,element.uri,status,response.statusText,Date.now() - stTime]});
 
         return data.data[0]; // 200 All OK
       }
       else if ( status === 429 ) {
-        let retryAfterSecs = headers.get('retry-after');
+        data = await response.json();
+
+        let retryAfterSecs = response.headers.get('retry-after');
         if ( retryAfter > 0 )
           retryAfter = (retryAfterSecs < retryAfter) ? retryAfterSecs : retryAfter;
         else
           retryAfter = retryAfterSecs;
         metricsObj.updateFailedCalls(retryAfterSecs);
 
-        console.log(`callRestApi():\n  Request ID: ${requestid}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n  Retry seconds: ${retryAfterSecs}\n*****`);
+        // console.log(`callRestApi():\n  Request ID: ${requestid}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n  Retry seconds: ${retryAfterSecs}\n*****`);
+        logger.log({level: "warn", message: "[%s] callRestApi():\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Message: %s\n  Status Text: %s\n  Retry seconds: %d", splat: [scriptName,requestid,element.uri,status,data,response.statusText,retryAfterSecs]});
+      }
+      else { // Authzn failed!
+	data = await response.text();
+
+          // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n*****`);
+          logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message: %s", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,data]});
       };
     }
     catch (error) {
       err_msg = {targetUri: element.uri, cause: error};
-      console.log(`callRestApi():\n  Request ID: {requestid}\n  Encountered exception:\n${err_msg}`);
+      // console.log(`callRestApi():\n  Request ID: {requestid}\n  Encountered exception:\n${err_msg}`);
+      logger.log({level: "error", message: "[%s] callRestApi():\n  Request ID: %s\n  Encountered exception:\n%s", splat: [scriptName,requestid,err_msg]});
     };
   }; // end of for
 
@@ -101,7 +119,8 @@ function prepareTextToEmbedd(
     };
   };
 
-  console.log(`*****\nprepareTextToEmbedd():\n  Request ID: ${requestid}\n  Term: ${term}\n  Roles: ${roles}\n  Content: ${content}\n  Execution Time: ${Date.now() - stTime}\n*****`);
+  // console.log(`*****\nprepareTextToEmbedd():\n  Request ID: ${requestid}\n  Term: ${term}\n  Roles: ${roles}\n  Content: ${content}\n  Execution Time: ${Date.now() - stTime}\n*****`);
+  logger.log({level: "debug", message: "[%s] prepareTextToEmbedd():\n  Request ID: %s\n  Term: %s\n  Roles: %s\n  Content: %s\n  Execution Time: %s", splat: [scriptName,requestid,term,roles,content,Date.now() - stTime]});
 
   return content;
 }
