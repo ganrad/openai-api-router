@@ -23,14 +23,14 @@
 
 ## [First release]
 ### Functionality
-* Solution supports Azure OpenAI Service REST API and Client SDK.
+* Included support for Azure OpenAI Service REST API and Client SDK.
 * Added support for AI Application (LLM) frameworks - Langchain and Promptflow. 
 * Added semantic caching layer to cache OpenAI prompts and completions.
 * Added persistent layer to audit/track OpenAI requests and responses.
 * Added metrics collection feature to cache OpenAI API metrics for all configured AI Applications.
 
 ### Dependency
-* Azure database for PostgresSQL with pgvector extension
+* Azure database for PostgreSQL with pgvector extension
 
 ### Documentation
 * Added supported features and usage scenarios sections.
