@@ -1,6 +1,6 @@
 /**
  * Name: AppConnections
- * Description: This class stores the end-point metrics for each application.
+ * Description: This class stores the end-point metrics for each AI Application.
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 02-13-2024

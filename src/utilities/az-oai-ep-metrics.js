@@ -1,62 +1,23 @@
 /**
- * Name: EndpointMetrics
- * Description: Calculates backend API endpoint metrics and stores them in a
- * light-weight internal cache (~ Queue).
+ * Name: AzOaiEpMetrics
+ * Description: This class collects OAI API endpoint metrics and stores them in a 
+ * light-weight data structure (~ Queue).
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 01-28-2024
  *
  * Notes:
+ * ID0272024: ganrad: Centralized logging with winstonjs
  *
 */
-class Queue {
-  static CINDEX_RESET_COUNT = 1000; // Cache index reset count
+const path = require('path');
+const scriptName = path.basename(__filename);
+const logger = require('./logger');
 
-  constructor(itemCount) {
-    this.itemCount = itemCount;
+const Queue = require('./queue');
+const { EndpointMetricsConstants } = require('./app-gtwy-constants');
 
-    this.items = {};
-    this.fidx = 0;
-    this.bidx = 0;
-  }
- 
-  enqueue(item) {
-    this.items[this.bidx] = item;
-    this.bidx++;
-
-    if ( Object.keys(this.items).length > this.itemCount )
-      this.dequeue();
-
-    if ( this.bidx >= Queue.CINDEX_RESET_COUNT )
-      this.bidx = 0;
-
-    return item;
-  }
-
-  dequeue() {
-    const item = this.items[this.fidx];
-    delete this.items[this.fidx];
-    this.fidx++
-
-    if ( this.fidx >= Queue.CINDEX_RESET_COUNT )
-      this.fidx = 0;
-
-    return item;
-  }
-
-  peek() {
-    return this.items[this.fidx]
-  }
-
-  get queueItems() {
-    return this.items;
-  }
-}
-
-class EndpointMetrics {
-  static DEF_METRICS_C_INTERVAL = 60; // Default metrics collection interval
-  static DEF_METRICS_H_COUNT = 5; // Default metrics history count
-
+class AzOaiEpMetrics {
   constructor(endpoint,interval,count) {
     this.endpoint = endpoint; // The target endpoint
     this.apiCalls = 0; // No. of successful calls
@@ -69,13 +30,14 @@ class EndpointMetrics {
     if ( interval )
       this.cInterval = Number(interval); // Metrics collection interval
     else
-      this.cInterval = EndpointMetrics.DEF_METRICS_C_INTERVAL;
+      this.cInterval = EndpointMetricsConstants.DEF_METRICS_C_INTERVAL;
 
     if ( count )
       this.hStack = Number(count); // Metrics history cache count
     else
-      this.hStack = EndpointMetrics.DEF_METRICS_H_COUNT;
-    console.log(`\n  Endpoint:  ${this.endpoint}\n  Cache Interval (minutes): ${this.cInterval}\n  History Count: ${this.hStack}`);
+      this.hStack = EndpointMetricsConstants.DEF_METRICS_H_COUNT;
+    // console.log(`\n  Endpoint:  ${this.endpoint}\n  Cache Interval (minutes): ${this.cInterval}\n  History Count: ${this.hStack}`);
+    logger.log({level: "info", message: "[%s] %s.constructor():\n  Endpoint:  %s\n  Cache Interval (minutes): %d\n  History Count: %d", splat: [scriptName,this.constructor.name,this.endpoint,this.cInterval,this.hStack]});
 
     this.startTime = Date.now();
     this.endTime = this.startTime + (this.cInterval * 60 * 1000);
@@ -121,8 +83,9 @@ class EndpointMetrics {
       let his_obj = {
         collectionTime: sdate,
         collectedMetrics : {
-          noOfApiCalls: this.apiCalls,
-          noOfFailedCalls: this.failedCalls,
+          apiCalls: this.apiCalls,
+          failedApiCalls: this.failedCalls,
+          totalApiCalls: this.totalCalls,
 	  throughput: {
             kTokensPerWindow: kTokens,
 	    requestsPerWindow: (kTokens * 6),
@@ -152,11 +115,11 @@ class EndpointMetrics {
 
     return {
       apiCalls: this.apiCalls,
-      failedCalls: this.failedCalls,
-      totalCalls: this.totalCalls,
+      failedApiCalls: this.failedCalls,
+      totalApiCalls: this.totalCalls,
       kInferenceTokens: kTokens,
       history: this.historyQueue.queueItems
     };
   }
 }
-module.exports = EndpointMetrics;
+module.exports = AzOaiEpMetrics;

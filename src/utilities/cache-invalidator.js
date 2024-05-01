@@ -1,3 +1,20 @@
+/**
+ * Name: Semantic cache entry invalidator
+ * Description: This module runs a cron job at the pre-configured schedule to invalidate (delete)
+ * expired entries in the semantic cache table - apigtwycache.
+ *
+ * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
+ * Date: 03-15-2024
+ *
+ * Notes:
+ * ID04272024: ganrad: Centralized logging with winstonjs
+ *
+*/
+
+const path = require('path');
+const scriptName = path.basename(__filename);
+const logger = require("./logger.js");
+
 const cacheTbl = require("../services/cp-pg.js");
 var cron = require('node-cron');
 
@@ -9,7 +26,8 @@ function runCacheInvalidator(schedule, ctx) {
   let context = ctx
 
   cron.schedule(schedule, () => {
-    console.log("*****\nrunCacheInvalidator():");
+    // console.log(`*****\nrunCacheInvalidator(): ${new Date().toLocaleString()}`);
+    logger.log({level: "info", message: "[%s] runCacheInvalidator(): Cron schedule=[%s]", splat: [scriptName, schedule]});
 
     let values;
     let query;
@@ -31,6 +49,4 @@ function runCacheInvalidator(schedule, ctx) {
   });
 }
 
-module.exports = {
-  runCacheInvalidator
-}
+module.exports = runCacheInvalidator;

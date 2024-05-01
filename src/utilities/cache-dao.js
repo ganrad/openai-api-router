@@ -10,8 +10,13 @@
  *
  * Notes:
  * ID04112024: ganrad: Match AI app name/id when selecting cached entries
+ * ID04272024: ganrad: Centralized logging with winstonjs
  *
 */
+const path = require('path');
+const scriptName = path.basename(__filename);
+const logger = require('./logger');
+
 const pgvector = require('pgvector/pg');
 const helper = require("./helper-funcs");
 
@@ -111,11 +116,13 @@ class CacheDao {
         data = completion,
         embedding = apiResp.embedding;
       };
-      console.log(`${this.constructor.name}.queryVectorDB():\n  Application ID: ${appId}\n  Request ID: ${rid}\n  User: ${reqBody.user}\n  Execution Time: ${Date.now() - stTime}\n*****`);
+      // console.log(`${this.constructor.name}.queryVectorDB():\n  Application ID: ${appId}\n  Request ID: ${rid}\n  User: ${reqBody.user}\n  Execution Time: ${Date.now() - stTime}\n*****`);
+      logger.log({level: "info", message: "[%s] %s.queryVectorDB():\n  Application ID: %s\n  Request ID: %s\n  User: %s\n  Execution Time: %s", splat: [scriptName,this.constructor.name,appId,rid,reqBody.user,Date.now() - stTime]});
     }
     catch (error) {
       let err_msg = {reqId: rid, appId: appId, body: reqBody, cause: error};
-      console.log(`*****\nCacheDao.queryVectorDB():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
+      // console.log({level: "error", message: "[%s] %s.queryVectorDB():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
+      logger.log({level: "error", message: "[%s] %s.queryVectorDB():\n  Encountered exception:\n  %s}", splat: [scriptName,this.constructor.name,err_msg]});
     };
 
     return {
@@ -131,7 +138,8 @@ class CacheDao {
 
     await dbHandle.insertData(insertStmts[qidx],values);
 
-    console.log(`${this.constructor.name}.storeEntity():\n  Application ID: ${values[1]}\n  Request ID: ${values[0]}\n  Execution Time: ${Date.now() - stTime}\n*****`);
+    // console.log(`${this.constructor.name}.storeEntity():\n  Application ID: ${values[1]}\n  Request ID: ${values[0]}\n  Execution Time: ${Date.now() - stTime}\n*****`);
+    logger.log({level: "info", message: "[%s] %s.storeEntity():\n  Application ID: %s\n  Request ID: %s\n  Execution Time: %d", splat: [scriptName, this.constructor.name, values[1], values[0], Date.now() - stTime]});
   }
 }
 
