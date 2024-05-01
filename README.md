@@ -5,7 +5,7 @@ The API Gateway can be used to intelligently distribute AI application requests 
 - Azure AI Language (Limited API support - Entity Linking, Language detection, Key phrase extraction, NER, PII, Sentiment analysis and opinion mining only)
 - Azure AI Translator (Limited API support - Text Translation only)
 
-The remainder of this readme describes the steps for deploying the AI Services Gateway on Azure.
+The remainder of this readme describes the steps for deploying the AI Services API Gateway on Azure.
 
 ### Supported Features At A Glance
 
