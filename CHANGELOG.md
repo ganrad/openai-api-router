@@ -14,12 +14,26 @@
 * Curated AI Services test data and implemented robust testing harness to stress/volume test gateway/router with multiple concurrent API calls.
 
 ### Dependency updates
+* [winstonjs](https://github.com/winstonjs/winston/tree/master)
 
 ### Documentation changes
+* Changed repository title to Azure AI Services API Gateway as this solution now supports multiple Azure AI services
+* Updated documentation to reflect support for new AI services
+* Updated reference architecture diagram
 
-## [v1.5.0]
+## [First release]
 ### Functionality
+* Solution supports Azure OpenAI Service REST API and Client SDK.
+* Added support for AI Application (LLM) frameworks - Langchain and Promptflow. 
+* Added semantic caching layer to cache OpenAI prompts and completions.
+* Added persistent layer to audit/track OpenAI requests and responses.
+* Added metrics collection feature to cache OpenAI API metrics for all configured AI Applications.
 
 ### Dependency
+* Azure database for PostgresSQL with pgvector extension
 
 ### Documentation
+* Added supported features and usage scenarios sections.
+* Updated reference architecture diagram.
+* Added API Gateway router workflow diagram to explain how the server processes Azure OpenAI Service API requests.
+* Added sections to detail steps for deploying the API Gateway on standalone VM and Kubernetes cluster on Azure.

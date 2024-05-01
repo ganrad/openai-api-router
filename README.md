@@ -37,7 +37,7 @@ The API Gateway can be used in two scenarios.
 
 ![alt tag](./images/az-openai-api-gateway-ra.PNG)
 
-### API Gateway Workflow
+### Router workflow for processing Azure OpenAI Service API requests
 
 ![alt tag](./images/aoai-api-gtwy-flow-chart.png)
 
