@@ -6,6 +6,7 @@
  * Date: 04-24-2024
  *
  * Notes:
+ * ID05032024: ganrad: Added support for Azure AI Content Safety
  *
 */
 
@@ -17,12 +18,18 @@ const AzAiServices = {
   OAI: "azure_oai",
   AiSearch: "azure_search",
   Language: "azure_language",
-  Translator: "azure_translator"
+  Translator: "azure_translator",
+  ContentSafety: "azure_content_safety"
 };
 
 const EndpointMetricsConstants = {
   DEF_METRICS_C_INTERVAL: 60, // Default metrics collection interval
   DEF_METRICS_H_COUNT: 5 // Default metrics history count
+};
+
+const ContentSafetyAPIKind = {
+  Text: "text",
+  Image: "image"
 };
 
 const TranslatorAPIKind = {
@@ -38,5 +45,6 @@ module.exports = {
   ServerDefaults,
   AzAiServices,
   EndpointMetricsConstants,
-  TranslatorAPIKind
+  TranslatorAPIKind,
+  ContentSafetyAPIKind
 }

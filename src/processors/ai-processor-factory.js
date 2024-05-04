@@ -6,6 +6,7 @@
  * Date: 04-24-2024
  *
  * Notes:
+ * ID05032024: ganrad: Added traffic routing support for Azure AI Content Safety service APIs
  *
 */
 
@@ -35,6 +36,7 @@ class AiProcessorFactory {
 	processor = new AzAiSearchProcessor();
 	break;
       case AzAiServices.Language:
+      case AzAiServices.ContentSafety:
         processor = new AzAiSvcProcessor();
         break;
       case AzAiServices.Translator:

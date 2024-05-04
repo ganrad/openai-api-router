@@ -2,6 +2,7 @@
  * Name: Azure AI Service processor
  * Description: This class implements a processor for executing Azure AI Service API requests.
  * - AI Language
+ * - AI Content Safety
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 04-24-2024
@@ -14,7 +15,9 @@ const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('../utilities/logger');
 
-const fetch = require("node-fetch");
+const { AzAiServices } = require('../utilities/app-gtwy-constants');
+
+const fetch = require('node-fetch');
 
 class AzAiSvcProcessor {
 
@@ -27,7 +30,20 @@ class AzAiSvcProcessor {
 
     let appConnections = arguments[2]; // EP metrics obj for all apps
     // console.log(`*****\nAzAiSvcProcessor.processRequest():\n  URI: ${req.originalUrl}\n  Request ID: ${req.id}\n  Application ID: ${config.appId}\n  Type: ${config.appType}\n  Kind: ${req.body.kind}`);
-    logger.log({level: "info", message: "[%s] %s.processRequest():\n  URI: %s\n  Request ID: %s\n  Application ID: %s\n  Type: %s\n  Kind: %s", splat: [scriptName,this.constructor.name,req.originalUrl,req.id,config.appId,config.appType,req.body.kind]});
+    let kind = null;
+    switch ( config.appType ) {
+      case AzAiServices.Language:
+	kind = req.body.kind;
+	break;
+      case AzAiServices.ContentSafety:
+	if ( req.body.text )
+	  kind = "text";
+	else
+	  kind = "image";
+	break;
+    };
+
+    logger.log({level: "info", message: "[%s] %s.processRequest():\n  URI: %s\n  Request ID: %s\n  Application ID: %s\n  Type: %s\n  Kind: %s", splat: [scriptName,this.constructor.name,req.originalUrl,req.id,config.appId,config.appType,kind]});
     
     let respMessage = null; // Populate this var before returning!
 
@@ -57,7 +73,7 @@ class AzAiSvcProcessor {
           data = await response.json();
 
           let respTime = Date.now() - stTime;
-	  metricsObj.updateApiCalls(req.body.kind,respTime);
+	  metricsObj.updateApiCalls(kind,respTime);
 
 	  respMessage = {
 	    http_code: status,

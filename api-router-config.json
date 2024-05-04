@@ -29,6 +29,20 @@
       ]
     },
     {
+      "appId": "content-safety-app",
+      "description": "Azure AI Content Safety Service text analyze application",
+      "appType": "azure_content_safety",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "endpoints": [
+        {
+          "uri": "https://gr-dev-cont-safety.cognitiveservices.azure.com/contentsafety/text:analyze?api-version=2023-10-01",
+          "apikey": "744169b7"
+        }
+      ]
+    },
+    {
       "appId": "search-app-ak-stip-v2",
       "description": "Azure AI Search Service test application - I",
       "appType": "azure_search",

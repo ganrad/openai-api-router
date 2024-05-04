@@ -23,6 +23,7 @@
  * 			- More robust exception handling
  * 			- Re-structured and streamlined code
  * ID04272024: ganrad : Centralized logging with winstonjs
+ * ID05032024: ganrad : Added traffic routing support for Azure AI Content Safety service APIs
  *
 */
 
@@ -191,6 +192,7 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
       case AzAiServices.AiSearch:
       case AzAiServices.Language:
       case AzAiServices.Translator:
+      case AzAiServices.ContentSafety:
 	response = await processor.processRequest(
 	  req,
 	  appConfig,

@@ -19,9 +19,9 @@
 // ID04272024.sn
 const path = require('path');
 const scriptName = path.basename(__filename);
-
 const wlogger = require('./utilities/logger.js');
-wlogger.log({level: "info", message: "[%s] Starting initialization of Azure AI Services Gateway ...", splat: [scriptName]});
+
+wlogger.log({level: "info", message: "[%s] Starting initialization of Azure AI Services API Gateway ...", splat: [scriptName]});
 // ID04272024.sn
 
 // ID02082024.sn: Configure Azure Monitor OpenTelemetry for instrumenting API gateway requests.
