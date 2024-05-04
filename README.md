@@ -153,10 +153,11 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
      ---------------- | -----------
      azure_language | This value denotes Azure AI Language service
      azure_translator | This value denotes Azure AI Translator service
+     azure_content_safety | This value denotes Azure AI Content Safety service
      azure_search | This value denotes Azure AI Search service
      azure_oai | This value denotes Azure OpenAI service
 
-   - Add/Update the Azure OpenAI Service model deployment endpoints/URI's and corresponding API key values in this file.
+   - Add/Update the Azure AI Service endpoints/URI's and corresponding API key values in this file.
    - (Optional) To enable caching and retrieval of OpenAI Service completions (Semantic Caching feature), specify values for attributes contained within **cacheSettings** attribute.  Refer to the table below and set appropriate values.
 
      Attribute Name | Description
@@ -171,6 +172,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    After making the changes, save the `./api-router-config.json` file.
 
    **IMPORTANT**:
+
+   **Azure OpenAI Service**:
 
    The model deployment endpoints/URI's should be listed in increasing order of priority (top down). Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  For each API Application, the API Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to OpenAI API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
 
