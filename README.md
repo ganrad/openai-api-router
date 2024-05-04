@@ -4,6 +4,7 @@ The API Gateway can be used to intelligently distribute AI application requests 
 - Azure AI Search (Full API support)
 - Azure AI Language (Limited API support - Entity Linking, Language detection, Key phrase extraction, NER, PII, Sentiment analysis and opinion mining only)
 - Azure AI Translator (Limited API support - Text Translation only)
+- Azure AI Content Safety (Limited API support - Analyze Text and Analyze Image only)
 
 The remainder of this readme describes the supported features, how to configure/enable them and finally deploy the gateway on Azure.
 
@@ -137,13 +138,23 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    Table Name | Description
    ---------- | -----------
    apigtwycache | This table stores vectorized prompts and completions
-   apigtwyprompts | This table stores prompts only
+   apigtwyprompts | This table stores prompts and completions
 
 4. Update the API Gateway configuration file.
 
-   Edit the `./api-router-config.json` file. Each AI Application should have a unique *appId*.
+   Edit the `./api-router-config.json` file.
 
    For each AI Application, 
+
+   - Specify a unique *appId* and an optional *description*.
+   - Specify the type *appType* of the backend Azure AI Service. This type must be one of the values listed in the table below.
+     
+     Application Type | Description
+     ---------------- | -----------
+     azure_language | This value denotes Azure AI Language service
+     azure_translator | This value denotes Azure AI Translator service
+     azure_search | This value denotes Azure AI Search service
+     azure_oai | This value denotes Azure OpenAI service
 
    - Add/Update the Azure OpenAI Service model deployment endpoints/URI's and corresponding API key values in this file.
    - (Optional) To enable caching and retrieval of OpenAI Service completions (Semantic Caching feature), specify values for attributes contained within **cacheSettings** attribute.  Refer to the table below and set appropriate values.
@@ -179,8 +190,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numeric value (<= 600)  
    APPLICATIONINSIGHTS_CONNECTION_STRING | Azure Monitor connection string | No | Assign the value of the Azure Application Insights resource *connection string* (from Azure Portal)
    API_GATEWAY_USE_CACHE | Global setting for enabling semantic caching | No | false
-   API_GATEWAY_CACHE_INVAL_SCHEDULE | Global setting for configuring the frequency of *Cache Invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/45 * * * *"
-   API_GATEWAY_PERSIST_PROMPTS | Global setting for persisting prompts in a database table (PostgreSQL) | No | false
+   API_GATEWAY_CACHE_INVAL_SCHEDULE | Global setting for configuring the frequency of *Cache Entry Invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/45 * * * *"
+   API_GATEWAY_PERSIST_PROMPTS | Global setting for persisting prompts and completions in a database table (PostgreSQL) | No | false
    API_GATEWAY_VECTOR_AIAPP | Name of the AI application that exposes endpoints for data *embedding* model. This value is required if semantic caching feature is enabled | No | None
    API_GATEWAY_SRCH_ENGINE | The vector search engine used by semantic caching feature | No | Postgresql/pgvector
 
@@ -216,6 +227,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
      Priority: 0   Uri: https://gr-dev-lang.cognitiveservices.azure.com/language/:analyze-text?api-version=2022-05-01
    Application ID: translate-app; Type: azure_translator
      Priority: 0   Uri: https://api.cognitive.microsofttranslator.com/
+   Application ID: content-safety-app; Type: azure_content_safety
+     Priority: 0   Uri: https://gr-dev-cont-safety.cognitiveservices.azure.com/contentsafety/text:analyze?api-version=2023-10-01
    Application ID: search-app-ak-stip-v2; Type: azure_search
      Priority: 0   Uri: https://gr-dev-rag-ais.search.windows.net/indexes/ak-stip-v2/docs/search?api-version=2023-11-01
    Application ID: search-app-ak-stip-aisrch-iv; Type: azure_search
@@ -454,7 +467,7 @@ Prior to turning on *Semantic Caching* feature for an AI Application (in Product
 **Persisting Prompts**
 
 - When global environment variable *API_GATEWAY_PERSIST_PROMPTS* is set to *true*, prompts and completions along with other API request related metadata will be persisted in database table *apigtwyprompts*.
-- API Request *prompts* will not be persisted under the following conditions a) All backend endpoints for a given AI Application are busy/throttled.  In this case, the API Gateway will return HTTP status code 503. b) API Gateway encounters an internal error while handling a request.  In this case, the API Gateway will return HTTP status code 500.
+- API Request *prompts* will not be persisted under the following conditions a) All backend endpoints for a given AI Application are busy/throttled.  In this case, the API Gateway will return HTTP status code 429. b) API Gateway encounters an internal error while handling a request.  In this case, the API Gateway will return HTTP status code 500.
 - The API Gateway returns a unique (GUID) id *x-request-id* in the HTTP response header for every request.  This header value along with the *user* value sent in the API request (body) can be used to query table *apigtwyprompts* and troubleshoot issues.  For instance, these values could be used to query a request that failed due to application of a content filter (HTTP status = 400).
 
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
