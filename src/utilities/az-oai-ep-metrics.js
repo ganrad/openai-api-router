@@ -7,7 +7,8 @@
  * Date: 01-28-2024
  *
  * Notes:
- * ID0272024: ganrad: Centralized logging with winstonjs
+ * ID04272024: ganrad: Centralized logging with winstonjs
+ * ID05042024: ganrad: Added additional endpoint metrics - throttledApiCalls, filteredApiCalls, tokensPerMinute and requestsPerMinute
  *
 */
 const path = require('path');
@@ -24,6 +25,9 @@ class AzOaiEpMetrics {
     this.failedCalls = 0; // No. of failed calls ~ 429's
     this.totalCalls = 0; // Total calls handled by this target endpoint
     this.totalTokens = 0; // Total tokens processed by this target endpoint
+    
+    this.throttledCalls = 0; // Throttled (429) API calls - ID05042024.n
+    this.filteredCalls = 0; // Api calls to which content filters (400) were applied - ID05042024.n
 
     this.timeMarker = Date.now(); // Time marker used to check if endpoint is unhealthy
 
@@ -63,11 +67,18 @@ class AzOaiEpMetrics {
     this.totalCalls++;
   }
 
-  updateFailedCalls(retrySeconds) {
+  // updateFailedCalls(retrySeconds) { // ID05042024.o
+  updateFailedCalls(status, retrySeconds) { // ID05042024.n
     this.updateMetrics();
 
     this.timeMarker = Date.now() + (retrySeconds * 1000);
     this.failedCalls++;
+
+    if ( status === 429 ) // ID05042024.n
+      this.throttledCalls++;
+    else if ( status === 400 ) 
+      this.filteredCalls++;
+
     this.totalCalls++;
   }
 
@@ -85,12 +96,16 @@ class AzOaiEpMetrics {
         collectedMetrics : {
           apiCalls: this.apiCalls,
           failedApiCalls: this.failedCalls,
+	  throttledApiCalls: this.throttledCalls, // ID05042024.n
+	  filteredApiCalls: this.filteredCalls, // ID05042024.n
           totalApiCalls: this.totalCalls,
 	  throughput: {
             kTokensPerWindow: kTokens,
 	    requestsPerWindow: (kTokens * 6),
             avgTokensPerCall: tokens_per_call,
             avgRequestsPerCall: (tokens_per_call * 6) / 1000,
+	    tokensPerMinute: (this.totalTokens / this.cInterval), // ID05042024.n
+	    requestsPerMinute: (this.apiCalls / this.cInterval) // ID05042024.n
 	  },
 	  latency: {
             avgResponseTimeMsec: latency
@@ -101,6 +116,8 @@ class AzOaiEpMetrics {
 
       this.apiCalls = 0;
       this.failedCalls = 0;
+      this.throttledCalls = 0; // ID05042024.n
+      this.filteredCalls = 0; // ID05042024.n
       this.totalCalls = 0;
       this.totalTokens = 0;
       this.respTime = 0;
@@ -116,10 +133,13 @@ class AzOaiEpMetrics {
     return {
       apiCalls: this.apiCalls,
       failedApiCalls: this.failedCalls,
+      throttledApiCalls: this.throttledCalls, // ID05042024.n
+      filteredApiCalls: this.filteredCalls, // ID05042024.n
       totalApiCalls: this.totalCalls,
       kInferenceTokens: kTokens,
       history: this.historyQueue.queueItems
     };
   }
 }
+
 module.exports = AzOaiEpMetrics;

@@ -6,7 +6,21 @@ The API Gateway can be used to intelligently distribute AI application requests 
 - Azure AI Translator (Limited API support - Text Translation only)
 - Azure AI Content Safety (Limited API support - Analyze Text and Analyze Image only)
 
-The remainder of this readme describes the supported features, how to configure/enable them and finally deploy the gateway on Azure.
+If you are looking for the foundational building blocks to quickly implement and deploy ***AI Information Assistant (a.k.a AI Chatbot)*** solutions on Azure then the *AI Services API Gateway* can help shorten the time to value.  This *solution accelerator* can provide 80-90% of the functionality required to implement AI Solutions and Chatbots.  Please read on. 
+
+**Recipe:** AI Information Assistant
+
+**Ingredients:**
+
+- **Intelligent Traffic Routing** +
+- **Retrieval Augmented Generation (On Your Data)** +
+- **Semantic Caching** +
+- **Conversational State Management** [^1] +
+- **OpenAI API Metrics Collection and Tracking**
+
+[^1]: Currently in development
+
+The remainder of this readme describes the supported features, how to configure/enable them and finally deploy the AI Services API Gateway on Azure.
 
 ### Supported Features At A Glance
 
@@ -487,50 +501,83 @@ Prior to turning on *Semantic Caching* feature for an AI Application (in Product
    {
      "listenPort": "8000",
      "instanceName": "Gateway-Instance-01",
-     "collectionInterval": 1,
-     "historyCount": 2,
+     "collectionIntervalMins": 1,
+     "historyCount": 5,
      "applicationMetrics": [
-        {
+	{
+            "applicationId": "language-app",
+            "endpointMetrics": [
+                {
+                    "endpoint": "https://gr-dev-lang.cognitiveservices.azure.com/language/:analyze-text?api-version=2022-05-01",
+                    "priority": 0,
+                    "metrics": {
+                        "apiCalls": 6,
+                        "languageDetectionApiCalls": 1,
+                        "namedEntityRecognitionApiCalls": 1,
+                        "keyPhraseExtractionApiCalls": 1,
+                        "entityLinkingApiCalls": 1,
+                        "sentimentAnalysisApiCalls": 1,
+                        "piiEntityRecognitionApiCalls": 1,
+                        "failedApiCalls": 0,
+                        "totalApiCalls": 6,
+                        "history": {}
+                    }
+                }
+            ]
+        },
+	{
             "applicationId": "vectorizedata",
             "endpointMetrics": [
                 {
                     "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15",
                     "priority": 0,
                     "metrics": {
-                        "apiCalls": 7,
-                        "failedCalls": 0,
-                        "totalCalls": 7,
-                        "kInferenceTokens": 143,
+                        "apiCalls": 319,
+                        "failedApiCalls": 0,
+                        "throttledApiCalls": 0,
+                        "filteredApiCalls": 0,
+                        "totalApiCalls": 319,
+                        "kInferenceTokens": 3.135,
                         "history": {
-                            "3": {
-                                "collectionTime": "3/11/2024, 10:21:17 PM",
+                            "1": {
+                                "collectionTime": "5/5/2024, 7:18:59 PM",
                                 "collectedMetrics": {
-                                    "noOfApiCalls": 6,
-                                    "noOfFailedCalls": 0,
+                                    "apiCalls": 239,
+                                    "failedApiCalls": 0,
+                                    "throttledApiCalls": 0,
+                                    "filteredApiCalls": 0,
+                                    "totalApiCalls": 239,
                                     "throughput": {
-                                        "kTokensPerWindow": 121,
-                                        "requestsPerWindow": 726,
-                                        "avgTokensPerCall": 20.166666666666668,
-                                        "avgRequestsPerCall": 0.121
+                                        "kTokensPerWindow": 2.318,
+                                        "requestsPerWindow": 13.908000000000001,
+                                        "avgTokensPerCall": 9.698744769874477,
+                                        "avgRequestsPerCall": 0.05819246861924686,
+                                        "tokensPerMinute": 2318,
+                                        "requestsPerMinute": 239
                                     },
                                     "latency": {
-                                        "avgResponseTimeMsec": 133.83333333333334
+                                        "avgResponseTimeMsec": 108.7489539748954
                                     }
                                 }
                             },
-                            "4": {
-                                "collectionTime": "3/11/2024, 10:25:48 PM",
+                            "2": {
+                                "collectionTime": "5/5/2024, 7:19:59 PM",
                                 "collectedMetrics": {
-                                    "noOfApiCalls": 11,
-                                    "noOfFailedCalls": 0,
+                                    "apiCalls": 268,
+                                    "failedApiCalls": 0,
+                                    "throttledApiCalls": 0,
+                                    "filteredApiCalls": 0,
+                                    "totalApiCalls": 268,
                                     "throughput": {
-                                        "kTokensPerWindow": 117,
-                                        "requestsPerWindow": 702,
-                                        "avgTokensPerCall": 10.636363636363637,
-                                        "avgRequestsPerCall": 0.06381818181818182
+                                        "kTokensPerWindow": 2.647,
+                                        "requestsPerWindow": 15.881999999999998,
+                                        "avgTokensPerCall": 9.876865671641792,
+                                        "avgRequestsPerCall": 0.05926119402985075,
+                                        "tokensPerMinute": 2647,
+                                        "requestsPerMinute": 268
                                     },
                                     "latency": {
-                                        "avgResponseTimeMsec": 114.63636363636364
+                                        "avgResponseTimeMsec": 101.9776119402985
                                     }
                                 }
                             }
@@ -539,32 +586,39 @@ Prior to turning on *Semantic Caching* feature for an AI Application (in Product
                 }
             ]
         },
-        {
+	{
             "applicationId": "aichatbotapp",
             "cacheMetrics": {
-               "hitCount": 20,
-               "avgScore": 0.9952505232611696
+                "hitCount": 7,
+                "avgScore": 0.9999999148505135
             },
             "endpointMetrics": [
                 {
-                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2023-05-15",
+                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01",
                     "priority": 0,
                     "metrics": {
-                        "apiCalls": 1,
-                        "failedCalls": 0,
-                        "totalCalls": 1,
-                        "kInferenceTokens": 393,
+                        "apiCalls": 2,
+                        "failedApiCalls": 0,
+                        "throttledApiCalls": 0,
+                        "filteredApiCalls": 0,
+                        "totalApiCalls": 2,
+                        "kInferenceTokens": 723,
                         "history": {
                             "0": {
-                                "collectionTime": "3/11/2024, 10:11:11 PM",
+                                "collectionTime": "5/5/2024, 7:35:50 PM",
                                 "collectedMetrics": {
-                                    "noOfApiCalls": 0,
-                                    "noOfFailedCalls": 0,
+                                    "apiCalls": 0,
+                                    "failedApiCalls": 0,
+                                    "throttledApiCalls": 0,
+                                    "filteredApiCalls": 0,
+                                    "totalApiCalls": 0,
                                     "throughput": {
                                         "kTokensPerWindow": 0,
                                         "requestsPerWindow": 0,
                                         "avgTokensPerCall": 0,
-                                        "avgRequestsPerCall": 0
+                                        "avgRequestsPerCall": 0,
+                                        "tokensPerMinute": 0,
+                                        "requestsPerMinute": 0
                                     },
                                     "latency": {
                                         "avgResponseTimeMsec": 0
@@ -572,18 +626,23 @@ Prior to turning on *Semantic Caching* feature for an AI Application (in Product
                                 }
                             },
                             "1": {
-                                "collectionTime": "3/11/2024, 10:21:23 PM",
+                                "collectionTime": "5/5/2024, 7:42:25 PM",
                                 "collectedMetrics": {
-                                    "noOfApiCalls": 4,
-                                    "noOfFailedCalls": 0,
+                                    "apiCalls": 9,
+                                    "failedApiCalls": 0,
+                                    "throttledApiCalls": 0,
+                                    "filteredApiCalls": 0,
+                                    "totalApiCalls": 9,
                                     "throughput": {
-                                        "kTokensPerWindow": 1.258,
-                                        "requestsPerWindow": 7.548,
-                                        "avgTokensPerCall": 314.5,
-                                        "avgRequestsPerCall": 1.887
+                                        "kTokensPerWindow": 4.367,
+                                        "requestsPerWindow": 26.201999999999998,
+                                        "avgTokensPerCall": 485.22222222222223,
+                                        "avgRequestsPerCall": 2.9113333333333333,
+                                        "tokensPerMinute": 4367,
+                                        "requestsPerMinute": 9
                                     },
                                     "latency": {
-                                        "avgResponseTimeMsec": 2754
+                                        "avgResponseTimeMsec": 5201.666666666667
                                     }
                                 }
                             }
@@ -592,55 +651,24 @@ Prior to turning on *Semantic Caching* feature for an AI Application (in Product
                 }
             ]
         },
-        {
+	{
             "applicationId": "aidocusearchapp",
             "cacheMetrics": {
-               "hitCount": 38,
-               "avgScore": 0.9999999247099091
+                "hitCount": 1750,
+                "avgScore": 0.9999999147483241
             },
             "endpointMetrics": [
                 {
                     "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
                     "priority": 0,
                     "metrics": {
-                        "apiCalls": 2,
-                        "failedCalls": 0,
-                        "totalCalls": 2,
-                        "kInferenceTokens": 791,
-                        "history": {
-                            "0": {
-                                "collectionTime": "3/11/2024, 10:11:11 PM",
-                                "collectedMetrics": {
-                                    "noOfApiCalls": 0,
-                                    "noOfFailedCalls": 0,
-                                    "throughput": {
-                                        "kTokensPerWindow": 0,
-                                        "requestsPerWindow": 0,
-                                        "avgTokensPerCall": 0,
-                                        "avgRequestsPerCall": 0
-                                    },
-                                    "latency": {
-                                        "avgResponseTimeMsec": 0
-                                    }
-                                }
-                            },
-                            "1": {
-                                "collectionTime": "3/11/2024, 10:12:40 PM",
-                                "collectedMetrics": {
-                                    "noOfApiCalls": 2,
-                                    "noOfFailedCalls": 0,
-                                    "throughput": {
-                                        "kTokensPerWindow": 557,
-                                        "requestsPerWindow": 3342,
-                                        "avgTokensPerCall": 278.5,
-                                        "avgRequestsPerCall": 1.671
-                                    },
-                                    "latency": {
-                                        "avgResponseTimeMsec": 2056
-                                    }
-                                }
-                            }
-                        }
+                        "apiCalls": 0,
+                        "failedApiCalls": 0,
+                        "throttledApiCalls": 0,
+                        "filteredApiCalls": 0,
+                        "totalApiCalls": 0,
+                        "kInferenceTokens": 0,
+                        "history": {}
                     }
                 },
                 {
@@ -648,8 +676,10 @@ Prior to turning on *Semantic Caching* feature for an AI Application (in Product
                     "priority": 1,
                     "metrics": {
                         "apiCalls": 0,
-                        "failedCalls": 0,
-                        "totalCalls": 0,
+                        "failedApiCalls": 0,
+                        "throttledApiCalls": 0,
+                        "filteredApiCalls": 0,
+                        "totalApiCalls": 0,
                         "kInferenceTokens": 0,
                         "history": {}
                     }
@@ -657,52 +687,60 @@ Prior to turning on *Semantic Caching* feature for an AI Application (in Product
             ]
         }
      ],
-     "successApiCalls": 67,
-     "cachedApiCalls": 58,
+     "successApiCalls": 17,
+     "cachedApiCalls": 1757,
      "failedApiCalls": 0,
-     "totalApiCalls": 67,
+     "totalApiCalls": 1774,
      "endpointUri": "/api/v1/dev/apirouter/metrics",
-     "currentDate": "3/11/2024, 10:28:37 PM",
+     "currentDate": "5/5/2024, 7:45:55 PM",
      "status": "OK"
    }
    ```
 
-   Description of API Gateway server instance metrics are provided in the table below.
+   Azure AI Service endpoint metrics collected by the API Gateway server across all AI Applications is described in the table below.
 
    Metric name | Description
    ----------- | -----------
    successApiCalls | Number of API calls successfully processed by the API Gateway.
    cachedApiCalls | Number of API call responses served from the API Gateway cache.
-   failedApiCalls | Number of API calls which couldn't be completed. One of the reasons could be that all backend endpoints were busy/throttled.
-   totalApiCalls | Total number of API calls received by this API Gateway Server instance.
+   failedApiCalls | Number of API calls which failed as a result of a backend exception (AI Service returned status != 200).
+   totalApiCalls | Total number of API calls received by this API Gateway Server instance.  Does not include API calls initiated by the API Gateway.
 
-   Description of AI Application cache hit metrics are provided in the table below.
+   For each AI Application, the API Gateway collects multiple metrics.  Description of **Azure OpenAI Service** metrics collected by the API Gateway are provided in the tables below.
+
+   **Cache hit metrics**
 
    Metric name | Description
    ----------- | -----------
    hitCount | Number of API calls where responses were served from the gateway cache
    avgScore | Average similarity search score for cached responses
 
-   Description of AI Application (backend) endpoint metrics are provided in the table below.
+   **AI Service (OpenAI) endpoint metrics**
 
    Metric name | Description
    ----------- | -----------
    apiCalls | Number of OpenAI API calls successfully handled by this backend endpoint in the current metrics collection interval
-   failedCalls | Number of OpenAI API calls which this backend endpoint couldn't handle (failed) in the current metrics collection interval
-   totalCalls | Total number of OpenAI API calls received by this backend endpoint in the current metrics collection interval
-   kInferenceTokens | Total tokens (K) processed/handled by this backend OpenAI endpoint in the current metrics collection interval
+   failedApiCalls | Number of OpenAI API calls which failed in the current metrics collection interval
+   throttledAPICalls | Number of OpenAI API calls that were throttled (Service status = 429)
+   filteredAPICalls | Number of OpenAI API calls that were filtered due to harmful content or bad request (Service status = 400)
+   totalApiCalls | Total number of OpenAI API calls received by this backend (OpenAI) endpoint in the current metrics collection interval
+   kInferenceTokens | Total tokens (K) processed/handled by this backend (OpenAI) endpoint in the current metrics collection interval
 
-   Description of AI Application (backend) endpoint history metrics are provided in the table below.
+   **AI Service (OpenAI) endpoint metrics history**
 
    Metric name | Description
    ----------- | -----------
    collectionTime | Start time of metrics collection interval/window
-   noOfApiCalls | Number of OpenAI API calls successfully handled by this backend (/endpoint)
-   noOfFailedCalls | Number of OpenAI API calls which this backend endpoint couldn't handle (failed) 
+   apiCalls | Number of OpenAI API calls successfully handled by this backend/endpoint
+   failedApiCalls | Number of OpenAI API calls which failed (Service status != 200)
+   throttledAPICalls | Number of OpenAI API calls that were throttled (Service returned status = 429)
+   filteredAPICalls | Number of OpenAI API calls that were filtered due to harmful content or bad request (Service status = 400)
    throughput.kTokensPerWindow | Total tokens (K) processed/handled by this OpenAI backend 
    throughput.requestsPerWindow | Total number of requests processed/handled by this OpenAI endpoint 
    throughput.avgTokensPerCall | Average tokens (K) processed by this OpenAI backend per API call
-   throughput.avgRequestsPerCall | Average requests processed by this OpenAI backend per API call
+   throughput.avgRequestsPerCall | Average requests processed by this OpenAI backend per API call (PTU only)
+   throughput.tokensPerMinute | Number of tokens processed by this endpoint per minute
+   throughput.requestsPerMinute | Number of OpenAI API calls handled by this endpoint per minute
    latency.avgResponseTimeMsec | Average response time of OpenAI backend API call
 
 2. Access API Gateway and OpenAI API metrics using *Azure Application Insights*

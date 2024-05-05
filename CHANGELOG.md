@@ -3,12 +3,14 @@
 ## [v1.6.0](https://github.com/ganrad/open-ai-router/compare/v1.5.0...v1.6.0)
 ### Functionality changes
 * (Bugfix) Each time when 'reconfig' endpoint was being invoked, a new cron scheduler instance was started. There should only be one cache entry invalidator instance running per gateway/router process instance.
+* (Bugfix) Fixed issues with metrics calculation.
 * (Enhancement) Added support for proxying requests to following Azure AI Services.  Introduced separate processors (modules) for handling API requests for each AI Service.
   - Azure AI Language
   - Azure AI Search
   - Azure AI Translate
   - Azure AI Content Safety
 * (Enhancement) Introduced two new elements in gateway/router configuration - description and application type.
+* (Enhancement) Added four key endpoint metrics for AOAI Service - Throttled (429) Api calls, Filtered (400) Api calls, Tokens per minute (TPM) and Requests per minute (RPM).
 * (Enhancement) Implemented robust error handling for Azure AI Service API calls.
 * (Enhancement) Modularized the core gateway/router logic into separate modules to achieve three key benefits
   - **Enhanced Code Maintainability**: By breaking down the logic, make it easier to manage and update.
