@@ -13,7 +13,7 @@ If you are looking for the foundational building blocks to quickly implement and
 **Ingredients:**
 
 - **Intelligent Traffic Routing** +
-- **Retrievable Augmented Generation (On Your Data)** +
+- **Retrieval Augmented Generation (On Your Data)** +
 - **Semantic Caching** +
 - **Conversational State Management** [^1] +
 - **OpenAI API Metrics Collection and Tracking**
