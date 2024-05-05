@@ -187,7 +187,7 @@ class AzOaiProcessor {
 	  else
 	    retryAfter = retryAfterSecs;
 
-	  metricsObj.updateFailedCalls(retryAfterSecs);
+	  metricsObj.updateFailedCalls(status,retryAfterSecs);
 
           // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n  Retry seconds: ${retryAfterSecs}\n*****`);
 	  logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message: %s\n  Retry seconds: %d", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,data,retryAfterSecs]});
@@ -217,7 +217,7 @@ class AzOaiProcessor {
           // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n*****`);
 	  logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message: %s", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,data]});
 
-	  metricsObj.updateFailedCalls(0);
+	  metricsObj.updateFailedCalls(status,0);
 	  respMessage = {
 	    http_code: status,
 	    status_text: response.statusText,
@@ -232,7 +232,7 @@ class AzOaiProcessor {
           // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n*****`);
 	  logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message: %s", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,data]});
 
-	  metricsObj.updateFailedCalls(0);
+	  metricsObj.updateFailedCalls(status,0);
 
 	  err_msg = {
             appId: config.appId,
