@@ -6,10 +6,12 @@ The API Gateway can be used to intelligently distribute AI application requests 
 - Azure AI Translator (Limited API support - Text Translation only)
 - Azure AI Content Safety (Limited API support - Analyze Text and Analyze Image only)
 
-If you are looking for the foundational building blocks to quickly implement ***AI Information Assistant (a.k.a AI Chatbot)*** solutions then you have come to the right place.  Please read on.
+If you are looking for the foundational building blocks to quickly implement and deploy ***AI Information Assistant (a.k.a AI Chatbot)*** solutions on Azure then the *AI Services API Gateway* can help shorten the time to value.  This *solution accelerator* can provide 80-90% of the functionality required to implement AI Solutions and Chatbots.  Please read on. 
 
-**Recipe:** AI Information Assistant Solution
+**Recipe:** AI Information Assistant
+
 **Ingredients:**
+
 - **Intelligent Traffic Routing** +
 - **Retrievable Augmented Generation (On Your Data)** +
 - **Semantic Caching** +
@@ -119,7 +121,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
 
 3. Install PostgreSQL database server.
 
-   > [!NOTE]
+   > **NOTE**:
    > If you do not intend to use *Semantic Caching* and/or *Prompt Persistence* features, you can safely skip this step and go to Step 4.
 
    Refer to the installation instructions [here](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/quickstart-create-server-portal) to install *Azure Database for PostgreSQL*.  Create a new database and give it a suitable name.  Note down the database name, server user name and password.  Save it in a secure location as we will need this info. in a subsequent step (below).
