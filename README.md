@@ -8,7 +8,7 @@ The API Gateway can be used to intelligently distribute AI application requests 
 
 If you are looking for the foundational building blocks to quickly implement an ***AI Information Assistant (a.k.a AI Chatbot)*** then you have come to the right place.  Please read on.
 
-**AI Information Assistant Solution ==>
+**AI Information Assistant Solution ==>**
 
 - **Intelligent Traffic Routing** +
 - **Retrievable Augmented Generation (On Your Data)** +
@@ -16,7 +16,7 @@ If you are looking for the foundational building blocks to quickly implement an 
 - **Conversational State Management** [^1] +
 - **OpenAI API Metrics Collection and Tracking**
 
-[^1] Currently in development
+[^1]: Currently in development
 
 The remainder of this readme describes the supported features, how to configure/enable them and finally deploy the AI Services API Gateway on Azure.
 
