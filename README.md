@@ -16,7 +16,7 @@ If you are looking for the foundational building blocks to quickly implement and
 - **Retrieval Augmented Generation (On Your Data)** +
 - **Semantic Caching** +
 - **Conversational State Management** [^1] +
-- **OpenAI API Metrics Collection and Tracking**
+- **AI Service API Metrics Collection and Tracking**
 
 [^1]: Currently in development
 

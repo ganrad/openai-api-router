@@ -127,7 +127,7 @@ async function executeQuery(entity, requestid, query, params) {
     // logLine += `  Operation: ${result.command}\n  Retrieved Rows: ${rows}\n  Execution Time: ${Date.now() - stTime}\n*****`;
     logLine += "  Operation: %s\n  Retrieved Rows: %d\n  Execution Time: %d";
     // console.log(logLine);
-    logger.log({level: "info", message: logLine, splat: [scriptName,entity,requestid,result.command,rows,Date.now() - stTime]});
+    logger.log({level: "info", message: logLine, splat: [scriptName,entity,requestid,query,result.command,rows,Date.now() - stTime]});
   
     client.release();
   }
