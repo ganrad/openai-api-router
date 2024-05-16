@@ -9,11 +9,11 @@ The API Gateway can be used to intelligently distribute AI application requests 
 If you're seeking the essential components for rapid implementation and deployment of **AI Information Assistant (a.k.a AI Chatbot)** solutions on Azure, the *AI Services API Gateway* is your go-to resource to expedite the development process and transition smoothly from pilot phase to full-scale production. This *solution accelerator* can provide 80-90% of the functionality required to implement AI Solutions and Chatbots.  Please read on. 
 
 
-**Recipe** | Components
----------- | ----------
-AI Information Assistant | **Intelligent Traffic Routing** <br> **Retrieval Augmented Generation (On Your Data)** <br> **Semantic Caching** <br> **Conversational State Management** [^1] <br> **AI Service Metrics Collection and Tracking**
+**Recipe** | Components | Functional Architecture (**)
+---------- | ---------- | ----------------------------
+AI Information Assistant | 1. Chatbot User Interface <br> 2. **Semantic Caching** <br> 3. **State Management** <br> 4. **API Traffic Routing** <br> 5. **Azure OpenAI Service** <br> 6. Azure AI Search (RAG/OYD) <br> 7. **AI Service Metrics Collection and Tracking** | ![alt tag](./images/ai-chatbot-usecase-gh.PNG)
 
-[^1]: Currently in development
+** Components marked by green circles are out of box features.
 
 The remainder of this readme describes the supported features, how to configure/enable them and finally deploy the AI Services API Gateway on Azure.
 
