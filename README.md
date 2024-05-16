@@ -1,13 +1,8 @@
-# An Azure AI Services *API Gateway*
-The API Gateway can be used to intelligently distribute AI application requests to Azure AI Service deployment endpoints. The gateway currently supports proxying requests to the following Azure AI Services.
-- Azure OpenAI Service (Full API support)
-- Azure AI Search (Full API support)
-- Azure AI Language (Limited API support - Entity Linking, Language detection, Key phrase extraction, NER, PII, Sentiment analysis and opinion mining only)
-- Azure AI Translator (Limited API support - Text Translation only)
-- Azure AI Content Safety (Limited API support - Analyze Text and Analyze Image only)
+# An Azure *AI Services API Gateway*
 
-If you're seeking the essential components for rapid implementation and deployment of **AI Information Assistant (a.k.a AI Chatbot)** solutions on Azure, the *AI Services API Gateway* is your go-to resource to expedite the development process and transition smoothly from pilot phase to full-scale production. This *solution accelerator* can provide 80-90% of the functionality required to implement AI Solutions and Chatbots.  Please read on. 
+If you're seeking the essential components for rapid implementation and deployment of **AI Information Assistant (a.k.a AI Chatbot)** solutions on Azure, the *AI Services API Gateway* is your go-to resource to expedite the development process and transition smoothly from pilot phase to full-scale production.
 
+This *solution accelerator* is designed to deliver 80-90% of the core functionality essential for constructing and deploying AI Solutions and Chatbots. Most notably, it facilitates the use of a shared, minimal infrastructure component set, allowing for the smooth roll out of numerous AI Chatbots/Solutions on the same foundational infrastructure.
 
 Recipe | Components | Functional Architecture (**)
 ------ | ---------- | ----------------------------
@@ -24,6 +19,7 @@ Feature/Capability | Azure AI Service | Description
 **Unified Management Plane** | All | API Gateway provides a unified management plane for a) Sharing AI Service deployment endpoints among multiple AI Applications and b) Tracking AI Service API metrics such as throughput and latency for each AI Application.  The gateway is *AI Application Aware* meaning Azure AI Service endpoints can be configured separately for each *AI Application*.  This not only allows AI service deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing for each specific AI use case.
 **Intelligent Traffic Routing** | Azure OpenAI Service | The API Gateway can be configured with multiple Azure AI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
 **Semantic Caching** | Azure OpenAI Service | This feature is seamlessly integrated into API Gateway and can be used to cache OpenAI Service prompts and responses. Cache hits are evaluated based on semantic similarity and the configured algorithm. With semantic caching, runtime performance of LLM/AI applications can be improved by up to 40%. This solution leverages the vectorization and semantic search features supported by the widely popular *PostgreSQL* open source database.
+**Conversational State Management** | Azure OpenAI Service (Chat Completion API only) | AI Chatbots must maintain context during end user sessions so they can reference previous user inputs, ensuring coherent and contextually relevant conversations.  This feature manages the conversational state and can effortlessly scale to support anywhere from 10 to hundreds of concurrent user sessions for multiple AI applications simultaneously. Additionally, it can function independently or in tandem with the *Semantic Caching* feature to enhance performance.
 **Prompt Persistence** | Azure OpenAI Service | This optional feature can be used to persist OpenAI Service *Prompts* (inputs) and *Completions* (responses) in a relational database table. With this feature, customers can analyze prompts and accordingly adjust the similarity distance for the chosen vector search algorithm to maximize performance (increase throughput).  This feature can also be used to introspect the prompt and completion tokens associated with a particular API request (Request ID) and troubleshoot content filteration issues quickly. The gateway currently supports PostgreSQL database as the persistence provider.
 **Traffic Splitting** | All | The Gateway provides the flexibility to split AI application traffic between multiple Azure AI Service deployment endpoints. In the case of Azure OpenAI Service, the AI application traffic can be split among multiple *Paygo* (tokens per minute) and *Provisioned Throughput Unit* (reserved capacity) model deployments.
 **Dynamic Server Configuration** | All | The gateway exposes a separate reconfig (/reconfig) endpoint to allow dynamic reconfiguration of backend endpoints. Backend endpoints can be reconfigured anytime even when the server is running thereby limiting AI application downtime.
@@ -34,14 +30,34 @@ Feature/Capability | Azure AI Service | Description
 
 ### Usage scenarios
 
-The API Gateway can be used in two scenarios.
-1. **Capturing Azure AI Service API usage metrics and estimating capacity for AI applications/workloads**
+The AI Services Gateway can be used in the following scenarios.
+1. **Rapid deployment of AI Chatbots (or AI Information Assistants)**
+   
+   The AI Services Gateway solution provides core features such as *Semantic Caching*, *State Management*, *Traffic Routing* and *API Metrics Collection* right out of the box, which are crucial for implementing conversational AI applications such as AI Chatbots.
 
-   For each AI Application, the API Gateway collects Azure AI Service endpoint usage metrics.  The metrics are collected for each AI application based on pre-configured time intervals. In the case of OpenAI Service, these metrics can be used to compute the required throughput a.k.a *Tokens per minute* (TPM). TPM can then be used to estimate *Provisioned Throughput Units* for each OpenAI workload.
+2. **Capturing Azure AI Service API usage metrics and estimating capacity for AI applications/workloads**
 
-2. **Intelligently route AI Application requests to Azure AI Service deployments/backends**
+   For each AI Application, the AI Services Gateway collects Azure AI Service endpoint usage metrics.  The metrics are collected for each AI application based on pre-configured time intervals. In the case of Azure OpenAI Service, the collected metrics include *Tokens per minute* (TPM) and *Requests per minute* (RPM). These metrics can then be used to estimate *Provisioned Throughput Units* for each OpenAI workload.
 
-   For each AI Application, the API Gateway functions as an intelligent router and distributes AI Service API traffic among multiple backend endpoints.  The gateway keeps track of unavailable/busy backend endpoints and automatically redirects traffic to available endpoints thereby distributing the API traffic load evenly and not overloading a given endpoint with too many requests.  
+3. **Intelligently route AI Application requests to Azure AI Service deployments/backends**
+
+   For each AI Application, the AI Services Gateway functions as an intelligent router and distributes AI Service API traffic among multiple backend endpoints.  The gateway keeps track of unavailable/busy backend endpoints and automatically redirects traffic to available endpoints thereby distributing the API traffic load evenly and not overloading a given endpoint with too many requests.  
+
+   The API Gateway can be used to intelligently distribute AI application requests to Azure AI Service deployment endpoints (URIs). The gateway currently supports proxying requests to the following Azure AI Services.
+     - Azure OpenAI Service (Full API support)
+     - Azure AI Search (Full API support)
+     - Azure AI Language (Limited API support - Entity Linking, Language detection, Key phrase extraction, NER, PII, Sentiment analysis and opinion mining only)
+     - Azure AI Translator (Limited API support - Text Translation only)
+     - Azure AI Content Safety (Limited API support - Analyze Text and Analyze Image only)
+
+### Feature/Capability Support Matrix
+
+Feature/Capability | Azure OpenAI Service | Azure AI Search | Azure AI Language | Azure AI Translator | Azure AI Content Safety
+------------------ | -------------------- | --------------- | ----------------- | ------------------- | -----------------------
+Semantic Cache | Yes <br> - Completions API <br> - Chat Completions API | No | No | No | No
+State Management | Yes <br> - Chat Completions API | No | No | No | No
+API Router | Yes | Yes | Yes | Yes | Yes
+Metrics Collection | Yes | Yes | Yes | Yes | Yes
 
 ### Reference Architecture
 
