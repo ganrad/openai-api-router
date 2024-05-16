@@ -11,7 +11,7 @@ If you're seeking the essential components for rapid implementation and deployme
 
 Recipe | Components | Functional Architecture (**)
 ------ | ---------- | ----------------------------
-AI Information Assistant | 1. Chatbot User Interface <br> 2. **Semantic Caching** <br> 3. **State Management** <br> 4. **API Traffic Routing** <br> 5. **Azure OpenAI Service** <br> 6. Azure AI Search (RAG/OYD) <br> 7. **AI Service Metrics Collection and Tracking** | ![alt tag](./images/ai-chatbot-usecase-gh.PNG)
+*AI Information Assistant* | 1. Chatbot User Interface <br> 2. **Semantic Caching** <br> 3. **State Management** <br> 4. **API Traffic Routing** <br> 5. Azure OpenAI Service <br> 6. Azure AI Search (RAG/OYD) <br> 7. **API Metrics Collection** | ![alt tag](./images/ai-chatbot-usecase-gh.PNG)
 
 ** Components marked by green circles are out of box features.
 
