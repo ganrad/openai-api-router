@@ -6,17 +6,12 @@ The API Gateway can be used to intelligently distribute AI application requests 
 - Azure AI Translator (Limited API support - Text Translation only)
 - Azure AI Content Safety (Limited API support - Analyze Text and Analyze Image only)
 
-If you are looking for the foundational building blocks to quickly implement and deploy ***AI Information Assistant (a.k.a AI Chatbot)*** solutions on Azure then the *AI Services API Gateway* can help shorten the time to value.  This *solution accelerator* can provide 80-90% of the functionality required to implement AI Solutions and Chatbots.  Please read on. 
+If you're seeking the essential components for rapid implementation and deployment of **AI Information Assistant (a.k.a AI Chatbot)** solutions on Azure, the *AI Services API Gateway* is your go-to resource to expedite the development process and transition smoothly from pilot phase to full-scale production. This *solution accelerator* can provide 80-90% of the functionality required to implement AI Solutions and Chatbots.  Please read on. 
 
-**Recipe:** AI Information Assistant
 
-**Ingredients:**
-
-- **Intelligent Traffic Routing** +
-- **Retrieval Augmented Generation (On Your Data)** +
-- **Semantic Caching** +
-- **Conversational State Management** [^1] +
-- **OpenAI API Metrics Collection and Tracking**
+**Recipe** | Components
+---------- | ----------
+AI Information Assistant | **Intelligent Traffic Routing** <br> **Retrieval Augmented Generation (On Your Data)** <br> **Semantic Caching** <br> **Conversational State Management** [^1] <br> **AI Service Metrics Collection and Tracking**
 
 [^1]: Currently in development
 
