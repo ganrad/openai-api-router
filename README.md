@@ -275,7 +275,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the API 
    APPLICATIONINSIGHTS_CONNECTION_STRING | Azure Monitor connection string | No | Assign the value of the Azure Application Insights resource *connection string* (from Azure Portal)
    API_GATEWAY_USE_CACHE | Global setting for enabling semantic caching. This setting applies to all AI Applications.| No | false
    API_GATEWAY_CACHE_INVAL_SCHEDULE | Global setting for configuring the frequency of *Cache Entry Invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/45 * * * *"
-   API_GATEWAY_USE_MEMORY | Global setting for enabling conversational state management.  This setting applies to all AI Applications. | No | false
+   API_GATEWAY_STATE_MGMT | Global setting for enabling conversational state management.  This setting applies to all AI Applications. | No | false
    API_GATEWAY_MEMORY_INVAL_SCHEDULE | Global setting for configuring the frequency of *Memory Invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/10 * * * *"
    API_GATEWAY_PERSIST_PROMPTS | Global setting for persisting prompts and completions in a database table (PostgreSQL) | No | false
    API_GATEWAY_VECTOR_AIAPP | Name of the AI application that exposes endpoints for data *embedding* model. This value is required if semantic caching feature is enabled | No | None
