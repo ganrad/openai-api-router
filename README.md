@@ -97,7 +97,7 @@ Readers are advised to refer to the following on-line resources as needed.
 - Currently, the Gateway does not secure the exposed API's by means of security tokens or API keys. Therefore, it's use should be limited to private virtual network deployments on Azure.  However, the gateway can be seamlessly integrated behind an application gateway or a firewall appliance (WAF) that offers advanced and robust security capabilities.
 
 ### Deployment Options
-Deploy the AI Services Gateway in a pre-production environment first and configure the desired features by setting the configuration parameters to appropriate values. The pre-production environment should be as close as possible to an actual production environment. Rigorously validate the features of routing, caching, state management, and persistence to confirm their optimal functionality as anticipated.
+Deploy the AI Services API Gateway in a pre-production environment first and configure the desired features by setting the configuration parameters to appropriate values. The pre-production environment should be as close as possible to an actual production environment. Rigorously validate the features of routing, caching, state management, and persistence to confirm their optimal functionality as anticipated.
 
 The Sections below describe the steps to configure and deploy the Gateway on Azure.  Although, there are multiple deployment options available on Azure, we will only describe the top two options recommended for production deployments.
 
@@ -107,10 +107,10 @@ The Sections below describe the steps to configure and deploy the Gateway on Azu
 
 **Recommended for Usage Scenario 3**
 
-1. Containerize the AI Services Gateway and deploy it on a serverless container platform such as *Azure Container Apps*.
+1. Containerize the AI Services API Gateway and deploy it on a serverless container platform such as *Azure Container Apps*.
 
    We will not be describing the steps for this option here.  Readers can follow the deployment instructions described in Azure Container Apps documentation [here](https://learn.microsoft.com/en-us/azure/container-apps/tutorial-code-to-cloud?source=recommendations&tabs=bash%2Ccsharp&pivots=acr-remote).
-2. Containerize the AI Services Gateway and deploy it on a container platform such as *Azure Kubernetes Service*. Refer to Sections **B** and **E** below.
+2. Containerize the AI Services API Gateway and deploy it on a container platform such as *Azure Kubernetes Service*. Refer to Sections **B** and **E** below.
 
 ### Critical Notes
 
