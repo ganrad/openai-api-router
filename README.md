@@ -16,12 +16,12 @@ The remainder of this readme describes the supported features, how to configure/
 
 Feature/Capability | Azure AI Service | Description
 ------------------ | ---------------- | -----------
-**Unified Management Plane** | All | AI Services Gateway provides a unified management plane for a) Sharing AI Service deployment endpoints among multiple AI Applications and b) Tracking AI Service API metrics such as throughput and latency for each AI Application.  The gateway is *AI Application Aware* meaning Azure AI Service endpoints can be configured separately for each *AI Application*.  This not only allows AI service deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing for each specific AI use case.
-**Intelligent Traffic Routing** | Azure OpenAI Service | The Gateway can be configured with multiple Azure AI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.
+**Unified Management Plane** | All | AI Services API Gateway provides a unified management plane for a) Sharing AI Service deployment endpoints among multiple AI Applications and b) Tracking AI Service API metrics such as throughput and latency for each AI Application.  The gateway is *AI Application Aware* meaning Azure AI Service endpoints can be configured separately for each *AI Application*.  This not only allows AI service deployments to be shared among multiple AI Applications but also facilitates metrics collection and request routing for each specific AI use case.
+**Shared Infrastructure Model** | All | The Gateway simplifies and streamlines the deployment of multiple AI Solutions (Chatbots) by utilizing a shared infrastructure backbone. This approach allows for deploying the infrastructure once and subsequently scaling it to build and deploy numerous AI Chatbots.
+**Intelligent Traffic Routing** | Azure OpenAI Service | The Gateway can be configured with multiple Azure AI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.<br> The Gateway provides the flexibility to split AI application traffic between multiple Azure AI Service deployment endpoints. In the case of Azure OpenAI Service, the AI application traffic can be split among multiple *Paygo* (tokens per minute) and *Provisioned Throughput Unit* (reserved capacity) model deployments.
 **Semantic Caching** | Azure OpenAI Service | This feature is seamlessly integrated into AI Services API Gateway and can be used to cache OpenAI Service prompts and responses. Cache hits are evaluated based on semantic similarity and the configured algorithm. With semantic caching, runtime performance of LLM/AI applications can be improved by up to 40%. This solution leverages the vectorization and semantic search features supported by the widely popular *PostgreSQL* open source database.
 **Conversational State Management** | Azure OpenAI Service (Chat Completion API only) | AI Chatbots must maintain context during end user sessions so they can reference previous user inputs, ensuring coherent and contextually relevant conversations.  This feature manages the conversational state and can effortlessly scale to support anywhere from 10 to hundreds of concurrent user sessions for multiple AI applications simultaneously. Additionally, it can function independently or in tandem with the *Semantic Caching* feature to enhance performance.
 **Prompt Persistence** | Azure OpenAI Service | This optional feature can be used to persist OpenAI Service *Prompts* (inputs) and *Completions* (responses) in a relational database table. With this feature, customers can analyze prompts and accordingly adjust the similarity distance for the chosen vector search algorithm to maximize performance (increase throughput).  This feature can also be used to introspect the prompt and completion tokens associated with a particular API request (Request ID) and troubleshoot content filteration issues quickly. The gateway currently supports PostgreSQL database as the persistence provider.
-**Traffic Splitting** | All | The Gateway provides the flexibility to split AI application traffic between multiple Azure AI Service deployment endpoints. In the case of Azure OpenAI Service, the AI application traffic can be split among multiple *Paygo* (tokens per minute) and *Provisioned Throughput Unit* (reserved capacity) model deployments.
 **Dynamic Server Configuration** | All | The Gateway exposes a separate reconfig (/reconfig) endpoint to allow dynamic reconfiguration of backend endpoints. Backend endpoints can be reconfigured anytime even when the server is running thereby limiting AI application downtime.
 **API Metrics Collection** | All | The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the AI Application workload to the desired backend endpoints based on available and consumed capacity.
 **Observability and Traceability** | All | The AI Services Gateway is instrumented with Azure Application Insights SDK. When this setting is enabled, detailed telemetry information on Azure OpenAI and dependent services is collected and sent to Azure Monitor.
@@ -64,7 +64,7 @@ Feature/Capability | Configurable (Yes/No) | Azure OpenAI Service | Azure AI Sea
 
 ![alt tag](./images/az-openai-api-gateway-ra.PNG)
 
-### Router workflow for processing Azure OpenAI Service API requests
+### AI Services API Router workflow for Azure OpenAI Service
 
 ![alt tag](./images/aoai-api-gtwy-flow-chart.png)
 
@@ -155,10 +155,30 @@ Prior to turning on *Semantic Caching* feature for an AI Application (in Product
 
 **Invalidating Cached Entries**
 
-- When semantic caching and retrieval is enabled at the global level (*API_GATEWAY_USE_CACHE=true*), the Gateway periodically runs a cache entry invalidator process on a pre-configured schedule.  If no schedule is configured, the cache invalidator process is run on a default schedule every 45 minutes.  This default schedule can be overridden by setting the environment variable *API_GATEWAY_CACHE_INVAL_SCHEDULE* as described in Section **A** above.
+- When semantic caching and retrieval is enabled at the global level (*API_GATEWAY_USE_CACHE=true*), the Gateway periodically runs a cache entry invalidator process on a pre-configured schedule.  If no schedule is configured, the cache invalidator process is run on a default schedule every 45 minutes.  This default schedule can be overridden by setting the environment variable *API_GATEWAY_CACHE_INVAL_SCHEDULE* as described in Section **A** below.
 - For each AI Application, cached entries can be invalidated (deleted) by setting the configuration attribute *cacheSettings.entryExpiry*. This attribute must be set to a value that conforms to PostgreSQL *Interval* data type. If this attribute value is empty or not set, cache entry invalidation will be skipped.  Refer to the documentation [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT) to configure the cache invalidation interval to an appropriate value.
 
-**Conversational State Manager**
+**Conversational State Management**
+
+When interacting with AI Chatbots and information assistants, maintaining conversational continuity and context is crucial for generating accurate relevant responses to user's questions. Memory management for user sessions can be configured as follows.
+
+1. Configure global setting
+
+   To enable memory management at the API Gateway level, first set the environment variable *API_GATEWAY_STATE_MGMT* to "true".  If this env variable is empty or not set, memory (state) management will be disabled for all AI Applications.
+2. Configure AI Application setting
+
+   To enable memory management for an AI Application, the attribute *memorySettings.useMemory* must be set to "true" in the router configuration file.  If this attribute is empty or set to "false", memory management for user sessions will be disabled.
+
+Prior to turning on *Conversational State Management* feature for an AI Application (in Production), please review the following notes.
+
+- Conversational state management feature is only supported for Azure OpenAI Chat Completion API.
+- When memory management is enabled for an AI application, the AI Services Gateway will return a custom http header `x-thread-id` in the API response.  This custom header will contain a unique value (GUID) representing a Thread ID.  To initiate a new user session and have the AI Services Gateway manage the conversational context, client applications must send this value in the http request header `x-thread-id`, in subsequent API calls.  The Thread ID represents an end user's session with an AI Chatbot/Assistant application.  A client application can end a user session at any time by not sending this custom http header in the API request.
+- Use the *memorySettings.msgCount* attribute to specify the number of end user interactions (messages) to persist for each user session. Once the number of saved user interactions reaches this max. value (specified by this attribute), the memory manager component will discard the oldest message and only keep the most recent messages.  For each user session, the first user interaction (message) will always be retained by the memory manager.
+
+**Invalidating Memory Entries**
+
+- When conversational state management feature is enabled at the global level (*API_GATEWAY_STATE_MGMT=true*), the AI Services Gateway periodically runs a memory invalidator process on a pre-configured Cron schedule.  If no schedule is configured, the memory invalidator process is run on a default schedule every 10 minutes.  This default schedule can be overridden by setting the environment variable *API_GATEWAY_MEMORY_INVAL_SCHEDULE* as described in Section **A** below.
+- For each AI Application, memory entries can be invalidated (deleted) by setting the configuration attribute *memorySettings.entryExpiry*. This attribute must be set to a value that conforms to PostgreSQL *Interval* data type. If this attribute value is empty or not set, memory entry invalidation will be skipped.  Refer to the documentation [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT) to configure memory entry invalidation interval to an appropriate value.
 
 **Persisting Prompts**
 
