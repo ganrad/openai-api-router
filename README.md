@@ -10,7 +10,6 @@ Recipe | Components | Functional Architecture (**)
 
 ** Components marked by green circles are out of box features.
 
-
 ### Supported Features At A Glance
 
 Feature/Capability | Azure AI Service | Description
