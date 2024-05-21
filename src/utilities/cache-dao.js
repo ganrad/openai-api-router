@@ -42,7 +42,7 @@ const queryStmts = [
 
 const insertStmts = [
   "INSERT INTO apigtwycache (requestid, aiappname, prompt, embedding, completion) VALUES ($1,$2,$3,$4,$5) RETURNING id"
-  ];
+];
 
 class CacheDao {
   constructor(

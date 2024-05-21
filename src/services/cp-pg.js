@@ -22,11 +22,11 @@ const createTblStmts = [
   // Use this DDL for testing only!
   "CREATE TABLE apigtwycache (id serial PRIMARY KEY, aiappname VARCHAR(100), prompt text, embedding vector(3), completion JSON, timestamp_ TIMESTAMPTZ default current_timestamp)",
   "CREATE TABLE apigtwycache (id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, requestid VARCHAR(50), aiappname VARCHAR(100), prompt text, embedding vector(1536), completion JSON, timestamp_ TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
-  ];
+];
 
 const dropTblStmts = [
   "DROP TABLE IF EXISTS apigtwycache;"
-  ];
+];
 
 // Initialize the DB connection pool
 const pool = new pg.Pool(pgConfig.db);

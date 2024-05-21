@@ -1,11 +1,11 @@
 # -------------------------------------------
-# Azure OpenAI Service API Gateway server 
+# Azure AI Services API Gateway server 
 #
 # Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
 # Date: 01-28-2024
 #
-# Description: This dockerfile builds the API Gateway Server container image.
-# The API Gateway server can be used for two purposes.
+# Description: This dockerfile builds the AI Services Gateway Server container image.
+# The AI Services Gateway server can be used for two purposes.
 # 1) Capacity planning for PTUs (Provisioned throughput units). 
 # Track & collect metrics for Azure OpenAI API usage. Use metrics to assist with
 # capacity planning.
@@ -18,12 +18,13 @@
 #
 # NOTES:
 # ID03152024 : ganrad : Added ARG and ENV variables for semantic caching
+# ID05062024 : ganrad : Added ARG and ENV variables for state management
 # ----------------------------------------------------------------
 #
 FROM public.ecr.aws/docker/library/node:20.11.0-alpine3.19
-LABEL name="Azure OpenAI Service API Gateway server"
-LABEL version="1.0"
-LABEL description="This container image exposes endpoints to 1) Track API usage for capacity planning 2) Load balancing API requests across multiple Azure OpenAI model deployments"
+LABEL name="Azure AI Services API Gateway server"
+LABEL version="1.7.0"
+LABEL description="This container image exposes endpoints to 1) Track API usage for capacity planning (Azure OAI Service) 2) Load balancing AI Application requests across multiple Azure AI Services deployments/endpoints"
 LABEL author="Ganesh Radhakrishnan" email="ganrad01@gmail.com" dated="01-28-2024" license="MIT"
 
 # (Required) API Gateway config file
@@ -58,9 +59,13 @@ ENV API_GATEWAY_METRICS_CINTERVAL=$metrics_interval
 ARG metrics_history=5
 ENV API_GATEWAY_METRICS_CHISTORY=$metrics_history
 
-# (Required) API Gateway metrics history cache count
+# (Required) Use Semantic Cache feature? // ID03152024.n
 ARG use_cache="false"
 ENV API_GATEWAY_USE_CACHE=$use_cache
+
+# (Required) Use Conversational State Management? // ID05062024.n
+ARG use_memory="false"
+ENV API_GATEWAY_STATE_MGMT=$use_memory
 
 RUN mkdir -p /home/node/app/node_modules && chown -R node:node /home/node/app
 RUN mkdir -p /home/node/app/src
