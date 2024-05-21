@@ -279,7 +279,7 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
       appeps.set("memorySettings", {
 	useMemory: aiapp.memorySettings.useMemory,
 	msgCount: aiapp.memorySettings.msgCount,
-        entryExpiry: aiapp.cacheSettings.entryExpiry
+        entryExpiry: aiapp.memorySettings.entryExpiry
       });
     // ID05062024.en
     appeps.set("endpoints", Object.fromEntries(eps));

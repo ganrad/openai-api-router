@@ -77,6 +77,9 @@
       "cacheSettings": {
         "useCache": false
       },
+      "memorySettings": {
+        "useMemory": false
+      },
       "endpoints": [
         {
           "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15",
@@ -94,9 +97,14 @@
         "searchDistance": 0.95,
         "searchContent": {
           "term": "messages",
-          "includeRoles": "system,user,assistant"
+          "includeRoles": "user"
         },
 	"entryExpiry": "2 days"
+      },
+      "memorySettings": {
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "5 minutes"
       },
       "endpoints": [
         {
