@@ -7,12 +7,24 @@
  *
  * Notes:
  * ID05032024: ganrad: Added support for Azure AI Content Safety
+ * ID05062024: ganrad: Added support for state management feature for Azure OAI Service
  *
 */
 
 const ServerDefaults = {
-  runSchedule: "*/45 * * * *"
+  CacheEntryInvalidateSchedule: "*/45 * * * *",
+  MemoryInvalidateSchedule: "*/10 * * * *"
 };
+
+const CustomRequestHeaders = { // ID05062024.n
+  RequestId: "x-request-id",
+  ThreadId: "x-thread-id"
+};
+
+const SchedulerTypes = { // ID05062024.n
+  InvalidateCacheEntry: "invalidate_cache_entry",
+  ManageMemory: "manage_memory"
+}
 
 const AzAiServices = {
   OAI: "azure_oai",
@@ -43,6 +55,8 @@ const TranslatorAPIKind = {
 
 module.exports = {
   ServerDefaults,
+  CustomRequestHeaders,
+  SchedulerTypes, // ID05062024.n
   AzAiServices,
   EndpointMetricsConstants,
   TranslatorAPIKind,

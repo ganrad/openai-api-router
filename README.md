@@ -10,7 +10,6 @@ Recipe | Components | Functional Architecture (**)
 
 ** Components marked by green circles are out of box features.
 
-The remainder of this readme describes the supported features, how to configure/enable them and finally deploy the AI Services AI Services API Gateway on Azure.
 
 ### Supported Features At A Glance
 
@@ -112,7 +111,7 @@ The Sections below describe the steps to configure and deploy the Gateway on Azu
    We will not be describing the steps for this option here.  Readers can follow the deployment instructions described in Azure Container Apps documentation [here](https://learn.microsoft.com/en-us/azure/container-apps/tutorial-code-to-cloud?source=recommendations&tabs=bash%2Ccsharp&pivots=acr-remote).
 2. Containerize the AI Services API Gateway and deploy it on a container platform such as *Azure Kubernetes Service*. Refer to Sections **B** and **E** below.
 
-### Critical Notes
+### Important Notes
 
 > Please review the sections below before proceeding to Section **A**.
 
@@ -174,6 +173,8 @@ Prior to turning on *Conversational State Management* feature for an AI Applicat
 - Conversational state management feature is only supported for Azure OpenAI Chat Completion API.
 - When memory management is enabled for an AI application, the AI Services Gateway will return a custom http header `x-thread-id` in the API response.  This custom header will contain a unique value (GUID) representing a Thread ID.  To initiate a new user session and have the AI Services Gateway manage the conversational context, client applications must send this value in the http request header `x-thread-id`, in subsequent API calls.  The Thread ID represents an end user's session with an AI Chatbot/Assistant application.  A client application can end a user session at any time by not sending this custom http header in the API request.
 - Use the *memorySettings.msgCount* attribute to specify the number of end user interactions (messages) to persist for each user session. Once the number of saved user interactions reaches this max. value (specified by this attribute), the memory manager component will discard the oldest message and only keep the most recent messages.  For each user session, the first user interaction (message) will always be retained by the memory manager.
+- Use the *memorySettings.entryExpiry* attribute to specify the expiry time for user sessions.  After a user's session expires, API requests containing the expired Thread ID in the http header will receive an exception stating the session has expired.
+- To quickly test the user session state management feature, you can use the standalone nodejs application `./samples/chat-client/simple-chat-app.js`.
 
 **Invalidating Memory Entries**
 
@@ -185,6 +186,8 @@ Prior to turning on *Conversational State Management* feature for an AI Applicat
 - When global environment variable *API_GATEWAY_PERSIST_PROMPTS* is set to *true*, prompts and completions along with other API request related metadata will be persisted in database table *apigtwyprompts*.
 - API Request *prompts* will not be persisted under the following conditions a) All backend endpoints for a given AI Application are busy/throttled.  In this case, the Gateway will return HTTP status code 429. b) API Gateway encounters an internal error while handling a request.  In this case, the Gateway will return HTTP status code 500.
 - The Gateway returns a unique (GUID) id *x-request-id* in the HTTP response header for every request.  This header value along with the *user* value sent in the API request (body) can be used to query table *apigtwyprompts* and troubleshoot issues.  For instance, these values could be used to query a request that failed due to application of a content filter (HTTP status = 400).
+
+The remainder of this readme describes how to configure/enable specific features and deploy the AI Services API Gateway on Azure.
 
 ### A. Configure and run the AI Services API Gateway on a standalone *Virtual Machine*
 

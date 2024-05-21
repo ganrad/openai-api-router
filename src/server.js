@@ -14,6 +14,7 @@
  * ID04272024: ganrad : 90% server logging moved to winstonjs.
  * ID04302024: ganrad : (Bugfix) Each time 'reconfig' endpoint is invoked, a new cron scheduler is started. There should only
  * be one cache invalidator running per gateway/router instance.
+ * ID05062024: ganrad : Introduced memory (state management) for appType = Azure OpenAI Service.
 */
 
 // ID04272024.sn
@@ -39,18 +40,20 @@ else
 
 const fs = require("fs");
 const express = require("express");
-const { ServerDefaults, AzAiServices } = require("./utilities/app-gtwy-constants");
+const { ServerDefaults, CustomRequestHeaders, SchedulerTypes, AzAiServices } = require("./utilities/app-gtwy-constants");
 const { apirouter, reconfigEndpoints } = require("./apirouter");
 const pgdb = require("./services/cp-pg.js");
 const CacheConfig = require("./utilities/cache-config");
-const runCacheInvalidator = require("./utilities/cache-invalidator");
+// const runCacheInvalidator = require("./utilities/cache-invalidator"); ID05062024.o
+const SchedulerFactory = require("./utilities/scheduler-factory"); // ID05062024.n
+const sFactory = new SchedulerFactory(); // ID05062024.n
 
 const app = express();
 var bodyParser = require('body-parser');
 // var morgan = require('morgan');
 
-// Server version v1.6 ~ 04272024
-const srvVersion = "1.6.0";
+// Server version v1.7.0 ~ 05062024.n
+const srvVersion = "1.7.0";
 // Server start date
 const srvStartDate = new Date().toLocaleString();
 
@@ -63,11 +66,12 @@ const { randomUUID } = require('node:crypto');
 const logger = require('pino-http')({
   // Define a custom request id function
   genReqId: function (req, res) {
-    const existingID = req.id ?? req.headers["x-request-id"]
-    if (existingID) return existingID
-    const id = randomUUID()
-    res.setHeader('X-Request-Id', id)
-    return id
+    const existingID = req.id ?? req.headers[CustomRequestHeaders.RequestId];
+    if (existingID) return existingID;
+    const id = randomUUID();
+    res.setHeader(CustomRequestHeaders.RequestId, id);
+
+    return id;
   },
   useLevel: 'info',
   transport: {
@@ -115,7 +119,8 @@ else {
 (async () => {
   let persistPrompts = process.env.API_GATEWAY_PERSIST_PROMPTS; // ID03012024.n
   let cacheResults = process.env.API_GATEWAY_USE_CACHE;
-  if ( (cacheResults === "true") || (persistPrompts === "true") ) {
+  let manageState = process.env.API_GATEWAY_STATE_MGMT;
+  if ( (cacheResults === "true") || (persistPrompts === "true") || (manageState === "true") ) {
     let retval = await pgdb.checkDbConnection();
     if ( retval ) {
       if ( cacheResults === "true" )
@@ -128,6 +133,10 @@ else {
         wlogger.log({level: "info", message: "[%s] Prompts will be persisted", splat: [scriptName]});
       else
         wlogger.log({level: "info", message: "[%s] Prompts will not be persisted", splat: [scriptName]});
+      if ( manageState === "true" )
+        wlogger.log({level: "info", message: "[%s] Conversational state will be managed", splat: [scriptName]});
+      else
+        wlogger.log({level: "info", message: "[%s] Conversational state will not be managed", splat: [scriptName]});
     }
     else
       process.exit(1);
@@ -143,7 +152,7 @@ else {
 
 var context; // AI Applications Context
 var cacheConfig;
-function readApiGatewayConfigFile(startCacheInvalidator) {
+function readApiGatewayConfigFile(startScheduler) {
   let vectorAppFound = false;
 
   let cacheResults = process.env.API_GATEWAY_USE_CACHE;
@@ -184,7 +193,7 @@ function readApiGatewayConfigFile(startCacheInvalidator) {
     context.applications.forEach((app) => {
       let pidx = 0;
       if ( app.appType === AzAiServices.OAI )
-        console.log(`Application ID: ${app.appId}; Type: ${app.appType}; useCache=${app.cacheSettings.useCache}`);
+        console.log(`Application ID: ${app.appId}; Type: ${app.appType}; useCache=${ app?.cacheSettings?.useCache ?? false }; useMemory=${ app?.memorySettings?.useMemory ?? false }`);
       else
         console.log(`Application ID: ${app.appId}; Type: ${app.appType}`);
 
@@ -198,25 +207,40 @@ function readApiGatewayConfigFile(startCacheInvalidator) {
     });
 
     // console.log("Server(): Loaded backend Azure OpenAI API endpoints for applications");
-    wlogger.log({level: "info", message: "[%s] Loaded backend Azure OpenAI API endpoints for applications", splat: [scriptName]});
+    wlogger.log({level: "info", message: "[%s] Successfully loaded backend API endpoints for AI applications", splat: [scriptName]});
 
     if ( cacheConfig.cacheResults && !vectorAppFound ) {
       // console.log(`Server(): AI Embedding Application [${cacheConfig.embeddApp}] not defined in API Gateway Configuration file! Aborting server initialization.`); 
-      wlogger.log({level: "error", message: "[%s] AI Embedding Application [%s] not defined in API Gateway Configuration file! Aborting server initialization.", splat: [scriptName, cacheConfig.embeddApp]}); 
+      wlogger.log({level: "error", message: "[%s] AI Embedding Application [%s] not defined in AI Services Gateway Configuration file! Aborting server initialization.", splat: [scriptName, cacheConfig.embeddApp]}); 
 
       process.exit(1);
     };
 
-    if ( cacheConfig.cacheResults && startCacheInvalidator ) {
-      // Start the cache invalidator cron job and set it's run schedule
+    if ( cacheConfig.cacheResults && startScheduler ) {
+      // Start the cache entry invalidator cron job and set it's run schedule
       let schedule = process.env.API_GATEWAY_CACHE_INVAL_SCHEDULE;
       if ( ! schedule ) // schedule is empty, undefined, null
-        schedule = ServerDefaults.runSchedule;
+        schedule = ServerDefaults.CacheEntryInvalidateSchedule;
       // console.log(`Server(): Cache invalidator run schedule (Cron) - ${schedule}`);
-      wlogger.log({level: "info", message: "[%s] Cache invalidator run schedule (Cron) - %s", splat: [scriptName, schedule]});
+      wlogger.log({level: "info", message: "[%s] Cache entry invalidate run schedule (Cron) - %s", splat: [scriptName, schedule]});
 
-      await runCacheInvalidator(schedule, context);
+      // await runCacheInvalidator(schedule, context); ID05062024.o
+      sFactory.getScheduler(SchedulerTypes.InvalidateCacheEntry).runSchedule(schedule, context); // ID05062024.n
     };
+
+    // ID05062024.sn
+    let manageState = (process.env.API_GATEWAY_STATE_MGMT === 'true') ? true : false
+    if ( manageState && startScheduler ) {
+      // Start the memory state invalidator cron job and set it's run schedule
+      let schedule = process.env.API_GATEWAY_MEMORY_INVAL_SCHEDULE;
+      if ( ! schedule ) // schedule is empty, undefined, null
+        schedule = ServerDefaults.MemoryInvalidateSchedule;
+
+      wlogger.log({level: "info", message: "[%s] Memory (State) invalidate run schedule (Cron) - %s", splat: [scriptName, schedule]});
+
+      sFactory.getScheduler(SchedulerTypes.ManageMemory).runSchedule(schedule, context); // ID05062024.n
+    }
+    // ID05062024.en
   });
 };
 // ID02202024.en
@@ -226,69 +250,73 @@ readApiGatewayConfigFile(true); // ID04302024.n
 // app.use(morgan(log_mode ? log_mode : 'combined'));
 app.use(bodyParser.json());
 
-// Instance info. endpoint
+// GET - Instance info. endpoint
 app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
   logger(req,res);
 
   let appcons = [];
-  context.applications.forEach((app) => {
+  context.applications.forEach((aiapp) => {
     let epIdx = 0; // Priority index
     let eps = new Map();
-    app.endpoints.forEach((element) => {
+    aiapp.endpoints.forEach((element) => {
       eps.set(epIdx,element.uri);
       epIdx++;
     });
 
-    let csettings = {
-      useCache: app.cacheSettings.useCache,
-      searchType: app.cacheSettings.searchType,
-      searchDistance: app.cacheSettings.searchDistance,
-      searchContent: app.cacheSettings.searchContent,
-      entryExpiry: app.cacheSettings.entryExpiry
-    };
-
     let appeps = new Map();
-    appeps.set("applicationId", app.appId);
-    appeps.set("description", app.description);
-    appeps.set("type", app.appType);
-    appeps.set("cacheSettings", csettings);
+    appeps.set("applicationId", aiapp.appId);
+    appeps.set("description", aiapp.description);
+    appeps.set("type", aiapp.appType);
+    appeps.set("cacheSettings", {
+      useCache: aiapp.cacheSettings.useCache,
+      searchType: aiapp.cacheSettings.searchType,
+      searchDistance: aiapp.cacheSettings.searchDistance,
+      searchContent: aiapp.cacheSettings.searchContent,
+      entryExpiry: aiapp.cacheSettings.entryExpiry
+    });
+    // ID05062024.sn
+    if ( aiapp.memorySettings )
+      appeps.set("memorySettings", {
+	useMemory: aiapp.memorySettings.useMemory,
+	msgCount: aiapp.memorySettings.msgCount,
+        entryExpiry: aiapp.cacheSettings.entryExpiry
+      });
+    // ID05062024.en
     appeps.set("endpoints", Object.fromEntries(eps));
     appcons.push(Object.fromEntries(appeps));
   });
 
-  let envvars = {
-    host: host,
-    listenPort: port,
-    environment: process.env.API_GATEWAY_ENV,
-    persistPrompts: process.env.API_GATEWAY_PERSIST_PROMPTS,
-    collectInterval: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
-    collectHistoryCount: Number(process.env.API_GATEWAY_METRICS_CHISTORY),
-    configFile: process.env.API_GATEWAY_CONFIG_FILE
-  };
-
-  let platformInfo = {
-    imageID: process.env.IMAGE_ID,
-    nodeName: process.env.NODE_NAME,
-    podName: process.env.POD_NAME,
-    podNamespace: process.env.POD_NAMESPACE,
-    podServiceAccount: process.env.POD_SVC_ACCOUNT
-  };
-
-  let resultsConfig = {
-    cacheEnabled: cacheConfig.cacheResults,
-    embeddAiApp: cacheConfig.embeddApp,
-    searchEngine: cacheConfig.srchEngine,
-    cacheInvalidationSchedule: process.env.API_GATEWAY_CACHE_INVAL_SCHEDULE,
-  };
-
   resp_obj = {
     serverName: process.env.API_GATEWAY_NAME,
     serverVersion: srvVersion,
-    serverConfig: envvars,
-    cacheSettings: resultsConfig,
+    serverConfig: {
+      host: host,
+      listenPort: port,
+      environment: process.env.API_GATEWAY_ENV,
+      persistPrompts: process.env.API_GATEWAY_PERSIST_PROMPTS,
+      collectInterval: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
+      collectHistoryCount: Number(process.env.API_GATEWAY_METRICS_CHISTORY),
+      configFile: process.env.API_GATEWAY_CONFIG_FILE
+    },
+    cacheSettings: {
+      cacheEnabled: cacheConfig.cacheResults,
+      embeddAiApp: cacheConfig.embeddApp,
+      searchEngine: cacheConfig.srchEngine,
+      cacheInvalidationSchedule: process.env.API_GATEWAY_CACHE_INVAL_SCHEDULE,
+    },
+    memorySettings: {
+      memoryEnabled: process.env.API_GATEWAY_STATE_MGMT,
+      memoryInvalidationSchedule: process.env.API_GATEWAY_MEMORY_INVAL_SCHEDULE
+    },
     aiApplications: appcons,
-    containerInfo: platformInfo,
-    nodejs: process.versions,
+    containerInfo: {
+      imageID: process.env.IMAGE_ID,
+      nodeName: process.env.NODE_NAME,
+      podName: process.env.POD_NAME,
+      podNamespace: process.env.POD_NAMESPACE,
+      podServiceAccount: process.env.POD_SVC_ACCOUNT
+    },
+    // nodejs: process.versions,
     apiGatewayUri: endpoint + "/apirouter",
     endpointUri: req.url,
     serverStartDate: srvStartDate,
@@ -318,7 +346,7 @@ app.use(endpoint + "/apirouter/reconfig/:pkey", function(req, res, next) {
     resp_obj = {
       endpointUri: req.originalUrl,
       currentDate: new Date().toLocaleString(),
-      status : `Incorrect API Gateway Key=[${req.params.pkey}]`
+      status : `Incorrect AI Services API Gateway Key=[${req.params.pkey}]`
     };
     res.status(400).json(resp_obj); // 400 = Bad Request
     return;
@@ -351,5 +379,5 @@ app.use(endpoint + "/apirouter", function(req, res, next) {
 }, apirouter);
 
 app.listen(port, () => {
-  console.log(`Server(): OpenAI API Gateway server started successfully.\nGateway uri: http://${host}:${port}${endpoint}`);
+  console.log(`Server(): Azure AI Services API Gateway server started successfully.\nGateway uri: http://${host}:${port}${endpoint}`);
 });

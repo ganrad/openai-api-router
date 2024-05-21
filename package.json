@@ -1,7 +1,7 @@
 {
   "name": "openai-api-router",
-  "version": "1.6.0",
-  "description": "An intelligent gateway/router that evenly distributes API requests among backend Openai API endpoints deployed on Azure.",
+  "version": "1.7.0",
+  "description": "An intelligent API Gateway/Router that distributes AI Application requests among multiple AI Services deployed on Azure.",
   "main": "src/server.js",
   "scripts": {
     "start": "node ./src/server.js",

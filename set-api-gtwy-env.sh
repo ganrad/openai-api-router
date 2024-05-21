@@ -25,6 +25,12 @@ export API_GATEWAY_USE_CACHE="true"
 # (Optional) Cache entry invalidator run schedule (Cron schedule syntax)
 export API_GATEWAY_CACHE_INVAL_SCHEDULE="*/45 * * * *"
 
+# (Optional) Global setting - Use memory / state management?
+export API_GATEWAY_STATE_MGMT="true"
+
+# (Optional) Memory entry invalidator run schedule (Cron schedule syntax)
+export API_GATEWAY_MEMORY_INVAL_SCHEDULE="*/10 * * * *"
+
 # (Optional) Global setting - Persist prompts in a DB?
 export API_GATEWAY_PERSIST_PROMPTS="true"
 

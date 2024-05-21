@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## [v1.7.0](https://github.com/ganrad/open-ai-router/compare/v1.6.0...v1.7.0)
+### Functionality changes
+* Fixed multiple minor bugs.
+* Refined the code for efficiency by removing unnecessary duplication.
+* (Enhancement) Implemented conversational *State Management* feature for chat completion API.  This feature can be configured to work separately or in conjunction with semantic caching feature.
+
+### Documentation changes
+* Updated documentation and included detailed information for configuring and using *State Management* feature.
+* Updated diagrams.
+
 ## [v1.6.0](https://github.com/ganrad/open-ai-router/compare/v1.5.0...v1.6.0)
 ### Functionality changes
 * (Bugfix) Each time when 'reconfig' endpoint was being invoked, a new cron scheduler instance was started. There should only be one cache entry invalidator instance running per gateway/router process instance.

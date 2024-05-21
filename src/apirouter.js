@@ -24,6 +24,7 @@
  * 			- Re-structured and streamlined code
  * ID04272024: ganrad : Centralized logging with winstonjs
  * ID05032024: ganrad : Added traffic routing support for Azure AI Content Safety service APIs
+ * ID05062024: ganrad : Introduced memory (state management) for appType = Azure OpenAI Service
  *
 */
 
@@ -34,7 +35,7 @@ const express = require("express");
 const EndpointMetricsFactory = require("./utilities/ep-metrics-factory.js"); // ID04222024.n
 const AppConnections = require("./utilities/app-connection.js");
 const AppCacheMetrics = require("./utilities/cache-metrics.js"); // ID02202024.n
-const { AzAiServices } = require("./utilities/app-gtwy-constants.js");
+const { AzAiServices, CustomRequestHeaders } = require("./utilities/app-gtwy-constants.js");
 const AiProcessorFactory = require("./processors/ai-processor-factory.js"); // ID04222024.n
 const logger = require("./utilities/logger.js"); // ID04272024.n
 const router = express.Router();
@@ -155,9 +156,10 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
   instanceCalls++;
   
   let appConfig = null;
+  let memoryConfig = null;
   for (const application of eps.applications) {
     if ( application.appId === appId ) {
-      if ( application.appType === AzAiServices.OAI )
+      if ( application.appType === AzAiServices.OAI ) { 
         appConfig = {
           appId: application.appId,
           appType: application.appType,
@@ -167,6 +169,13 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
 	  srchDistance: application.cacheSettings.searchDistance,
 	  srchContent: application.cacheSettings.searchContent
 	};
+
+	if ( application?.memorySettings?.useMemory ) // ID050620204.n
+	  memoryConfig = {
+	    useMemory: application.memorySettings.useMemory,
+	    msgCount: application.memorySettings.msgCount
+	  };
+      }
       else
         appConfig = {
           appId: application.appId,
@@ -174,6 +183,7 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
 	  appEndpoints: application.endpoints
 	};
 
+      // console.log(`************** appConfig = ${JSON.stringify(appConfig)}; memoryConfig = ${ application?.memorySettings?.useMemory ? JSON.stringify(memoryConfig) : null } *************`);
       break;
     };
   };
@@ -186,6 +196,7 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
         response = await processor.processRequest(
           req,
           appConfig,
+	  memoryConfig, // ID05062024.n
           appConnections,
 	  cacheMetrics);
 	break;
@@ -221,6 +232,10 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
 
     if ( response.http_code === 429 )
       res.set('retry-after', response.retry_after); // Set the retry-after response header
+  }
+  else {
+    if ( response.threadId )
+      res.set(CustomRequestHeaders.ThreadId, response.threadId);
   };
 
   res.status(response.http_code).json(response.data);
