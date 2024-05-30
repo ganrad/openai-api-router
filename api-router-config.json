@@ -114,7 +114,7 @@
         },
         {
 	  "rpm": 10,
-          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01",
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01",
           "apikey": "2f0d266d"
 	}
       ]
