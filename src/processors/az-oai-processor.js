@@ -8,6 +8,7 @@
  * Notes:
  * ID04272024: ganrad: Centralized logging with winstonjs
  * ID05062024: ganrad: Introduced memory feature (state management) for appType = Azure OpenAI Service
+ * ID05282024: ganrad: (Bugfix) Reset the 'retryAfter' value when the request is served with an available endpoint.
  *
 */
 const path = require('path');

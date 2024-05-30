@@ -65,7 +65,7 @@ class AzOaiEpMetrics {
     let retrySecs = isAvailable ? 0 : (this.timeMarker - currentTime) / 1000;
 
     // ID05282024.sn
-    if ( isAvailable && this.rpmLimit ) { // Is backend endpoint is throttled/busy ?
+    if ( isAvailable && this.rpmLimit ) { // Is backend endpoint throttled/busy ?
       let elapsedTime = currentTime - this.rpmTimeMarker;
 
       if (elapsedTime > 60000) { // elapsedTime > 1 minute == 60,000 ms
