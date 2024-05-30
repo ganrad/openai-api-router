@@ -7,7 +7,7 @@
 * (Enhancement) Introduced a new feature for Azure OpenAI model deployment endpoints that allows aggregate rate limiting. This means users can now control the rate of API traffic coming from various AI Applications to a single Azure OpenAI endpoint. Users can set up a RPM Limit for each OpenAI backend endpoint for any AI Application. When multiple AI Applications use the same endpoint, the gateway will enforce rate limiting and throttle excessive requests by returning http 429 status codes. This is especially useful for distributing model processing capacity (PTU deployment) evenly across different AI Applications.
 
 ### Documentation changes
-* Updated documentation and included detailed information for configuring and using *State Management* feature.
+* Revised the documentation to explain how to utilize aggregate rate limiting for an Azure OpenAI model deployment endpoint.
 
 ## [v1.7.0](https://github.com/ganrad/openai-api-router/compare/v1.6.0...v1.7.0)
 ### Functionality changes
