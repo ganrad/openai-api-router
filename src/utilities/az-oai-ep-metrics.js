@@ -9,6 +9,7 @@
  * Notes:
  * ID04272024: ganrad: Centralized logging with winstonjs
  * ID05042024: ganrad: Added additional endpoint metrics - throttledApiCalls, filteredApiCalls, tokensPerMinute and requestsPerMinute
+ * ID05282024: ganrad: Implemented aggregated rate limiting for model deployment endpoint
  *
 */
 const path = require('path');
@@ -19,7 +20,8 @@ const Queue = require('./queue');
 const { EndpointMetricsConstants } = require('./app-gtwy-constants');
 
 class AzOaiEpMetrics {
-  constructor(endpoint,interval,count) {
+  // constructor(endpoint,interval,count) { ID05282024.o
+  constructor(endpoint,interval,count,rpm) { // ID05282024.n
     this.endpoint = endpoint; // The target endpoint
     this.apiCalls = 0; // No. of successful calls
     this.failedCalls = 0; // No. of failed calls ~ 429's
@@ -40,8 +42,14 @@ class AzOaiEpMetrics {
       this.hStack = Number(count); // Metrics history cache count
     else
       this.hStack = EndpointMetricsConstants.DEF_METRICS_H_COUNT;
+
+    // ID05282024.sn
+    this.rpmLimit = ( rpm ) ? Number(rpm) : 0;
+    this.rpm = 0;
+    this.rpmTimeMarker = Date.now();
+    // ID05282024.en
     // console.log(`\n  Endpoint:  ${this.endpoint}\n  Cache Interval (minutes): ${this.cInterval}\n  History Count: ${this.hStack}`);
-    logger.log({level: "info", message: "[%s] %s.constructor():\n  Endpoint:  %s\n  Cache Interval (minutes): %d\n  History Count: %d", splat: [scriptName,this.constructor.name,this.endpoint,this.cInterval,this.hStack]});
+    logger.log({level: "info", message: "[%s] %s.constructor():\n  Endpoint:  %s\n  Cache Interval (minutes): %d\n  History Count: %d\n  RPM Limit: %d", splat: [scriptName,this.constructor.name,this.endpoint,this.cInterval,this.hStack,this.rpmLimit]});
 
     this.startTime = Date.now();
     this.endTime = this.startTime + (this.cInterval * 60 * 1000);
@@ -55,6 +63,24 @@ class AzOaiEpMetrics {
 
     let isAvailable = currentTime >= this.timeMarker;
     let retrySecs = isAvailable ? 0 : (this.timeMarker - currentTime) / 1000;
+
+    // ID05282024.sn
+    if ( isAvailable && this.rpmLimit ) { // Is backend endpoint is throttled/busy ?
+      let elapsedTime = currentTime - this.rpmTimeMarker;
+
+      if (elapsedTime > 60000) { // elapsedTime > 1 minute == 60,000 ms
+        this.rpmTimeMarker = currentTime;
+        this.rpm = 0;
+      }
+      else if ( this.rpm === this.rpmLimit ) { // proxy rate limit hit
+        isAvailable = false;
+	retrySecs = (60000 - elapsedTime) / 1000;
+
+	logger.log({level: "debug", message: "[%s] %s.isEndpointHealthy():\n  Endpoint: %s\n  RPM: %d\n  Retry After: %d\n  Message: %s", splat: [scriptName, this.constructor.name, this.endpoint, this.rpmLimit, retrySecs, "Hit max. configured RPM for this endpoint."]});
+      };
+    }; 
+    // ID05282024.en
+
     return [isAvailable, retrySecs];
   }
 
@@ -65,6 +91,8 @@ class AzOaiEpMetrics {
     this.respTime += latency;
     this.apiCalls++;
     this.totalCalls++;
+
+    this.rpm++; // ID05282024.n
   }
 
   // updateFailedCalls(retrySeconds) { // ID05042024.o

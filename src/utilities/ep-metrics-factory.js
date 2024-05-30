@@ -7,6 +7,7 @@
  *
  * Notes:
  * ID05032024: ganrad: Added traffic routing support for Azure AI Content Safety service APIs
+ * ID05282024: ganrad: Updated getMetricsObject() signature to accept variable number of args ~ rest parameter
  *
 */
 
@@ -26,7 +27,8 @@ class EndpointMetricsFactory {
     return EndpointMetricsFactory.instance;
   }
  
-  getMetricsObject(appType, uri) {
+  // getMetricsObject(appType, uri) { ID05282024.o
+  getMetricsObject(appType, uri, ...epConfig) { // ID05282024.n
     let metricsObj = null;
 
     switch (appType) {
@@ -34,7 +36,9 @@ class EndpointMetricsFactory {
         metricsObj = new AzOaiEpMetrics(
           uri,
           process.env.API_GATEWAY_METRICS_CINTERVAL,
-          process.env.API_GATEWAY_METRICS_CHISTORY);
+          // process.env.API_GATEWAY_METRICS_CHISTORY); ID05282024.o
+          process.env.API_GATEWAY_METRICS_CHISTORY,
+	  epConfig[0]); // ID05282024.n
         break;
       case AzAiServices.AiSearch:
         metricsObj = new AzAiSearchEpMetrics(

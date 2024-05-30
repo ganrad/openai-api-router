@@ -191,7 +191,8 @@ class AzOaiProcessor {
   	  retryAfter = (healthArr[1] < retryAfter) ? healthArr[1] : retryAfter;
 	else
 	  retryAfter = healthArr[1];
-        continue;
+        
+	continue;
       };
 
       try {
@@ -239,7 +240,7 @@ class AzOaiProcessor {
 
           // ID03012024.sn
           let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
-          if ( persistPrompts ) { // Persist prompts ?
+          if ( persistPrompts ) { // Persist prompt and completion ?
             let promptDao = new PersistDao(persistdb, TblNames.Prompts);
             let values = [
               req.id,
@@ -262,7 +263,7 @@ class AzOaiProcessor {
 	    data: data
 	  };
 
-          // return(respMessage);
+          retryAfter = 0;  // ID05282024.n (Bugfix; Set the retry after var to zero!!)
 	  break; // break out from the endpoint loop!
         }
         else if ( status === 429 ) { // endpoint is busy so try next one
