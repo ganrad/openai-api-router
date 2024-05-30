@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [v1.7.5](https://github.com/ganrad/open-api-router/compare/v1.7.0...v1.7.5)
+## [v1.7.5](https://github.com/ganrad/openai-api-router/compare/v1.7.0...v1.7.5)
 ### Functionality changes
 * (Bugfix) Fixed an issue tied to API circuit breaker logic.
 * (Enhancement) Added support for CORS so SPA's (single page applications / frontends) can invoke the Gateway server's router endpoint.
@@ -9,7 +9,7 @@
 ### Documentation changes
 * Updated documentation and included detailed information for configuring and using *State Management* feature.
 
-## [v1.7.0](https://github.com/ganrad/open-api-router/compare/v1.6.0...v1.7.0)
+## [v1.7.0](https://github.com/ganrad/openai-api-router/compare/v1.6.0...v1.7.0)
 ### Functionality changes
 * Fixed multiple minor bugs.
 * Refined the code for efficiency by removing unnecessary duplication.
@@ -19,7 +19,7 @@
 * Updated documentation and included detailed information for configuring and using *State Management* feature.
 * Updated diagrams.
 
-## [v1.6.0](https://github.com/ganrad/open-api-router/compare/v1.5.0...First release)
+## v1.6.0
 ### Functionality changes
 * (Bugfix) Each time when 'reconfig' endpoint was being invoked, a new cron scheduler instance was started. There should only be one cache entry invalidator instance running per gateway/router process instance.
 * (Bugfix) Fixed issues with metrics calculation.
@@ -46,7 +46,7 @@
 * Updated documentation to reflect support for new AI services
 * Updated reference architecture diagram
 
-## [First release]
+## First release
 ### Functionality
 * Included support for Azure OpenAI Service REST API and Client SDK.
 * Added support for AI Application (LLM) frameworks - Langchain and Promptflow. 
