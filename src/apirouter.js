@@ -26,6 +26,7 @@
  * ID05032024: ganrad : Added traffic routing support for Azure AI Content Safety service APIs
  * ID05062024: ganrad : Introduced memory (state management) for appType = Azure OpenAI Service
  * ID05282024: ganrad : Implemented rate limiting feature for appType = Azure OpenAI Service.
+ * ID05302024: ganrad : (Bugfix) For CORS requests, the thread ID (x-thread-id) is not set in the response header.
  *
 */
 
@@ -217,7 +218,7 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
      err_obj = {
        endpointUri: req.originalUrl,
        currentDate: new Date().toLocaleString(),
-       errorMessage: `Application type [${appConfig.appType}] is not yet supported. Check the router configuration for AI application [${appId}].`
+       errorMessage: `Application type [${appConfig.appType}] is not yet supported. Check the router configuration for AI Application [${appId}].`
     };
 
     response = {
@@ -236,8 +237,10 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
       res.set('retry-after', response.retry_after); // Set the retry-after response header
   }
   else {
-    if ( response.threadId )
+    if ( response.threadId ) {
+      res.set("Access-Control-Expose-Headers", CustomRequestHeaders.ThreadId); // ID05302024.n
       res.set(CustomRequestHeaders.ThreadId, response.threadId);
+    };
   };
 
   res.status(response.http_code).json(response.data);
