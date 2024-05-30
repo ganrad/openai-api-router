@@ -15,6 +15,7 @@
  * ID04302024: ganrad : (Bugfix) Each time 'reconfig' endpoint is invoked, a new cron scheduler is started. There should only
  * be one cache invalidator running per gateway/router instance.
  * ID05062024: ganrad : Introduced memory (state management) for appType = Azure OpenAI Service.
+ * ID05222024: ganrad : Enabled CORS
 */
 
 // ID04272024.sn
@@ -40,6 +41,7 @@ else
 
 const fs = require("fs");
 const express = require("express");
+const cors = require("cors"); // ID05222024.n
 const { ServerDefaults, CustomRequestHeaders, SchedulerTypes, AzAiServices } = require("./utilities/app-gtwy-constants");
 const { apirouter, reconfigEndpoints } = require("./apirouter");
 const pgdb = require("./services/cp-pg.js");
@@ -52,8 +54,8 @@ const app = express();
 var bodyParser = require('body-parser');
 // var morgan = require('morgan');
 
-// Server version v1.7.0 ~ 05062024.n
-const srvVersion = "1.7.0";
+// Server version v1.7.5 ~ 05282024.n
+const srvVersion = "1.7.5";
 // Server start date
 const srvStartDate = new Date().toLocaleString();
 
@@ -246,6 +248,8 @@ function readApiGatewayConfigFile(startScheduler) {
 // ID02202024.en
 // readApiGatewayConfigFile(); // ID04302024.o
 readApiGatewayConfigFile(true); // ID04302024.n
+
+app.use(cors()); // ID05222024.n
 
 // app.use(morgan(log_mode ? log_mode : 'combined'));
 app.use(bodyParser.json());

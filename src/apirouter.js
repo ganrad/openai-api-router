@@ -25,6 +25,7 @@
  * ID04272024: ganrad : Centralized logging with winstonjs
  * ID05032024: ganrad : Added traffic routing support for Azure AI Content Safety service APIs
  * ID05062024: ganrad : Introduced memory (state management) for appType = Azure OpenAI Service
+ * ID05282024: ganrad : Implemented rate limiting feature for appType = Azure OpenAI Service.
  *
 */
 
@@ -119,7 +120,8 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
       let epinfo = new Map();
       let epmetrics = null;
       for (const element of application.endpoints) {
-	epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType,element.uri);
+	// epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType,element.uri); ID05282024.o
+	epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType,element.uri,element.rpm); // ID05282024.n
 
         epinfo.set(element.uri,epmetrics);
       };
