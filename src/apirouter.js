@@ -233,8 +233,10 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
   if ( response.http_code !== 200 ) {
     instanceFailedCalls++;
 
-    if ( response.http_code === 429 )
+    if ( response.http_code === 429 ) {
+      res.set("Access-Control-Expose-Headers", 'retry-after'); // ID05302024.n
       res.set('retry-after', response.retry_after); // Set the retry-after response header
+    };
   }
   else {
     if ( response.threadId ) {

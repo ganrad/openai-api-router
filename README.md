@@ -203,7 +203,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
 3. Install PostgreSQL database server.
 
    > **NOTE**:
-   > If you do not intend to use *Semantic Caching* and/or *Prompt Persistence* features, you can safely skip this step and go to Step 4.
+   > If you do not intend to use *Semantic Caching*, *Conversational State Management* or *Prompt Persistence* features, you can safely skip this step and go to Step 4.
 
    Refer to the installation instructions [here](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/quickstart-create-server-portal) to install *Azure Database for PostgreSQL*.  Create a new database and give it a suitable name.  Note down the database name, server user name and password.  Save it in a secure location as we will need this info. in a subsequent step (below).
 
@@ -236,7 +236,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
    apigtwyprompts | This table stores prompts and completions
    apigtwymemory | This table stores state for user sessions (threads)
 
-4. Update the Gateway configuration file.
+4. Update the **AI Services Gateway Configuration file**.
 
    Edit the `./api-router-config.json` file.
 
@@ -269,7 +269,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
      Attribute Name | Description
      -------------- | -----------
      useMemory | When this value is set to *true*, AI Services Gateway will manage state for user sessions.  Default is *false*.
-     msgCount | This attribute is used to specify the number of messages (*user - assistant* interactions) to store and sent to the LLM.
+     msgCount | This attribute is used to specify the number of messages (*user - assistant* interactions) to store and send to the LLM.
      entryExpiry | This attribute is used to specify when the user sessions should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
 
    After making the changes, save the `./api-router-config.json` file.
@@ -287,7 +287,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
    Env Variable Name | Description | Required | Default Value
    ----------------- | ----------- | -------- | ------------- 
    API_GATEWAY_KEY | AI Services Gateway private key (secret) required to reconfigure backend (Azure OpenAI) endpoints | Yes | Set this value to an alphanumeric string
-   API_GATEWAY_CONFIG_FILE | The gateway configuration file location | Yes | Set the full or relative path to the gateway configuration file from the project root directory.
+   API_GATEWAY_CONFIG_FILE | The gateway configuration file location | Yes | Set the full or relative path to the *AI Services Gateway Configuration file* from the project root directory.
    API_GATEWAY_NAME | Gateway instance name | Yes | Set a value such as 'Instance-01' ...
    API_GATEWAY_PORT | Gateway server listen port | No | 8000
    API_GATEWAY_ENV | Gateway environment | Yes | Set a value such as 'dev', 'test', 'pre-prod', 'prod' ...
@@ -295,9 +295,9 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
    API_GATEWAY_METRICS_CINTERVAL | Backend API metrics collection and aggregation interval (in minutes) | Yes | Set it to a numeric value eg., 60 (1 hour)
    API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numeric value (<= 600)  
    APPLICATIONINSIGHTS_CONNECTION_STRING | Azure Monitor connection string | No | Assign the value of the Azure Application Insights resource *connection string* (from Azure Portal)
-   API_GATEWAY_USE_CACHE | Global setting for enabling semantic caching. This setting applies to all AI Applications.| No | false
+   API_GATEWAY_USE_CACHE | Global setting for enabling semantic caching feature. This setting applies to all AI Applications.| No | false
    API_GATEWAY_CACHE_INVAL_SCHEDULE | Global setting for configuring the frequency of *Cache Entry Invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/45 * * * *"
-   API_GATEWAY_STATE_MGMT | Global setting for enabling conversational state management.  This setting applies to all AI Applications. | No | false
+   API_GATEWAY_STATE_MGMT | Global setting for enabling conversational state management feature.  This setting applies to all AI Applications. | No | false
    API_GATEWAY_MEMORY_INVAL_SCHEDULE | Global setting for configuring the frequency of *Memory Invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/10 * * * *"
    API_GATEWAY_PERSIST_PROMPTS | Global setting for persisting prompts and completions in a database table (PostgreSQL) | No | false
    API_GATEWAY_VECTOR_AIAPP | Name of the AI application that exposes endpoints for data *embedding* model. This value is required if semantic caching feature is enabled | No | None
@@ -322,7 +322,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
    You will see the API Gateway server start up message in the terminal window as shown in the snippet below.
 
    ```bash
-   > openai-api-router@1.7.0 start
+   > openai-api-router@1.7.6 start
    > node ./src/server.js
 
    17-May-2024 04:30:48 [info] [server.js] Starting initialization of Azure AI Services API Gateway ...
@@ -371,7 +371,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
    ```json
    {
      "serverName": "Gateway-Instance-01",
-     "serverVersion": "1.7.0",
+     "serverVersion": "1.7.6",
      "serverConfig": {
         "host": "localhost",
         "listenPort": 8000,

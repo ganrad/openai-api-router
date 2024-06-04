@@ -1,8 +1,10 @@
 # CHANGELOG
 
-## [v1.7.5](https://github.com/ganrad/openai-api-router/compare/v1.7.0...v1.7.5)
+## [v1.7.6](https://github.com/ganrad/openai-api-router/compare/v1.7.0...v1.7.6)
 ### Functionality changes
+* (Bugfix) Fixed issue tied to retrieving cached data for new user sessions.
 * (Bugfix) Fixed an issue tied to API circuit breaker logic.
+* (Bugfix) Added additional response headers so response headers (retry-after & x-thread-id) returned by API Gateway can be used by SPA's.
 * (Enhancement) Added support for CORS so SPA's (single page applications / frontends) can invoke the Gateway server's router endpoint.
 * (Enhancement) Introduced a new feature for Azure OpenAI model deployment endpoints that allows aggregate rate limiting. This means users can now control the rate of API traffic coming from various AI Applications to a single Azure OpenAI endpoint. Users can set up a RPM Limit for each OpenAI backend endpoint for any AI Application. When multiple AI Applications use the same endpoint, the gateway will enforce rate limiting and throttle excessive requests by returning http 429 status codes. This is especially useful for distributing model processing capacity (PTU deployment) evenly across different AI Applications.
 
