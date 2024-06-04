@@ -9,6 +9,7 @@
  * ID04272024: ganrad: Centralized logging with winstonjs
  * ID05062024: ganrad: Introduced memory feature (state management) for appType = Azure OpenAI Service
  * ID05282024: ganrad: (Bugfix) Reset the 'retryAfter' value when the request is served with an available endpoint.
+ * ID05312024: ganrad: (Bugfix) Save only the message content retrieved from cache in memory for a new thread.
  *
 */
 const path = require('path');
@@ -116,7 +117,14 @@ class AzOaiProcessor {
 	    threadId = randomUUID();
             respMessage.threadId = threadId;
 
-            req.body.messages.push(completion.choices[0].message); 
+	    // ID05312024.sn
+	    let saveMsg = {
+	      role: completion.choices[0].message.role,
+	      content: completion.choices[0].message.content
+	    };
+	    // ID05312024.en
+            // req.body.messages.push(completion.choices[0].message); ID05312024.o
+            req.body.messages.push(saveMsg); // ID05312024.n
             logger.log({level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Cached Message: %s", splat: [scriptName,this.constructor.name,req.id,threadId,JSON.stringify(req.body.messages)]});
 
             memoryDao = new PersistDao(persistdb, TblNames.Memory);
@@ -149,7 +157,6 @@ class AzOaiProcessor {
       // retrieve the thread context
       const userContext = await memoryDao.queryTable(req.id,0,values)
       if ( userContext.rCount === 1 ) {
-	let inMsgs = req.body.messages;
 	let ctxContent = userContext.data[0].context.content;
 	let ctxMsgs = ctxContent.concat(req.body.messages);
 

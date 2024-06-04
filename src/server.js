@@ -55,7 +55,7 @@ var bodyParser = require('body-parser');
 // var morgan = require('morgan');
 
 // Server version v1.7.5 ~ 05282024.n
-const srvVersion = "1.7.5";
+const srvVersion = "1.7.6";
 // Server start date
 const srvStartDate = new Date().toLocaleString();
 
