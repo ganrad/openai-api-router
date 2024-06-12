@@ -27,6 +27,8 @@
  * ID05062024: ganrad : Introduced memory (state management) for appType = Azure OpenAI Service
  * ID05282024: ganrad : Implemented rate limiting feature for appType = Azure OpenAI Service.
  * ID05302024: ganrad : (Bugfix) For CORS requests, the thread ID (x-thread-id) is not set in the response header.
+ * ID06042024: ganrad : (Enhancement) Allow SPA's to invoke AOAI OYD calls by specifying AI Search application name instead of AI Search API Key.
+ * ID06052024: ganrad: (Enhancement) Added streaming support for Azure OpenAI Chat Completion API call.
  *
 */
 
@@ -102,6 +104,20 @@ router.get("/metrics", (req, res) => {
   res.status(200).json(res_obj);
 });
 
+// ID06042024.sn
+function getAiSearchAppApikey(ctx,appName) {
+  let appKey = null;
+  for (const application of ctx.applications) {
+    if ( application.appId === appName ) {
+      appKey = application.endpoints[0].apikey;
+      break;
+    };
+  };
+
+  return(appKey);
+}
+// ID06042024.sn
+
 // Intelligent router endpoint
 // router.post("/lb/:app_id", async (req, res) => { // ID03192024.o
 // router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024.n, ID04102024.o
@@ -144,6 +160,7 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
     return;
   };
 
+  /* ID06052024.so
   let r_stream = req.body.stream;
   if ( r_stream ) { // no streaming support!
     err_obj = {
@@ -155,6 +172,7 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
     res.status(400).json(err_obj); // 400 = Bad request
     return;
   }; 
+  ID06052024.eo */
 
   instanceCalls++;
   
@@ -163,6 +181,11 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
   for (const application of eps.applications) {
     if ( application.appId === appId ) {
       if ( application.appType === AzAiServices.OAI ) { 
+	// ID06042024.sn
+	if ( req.body.data_sources )
+	  if ( application.searchAiApp === req.body.data_sources[0].parameters.authentication.key )
+	    req.body.data_sources[0].parameters.authentication.key = getAiSearchAppApikey(eps,application.searchAiApp);
+	// ID06042024.en
         appConfig = {
           appId: application.appId,
           appType: application.appType,
@@ -198,6 +221,7 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
       case AzAiServices.OAI:
         response = await processor.processRequest(
           req,
+	  res, // ID06052024.n
           appConfig,
 	  memoryConfig, // ID05062024.n
           appConnections,
@@ -239,13 +263,18 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
     };
   }
   else {
-    if ( response.threadId ) {
+    if ( !req.body.stream && response.threadId ) { // ID06052024.n
       res.set("Access-Control-Expose-Headers", CustomRequestHeaders.ThreadId); // ID05302024.n
       res.set(CustomRequestHeaders.ThreadId, response.threadId);
     };
   };
 
-  res.status(response.http_code).json(response.data);
+  // ID06052024.sn
+  if ( req.body.stream )
+    res.end();
+  else
+  // ID06052024.sn
+    res.status(response.http_code).json(response.data);
 });
 
 module.exports.apirouter = router;

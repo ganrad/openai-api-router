@@ -10,6 +10,7 @@
  * ID04272024: ganrad: Centralized logging with winstonjs
  * ID05042024: ganrad: Added additional endpoint metrics - throttledApiCalls, filteredApiCalls, tokensPerMinute and requestsPerMinute
  * ID05282024: ganrad: Implemented aggregated rate limiting for model deployment endpoint
+ * ID06052024: ganrad: (Enhancement) Added streaming support for Azure OpenAI Chat Completion API call
  *
 */
 const path = require('path');
@@ -87,7 +88,8 @@ class AzOaiEpMetrics {
   updateApiCallsAndTokens(tokens, latency) {
     this.updateMetrics();
 
-    this.totalTokens += tokens;
+    if ( tokens ) // ID06052024.n
+      this.totalTokens += tokens;
     this.respTime += latency;
     this.apiCalls++;
     this.totalCalls++;
