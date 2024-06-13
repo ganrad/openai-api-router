@@ -70,12 +70,13 @@ Feature/Capability | Configurable (Yes/No) | Azure OpenAI Service | Azure AI Sea
 ### Bill Of Materials
 The AI Services API Gateway is designed from the grounds up to be a cost-effective solution and has a minimal service footprint. For details on the Azure services needed to deploy this solution, please see the accompanying table below.
 
-| Environment | * Azure Services | Notes
+| Environment | Azure Services | Notes
 | ----------- | -------------- | -----
 | - Development<br>- Testing | - Azure Linux VM (Minimum 2vCPUs; 8GB Memory)<br>- Azure Database for PostgreSQL Server (2-4 vCores; 8-16GB Memory; 1920-2880 max. iops)<br>- Azure OpenAI Service<br>- Azure AI Search<br>- Azure Storage | - The gateway can be run as a standalone server or can be containerized and run on the Linux VM.
 | - Pre-Production<br>- Production | - Azure Linux VM (4-8 vCPUs; 8-16GB Memory)<br>- Azure Database for PostgreSQL Server (4-8 vCores; 16-32GB Memory; 2880-4320 max iops)<br>- Azure Kubernetes Service / Azure Container Apps.<br>- Azure OpenAI Service<br>- Azure AI Search<br>- Azure Storage | - The AI Services Gateway can be deployed on AKS or Azure Container Apps. For large scale deployments, we recommend AKS.<br>- Select the appropriate deployment type(s) and OpenAI models for Azure OpenAI Service.<br>- Select the appropriate pricing tier (S, S2, S3) for Azure AI Search service to meet your data indexing & storage requirements.<br>- The Linux VM can be used as a jumpbox for testing the gateway server locally, connecting to the kubernetes cluster, managing other Azure resources etc.
 
-* *Other Azure AI Services may be needed to cater to your specific use case.*
+> **NOTE:**
+> Other Azure AI Services may be needed to implement functions specific to your use case.
 
 ### Prerequisites
 1.  An Azure **Resource Group** with **Owner** *Role* permission.  All Azure resources can be deloyed into this resource group.
@@ -333,14 +334,18 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
    You will see the API Gateway server start up message in the terminal window as shown in the snippet below.
 
    ```bash
-   > openai-api-router@1.7.6 start
+   > openai-api-router@1.8.0 start
    > node ./src/server.js
 
-   17-May-2024 04:30:48 [info] [server.js] Starting initialization of Azure AI Services API Gateway ...
-   17-May-2024 04:30:48 [info] [server.js] Azure Application Insights 'Connection string' not found. No telemetry data will be sent to App Insights.
+   13-Jun-2024 06:51:31 [info] [server.js] Starting initialization of Azure AI Services API Gateway ...
+   13-Jun-2024 06:51:31 [info] [server.js] Azure Application Insights 'Connection string' not found. No telemetry data will be sent to App Insights.
    Server(): Azure AI Services API Gateway server started successfully.
-   Gateway uri: http://localhost:8000/api/v1/dev
-   17-May-2024 04:30:48 [info] [server.js] AI Application backend (Azure AI Service) endpoints:
+   Gateway uri: http://localhost:8080/api/v1/dev
+   13-Jun-2024 06:51:31 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
+   13-Jun-2024 06:51:31 [info] [server.js] Completions will be cached
+   13-Jun-2024 06:51:31 [info] [server.js] Prompts will be persisted
+   13-Jun-2024 06:51:31 [info] [server.js] Conversational state will be managed
+   13-Jun-2024 06:51:31 [info] [server.js] AI Application backend (Azure AI Service) endpoints:
    Application ID: language-app; Type: azure_language
      Priority: 0   Uri: https://gr-dev-lang.cognitiveservices.azure.com/language/:analyze-text?api-version=2022-05-01
    Application ID: translate-app; Type: azure_translator
@@ -351,22 +356,21 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
      Priority: 0   Uri: https://gr-dev-rag-ais.search.windows.net/indexes/ak-stip-v2/docs/search?api-version=2023-11-01
    Application ID: search-app-ak-stip-aisrch-iv; Type: azure_search
      Priority: 0   Uri: https://gr-dev-rag-ais.search.windows.net/indexes/ak-stip-aisrch-iv/docs/search?api-version=2023-10-01-preview
+   Application ID: search-garmin-docs; Type: azure_search
+     Priority: 0   Uri: https://gr-dev-rag-ais.search.windows.net/indexes/dev-garmin-idx/docs/search?api-version=2023-10-01-preview
    Application ID: vectorizedata; Type: azure_oai; useCache=false; useMemory=false
      Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15
-   Application ID: ai-assistant-gpt-4t-0125; Type: azure_oai; useCache=true; useMemory=true
+   Application ID: ai-doc-assistant-gpt-4t-0125; Type: azure_oai; useCache=true; useMemory=true
      Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01
    Application ID: aichatbotapp; Type: azure_oai; useCache=true; useMemory=true
      Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01
+     Priority: 1   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01
    Application ID: aidocusearchapp; Type: azure_oai; useCache=true; useMemory=false
      Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15
      Priority: 1   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
-   17-May-2024 04:30:48 [info] [server.js] Successfully loaded backend API endpoints for AI applications
-   17-May-2024 04:30:48 [info] [server.js] Cache entry invalidate run schedule (Cron) - */5 * * * *
-   17-May-2024 04:30:48 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */2 * * * *
-   17-May-2024 04:30:48 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
-   17-May-2024 04:30:48 [info] [server.js] Completions will be cached
-   17-May-2024 04:30:48 [info] [server.js] Prompts will be persisted
-   17-May-2024 04:30:48 [info] [server.js] Conversational state will be managed
+   13-Jun-2024 06:51:31 [info] [server.js] Successfully loaded backend API endpoints for AI applications
+   13-Jun-2024 06:51:31 [info] [server.js] Cache entry invalidate run schedule (Cron) - */5 * * * *
+   13-Jun-2024 06:51:31 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */2 * * * *
    ```
 
    Leave the terminal window open.
@@ -382,7 +386,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
    ```json
    {
      "serverName": "Gateway-Instance-01",
-     "serverVersion": "1.7.6",
+     "serverVersion": "1.8.0",
      "serverConfig": {
         "host": "localhost",
         "listenPort": 8000,
@@ -411,7 +415,9 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
                 "useCache": false
             },
             "endpoints": {
-                "0": "https://gr-dev-lang.cognitiveservices.azure.com/language/:analyze-text?api-version=2022-05-01"
+                "0": {
+		  "uri": "https://gr-dev-lang.cognitiveservices.azure.com/language/:analyze-text?api-version=2022-05-01"
+		}
             }
         },
         {
@@ -422,7 +428,9 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
                 "useCache": false
             },
             "endpoints": {
-                "0": "https://api.cognitive.microsofttranslator.com/"
+                "0": {
+		  "uri": "https://api.cognitive.microsofttranslator.com/"
+		}
             }
         },
         {
@@ -436,11 +444,13 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
                 "useMemory": false
             },
             "endpoints": {
-                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15"
+                "0": {
+		  "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15"
+		}
             }
         },
         {
-            "applicationId": "ai-assistant-gpt-4t-0125",
+            "applicationId": "ai-doc-assistant-gpt-4t-0125",
             "description": "An AI Assistant / Chatbot application",
             "type": "azure_oai",
             "cacheSettings": {
@@ -449,17 +459,19 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
                 "searchDistance": 0.95,
                 "searchContent": {
                     "term": "messages",
-                    "includeRoles": "system,user,assistant"
+                    "includeRoles": "user"
                 },
                 "entryExpiry": "2 minutes"
             },
             "memorySettings": {
                 "useMemory": true,
                 "msgCount": 5,
-                "entryExpiry": "2 minutes"
+                "entryExpiry": "5 minutes"
             },
             "endpoints": {
-                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01"
+                "0": {
+                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01"
+                }
             }
         },
         {
@@ -479,10 +491,17 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
             "memorySettings": {
                 "useMemory": true,
                 "msgCount": 1,
-                "entryExpiry": "2 minutes"
+                "entryExpiry": "5 minutes"
             },
             "endpoints": {
-                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01"
+                "0": {
+                    "rpm": 10,
+                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01"
+                },
+                "1": {
+                    "rpm": 10,
+                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01"
+                }
             }
         },
         {
@@ -499,15 +518,19 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
                 "entryExpiry": "1 day"
             },
             "endpoints": {
-                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
-                "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
+                "0": {
+                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15"
+                },
+                "1": {
+                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
+                }
             }
         }
      ],
      "containerInfo": {},
      "apiGatewayUri": "/api/v1/dev/apirouter",
      "endpointUri": "/api/v1/dev/apirouter/instanceinfo",
-     "serverStartDate": "5/17/2024, 4:30:48 AM",
+     "serverStartDate": "6/13/2024, 6:57:56 AM",
      "status": "OK"
    }
    ```
