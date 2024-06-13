@@ -203,6 +203,8 @@ class AzOaiProcessor {
     router_res.setHeader('Content-Type','text/event-stream');
     router_res.setHeader('Cache-Control','no-cache');
     router_res.setHeader('Connection','keep-alive');
+    router_res.set("Access-Control-Expose-Headers", CustomRequestHeaders.RequestId);
+    router_res.set(CustomRequestHeaders.RequestId, req_id);
     if ( t_id) {
       router_res.set("Access-Control-Expose-Headers", CustomRequestHeaders.ThreadId);
       router_res.set(CustomRequestHeaders.ThreadId, t_id);
@@ -267,6 +269,8 @@ class AzOaiProcessor {
     router_res.setHeader('Content-Type','text/event-stream');
     router_res.setHeader('Cache-Control','no-cache');
     router_res.setHeader('Connection','keep-alive');
+    router_res.set("Access-Control-Expose-Headers", CustomRequestHeaders.RequestId);
+    router_res.set(CustomRequestHeaders.RequestId, req_id);
     if ( t_id ) {
       router_res.set("Access-Control-Expose-Headers", CustomRequestHeaders.ThreadId);
       router_res.set(CustomRequestHeaders.ThreadId, t_id);

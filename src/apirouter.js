@@ -263,9 +263,13 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
     };
   }
   else {
-    if ( !req.body.stream && response.threadId ) { // ID06052024.n
-      res.set("Access-Control-Expose-Headers", CustomRequestHeaders.ThreadId); // ID05302024.n
-      res.set(CustomRequestHeaders.ThreadId, response.threadId);
+    if ( !req.body.stream ) { // ID06052024.n
+      if ( response.threadId ) {
+        res.set("Access-Control-Expose-Headers", CustomRequestHeaders.ThreadId); // ID05302024.n
+        res.set(CustomRequestHeaders.ThreadId, response.threadId);
+      };
+      res.set("Access-Control-Expose-Headers", CustomRequestHeaders.RequestId);
+      res.set(CustomRequestHeaders.RequestId, req.id);
     };
   };
 

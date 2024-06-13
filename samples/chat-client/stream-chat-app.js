@@ -32,9 +32,14 @@ async function main() {
 	    if ( threadId )
 	      req.headers.set("x-thread-id",threadId);
 
+	    console.log("----------**********++++++++++**********");
+
 	    let pipeResponse = await next(req, next);
 	    threadId = pipeResponse.headers.get("x-thread-id");
 	    console.log(`THREAD-ID: ${threadId}`);
+
+	    const requestId = pipeResponse.headers.get("x-request-id");
+	    console.log(`REQUEST-ID: ${requestId}`);
 
 	    return pipeResponse;
 	  }
@@ -43,9 +48,11 @@ async function main() {
       }
     ]
   }
-  // const client = new OpenAIClient(endpoint,new AzureKeyCredential(azureApiKey), { allowInsecureConnection: true });
+
+  console.log("Begin: Test");
+
   const client = new OpenAIClient(endpoint,new AzureKeyCredential(azureApiKey), clientOptions);
-  const deploymentId = "aichatbotapp"; // "dev-gpt35-turbo-16k"; // "gpt-35-turbo";
+  const deploymentId = "aichatbotapp"; // Specify the name of the AI Application registered in AI Services API Gateway!
   let events = await client.streamChatCompletions(
     deploymentId,
     [
@@ -55,26 +62,103 @@ async function main() {
     { maxTokens: 500 },
   );
 
+  let prompt = "";
+  let response = "";
+  console.log("Streamed completion response:");
   for await (const event of events) {
     for (const choice of event.choices) {
       console.log(choice.delta?.content);
+      if ( choice.delta?.content )
+        response += choice.delta?.content
     }
   }
+  console.log(`Full completion response:\n${response}`);
 
   // Uncomment below lines to enable and test 'state management'
-  /* events = await client.streamChatCompletions(
+  prompt = "What is the best time of the year to visit attraction no. 9?";
+  response = ""
+  events = await client.streamChatCompletions(
     deploymentId,
     [
-      { role: "user", content: "What is the best time of the year to visit attraction no. 9?" },
+      { role: "user", content: prompt },
     ],
     { maxTokens: 500 },
   );
 
+  console.log(`Prompt: ${prompt}`);
+  console.log("Streamed completion response:");
   for await (const event of events) {
     for (const choice of event.choices) {
       console.log(choice.delta?.content);
+      if ( choice.delta?.content )
+        response += choice.delta?.content
     }
-  } */
+  }
+  console.log(`Full completion response:\n${response}`);
+
+  prompt = "What is the best time of the year to visit attraction no. 4?";
+  response = ""
+  events = await client.streamChatCompletions(
+    deploymentId,
+    [
+      { role: "user", content: prompt },
+    ],
+    { maxTokens: 500 },
+  );
+
+  console.log(`Prompt: ${prompt}`);
+  console.log("Streamed completion response:");
+  for await (const event of events) {
+    for (const choice of event.choices) {
+      console.log(choice.delta?.content);
+      if ( choice.delta?.content )
+        response += choice.delta?.content
+    }
+  }
+  console.log(`Full completion response:\n${response}`);
+
+  prompt = "What is the best time of the year to visit attraction no. 10?";
+  response = ""
+  events = await client.streamChatCompletions(
+    deploymentId,
+    [
+      { role: "user", content: prompt },
+    ],
+    { maxTokens: 500 },
+  );
+
+  console.log(`Prompt: ${prompt}`);
+  console.log("Streamed completion response:");
+  for await (const event of events) {
+    for (const choice of event.choices) {
+      console.log(choice.delta?.content);
+      if ( choice.delta?.content )
+        response += choice.delta?.content
+    }
+  }
+  console.log(`Full completion response:\n${response}`);
+
+  prompt = "What is the best time of the year to visit attraction no. 1?";
+  response = ""
+  events = await client.streamChatCompletions(
+    deploymentId,
+    [
+      { role: "user", content: prompt },
+    ],
+    { maxTokens: 500 },
+  );
+
+  console.log(`Prompt: ${prompt}`);
+  console.log("Streamed completion response:");
+  for await (const event of events) {
+    for (const choice of event.choices) {
+      console.log(choice.delta?.content);
+      if ( choice.delta?.content )
+        response += choice.delta?.content
+    }
+  }
+  console.log(`Full completion response:\n${response}`);
+  console.log("End: Test");
 }
 
 main().catch((err) => {
