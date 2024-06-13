@@ -185,7 +185,10 @@ Prior to turning on *Conversational State Management* feature for an AI Applicat
 - When memory management is enabled for an AI application, the AI Services Gateway will return a custom http header `x-thread-id` in the API response.  This custom header will contain a unique value (GUID) representing a Thread ID.  To initiate a new user session and have the AI Services Gateway manage the conversational context, client applications must send this value in the http request header `x-thread-id`, in subsequent API calls.  The Thread ID represents an end user's session with an AI Chatbot/Assistant application.  A client application can end a user session at any time by not sending this custom http header in the API request.
 - Use the *memorySettings.msgCount* attribute to specify the number of end user interactions (messages) to persist for each user session. Once the number of saved user interactions reaches this max. value (specified by this attribute), the memory manager component will discard the oldest message and only keep the most recent messages.  For each user session, the first user interaction (message) will always be retained by the memory manager.
 - Use the *memorySettings.entryExpiry* attribute to specify the expiry time for user sessions.  After a user's session expires, API requests containing the expired Thread ID in the http header will receive an exception stating the session has expired.
-- To quickly test the user session state management feature, you can use the standalone nodejs application `./samples/chat-client/simple-chat-app.js`.
+- To quickly test the user session state management feature, you can use one of the provided standalone nodejs applications. See below.
+  
+  - A simple chat application that uses REST API calls - `./samples/chat-client/simple-chat-app.js`.
+  - A chat application that uses Azure OpenAI SDK to make streaming API calls - `./samples/chat-client/stream-chat-app.js`
 
 **Invalidating Memory Entries**
 
