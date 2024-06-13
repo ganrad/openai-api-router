@@ -70,10 +70,12 @@ Feature/Capability | Configurable (Yes/No) | Azure OpenAI Service | Azure AI Sea
 ### Bill Of Materials
 The AI Services API Gateway is designed from the grounds up to be a cost-effective solution and has a minimal service footprint. For details on the Azure services needed to deploy this solution, please see the accompanying table below.
 
-| Environment | Azure Services | Notes
+| Environment | * Azure Services | Notes
 | ----------- | -------------- | -----
-| - Development<br>- Testing | - Azure Linux VM (Minimum 2vCPUs; 8GB Memory)<br>- Azure Database for PostgreSQL Server (2-4 vCores; 8-16GB Memory; 1920-2880 max. iops) | - The gateway can be run as a standalone server or can be containerized and run on the Linux VM.
-| - Pre-Production<br>- Production | - Azure Linux VM (4-8 vCPUs; 8-16GB Memory)<br>- Azure Database for PostgreSQL Server (4-8 vCores; 16-32GB Memory; 2880-4320 max iops)<br>- Azure Kubernetes Service / Azure Container Apps. | - The AI Services Gateway can be deployed on AKS or Azure Container Apps. For large scale deployments, we recommend AKS.<br>- The Linux VM can be used as a jumpbox for testing the gateway server locally, connecting to the kubernetes cluster, managing other Azure resources etc.
+| - Development<br>- Testing | - Azure Linux VM (Minimum 2vCPUs; 8GB Memory)<br>- Azure Database for PostgreSQL Server (2-4 vCores; 8-16GB Memory; 1920-2880 max. iops)<br>- Azure OpenAI Service<br>- Azure AI Search<br>- Azure Storage | - The gateway can be run as a standalone server or can be containerized and run on the Linux VM.
+| - Pre-Production<br>- Production | - Azure Linux VM (4-8 vCPUs; 8-16GB Memory)<br>- Azure Database for PostgreSQL Server (4-8 vCores; 16-32GB Memory; 2880-4320 max iops)<br>- Azure Kubernetes Service / Azure Container Apps.<br>- Azure OpenAI Service<br>- Azure AI Search<br>- Azure Storage | - The AI Services Gateway can be deployed on AKS or Azure Container Apps. For large scale deployments, we recommend AKS.<br>- Select the appropriate deployment type(s) and OpenAI models for Azure OpenAI Service.<br>- Select the appropriate pricing tier (S, S2, S3) for Azure AI Search service to meet your data indexing & storage requirements.<br>- The Linux VM can be used as a jumpbox for testing the gateway server locally, connecting to the kubernetes cluster, managing other Azure resources etc.
+
+* *Other Azure AI Services may be needed to cater to your specific use case.*
 
 ### Prerequisites
 1.  An Azure **Resource Group** with **Owner** *Role* permission.  All Azure resources can be deloyed into this resource group.
