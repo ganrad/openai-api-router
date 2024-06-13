@@ -72,8 +72,8 @@ The AI Services API Gateway is designed from the grounds up to be a cost-effecti
 
 Environment | Azure Services | Notes
 ----------- | -------------- | -----
-Development<br>Testing | - Azure Linux VM (Minimum 2vCPUs; 8GB Memory)<br>- Azure Database for PostgreSQL Server (2-4 vCores; 8-16GB Memory; 1920-2880 max. iops) | - The gateway can be run as a standalone server or can be containerized and run on the Linux VM.
-Pre-Production<br>Production | - Azure Linux VM (4-8 vCPUs; 8-16GB Memory)<br>- Azure Database for PostgreSQL Server (4-8 vCores; 16-32GB Memory; 2880-4320 max iops)<br>- The gateway can be deployed on a Azure Kubernetes Service cluster or as an application on Azure Container Apps. | - The Linux VM can be used as a jumpbox for locally testing the gateway server, connecting to the kubernetes cluster, managing resources on Azure etc.
+- Development<br>- Testing | - Azure Linux VM (Minimum 2vCPUs; 8GB Memory)<br>- Azure Database for PostgreSQL Server (2-4 vCores; 8-16GB Memory; 1920-2880 max. iops) | - The gateway can be run as a standalone server or can be containerized and run on the Linux VM.
+- Pre-Production<br>- Production | - Azure Linux VM (4-8 vCPUs; 8-16GB Memory)<br>- Azure Database for PostgreSQL Server (4-8 vCores; 16-32GB Memory; 2880-4320 max iops)<br>- Azure Kubernetes Service / Azure Container Apps. | - The AI Services Gateway can be deployed on AKS or Azure Container Apps. For large scale deployments, we recommend AKS.<br>- The Linux VM can be used as a jumpbox for locally testing the gateway server, connecting to the kubernetes cluster, managing resources on Azure etc.
 
 ### Prerequisites
 1.  An Azure **Resource Group** with **Owner** *Role* permission.  All Azure resources can be deloyed into this resource group.
