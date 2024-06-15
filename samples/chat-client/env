@@ -1,0 +1,6 @@
+ENDPOINT="http://localhost:8080/api/v1/dev/apirouter/lb/"
+AZURE_API_KEY="NA"
+AZURE_SEARCH_ENDPOINT="https://gr-dev-rag-ais.search.windows.net"
+# For the AI Search key, you can also specify the AI Application name registered in the AI Services Gateway!
+AZURE_SEARCH_KEY="search-garmin-docs"
+AZURE_SEARCH_INDEX="dev-garmin-idx"

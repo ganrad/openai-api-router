@@ -1,15 +1,19 @@
 # CHANGELOG
 
-## [v1.7.6](https://github.com/ganrad/openai-api-router/compare/v1.7.0...v1.7.6)
+## [v1.8.0](https://github.com/ganrad/openai-api-router/compare/v1.7.0...v1.8.0)
 ### Functionality changes
 * (Bugfix) Fixed issue tied to retrieving cached data for new user sessions.
 * (Bugfix) Fixed an issue tied to API circuit breaker logic.
-* (Bugfix) Added additional response headers so response headers (retry-after & x-thread-id) returned by API Gateway can be used by SPA's.
+* (Bugfix) Added additional response headers so response headers (retry-after, x-request-id & x-thread-id) returned by API Gateway can be used by client applications (SPA's).
+* (Enhancement) The most significant update introduced in this latest release is full support for Azure OpenAI Chat Completions streaming API, which also includes On Your Data (OYD) API. Most importantly, the streaming feature works seamlessly with the API router, semantic caching and state management features.
+* (Enhancement) For Azure OpenAI OYD (On your data) chat completion API calls, client applications can now specify the name of the AI Search application registered in the gateway instead of the AI Search key, within the request body.  This change eliminates the risk associated with caching or storing the AI Search key in the client application, which could pose a security risk if the application is running in a browser.
+* (Enhancement) Updated OpenAI request processor to return error messages that are complaint (API) with exception messages returned by Azure OpenAI Service.
 * (Enhancement) Added support for CORS so SPA's (single page applications / frontends) can invoke the Gateway server's router endpoint.
 * (Enhancement) Introduced a new feature for Azure OpenAI model deployment endpoints that allows aggregate rate limiting. This means users can now control the rate of API traffic coming from various AI Applications to a single Azure OpenAI endpoint. Users can set up a RPM Limit for each OpenAI backend endpoint for any AI Application. When multiple AI Applications use the same endpoint, the gateway will enforce rate limiting and throttle excessive requests by returning http 429 status codes. This is especially useful for distributing model processing capacity (PTU deployment) evenly across different AI Applications.
 
 ### Documentation changes
-* Revised the documentation to explain how to utilize aggregate rate limiting for an Azure OpenAI model deployment endpoint.
+* Updated documentation to reflect full support for Azure OpenAI Chat Completions API *streaming* feature.
+* Included detailed explanation on aggregate rate limiting and the steps to set it up with an Azure OpenAI model deployment endpoint.
 
 ## [v1.7.0](https://github.com/ganrad/openai-api-router/compare/v1.6.0...v1.7.0)
 ### Functionality changes

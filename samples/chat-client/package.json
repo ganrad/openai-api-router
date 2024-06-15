@@ -1,0 +1,15 @@
+{
+  "name": "chat-client-stream",
+  "version": "1.0.0",
+  "description": "Sample client apps used to test streaming feature of Azure Open AI Service",
+  "main": "stream-chat-app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ganesh Radhakrishnan",
+  "license": "MIT",
+  "dependencies": {
+    "@azure/openai": "^1.0.0-beta.12",
+    "dotenv": "^16.4.5"
+  }
+}

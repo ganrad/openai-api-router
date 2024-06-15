@@ -27,6 +27,9 @@
  * ID05062024: ganrad : Introduced memory (state management) for appType = Azure OpenAI Service
  * ID05282024: ganrad : Implemented rate limiting feature for appType = Azure OpenAI Service.
  * ID05302024: ganrad : (Bugfix) For CORS requests, the thread ID (x-thread-id) is not set in the response header.
+ * ID06042024: ganrad : (Enhancement) Allow SPA's to invoke AOAI OYD calls by specifying AI Search application name instead of AI Search API Key.
+ * ID06052024: ganrad: (Enhancement) Added streaming support for Azure OpenAI Chat Completion API call.
+ * ID06132024: ganrad: (Enhancement) Adapted gateway error messages to be compliant with AOAI Service error messages.
  *
 */
 
@@ -102,6 +105,20 @@ router.get("/metrics", (req, res) => {
   res.status(200).json(res_obj);
 });
 
+// ID06042024.sn
+function getAiSearchAppApikey(ctx,appName) {
+  let appKey = null;
+  for (const application of ctx.applications) {
+    if ( application.appId === appName ) {
+      appKey = application.endpoints[0].apikey;
+      break;
+    };
+  };
+
+  return(appKey);
+}
+// ID06042024.sn
+
 // Intelligent router endpoint
 // router.post("/lb/:app_id", async (req, res) => { // ID03192024.o
 // router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024.n, ID04102024.o
@@ -134,23 +151,44 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
   };
 
   if ( ! appConnections.getAllConnections().has(appId) ) {
+    /* ID06132024.so
     err_obj = {
       endpointUri: req.originalUrl,
       currentDate: new Date().toLocaleString(),
       errorMessage: `AI Application ID [${appId}] not found. Unable to process request.`
     };
+    ID06132024.eo */
+    // ID06132024.sn
+    err_obj = {
+      error: {
+        target: req.originalUrl,
+        message: `AI Application ID [${appId}] not found. Unable to process request.`,
+        code: "invalidPayload"
+      }
+    };
+    // ID06132024.en
 
     res.status(400).json(err_obj); // 400 = Bad request
     return;
   };
 
   let r_stream = req.body.stream;
-  if ( r_stream ) { // no streaming support!
-    err_obj = {
+  if ( r_stream && req.body.prompt ) { // no streaming support for Completions API!
+    /* ID06132024.so
+      err_obj = {
       endpointUri: req.originalUrl,
       currentDate: new Date().toLocaleString(),
       errorMessage: "Stream mode is not yet supported! Unable to process request."
+    }; ID06132024.eo */
+    // ID06132024.sn
+    err_obj = {
+      error: {
+        target: req.originalUrl,
+        message: "Stream mode is not yet supported for 'Completions API'! Unable to process request.",
+        code: "invalidPayload"
+      }
     };
+    // ID06132024.en
 
     res.status(400).json(err_obj); // 400 = Bad request
     return;
@@ -163,6 +201,11 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
   for (const application of eps.applications) {
     if ( application.appId === appId ) {
       if ( application.appType === AzAiServices.OAI ) { 
+	// ID06042024.sn
+	if ( req.body.data_sources )
+	  if ( application.searchAiApp === req.body.data_sources[0].parameters.authentication.key )
+	    req.body.data_sources[0].parameters.authentication.key = getAiSearchAppApikey(eps,application.searchAiApp);
+	// ID06042024.en
         appConfig = {
           appId: application.appId,
           appType: application.appType,
@@ -198,6 +241,7 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
       case AzAiServices.OAI:
         response = await processor.processRequest(
           req,
+	  res, // ID06052024.n
           appConfig,
 	  memoryConfig, // ID05062024.n
           appConnections,
@@ -215,11 +259,22 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
     };
   }
   else {
+    /* ID06132024.so
      err_obj = {
        endpointUri: req.originalUrl,
        currentDate: new Date().toLocaleString(),
        errorMessage: `Application type [${appConfig.appType}] is not yet supported. Check the router configuration for AI Application [${appId}].`
     };
+    ID06132024.eo */
+    // ID06132024.sn
+    err_obj = {
+      error: {
+        target: req.originalUrl,
+        message: `Application type [${appConfig.appType}] is incorrect and not supported. Review the router configuration for AI Application [${appId}] and specify correct value for "application type".`,
+        code: "notFound"
+      }
+    };
+    // ID06132024.en
 
     response = {
       http_code: 400,
@@ -230,22 +285,38 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
   if ( response.cached )
     cachedCalls++;
 
+  let res_hdrs = CustomRequestHeaders.RequestId;
   if ( response.http_code !== 200 ) {
     instanceFailedCalls++;
 
     if ( response.http_code === 429 ) {
-      res.set("Access-Control-Expose-Headers", 'retry-after'); // ID05302024.n
+      res_hdrs += ', retry-after';
+      // res.set("Access-Control-Expose-Headers", 'retry-after'); // ID05302024.n
       res.set('retry-after', response.retry_after); // Set the retry-after response header
     };
   }
   else {
-    if ( response.threadId ) {
-      res.set("Access-Control-Expose-Headers", CustomRequestHeaders.ThreadId); // ID05302024.n
-      res.set(CustomRequestHeaders.ThreadId, response.threadId);
+    if ( !req.body.stream ) { // ID06052024.n
+      if ( response.threadId ) {
+	res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
+        res.set(CustomRequestHeaders.ThreadId, response.threadId);
+      };
+      // res.set(CustomRequestHeaders.RequestId, req.id);
     };
   };
+  if ( !req.body.stream || response.http_code === 429 ) { // ID06052024.n
+    res.set(CustomRequestHeaders.RequestId, req.id);
+    res.set("Access-Control-Expose-Headers", res_hdrs);
+  };
 
-  res.status(response.http_code).json(response.data);
+  logger.log({level: "info", message: "[%s] apirouter(): Request ID=[%s] completed.\n  App. ID: %s\n  Backend URI Index: %d\n  HTTP Status: %d", splat: [scriptName, req.id, appId, response.uri_idx, response.http_code]});
+   
+  // ID06052024.sn
+  if ( req.body.stream )
+    res.end();
+  else
+  // ID06052024.sn
+    res.status(response.http_code).json(response.data);
 });
 
 module.exports.apirouter = router;
