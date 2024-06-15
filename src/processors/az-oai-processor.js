@@ -11,6 +11,7 @@
  * ID05282024: ganrad: (Bugfix) Reset the 'retryAfter' value when the request is served with an available endpoint.
  * ID05312024: ganrad: (Bugfix) Save only the message content retrieved from cache in memory for a new thread.
  * ID06052024: ganrad: (Enhancement) Added streaming support for Azure OpenAI Chat Completion API call(s).
+ * ID06132024: ganrad: (Enhancement) Adapted gateway error messages to be compliant with AOAI Service error messages.
  *
 */
 const path = require('path');
@@ -149,7 +150,7 @@ class AzOaiProcessor {
     };
 
     let citationsObj = null;
-    if ( completion.choices[0].message.context ) {
+    if ( completion.choices[0].message?.context ) {
       citationsObj = {
         id: completion.id,
 	created: completion.created,
@@ -200,15 +201,16 @@ class AzOaiProcessor {
     // const reader = oai_res.body; // use node-fetch library!
 
     // Send 200 response status and headers
+    let res_hdrs = CustomRequestHeaders.RequestId;
     router_res.setHeader('Content-Type','text/event-stream');
     router_res.setHeader('Cache-Control','no-cache');
     router_res.setHeader('Connection','keep-alive');
-    router_res.set("Access-Control-Expose-Headers", CustomRequestHeaders.RequestId);
     router_res.set(CustomRequestHeaders.RequestId, req_id);
     if ( t_id) {
-      router_res.set("Access-Control-Expose-Headers", CustomRequestHeaders.ThreadId);
+      res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
       router_res.set(CustomRequestHeaders.ThreadId, t_id);
     };
+    router_res.set("Access-Control-Expose-Headers", res_hdrs);
     router_res.flushHeaders();
 
     let msg = "";
@@ -255,7 +257,7 @@ class AzOaiProcessor {
       };
     }; // end of while
 
-    logger.log({level: "warn", message: "[%s] %s.streamChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Completion: %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,recv_data]});
+    logger.log({level: "debug", message: "[%s] %s.streamChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Completion: %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,recv_data]});
 
     let resp_data = this.#constructCompletionMessage(recv_data, null, call_data);
 
@@ -266,15 +268,16 @@ class AzOaiProcessor {
     const reader = oai_res.body.getReader();
 
     // Send 200 response status and headers
+    let res_hdrs = CustomRequestHeaders.RequestId;
     router_res.setHeader('Content-Type','text/event-stream');
     router_res.setHeader('Cache-Control','no-cache');
     router_res.setHeader('Connection','keep-alive');
-    router_res.set("Access-Control-Expose-Headers", CustomRequestHeaders.RequestId);
     router_res.set(CustomRequestHeaders.RequestId, req_id);
     if ( t_id ) {
-      router_res.set("Access-Control-Expose-Headers", CustomRequestHeaders.ThreadId);
+      res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
       router_res.set(CustomRequestHeaders.ThreadId, t_id);
     };
+    router_res.set("Access-Control-Expose-Headers", res_hdrs);
     router_res.flushHeaders();
 
     let recv_data = "";
@@ -331,7 +334,7 @@ class AzOaiProcessor {
       }; 
     }; // end of while loop
 
-    logger.log({level: "warn", message: "[%s] %s.streamChatCompletionOyd():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Citations:\n  %s\n  Completion:\n  %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,cit_data,recv_data]});
+    logger.log({level: "debug", message: "[%s] %s.streamChatCompletionOyd():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Citations:\n  %s\n  Completion:\n  %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,cit_data,recv_data]});
 
     let resp_data = this.#constructCompletionMessage(recv_data, cit_data, call_data);
 
@@ -470,6 +473,7 @@ class AzOaiProcessor {
     let memoryDao = null;
     let values = null;
     let err_msg = null;
+    let uriIdx = 0;
 
     if (! threadId) { 
       if ( cacheConfig.cacheResults && useCache ) { // Is caching enabled?
@@ -500,7 +504,7 @@ class AzOaiProcessor {
         if ( rowCount === 1 ) { // Cache hit!
           cacheMetrics.updateCacheMetrics(config.appId, simScore);
 
-          if ( manageState && memoryConfig && memoryConfig.useMemory ) // Generate thread id if manage state == true
+          if ( req.body.messages && manageState && memoryConfig && memoryConfig.useMemory ) // Generate thread id if manage state == true
 	    threadId = randomUUID();
 		 
 	  respMessage = ( req.body.stream ) ?
@@ -511,7 +515,7 @@ class AzOaiProcessor {
 	      data: completion
 	    };
 
-          if ( manageState && memoryConfig && memoryConfig.useMemory ) { // Manage state for this AI application?
+          if ( req.body.messages && manageState && memoryConfig && memoryConfig.useMemory ) { // Manage state for this AI application?
             respMessage.threadId = threadId;
 
 	    // ID05312024.sn
@@ -542,7 +546,7 @@ class AzOaiProcessor {
         }
         else
           embeddedPrompt = embeddings;
-      }
+      } // No caching configured
     }
     else { // Start of user session if
       memoryDao = new PersistDao(persistdb, TblNames.Memory);
@@ -565,11 +569,22 @@ class AzOaiProcessor {
         logger.log({level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Retrieved Message: %s", splat: [scriptName,this.constructor.name,req.id,threadId,JSON.stringify(req.body.messages)]});
       }
       else {
+	/* ID06132024.so
         err_msg = {
           endpointUri: req.originalUrl,
           currentDate: new Date().toLocaleString(),
           errorMessage: `The user session associated with Thread ID=[${threadId}] has either expired or is invalid! Start a new user session.`
         };
+	ID06132024.eo */
+	// ID06132024.sn  
+	err_msg = {
+	  error: {
+	    target: req.originalUrl,
+	    message: `The user session associated with Thread ID=[${threadId}] has either expired or is invalid! Start a new user session.`,
+	    code: "invalidPayload"
+	  }
+	};
+	// ID06132024.en  
 
 	respMessage = {
 	  http_code: 400, // Bad request
@@ -588,6 +603,8 @@ class AzOaiProcessor {
     let retryAfter = 0;
     let data;
     for (const element of config.appEndpoints) { // start of endpoint loop
+      uriIdx++;
+
       let metricsObj = epdata.get(element.uri); 
       let healthArr = metricsObj.isEndpointHealthy();
       // console.log(`******isAvailable=${healthArr[0]}; retryAfter=${healthArr[1]}`);
@@ -675,6 +692,7 @@ class AzOaiProcessor {
 
 	  respMessage = {
 	    http_code: status,
+            uri_idx: (uriIdx - 1),
 	    cached: false,
 	    data: data
 	  };
@@ -740,6 +758,7 @@ class AzOaiProcessor {
 
 	  metricsObj.updateFailedCalls(status,0);
 
+	  /* ID06132024.so
 	  err_msg = {
             appId: config.appId,
             reqId: req.id,
@@ -749,6 +768,16 @@ class AzOaiProcessor {
 	    data: data,
             cause: `AI Service endpoint returned exception message [${response.statusText}]`
           };
+	  ID06132024.eo */
+	  // ID06132024.sn
+	  err_msg = {
+	    error: {
+	      target: element.uri,
+	      message: `AI Service endpoint returned exception: [${data}].`,
+	      code: "unauthorized"
+	    }
+	  };
+	  // ID06132024.en
 	
 	  respMessage = {
 	    http_code: status,
@@ -757,12 +786,23 @@ class AzOaiProcessor {
         };
       }
       catch (error) {
+	/* ID06132024.so
         err_msg = {
 	  appId: config.appId,
 	  reqId: req.id,
 	  targetUri: element.uri,
 	  cause: error
 	};
+	ID06132024.eo */
+	// ID06132024.sn
+	err_msg = {
+	  error: {
+	    target: element.uri,
+	    message: `AI Services Gateway encountered exception: [${error}].`,
+	    code: "internalFailure"
+	  }
+	};
+	// ID06132024.en
         // console.log(`*****\nAzOaiProcessor.processRequest():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
 	logger.log({level: "error", message: "[%s] %s.processRequest():\n  Encountered exception:\n  %s", splat: [scriptName,this.constructor.name,err_msg]});
 
@@ -778,11 +818,22 @@ class AzOaiProcessor {
     // instanceFailedCalls++;
 
     if ( retryAfter > 0 ) {
+      /* ID06132024.so
       err_msg = {
         endpointUri: req.originalUrl,
         currentDate: new Date().toLocaleString(),
         errorMessage: `All backend OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`
       };
+      ID06132024.eo */
+      // ID06132024.sn
+      err_msg = {
+        error: {
+	  target: req.originalUrl,
+	  message: `All backend Azure OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`,
+	  code: "tooManyRequests"
+	}
+      };
+      // ID06132024.en
 
       // res.set('retry-after', retryAfter); // Set the retry-after response header
       respMessage = {
@@ -793,11 +844,23 @@ class AzOaiProcessor {
     }
     else {
       if ( respMessage == null ) {
+	/* ID06132024.so
         err_msg = {
           endpointUri: req.originalUrl,
           currentDate: new Date().toLocaleString(),
           errorMessage: "Internal server error. Unable to process request. Check server logs."
         };
+	ID06132024.eo */
+	// ID06132024.sn
+        err_msg = {
+          error: {
+	    target: req.originalUrl,
+	    message: "Internal server error. Unable to process request. Please check server logs.",
+	    code: "internalFailure"
+	  }
+        };
+	// ID06132024.en
+
 	respMessage = {
 	  http_code: 500, // Internal API Gateway server error!
 	  data: err_msg
@@ -806,7 +869,11 @@ class AzOaiProcessor {
     };
 
     // ID05062024.sn
-    if ( (respMessage.http_code === 200) && manageState && memoryConfig && memoryConfig.useMemory ) { // Manage state for this AI application?
+    if ( (respMessage.http_code === 200) && 
+	  req.body.messages && // state management is only supported for chat completions API
+	  manageState && 
+	  memoryConfig && 
+	  memoryConfig.useMemory ) { // Manage state for this AI application?
 
       let completionMsg = {
 	role: data.choices[0].message.role,

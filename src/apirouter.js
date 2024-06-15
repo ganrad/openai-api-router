@@ -29,6 +29,7 @@
  * ID05302024: ganrad : (Bugfix) For CORS requests, the thread ID (x-thread-id) is not set in the response header.
  * ID06042024: ganrad : (Enhancement) Allow SPA's to invoke AOAI OYD calls by specifying AI Search application name instead of AI Search API Key.
  * ID06052024: ganrad: (Enhancement) Added streaming support for Azure OpenAI Chat Completion API call.
+ * ID06132024: ganrad: (Enhancement) Adapted gateway error messages to be compliant with AOAI Service error messages.
  *
 */
 
@@ -150,29 +151,48 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
   };
 
   if ( ! appConnections.getAllConnections().has(appId) ) {
+    /* ID06132024.so
     err_obj = {
       endpointUri: req.originalUrl,
       currentDate: new Date().toLocaleString(),
       errorMessage: `AI Application ID [${appId}] not found. Unable to process request.`
     };
+    ID06132024.eo */
+    // ID06132024.sn
+    err_obj = {
+      error: {
+        target: req.originalUrl,
+        message: `AI Application ID [${appId}] not found. Unable to process request.`,
+        code: "invalidPayload"
+      }
+    };
+    // ID06132024.en
 
     res.status(400).json(err_obj); // 400 = Bad request
     return;
   };
 
-  /* ID06052024.so
   let r_stream = req.body.stream;
-  if ( r_stream ) { // no streaming support!
-    err_obj = {
+  if ( r_stream && req.body.prompt ) { // no streaming support for Completions API!
+    /* ID06132024.so
+      err_obj = {
       endpointUri: req.originalUrl,
       currentDate: new Date().toLocaleString(),
       errorMessage: "Stream mode is not yet supported! Unable to process request."
+    }; ID06132024.eo */
+    // ID06132024.sn
+    err_obj = {
+      error: {
+        target: req.originalUrl,
+        message: "Stream mode is not yet supported for 'Completions API'! Unable to process request.",
+        code: "invalidPayload"
+      }
     };
+    // ID06132024.en
 
     res.status(400).json(err_obj); // 400 = Bad request
     return;
   }; 
-  ID06052024.eo */
 
   instanceCalls++;
   
@@ -239,11 +259,22 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
     };
   }
   else {
+    /* ID06132024.so
      err_obj = {
        endpointUri: req.originalUrl,
        currentDate: new Date().toLocaleString(),
        errorMessage: `Application type [${appConfig.appType}] is not yet supported. Check the router configuration for AI Application [${appId}].`
     };
+    ID06132024.eo */
+    // ID06132024.sn
+    err_obj = {
+      error: {
+        target: req.originalUrl,
+        message: `Application type [${appConfig.appType}] is incorrect and not supported. Review the router configuration for AI Application [${appId}] and specify correct value for "application type".`,
+        code: "notFound"
+      }
+    };
+    // ID06132024.en
 
     response = {
       http_code: 400,
@@ -254,25 +285,32 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
   if ( response.cached )
     cachedCalls++;
 
+  let res_hdrs = CustomRequestHeaders.RequestId;
   if ( response.http_code !== 200 ) {
     instanceFailedCalls++;
 
     if ( response.http_code === 429 ) {
-      res.set("Access-Control-Expose-Headers", 'retry-after'); // ID05302024.n
+      res_hdrs += ', retry-after';
+      // res.set("Access-Control-Expose-Headers", 'retry-after'); // ID05302024.n
       res.set('retry-after', response.retry_after); // Set the retry-after response header
     };
   }
   else {
     if ( !req.body.stream ) { // ID06052024.n
       if ( response.threadId ) {
-        res.set("Access-Control-Expose-Headers", CustomRequestHeaders.ThreadId); // ID05302024.n
+	res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
         res.set(CustomRequestHeaders.ThreadId, response.threadId);
       };
-      res.set("Access-Control-Expose-Headers", CustomRequestHeaders.RequestId);
-      res.set(CustomRequestHeaders.RequestId, req.id);
+      // res.set(CustomRequestHeaders.RequestId, req.id);
     };
   };
+  if ( !req.body.stream || response.http_code === 429 ) { // ID06052024.n
+    res.set(CustomRequestHeaders.RequestId, req.id);
+    res.set("Access-Control-Expose-Headers", res_hdrs);
+  };
 
+  logger.log({level: "info", message: "[%s] apirouter(): Request ID=[%s] completed.\n  App. ID: %s\n  Backend URI Index: %d\n  HTTP Status: %d", splat: [scriptName, req.id, appId, response.uri_idx, response.http_code]});
+   
   // ID06052024.sn
   if ( req.body.stream )
     res.end();
