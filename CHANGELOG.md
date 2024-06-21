@@ -5,6 +5,7 @@
 * (Bugfix) Fixed issue tied to retrieving cached data for new user sessions.
 * (Bugfix) Fixed an issue tied to API circuit breaker logic.
 * (Bugfix) Added additional response headers so response headers (retry-after, x-request-id & x-thread-id) returned by API Gateway can be used by client applications (SPA's).
+* (Bugfix) In stream mode, correct HTTP status error codes were not being returned.
 * (Enhancement) The most significant update introduced in this latest release is full support for Azure OpenAI Chat Completions streaming API, which also includes On Your Data (OYD) API. Most importantly, the streaming feature works seamlessly with the API router, semantic caching and state management features.
 * (Enhancement) For Azure OpenAI OYD (On your data) chat completion API calls, client applications can now specify the name of the AI Search application registered in the gateway instead of the AI Search key, within the request body.  This change eliminates the risk associated with caching or storing the AI Search key in the client application, which could pose a security risk if the application is running in a browser.
 * (Enhancement) Updated OpenAI request processor to return error messages that are complaint (API) with exception messages returned by Azure OpenAI Service.
