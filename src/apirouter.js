@@ -30,6 +30,7 @@
  * ID06042024: ganrad : (Enhancement) Allow SPA's to invoke AOAI OYD calls by specifying AI Search application name instead of AI Search API Key.
  * ID06052024: ganrad: (Enhancement) Added streaming support for Azure OpenAI Chat Completion API call.
  * ID06132024: ganrad: (Enhancement) Adapted gateway error messages to be compliant with AOAI Service error messages.
+ * ID06212024: ganrad: (Bugfix) Fixed an issue with returning 400's in stream mode.  Cleaned up the code.
  *
 */
 
@@ -285,7 +286,10 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
   if ( response.cached )
     cachedCalls++;
 
-  let res_hdrs = CustomRequestHeaders.RequestId;
+  if ( response.http_code !== 200 )
+    instanceFailedCalls++;
+
+  /* let res_hdrs = CustomRequestHeaders.RequestId; // ID06212024.so
   if ( response.http_code !== 200 ) {
     instanceFailedCalls++;
 
@@ -307,16 +311,29 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
   if ( !req.body.stream || response.http_code === 429 ) { // ID06052024.n
     res.set(CustomRequestHeaders.RequestId, req.id);
     res.set("Access-Control-Expose-Headers", res_hdrs);
-  };
+  }; ID06212024.eo */
 
   logger.log({level: "info", message: "[%s] apirouter(): Request ID=[%s] completed.\n  App. ID: %s\n  Backend URI Index: %d\n  HTTP Status: %d", splat: [scriptName, req.id, appId, response.uri_idx, response.http_code]});
    
-  // ID06052024.sn
-  if ( req.body.stream )
+  // ID06052024.sn, ID06212024.sn
+  if ( req.body.stream && // All headers have been sent; close/end the connection
+     ( (response.http_code === 200) || (response.http_code === 500) ) )
     res.end();
-  else
-  // ID06052024.sn
+  else {
+    let res_hdrs = CustomRequestHeaders.RequestId;
+    res.set(CustomRequestHeaders.RequestId, req.id); // Set the request id header
+    if ( response.http_code === 429 ) {
+      res_hdrs += ', retry-after';
+      res.set('retry-after', response.retry_after); // Set the retry-after response header
+    };
+    if ( response.threadId ) {
+      res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
+      res.set(CustomRequestHeaders.ThreadId, response.threadId); // Set the thread/session id header
+    };
+    res.set("Access-Control-Expose-Headers", res_hdrs);
+  // ID06052024.en
     res.status(response.http_code).json(response.data);
+  }; // ID06212024.en
 });
 
 module.exports.apirouter = router;
