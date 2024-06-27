@@ -274,6 +274,8 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
     appeps.set("applicationId", aiapp.appId);
     appeps.set("description", aiapp.description);
     appeps.set("type", aiapp.appType);
+    if (aiapp.searchAiApp)
+      appeps.set("searchAiApp", aiapp.searchAiApp);
     appeps.set("cacheSettings", {
       useCache: aiapp.cacheSettings.useCache,
       searchType: aiapp.cacheSettings.searchType,

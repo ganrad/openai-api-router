@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [v1.8.1](https://github.com/ganrad/openai-api-router/compare/v1.8.0...v1.8.1)
+### Functionality changes
+* (Bugfix) When response is served from cache, request id (x-request-id) was not being set (returned) in http response header.
+* (Bugfix) AI Search app name was not being returned by '/instanceinfo' endpoint.
+
 ## [v1.8.0](https://github.com/ganrad/openai-api-router/compare/v1.7.0...v1.8.0)
 ### Functionality changes
 * (Bugfix) Fixed issue tied to retrieving cached data for new user sessions.
