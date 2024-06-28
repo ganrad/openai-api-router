@@ -17,6 +17,7 @@
  * ID05062024: ganrad : Introduced memory (state management) for appType = Azure OpenAI Service.
  * ID05222024: ganrad : Enabled CORS
  * ID06092024: ganrad : Refactored code
+ * ID06282024: ganrad : Check db connection status every 60 minutes and return result when '/healthz' endpoint is invoked. 
 */
 
 // ID04272024.sn
@@ -47,7 +48,7 @@ var bodyParser = require('body-parser');
 // var morgan = require('morgan');
 
 // Server version v1.8.0 ~ 06052024.n
-const srvVersion = "1.8.0";
+const srvVersion = "1.8.2";
 // Server start date
 const srvStartDate = new Date().toLocaleString();
 
@@ -73,6 +74,20 @@ const logger = require('pino-http')({
     }
   }
 });
+
+// ID06282024.sn
+let dbConnectionStatus = 1;
+let dbCheckTime = srvStartDate;
+const wait = t => new Promise((resolve, reject) => setTimeout(resolve,t));
+
+async function checkDbConnectionStatus() {
+  dbConnectionStatus = await pgdb.checkDbConnection();
+  dbCheckTime = new Date().toLocaleString();
+
+  await wait(60 * 60000);
+  await checkDbConnectionStatus(); // call self every 60 minutes
+}
+// ID06282024.en
 
 var host; // API Gateway host
 var port; // API Gateway listen port
@@ -118,8 +133,9 @@ async function readApiGatewayEnvVars() {
   let cacheResults = process.env.API_GATEWAY_USE_CACHE;
   let manageState = process.env.API_GATEWAY_STATE_MGMT;
   if ( (cacheResults === "true") || (persistPrompts === "true") || (manageState === "true") ) {
-    let retval = await pgdb.checkDbConnection();
-    if ( retval ) {
+    // let retval = await pgdb.checkDbConnection(); // ID06282024.o
+    checkDbConnectionStatus(); // ID06282024.n
+    if ( dbConnectionStatus ) {
       if ( cacheResults === "true" )
         wlogger.log({level: "info", message: "[%s] Completions will be cached", splat: [scriptName]});
       else
@@ -140,6 +156,7 @@ async function readApiGatewayEnvVars() {
   }
   else {
     wlogger.log({level: "info", message: "[%s] Completions will not be cached", splat: [scriptName]});
+    wlogger.log({level: "info", message: "[%s] Conversational state will not be managed", splat: [scriptName]});
     wlogger.log({level: "info", message: "[%s] Prompts will not be persisted", splat: [scriptName]});
   };
 }
@@ -295,7 +312,7 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
     appcons.push(Object.fromEntries(appeps));
   });
 
-  resp_obj = {
+  let resp_obj = {
     serverName: process.env.API_GATEWAY_NAME,
     serverVersion: srvVersion,
     serverConfig: {
@@ -339,18 +356,25 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
 app.get(endpoint + "/apirouter/healthz", (req, res) => {
   logger(req,res);
 
-  resp_obj = {
+  let resp_obj = {
     endpointUri: req.url,
     currentDate: new Date().toLocaleString(),
-    status : "OK"
+    dbConnectionStatus: (dbConnectionStatus > 0) ? "OK" : "Error", // ID06282024.n
+    dbLastCheckTime: dbCheckTime,
+    serverStatus : "OK"
   };
-  res.status(200).json(resp_obj);
+  let http_status = 200;
+  if ( ! dbConnectionStatus )
+    http_status = 500; // Internal server error!
+
+  res.status(http_status).json(resp_obj);
 });
 
 // API Gateway/Server reconfiguration endpoint
 app.use(endpoint + "/apirouter/reconfig/:pkey", function(req, res, next) {
   logger(req,res);
 
+  let resp_obj;
   if ( req.params.pkey !== pkey ) { // Check if key matches gateway secret key
     resp_obj = {
       endpointUri: req.originalUrl,
