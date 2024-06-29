@@ -78,14 +78,11 @@ const logger = require('pino-http')({
 // ID06282024.sn
 let dbConnectionStatus = 1;
 let dbCheckTime = srvStartDate;
-const wait = t => new Promise((resolve, reject) => setTimeout(resolve,t));
-
 async function checkDbConnectionStatus() {
-  dbConnectionStatus = await pgdb.checkDbConnection();
-  dbCheckTime = new Date().toLocaleString();
-
-  await wait(60 * 60000);
-  await checkDbConnectionStatus(); // call self every 60 minutes
+  setInterval(async function() {
+    dbConnectionStatus = await pgdb.checkDbConnection();
+    dbCheckTime = new Date().toLocaleString();
+  }, 60 * 60000); // Check DB connection once every 60 minutes
 }
 // ID06282024.en
 
