@@ -79,6 +79,8 @@ const logger = require('pino-http')({
 let dbConnectionStatus = 1;
 let dbCheckTime = srvStartDate;
 async function checkDbConnectionStatus() {
+  dbConnectionStatus = await pgdb.checkDbConnection();
+
   setInterval(async function() {
     dbConnectionStatus = await pgdb.checkDbConnection();
     dbCheckTime = new Date().toLocaleString();
