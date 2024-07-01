@@ -44,7 +44,7 @@ Option #3 is highly recommended for production deployments.
    ai_app_name | Yes | Set this to the name of an AI Application.  This name should map and correspond to one of the AI Applications (App ID's) configured in the backend!
    sysPrompt | No | This parameter is used to set the default system prompt.
    user | No | This parameter can be used to specify the user principal / identity, making the Azure OpenAI API call.
-   ai_search_app | No | This is a required parameter for Azure OpenAI OYD (On Your Data) API calls.  Specify the name of the AI Search application.  This name should map and correspond to one of the AI Applications (App ID's) configured in the backend.
+   search_params.ai_search_app | No | This is a required parameter for Azure OpenAI OYD (On Your Data) API calls.  Specify the name of the AI Search application.  This name should map and correspond to one of the AI Applications (App ID's) configured in the backend.
 
 ### B. Run the AI Chat Application on a Azure Linux Virtual Machine
 
@@ -69,7 +69,7 @@ Option #3 is highly recommended for production deployments.
 
    [2024/07/01 18:47:36.161] [LOG] Server(): Azure AI Services Gateway URI: [http://localhost:8000/api/v1/dev/apirouter/lb/]
    [2024/07/01 18:47:36.162] [LOG] Server(): Server configuration file: [./app-config.json]
-   [2024/07/01 18:47:36.166] [LOG] Server(): AI Services API Gateway frontend server is listening on port 8000.
+   [2024/07/01 18:47:36.166] [LOG] Server(): AI Services API Gateway frontend server is listening on localhost:8000.
    ```
 
    Leave this terminal window open.
@@ -87,6 +87,20 @@ Option #3 is highly recommended for production deployments.
    Select an AI Application in the dropdown field under **AI Application**.  This will populate the default application parameter values as configured in the application configuration file.  You can update the system prompt as well as model and search parameters displayed in the right panel.  Remember to save the model and search parameter values.  Input the *Prompt* in the field located at the bottom of the middle column.  Hit **Send**.  You should be able to view the results in the chat panel right above the Prompt field.  See screenshot below.
 
    ![alt tag](./images/ai-chat-application-02.PNG)
+
+3. Access and review the application panels.
+
+   The AI Chat Application uses the thread ID returned by the backend AI Application to maintain conversational state. To view the *Thread ID* for the current session, click on the **Info** tab in the middle column.  You can also clear the current session by clicking on **Clear chat** button. See screenshot below.
+
+   ![alt tag](./images/ai-chat-application-03.PNG)
+
+   Click on the **Messages** tab to view the raw API messages sent to and received from the AI Services API Gateway. Here you can also view the call completion time. See screenshot below.
+ 
+   ![alt tag](./images/ai-chat-application-04.PNG)
+
+   Lastly, you can review any errors returned by the AI Services Gateway in the **Exceptions** tab.  See screenshot below.
+
+   ![alt tag](./images/ai-chat-application-05.PNG)
 
 ### C. Run the AI Chat Application as a container on a Azure Linux VM
 
