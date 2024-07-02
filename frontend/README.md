@@ -1,4 +1,4 @@
-# Single Page AI Chat Application (SPA/Frontend)
+# AI Chat Application (Single Page Application/Frontend)
 
 This application provides a thin client (browser) based chat interface for the Azure AI Services API Gateway. It's meant to be a starting point, and you're welcome to use it as is or customize and integrate the user interface components into your own web applications.
 
@@ -24,7 +24,7 @@ Option #3 is highly recommended for production deployments.
 
    Variable Name | Description
    ------------- | -----------
-   AIS_API_GATEWAY_URI | Set this environment variable to point to the Azure AI Services API Gateway load balancer URI. Example - `http://{host:port}/api/v1/{env}/apirouter/lb`.
+   AIS_API_GATEWAY_URI | Set this environment variable to point to the Azure AI Services API Gateway load balancer URI. Example - `http://{host:port}/api/v1/{env}/apirouter/lb/`.
    FRONTEND_SRV_CONFIG_FILE | Set this env variable to the path/location of AI Chat Application configuration file.
    FRONTEND_SRV_HOST | (Optional) Use this env variable to specify hostname/IP address of application server.  Defaults to `localhost`.
    FRONTEND_SRV_PORT | (Optional) Set this env variable to the application server listen port.  Defaults to 8000.
@@ -101,6 +101,38 @@ Option #3 is highly recommended for production deployments.
    ![alt tag](./images/ai-chat-application-05.PNG)
 
 ### C. Run the AI Chat Application as a container on a Azure Linux VM
+
+1. Build the AI Chat Application container image.
+
+   Review the container image build script `./Dockerfile`.  Make any required updates to the environment variables.  The environment variables can also be passed to the container engine at build time.  To do this, you can modify the provided container build script `./scripts/build-container.sh`.  After making the updates to this build shell script, run the script to build the container image.  See command snippet below.
+
+   ```bash
+   # Run the container image build
+   $ . ./scripts/build-container.sh
+   #
+   # List the container images.  This command should list the images on the system.
+   $ docker images
+   #
+   ```
+
+2. Run the containerized AI Chat Application.
+
+   Run the Chat Application container using the provided `./scripts/start-container.sh` shell script.  Refer to the command snippet below.
+
+   ```bash
+   # Run the AI Chat Application container instance
+   $ . ./scripts/start-container.sh
+   #
+   # Leave this terminal window open
+   ```
+
+3. Access the AI Chat Application.
+
+   Open a browser window and access the AI Chat Application using the URL as shown below. Substitute correct values for *CONTAINER_HOST* and *CONTAINER_HOST_PORT*.
+
+   http://{CONTAINER_HOST}:{CONTAINER_HOST_PORT}/index.html
+
+   Interact with AI Applications using the Chat Application as described in the previous section.
 
 ### D. Deploy and run the AI Chat Application as a microservice on Azure Kubernetes Service (AKS)
 
