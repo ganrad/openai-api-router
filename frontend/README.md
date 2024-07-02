@@ -88,9 +88,16 @@ Option #3 is highly recommended for production deployments.
 
 3. Access and review the chat application panels.
 
-   The AI Chat Application uses a thread ID returned by the backend AI Application to maintain conversational state for a user's session. To view the *Thread ID* for the current session, click on the **Info** tab in the middle column.  You can also clear the current session by clicking on **Clear chat** button. See screenshot below.
+   The AI Chat Application uses a thread ID returned by the backend AI Application to maintain conversational state for a user's session. To view the *Thread ID* for the current session, click on the **Info** tab in the middle column.  You can also clear the current session by clicking on **Clear chat** button in the **Chat** tab. See screenshot below.
 
    ![alt tag](./images/ai-chat-application-03.PNG)
+
+   You can update the model and search parameters on the right panel.  Remember to save the values prior to starting a chat session. See screenshots below.
+
+   Model Params | Search Params<b>Only used for Azure OpenAI OYD calls |
+   ------------ | ---------------------------------------------------- |
+   ![alt tag](./images/ai-chat-application-06.PNG) | ![alt tag](./images/ai-chat-application-07.PNG)
+   
 
    Click on the **Messages** tab to view the raw API messages sent to and received from the AI Services API Gateway. Here you can also view call completion times for each user interaction. See screenshot below.
  
