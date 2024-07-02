@@ -16,7 +16,7 @@ Option #3 is highly recommended for production deployments.
 
    The application server is a light weight Nodejs **ExpressJS** application.  The source code for the application server is contained within `server.js`. The HTML files are located under sub-directory `public` and javascript files are located under `jscripts`.
 
-   The Javascript framework used to implement and render user interface components (HTML) is [Bootstrap] (https://getbootstrap.com/docs/5.1/getting-started/introduction/) 
+   The Javascript framework used to implement and render user interface components (HTML) is [Bootstrap](https://getbootstrap.com/docs/5.1/getting-started/introduction/) 
 
 2. Configure environment variables.
 
@@ -26,7 +26,7 @@ Option #3 is highly recommended for production deployments.
    ------------- | -----------
    AIS_API_GATEWAY_URI | Set this environment variable to point to the Azure AI Services API Gateway load balancer URI. Example - `http://{host:port}/api/v1/{env}/apirouter/lb`.
    FRONTEND_SRV_CONFIG_FILE | Set this env variable to the path/location of AI Chat Application configuration file.
-   FRONTEND_SRV_HOST | (Optional) Set this env variable to the hostname/IP address.  Defaults to `localhost`.
+   FRONTEND_SRV_HOST | (Optional) Use this env variable to specify hostname/IP address of application server.  Defaults to `localhost`.
    FRONTEND_SRV_PORT | (Optional) Set this env variable to the application server listen port.  Defaults to 8000.
 
 3. Configure AI chat applications.
@@ -35,22 +35,22 @@ Option #3 is highly recommended for production deployments.
 
    Update default parameter values in the provided sample application configuration file - `app-config.json`. Configure AI chat applications as per your needs.
 
-   Most of the parameters configured for each AI application and which are passed to the backend are identical to parameters passed to Azure OpenAI REST API.  Hence refer to the [Azure OpenAI API documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference) for description and usage information on *model_params* and *search_params*.
+   For each AI application, specify correct values for all required parameters.  Many of the application parameters are identical to parameters exposed by Azure OpenAI Chat Completion REST API.  Hence refer to the [Azure OpenAI API documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference) for description and usage information on *model_params* and *search_params*.
 
    Required parameters that are unique to the AI Chat Application are described in the table below.
 
    Parameter Name | Required (Yes/No) | Description | 
    -------------- | ----------------- | ----------- |
-   ai_app_name | Yes | Set this to the name of an AI Application.  This name should map and correspond to one of the AI Applications (App ID's) configured in the backend!
-   sysPrompt | No | This parameter is used to set the default system prompt.
-   user | No | This parameter can be used to specify the user principal / identity, making the Azure OpenAI API call.
+   ai_app_name | Yes | Set this value to the name of an AI Application.  This name should map and correspond to one of the AI Applications (App ID's) configured in the backend!
+   user | No | This parameter is optional and can be used to specify the user principal / identity invoking the Azure OpenAI API call thru the AI Services gateway.
+   sysPrompt | No | This optional parameter can be used to set the default system prompt.
    search_params.ai_search_app | No | This is a required parameter for Azure OpenAI OYD (On Your Data) API calls.  Specify the name of the AI Search application.  This name should map and correspond to one of the AI Applications (App ID's) configured in the backend.
 
 ### B. Run the AI Chat Application on a Azure Linux Virtual Machine
 
 1. Run the AI Chat Application.
 
-   Open a terminal window.  Connect to the Linux VM where you have cloned this repository.  If you haven't already, switch to the `frontend` directory.  Issue the command shown in the snippet below.
+   Open a terminal window.  Connect to the Linux VM where you have cloned this repository.  If you haven't already, switch to the `frontend` application directory.  Issue the commands shown in the snippet below.
 
    ```bash
    # Use the node package manager (npm) to install the server dependencies
@@ -76,25 +76,23 @@ Option #3 is highly recommended for production deployments.
 
 2. Access the AI Chat Application.
 
-   Use a web browser to access the AI Chat Application. Point the browser to the application server URI as shown below.
+   Use a web browser to access the AI Chat Application. Point the browser to the AI Chat Application URI as shown below.
 
    http://locahost:8000/index.html
 
-   See screenshot below.
-
    ![alt tag](./images/ai-chat-application-01.PNG)
 
-   Select an AI Application in the dropdown field under **AI Application**.  This will populate the default application parameter values as configured in the application configuration file.  You can update the system prompt as well as model and search parameters displayed in the right panel.  Remember to save the model and search parameter values.  Input the *Prompt* in the field located at the bottom of the middle column.  Hit **Send**.  You should be able to view the results in the chat panel right above the Prompt field.  See screenshot below.
+   Use the **AI Application** dropdown field to select an AI Application.  This will populate the default parameter values for the selected AI Application as per the values specified in the application configuration file.  You can update the system prompt as well as model and search parameters displayed in the right panel.  Remember to save the model and search parameter values.  Input the *Prompt* in the field located at the bottom of the middle column.  Hit **Send**.  You should be able to view the results in the chat panel right above the Prompt field.  See screenshot below.
 
    ![alt tag](./images/ai-chat-application-02.PNG)
 
-3. Access and review the application panels.
+3. Access and review the chat application panels.
 
-   The AI Chat Application uses the thread ID returned by the backend AI Application to maintain conversational state. To view the *Thread ID* for the current session, click on the **Info** tab in the middle column.  You can also clear the current session by clicking on **Clear chat** button. See screenshot below.
+   The AI Chat Application uses a thread ID returned by the backend AI Application to maintain conversational state for a user's session. To view the *Thread ID* for the current session, click on the **Info** tab in the middle column.  You can also clear the current session by clicking on **Clear chat** button. See screenshot below.
 
    ![alt tag](./images/ai-chat-application-03.PNG)
 
-   Click on the **Messages** tab to view the raw API messages sent to and received from the AI Services API Gateway. Here you can also view the call completion time. See screenshot below.
+   Click on the **Messages** tab to view the raw API messages sent to and received from the AI Services API Gateway. Here you can also view call completion times for each user interaction. See screenshot below.
  
    ![alt tag](./images/ai-chat-application-04.PNG)
 
