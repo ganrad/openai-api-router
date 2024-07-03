@@ -1,10 +1,16 @@
 # CHANGELOG
 
-## [v1.8.2](https://github.com/ganrad/openai-api-router/compare/v1.8.0...v1.8.2)
+## [v1.9.0](https://github.com/ganrad/openai-api-router/compare/v1.8.0...v1.9.0)
 ### Functionality changes
 * (Bugfix) When response is served from cache, request id (x-request-id) was not being set (returned) in http response header.
 * (Bugfix) AI Search app name was not being returned by '/instanceinfo' endpoint.
 * (Enhancement) '/healthz' endpoint now also returns db connection status.
+* Updated Helm chart resources and verified container deployment on AKS.
+* Resource names have been updated and renamed to better represent the support for various AI Services features.
+* (Enhancement) Introduced a new AI Chat Application as the UI Frontend for the AI Services Gateway. A new directory with Frontend resources has been created. Conducted elaborate tests to confirm the frontend can communicate with the backend successfully. Users can now easily interact with OpenAI based applications using this AI Chat client.
+
+### Documentation changes
+* Updated Section E.
 
 ## [v1.8.0](https://github.com/ganrad/openai-api-router/compare/v1.7.0...v1.8.0)
 ### Functionality changes

@@ -1,0 +1,16 @@
+{
+  "name": "ais-gateway-frontend",
+  "version": "1.0.0",
+  "description": "Reference implementation of AI Services API Gateway frontend ~ AI Chatbot User Interface.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node ./src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ganesh Radhakrishnan",
+  "license": "MIT",
+  "dependencies": {
+    "console-stamp": "^3.1.2",
+    "express": "^4.19.2"
+  }
+}

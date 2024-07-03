@@ -1,15 +1,14 @@
-# Default values for aoai-api-gtwy-chart.
+# Default values for ais-chat-app-chart.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
 replicaCount: 1
 
 image:
-  # Update/set the name of ACR and repository name
-  repository: [acr-name].azurecr.io/[api-gateway-repo-name]
+  repository: oaiapigateway.azurecr.io/ais-chat-app
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "v1.020224"
+  tag: "v1.0.0"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -17,50 +16,20 @@ fullnameOverride: ""
 
 serviceAccount:
   # Specifies whether a service account should be created
-  create: false
+  create: true
   # Automatically mount a ServiceAccount's API credentials?
-  automount: false
+  automount: true
   # Annotations to add to the service account
   annotations: {}
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-apigateway:
-  # This is the deployment name
-  name: ais-api-gateway-v1
-  # This is the API Gateway instance name
-  instanceName: AZ-AIS-API-Gateway-01
-  configFile: /home/node/app/files/api-router-config.json
-  # Set the private/secret key for the API Gateway
-  # IMPORTANT: Change this private/secret key!!
-  secretKey: abcxyz
-  env: dev
-  logLevel: info
-  # Collect API Metrics every hour
-  metricsCInterval: 60
-  # Maintain API metrics history for the past 1 week (24 * 7)
-  metricsCHistory: 168
-  # (Optional) Azure Monitor OpenTelemetry connection string
-  appInsightsConnectionString: ""
-  # To enable semantic cache, set this value to true
-  useCache: false
-  cacheInvalSchedule: "*/10 * * * *"
-  # To enable state management, set this value to true
-  manageState: false
-  memoryInvalSchedule: "*/8 * * * *"
-  # To enable prompt + completion persistence, set this value to true
-  persistPrompts: false
-  vectorAiApp: vectorizedata
-  searchEngine: Postgresql/pgvector
-
-# Update values for DB below.
-database:
-  name: aoaisvc
-  host: [db].postgres.database.azure.com
-  port: 5432
-  user: user01
-  password: semantic-cache
+chatapp:
+  host: 0.0.0.0
+  configFile: /home/node/app/files/app-config.json
+  # Specify the Azure AI Services API Gateway load balancer URI/Endpoint
+  aisGatewayEndpoint: https://[GATEWAY_HOST]/api/v1/dev/apirouter/lb/
 
 podAnnotations: {}
 podLabels: {}
@@ -77,23 +46,24 @@ securityContext: {}
   # runAsUser: 1000
 
 service:
-  name: "aoai-api-gateway-v1"
   type: ClusterIP
   port: 80
 
 container:
   port: 8000
-  healthCheckUrl: /healthz
+  healthCheckUrl: /ais-chatbot/ui/healthz
   delaySeconds: 10
   periodSeconds: 25
 
 ingress:
   enabled: true
-  className: webapprouting.kubernetes.azure.com
+  className: "webapprouting.kubernetes.azure.com"
   annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
   hosts:
     - paths:
-        - path: /api/v1/
+        - path: /ais-chatbot/ui
           pathType: Prefix
   tls: []
   #  - secretName: chart-example-tls
@@ -108,9 +78,12 @@ resources:
   # limits:
   #   cpu: 100m
   #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
   requests:
     cpu: 250m
-    memory: 1Gi
+    memory: 256Mi
 
 autoscaling:
   enabled: false

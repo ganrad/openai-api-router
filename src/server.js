@@ -47,8 +47,8 @@ const app = express();
 var bodyParser = require('body-parser');
 // var morgan = require('morgan');
 
-// Server version v1.8.0 ~ 06052024.n
-const srvVersion = "1.8.2";
+// Server version v1.9.0 ~ 06282024.n
+const srvVersion = "1.9.0";
 // Server start date
 const srvStartDate = new Date().toLocaleString();
 
