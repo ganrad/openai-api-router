@@ -1144,6 +1144,8 @@ Additionally, the following resources should be deployed/configured.
 
    http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV}/apirouter/lb/{AI_APPLICATION_ID}
 
+   To deploy the AI Chat Application and allow end users to interact with generative AI applications, refer to the instructions in [frontend/Readme](./frontend/README.MD) doc.
+
    **Congratulations!**
 
    You have reached the end of this how-to for deploying and scaling an *AI Services API Gateway* on Azure. Please feel free to customize and use the artifacts posted in this repository to efficiently distribute AI Application traffic among multiple Azure OpenAI model deployments and elastically scale the Gateway solution.
