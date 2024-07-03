@@ -1144,7 +1144,9 @@ Additionally, the following resources should be deployed/configured.
 
    http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV}/apirouter/lb/{AI_APPLICATION_ID}
 
-   To deploy the AI Chat Application and allow end users to interact with generative AI applications, refer to the instructions in [frontend/Readme](./frontend/README.MD) doc.
+   **IMPORTANT**:
+
+   To deploy the AI Chat Application and allow end users to interact with generative AI applications, refer to the instructions in [frontend/Readme](./frontend/README.md) doc.
 
    **Congratulations!**
 
