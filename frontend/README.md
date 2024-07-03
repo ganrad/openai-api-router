@@ -78,7 +78,7 @@ Option #3 is highly recommended for production deployments.
 
    Use a web browser to access the AI Chat Application. Point the browser to the AI Chat Application URI as shown below.
 
-   http://locahost:8000/index.html
+   http://locahost:8000/ais-chatbot/ui/index.html
 
    ![alt tag](./images/ai-chat-application-01.PNG)
 
@@ -94,7 +94,7 @@ Option #3 is highly recommended for production deployments.
 
    You can update the model and search parameters on the right panel.  Remember to save the values prior to starting a chat session. See screenshots below.
 
-   Model Params | Search Params<b>Only used for Azure OpenAI OYD calls |
+   Model Params | AI Search Params <b> Only used for Azure OpenAI OYD calls |
    ------------ | ---------------------------------------------------- |
    ![alt tag](./images/ai-chat-application-06.PNG) | ![alt tag](./images/ai-chat-application-07.PNG)
    
@@ -137,13 +137,13 @@ Option #3 is highly recommended for production deployments.
 
    Open a browser window and access the AI Chat Application using the URL as shown below. Substitute correct values for *CONTAINER_HOST* and *CONTAINER_HOST_PORT*.
 
-   http://{CONTAINER_HOST}:{CONTAINER_HOST_PORT}/index.html
+   http://{CONTAINER_HOST}:{CONTAINER_HOST_PORT}/ais-chatbot/ui/index.html
 
    Interact with AI Applications using the Chat Application as described in the previous section.
 
 ### D. Deploy and run the AI Chat Application as a microservice on Azure Kubernetes Service (AKS)
 
-1. Push the AI Chat Application container image into an Azure Container Regitry (ACR).
+1. Push the AI Chat Application container image into an Azure Container Registry (ACR).
 
    Refer the script snippet below to push the container image into ACR.  Remember to substitute ACR name with the name of your container registry.
 
@@ -166,7 +166,7 @@ Option #3 is highly recommended for production deployments.
 
 2. Deploy the AI Chat Application configuration map.
 
-   Create a *ConfigMap* Kubernetes resource containing the AI Application configurations for the chat application.  See command snippet below.
+   Create a Kubernetes *ConfigMap* resource containing the AI Application configurations for the chat application.  See command snippet below.
 
    ```bash
    # Create a ConfigMap containing the AI Application configurations. Substitute the correct location of the
@@ -181,7 +181,7 @@ Option #3 is highly recommended for production deployments.
 
 3. Review and update the *Helm* deployment configuration file.
 
-   The Helm chart directory for the AI Chat Application is located in `./ais-chat-app-chat`.  Within this directory, go thru the variables in `values.yaml` file and update them as needed. 
+   The Helm chart directory for the AI Chat Application is located in `./ais-chat-app-chart`.  In this directory, go thru the variables defined in `values.yaml` file and update them as needed. 
 
    Review/Update the following variable values.  See table below.
 
@@ -190,9 +190,9 @@ Option #3 is highly recommended for production deployments.
    replicaCount | Number of Pod instances (AI Chat Application instances) | 1
    image.repository | ACR location of the AI Chat Application container image. Specify correct values for `acr-name` and `ais-chat-app-repo-name`. | [acr-name].azurecr.io/[ais-chat-app-repo-name]
    image.tag | Chat Application container image tag. Specify correct value for the image tag. | v1.xxxxxx
-   chatapp.host | AI Chat Application container hostname/ID Address | 0.0.0.0
-   chatapp.configFile | Path to AI Chat Application configuration file | /home/node/app/files/app-config.json
-   chatapp.aisGatewayEndpoint | Load balancer URI of the AI Services API Gateway | None
+   chatapp.host | AI Chat Application container hostname/IP Address | 0.0.0.0
+   chatapp.configFile | Path to AI Chat Application configuration file within the container | /home/node/app/files/app-config.json
+   chatapp.aisGatewayEndpoint | Load balancer URI/Endpoint of the Azure AI Services API Gateway | None
    container.port | AI Chat Application container listen port | 8000
 
 4. Assign required compute resources to AI Chat Application pods.
@@ -219,8 +219,9 @@ Option #3 is highly recommended for production deployments.
    # Make sure the AI Chat Application pod(s) are up and running. Output is shown below the command.
    #
    $ kubectl get pods -n apigateway
-   NAME                                  READY   STATUS    RESTARTS   AGE
-   aoai-api-gateway-v1-7f7bf5f75-grk6p   1/1     Running   0          11h
+   NAME                                               READY   STATUS    RESTARTS   AGE
+   ais-api-gateway-v1-645cb7496d-fjptl                1/1     Running   0          5h41m
+   ais-chat-app-ais-chat-app-chart-5bbdd86b45-pctjk   1/1     Running   0          18s
    ```
 
    Get the public IP of Nginx ingress controller (application routing system).  Refer to the command snippet below.
@@ -234,10 +235,10 @@ Option #3 is highly recommended for production deployments.
    nginx   LoadBalancer   10.0.114.112   xx.xx.xx.xx   80:30553/TCP,443:32318/TCP,10254:31744/TCP   2d
    ```
 
-   Use a web browser to access the AI Chat Application. Substitute the public IP of the Nginx ingress controller which you copied in the previous step.  See below.
+   Use a web browser to access the AI Chat Application. Substitute the public IP of the Nginx ingress controller which you copied in the previous step.  See URI below.
 
-   http://{NGINX_PUBLIC_IP}/index.html
+   http://{NGINX_PUBLIC_IP}/ais-chatbot/ui/index.html
 
    **Congratulations!**
 
-   You have reached the end of this how-to for deploying the AI Chat Application. Please feel free to use and customize the artifacts posted in this repository to implement a production grade AI chat application for your end users.
+   You have reached the end of this how-to for deploying the AI Chat Application. Please feel free to use and customize the artifacts posted in this repository to implement a production grade AI chat application for your Chatbot/Information Assistant use case.
