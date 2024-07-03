@@ -31,9 +31,9 @@ Option #3 is highly recommended for production deployments.
 
 3. Configure AI chat applications.
 
-   The AI Chat Application can be used to interact with multiple AI Applications which have been configured with the AI Services Gateway (a.k.a backend).
+   The AI Chat Application can be used to interact with one or more AI Applications which have been configured with the AI Services Gateway (a.k.a backend).
 
-   Update default parameter values in the provided sample application configuration file - `app-config.json`. Configure AI chat applications as per your needs.
+   Update default parameter values in the provided sample application configuration file - `app-config.json`. Configure AI Applications as per your requirements.
 
    For each AI application, specify correct values for all required parameters.  Many of the application parameters are identical to parameters exposed by Azure OpenAI Chat Completion REST API.  Hence refer to the [Azure OpenAI API documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference) for description and usage information on *model_params* and *search_params*.
 
@@ -94,7 +94,7 @@ Option #3 is highly recommended for production deployments.
 
    You can update the model and search parameters on the right panel.  Remember to save the values prior to starting a chat session. See screenshots below.
 
-   Model Params | AI Search Params <b> Only used for Azure OpenAI OYD calls |
+   Model Params | AI Search Params (Only used for Azure OpenAI OYD calls) |
    ------------ | ---------------------------------------------------- |
    ![alt tag](./images/ai-chat-application-06.PNG) | ![alt tag](./images/ai-chat-application-07.PNG)
    
@@ -241,4 +241,4 @@ Option #3 is highly recommended for production deployments.
 
    **Congratulations!**
 
-   You have reached the end of this how-to for deploying the AI Chat Application. Please feel free to use and customize the artifacts posted in this repository to implement a production grade AI chat application for your Chatbot/Information Assistant use case.
+   You have reached the end of this how-to for deploying the AI Chat Application. Feel free to customize the artifacts posted in this repository to implement a production grade AI chat application for your Chatbot/Information Assistant use cases.

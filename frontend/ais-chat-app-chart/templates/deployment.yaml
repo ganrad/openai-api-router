@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ais-chat-app-chart.fullname" . }}
+  labels:
+    {{- include "ais-chat-app-chart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ais-chat-app-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "ais-chat-app-chart.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ais-chat-app-chart.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+        - name: ais-chat-app-cm-vol
+          configMap:
+            name: ais-chat-app-config-cm
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          volumeMounts:
+            - name: ais-chat-app-cm-vol
+              mountPath: /home/node/app/files
+          env:
+            - name: AIS_API_GATEWAY_URI
+              value: "{{ .Values.chatapp.aisGatewayEndpoint }}"
+            - name: FRONTEND_SRV_CONFIG_FILE
+              value: "{{ .Values.chatapp.configFile }}"
+            - name: FRONTEND_SRV_HOST
+              value: "{{ .Values.chatapp.host }}"
+            - name: FRONTEND_SRV_PORT
+              value: "{{ .Values.container.port }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.container.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.container.healthCheckUrl }}
+              port: http
+            initialDelaySeconds: {{ .Values.container.delaySeconds }}
+            periodSeconds: {{ .Values.container.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.container.healthCheckUrl }}
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
