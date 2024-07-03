@@ -6,7 +6,7 @@ This *solution accelerator* is designed to deliver 80-90% of the core functional
 
 Recipe | Components | Functional Architecture (**)
 ------ | ---------- | ----------------------------
-***AI Information Assistant*** | 1. Chatbot User Interface <br> 2. **Semantic Caching** <br> 3. **State Management** <br> 4. **API Traffic Routing** <br> 5. Azure OpenAI Service <br> 6. Azure AI Search (RAG/OYD) <br> 7. **Prompt Persistence** <br> 8. **API Metrics Collection** | ![alt tag](./images/ai-chatbot-usecase-gh.PNG)
+***AI Information Assistant*** | 1. **Chatbot User Interface** <br> 2. **Semantic Caching** <br> 3. **State Management** <br> 4. **API Traffic Routing** <br> 5. Azure OpenAI Service <br> 6. Azure AI Search (RAG/OYD) <br> 7. **Prompt Persistence** <br> 8. **API Metrics Collection** | ![alt tag](./images/ai-chatbot-usecase-gh.PNG)
 
 ** Components marked by green circles are out of box features.
 
@@ -923,13 +923,13 @@ Additionally, the following resources should be deployed/configured.
    $ az acr login --name [acr-name].azurecr.io
    #
    # Tag the container image so we can push it to ACR repo.
-   $ docker tag az-oai-api-gateway [acr-name].azurecr.io/az-oai-api-gateway:v1.020224
+   $ docker tag az-ais-api-gateway [acr-name].azurecr.io/az-ais-api-gateway:v1.9.0.062824
    # 
    # List container images on your VM
    $ docker images
    #
    # Push the AI Services Gateway container image to ACR repo.
-   $ docker push [acr-name].azurecr.io/az-oai-api-gateway:v1.020224
+   $ docker push [acr-name].azurecr.io/az-ais-api-gateway:v1.9.0.062824
    #
    ```
 
@@ -937,7 +937,7 @@ Additionally, the following resources should be deployed/configured.
 
 2. Deploy the Azure OpenAI API endpoints configuration.
 
-   Create a *ConfigMap* Kubernetes resource containing the Gateway endpoint configurations.  See command snippet below.
+   Create a Kubernetes *ConfigMap* resource containing the Gateway endpoint configurations.  See command snippet below.
 
    ```bash
    # First, create a namespace 'apigateway' where all Gateway resources will be deployed.
@@ -949,7 +949,7 @@ Additionally, the following resources should be deployed/configured.
    # Create a ConfigMap containing the Gateway endpoints. Substitute the correct location of the
    # Gateway configuration (json) file.
    #
-   $ kubectl create configmap api-gateway-config-cm --from-file=[Path to 'api-router-config.json' file] -n apigateway
+   $ kubectl create configmap ais-gateway-config-cm --from-file=[Path to 'api-router-config.json' file] -n apigateway
    #
    # List ConfigMaps.
    $ kubectl get cm -n apigateway
@@ -958,7 +958,7 @@ Additionally, the following resources should be deployed/configured.
 
 3. Review and update the *Helm* deployment configuration file.
 
-   Go thru the variables in `values.yaml` file and update them as needed. 
+   The Helm chart directory for the AI Services Gateway is located in `./aoai-api-gtwy-chart`. In this directory, go thru the variables defined in `values.yaml` file and update them as needed. 
 
    Review/Update the following variable values.  See table below.
 
@@ -976,7 +976,9 @@ Additionally, the following resources should be deployed/configured.
    apigateway.metricsCHistory | Backend API metrics collection history count | 168 (Max. <= 600)  
    apigateway.appInsightsConnectionString | (Optional) To collect API request telemetry, set this value to the Azure Application Insights resource *connection string* | None.
    apigateway.useCache | Global setting to enable semantic caching | false (true/false)
-   apigateway.cacheInvalSchedule | Used to specify run schedule for cache entry invalidator | "*/45 * * * *"
+   apigateway.cacheInvalSchedule | Used to specify run schedule for cache entry invalidator | Default (Run every 10 minutes): "*/10 * * * *"
+   apigateway.manageState | Global setting to enable user session tracking (state/memory management) | false (true/false)
+   apigateway.memoryInvalSchedule | Used to specify run schedule for memory entry invalidator | Default (Run every 8 minutes): "*/8 * * * *"
    apigateway.persistPrompts | Global setting to persist prompts in database table | false (true/false)
    apigateway.vectorAiApp | Used to specify name of AI application for embedding prompts. This value is required if semantic caching feature is enabled. | None
    apigateway.searchEngine | Used to specify vector search engine for semantic caching feature | Postgresql/pgvector
@@ -998,7 +1000,7 @@ Additionally, the following resources should be deployed/configured.
    # Make sure you are in the project root directory!
    # Use helm chart to deploy the Gateway. Substitute the correct value for the image tag.
    #
-   $ helm upgrade --install az-oai-api-gateway ./aoai-api-gtwy-chart --set image.tag=[image-tag-name] --namespace apigateway
+   $ helm upgrade --install az-ais-api-gateway ./aoai-api-gtwy-chart --set image.tag=[image-tag-name] --namespace apigateway
    #
    ```
 
@@ -1007,11 +1009,11 @@ Additionally, the following resources should be deployed/configured.
    First, confirm the Gateway Pod(s) is running. Refer to the command snippet below.
 
    ```bash
-   # Make sure the AI Services Gateway pods are up and running. Output is shown below the command.
+   # Make sure the AI Services Gateway pod(s) are up and running. Output is shown below the command.
    #
    $ kubectl get pods -n apigateway
    NAME                                  READY   STATUS    RESTARTS   AGE
-   aoai-api-gateway-v1-7f7bf5f75-grk6p   1/1     Running   0          11h
+   ais-api-gateway-v1-645cb7496d-fjptl   1/1     Running   0          8m5s
    ```
 
    Get the public IP of Nginx ingress controller (application routing system).  Refer to the command snippet below.
@@ -1033,51 +1035,78 @@ Additionally, the following resources should be deployed/configured.
 
    ```json
    {
-     "serverName": "AOAI-API-Gateway-01",
-     "serverVersion": "1.5.0",
-     "serverConfig": {
-        "host": "10.244.2.6",
+      "serverName": "AZ-AIS-API-Gateway-01",
+      "serverVersion": "1.9.0",
+      "serverConfig": {
+        "host": "10.244.0.4",
         "listenPort": 8000,
         "environment": "dev",
         "persistPrompts": "true",
         "collectInterval": 60,
         "collectHistoryCount": 8,
         "configFile": "/home/node/app/files/api-router-config.json"
-     },
-     "cacheSettings": {
+      },
+      "cacheSettings": {
         "cacheEnabled": true,
         "embeddAiApp": "vectorizedata",
         "searchEngine": "Postgresql/pgvector",
-        "cacheInvalidationSchedule": "*/45 * * * *"
-     },
-     "appConnections": [
+        "cacheInvalidationSchedule": "*/10 * * * *"
+      },
+      "memorySettings": {
+        "memoryEnabled": "true",
+        "memoryInvalidationSchedule": "*/8 * * * *"
+      },
+      "aiApplications": [
         {
             "applicationId": "vectorizedata",
+            "description": "Application that uses OAI model to generate data embeddings/vectors",
+            "type": "azure_oai",
             "cacheSettings": {
                 "useCache": false
             },
-            "oaiEndpoints": {
-                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15"
+            "memorySettings": {
+                "useMemory": false
+            },
+            "endpoints": {
+                "0": {
+                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15"
+                }
             }
         },
         {
             "applicationId": "aichatbotapp",
+            "description": "An AI Assistant / Chatbot application which splits inferencing traffic between the faster gpt-35-turbo (16k) model and gpt-4-0125 turbo model",
+            "type": "azure_oai",
             "cacheSettings": {
                 "useCache": true,
                 "searchType": "CS",
-                "searchDistance": 0.95,
+                "searchDistance": 0.98,
                 "searchContent": {
                     "term": "messages",
-                    "includeRoles": "system,user,assistant"
+                    "includeRoles": "user"
                 },
-                "entryExpiry": "7 days"
+                "entryExpiry": "2 minutes"
             },
-            "oaiEndpoints": {
-                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2023-05-15"
+            "memorySettings": {
+                "useMemory": true,
+                "msgCount": 1,
+                "entryExpiry": "5 minutes"
+            },
+            "endpoints": {
+                "0": {
+                    "rpm": 10,
+                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01"
+                },
+                "1": {
+                    "rpm": 10,
+                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01"
+                }
             }
         },
         {
             "applicationId": "aidocusearchapp",
+            "description": "An AI text generation application which uses gpt-35-turbo instruct model",
+            "type": "azure_oai",
             "cacheSettings": {
                 "useCache": true,
                 "searchType": "CS",
@@ -1085,50 +1114,28 @@ Additionally, the following resources should be deployed/configured.
                 "searchContent": {
                     "term": "prompt"
                 },
-                "entryExpiry": "1 hour"
+                "entryExpiry": "1 day"
             },
-            "oaiEndpoints": {
-                "0": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
-                "1": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
+            "endpoints": {
+                "0": {
+                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15"
+                },
+                "1": {
+                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
+                }
             }
         }
      ],
      "containerInfo": {
-        "imageID": "oaiapigateway.azurecr.io/az-oai-api-gateway:v1.5.031224",
-        "nodeName": "aks-nodepool1-35747021-vmss000001",
-        "podName": "aoai-api-gateway-v1-7777f5d8bd-tt7kq",
+        "imageID": "oaiapigateway.azurecr.io/az-ais-api-gateway:v1.9.0.062824",
+        "nodeName": "aks-nodepool1-35747021-vmss00000g",
+        "podName": "ais-api-gateway-v1-645cb7496d-fjptl",
         "podNamespace": "apigateway",
         "podServiceAccount": "default"
      },
-     "nodejs": {
-        "node": "20.11.0",
-        "acorn": "8.11.2",
-        "ada": "2.7.4",
-        "ares": "1.20.1",
-        "base64": "0.5.1",
-        "brotli": "1.0.9",
-        "cjs_module_lexer": "1.2.2",
-        "cldr": "43.1",
-        "icu": "73.2",
-        "llhttp": "8.1.1",
-        "modules": "115",
-        "napi": "9",
-        "nghttp2": "1.58.0",
-        "nghttp3": "0.7.0",
-        "ngtcp2": "0.8.1",
-        "openssl": "3.0.12+quic",
-        "simdutf": "4.0.4",
-        "tz": "2023c",
-        "undici": "5.27.2",
-        "unicode": "15.0",
-        "uv": "1.46.0",
-        "uvwasi": "0.0.19",
-        "v8": "11.3.244.8-node.17",
-        "zlib": "1.2.13.1-motley-5daffc7"
-     },
      "apiGatewayUri": "/api/v1/dev/apirouter",
      "endpointUri": "/api/v1/dev/apirouter/instanceinfo",
-     "serverStartDate": "3/12/2024, 11:45:10 PM",
+     "serverStartDate": "7/2/2024, 9:38:23 PM",
      "status": "OK"
    }
    ```

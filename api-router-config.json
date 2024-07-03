@@ -10,7 +10,7 @@
       "endpoints": [
         {
           "uri": "https://gr-dev-lang.cognitiveservices.azure.com/language/:analyze-text?api-version=2022-05-01",
-          "apikey": "d3aa1fa1"
+          "apikey": "ed9a4c4c"
         }
       ]
     },
@@ -24,7 +24,7 @@
       "endpoints": [
         {
           "uri": "https://api.cognitive.microsofttranslator.com/",
-          "apikey": "644b68dc"
+          "apikey": "ed9a4c4c"
         }
       ]
     },
@@ -38,13 +38,13 @@
       "endpoints": [
         {
           "uri": "https://gr-dev-cont-safety.cognitiveservices.azure.com/contentsafety/text:analyze?api-version=2023-10-01",
-          "apikey": "744169b7"
+          "apikey": "ed9a4c4c"
         }
       ]
     },
     {
       "appId": "search-app-ak-stip-v2",
-      "description": "Azure AI Search Service test application - I",
+      "description": "Azure AI Search Service test application",
       "appType": "azure_search",
       "cacheSettings": {
         "useCache": false
@@ -52,13 +52,13 @@
       "endpoints": [
         {
           "uri": "https://gr-dev-rag-ais.search.windows.net/indexes/ak-stip-v2/docs/search?api-version=2023-11-01",
-          "apikey": "PjIU2Q44"
+          "apikey": "ed9a4c4c"
         }
       ]
     },
     {
       "appId": "search-app-ak-stip-aisrch-iv",
-      "description": "Azure AI Search Service test application - II (Uses integrated vectorization)",
+      "description": "Azure AI Search Service test application",
       "appType": "azure_search",
       "cacheSettings": {
         "useCache": false
@@ -66,7 +66,21 @@
       "endpoints": [
         {
           "uri": "https://gr-dev-rag-ais.search.windows.net/indexes/ak-stip-aisrch-iv/docs/search?api-version=2023-10-01-preview",
-          "apikey": "SeAK34Yj"
+          "apikey": "ed9a4c4c"
+        }
+      ]
+    },
+    {
+      "appId": "search-garmin-docs",
+      "description": "AI application to search Garmin GPS manuals",
+      "appType": "azure_search",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "endpoints": [
+        {
+          "uri": "https://gr-dev-rag-ais.search.windows.net/indexes/dev-garmin-idx/docs/search?api-version=2023-10-01-preview",
+          "apikey": "ed9a4c4c"
         }
       ]
     },
@@ -78,19 +92,20 @@
         "useCache": false
       },
       "memorySettings": {
-        "useMemory": false
+	"useMemory": false
       },
       "endpoints": [
         {
           "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15",
-          "apikey": "9eca9ec1"
+          "apikey": "ed9a4c4c"
         }
       ]
     },
     {
-      "appId": "aichatbotapp",
-      "description": "A test AI Assistant / Chatbot application",
+      "appId": "ai-doc-assistant-gpt-4t-0125",
+      "description": "An AI Assistant / Chatbot application which uses gpt-4-0125 preview model",
       "appType": "azure_oai",
+      "searchAiApp": "search-garmin-docs",
       "cacheSettings": {
         "useCache": true,
         "searchType": "CS",
@@ -99,29 +114,83 @@
           "term": "messages",
           "includeRoles": "user"
         },
-	"entryExpiry": "2 days"
+	"entryExpiry": "2 minutes"
       },
       "memorySettings": {
-        "useMemory": true,
-        "msgCount": 5,
-        "entryExpiry": "5 minutes"
+	"useMemory": true,
+	"msgCount": 5,
+	"entryExpiry": "5 minutes"
       },
       "endpoints": [
-	{
-          "rpm": 10,
-          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01",
-          "apikey": "9exd266d"
+        {
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01",
+          "apikey": "ed9a4c4c"
+	}
+      ]
+    },
+    {
+      "appId": "aichatbotapp",
+      "description": "An AI Assistant / Chatbot application which splits inferencing traffic between the faster gpt-35-turbo (16k) model and gpt-4-0125 turbo model",
+      "appType": "azure_oai",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CS",
+        "searchDistance": 0.98,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
         },
+	"entryExpiry": "2 minutes"
+      },
+      "memorySettings": {
+	"useMemory": true,
+	"msgCount": 1,
+	"entryExpiry": "5 minutes"
+      },
+      "endpoints": [
+        {
+	  "rpm": 10,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01",
+          "apikey": "ed9a4c4c"
+	},
         {
 	  "rpm": 10,
           "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01",
-          "apikey": "2f0d266d"
+          "apikey": "ed9a4c4c"
+	}
+      ]
+    },
+    {
+      "appId": "chatbot-gpt4o",
+      "description": "An AI Assistant / Chatbot application which uses gpt-4o (Omni) model for inferencing",
+      "appType": "azure_oai",
+      "searchAiApp": "search-garmin-docs",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CS",
+        "searchDistance": 0.98,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+	"entryExpiry": "2 minutes"
+      },
+      "memorySettings": {
+	"useMemory": true,
+	"msgCount": 1,
+	"entryExpiry": "5 minutes"
+      },
+      "endpoints": [
+        {
+	  "rpm": 10,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt-4o/chat/completions?api-version=2024-02-01",
+          "apikey": "ed9a4c4c"
 	}
       ]
     },
     {
       "appId": "aidocusearchapp",
-      "description": "A test AI text generation application",
+      "description": "An AI text generation application which uses gpt-35-turbo instruct model",
       "appType": "azure_oai",
       "cacheSettings": {
         "useCache": true,
@@ -130,16 +199,16 @@
         "searchContent": {
           "term": "prompt"
         },
-	"entryExpiry": "5 minutes"
+	"entryExpiry": "1 day"
       },
       "endpoints": [
         {
           "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
-          "apikey": "2e1e4be4"
+          "apikey": "ed9a4c4c"
 	},
         {
           "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15",
-          "apikey": "9eca9ec1"
+          "apikey": "ed9a4c4c"
         }
       ]
     }

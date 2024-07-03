@@ -28,25 +28,33 @@ serviceAccount:
 
 apigateway:
   # This is the deployment name
-  name: aoai-api-gateway-v1
+  name: ais-api-gateway-v1
   # This is the API Gateway instance name
-  instanceName: aoai-api-gateway-gpt35
+  instanceName: AZ-AIS-API-Gateway-01
   configFile: /home/node/app/files/api-router-config.json
   # Set the private/secret key for the API Gateway
   # IMPORTANT: Change this private/secret key!!
   secretKey: abcxyz
   env: dev
   logLevel: info
+  # Collect API Metrics every hour
   metricsCInterval: 60
+  # Maintain API metrics history for the past 1 week (24 * 7)
   metricsCHistory: 168
   # (Optional) Azure Monitor OpenTelemetry connection string
   appInsightsConnectionString: ""
+  # To enable semantic cache, set this value to true
   useCache: false
-  cacheInvalSchedule: "*/45 * * * *"
+  cacheInvalSchedule: "*/10 * * * *"
+  # To enable state management, set this value to true
+  manageState: false
+  memoryInvalSchedule: "*/8 * * * *"
+  # To enable prompt + completion persistence, set this value to true
   persistPrompts: false
   vectorAiApp: vectorizedata
   searchEngine: Postgresql/pgvector
 
+# Update values for DB below.
 database:
   name: aoaisvc
   host: [db].postgres.database.azure.com

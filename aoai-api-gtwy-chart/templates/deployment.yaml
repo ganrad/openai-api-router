@@ -29,14 +29,14 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-        - name: api-gateway-cm-vol
+        - name: ais-gateway-cm-vol
           configMap:
-            name: api-gateway-config-cm
+            name: ais-gateway-config-cm
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           volumeMounts:
-            - name: api-gateway-cm-vol
+            - name: ais-gateway-cm-vol
               mountPath: /home/node/app/files
           env:
             - name: API_GATEWAY_NAME
@@ -61,6 +61,10 @@ spec:
               value: "{{ .Values.apigateway.useCache }}"
             - name: API_GATEWAY_CACHE_INVAL_SCHEDULE
               value: "{{ .Values.apigateway.cacheInvalSchedule }}"
+            - name: API_GATEWAY_STATE_MGMT
+              value: "{{ .Values.apigateway.manageState }}"
+            - name: API_GATEWAY_MEMORY_INVAL_SCHEDULE
+              value: "{{ .Values.apigateway.memoryInvalSchedule }}"
             - name: API_GATEWAY_PERSIST_PROMPTS
               value: "{{ .Values.apigateway.persistPrompts }}"
             - name: API_GATEWAY_VECTOR_AIAPP
