@@ -30,7 +30,7 @@ async function createDBResources() {
   await pdb.dropTable(1);
   await pdb.createTable(1);
 
-  // Query rows in 'Prompts' table
+  // Query rows in 'Memory' table
   let memoryDao = new PersistDao(pdb,TblNames.Memory);
   await memoryDao.queryTable('001',0,null);
 

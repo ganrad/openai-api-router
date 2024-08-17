@@ -56,7 +56,7 @@ Feature/Capability | Configurable (Yes/No) | Azure OpenAI Service | Azure AI Sea
 **Semantic Cache** | Yes | Yes <br> - Completions API <br> - Chat Completions API | No | No | No | No
 **State Management** | Yes | Yes <br> - Chat Completions API | No | No | No | No
 **API Router** | Yes | Yes | Yes | Yes | Yes | Yes
-**Prompt/Message Persistence** | Yes | Yes | No | No | No | No
+**Message Persistence** | Yes | Yes | No | No | No | No
 **Metrics Collection** | No | Yes | Yes | Yes | Yes | Yes
 
 ### Reference Architecture

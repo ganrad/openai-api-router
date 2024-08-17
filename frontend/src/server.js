@@ -1,17 +1,17 @@
 /**
- * Name: AI Services API Gateway frontend server
- * Description: A light-weight Nodejs server that serves AI Services API Gateway frontend application (single page application)
- * to clients. 
+ * Name: AI Chatbot Application Server
+ * Description: A light-weight Nodejs application that acts as a backend for the AI Chatbot (frontend) application (SPA ~ single page application).
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 06-27-2024
  *
  * Notes:
+ * ID07302024: ganrad: Introduced client authentication.  This features uses MSFT Entra ID to authenticate users.
  *
  */
 
 require('console-stamp')(console, {
-	format: ':date(yyyy/mm/dd HH:MM:ss.l) :label'
+  format: ':date(yyyy/mm/dd HH:MM:ss.l) :label'
 });
 const express = require('express');
 const fs = require('fs');
@@ -24,34 +24,35 @@ const app = express();
 
 let host; // AOAI frontend server host
 let port; // AOAI frontend server listen port
-let aisGtwyEndpoint; // Azure AI Services API Gateway URL/Endpoint
+let aisGtwyEndpoint; // Azure AI Application API Gateway URL/Endpoint
+let aisGtwyAuth; // Is security enabled on AI Application Gateway APIs? ID07302024.n
 let configFile; // AOAI frontend server configuration file location (Full path)
 let configObject; // Frontend configuration object
 
 function readFrontendEnvVars() {
-  if ( process.env.FRONTEND_SRV_HOST )
+  if (process.env.FRONTEND_SRV_HOST)
     host = process.env.FRONTEND_SRV_HOST;
   else
     host = "localhost";
 
-  if ( process.env.FRONTEND_SRV_PORT )
+  if (process.env.FRONTEND_SRV_PORT)
     port = Number(process.env.FRONTEND_SRV_PORT);
   else
-    port = 8000;
+    port = 8000; // default listen port
 
-  if ( process.env.AIS_API_GATEWAY_URI ) {
-    aisGtwyEndpoint = process.env.AIS_API_GATEWAY_URI;
-    console.log(`Server(): Azure AI Services Gateway URI: [${aisGtwyEndpoint}]`);
+  if (process.env.API_GATEWAY_URI) {
+    aisGtwyEndpoint = process.env.API_GATEWAY_URI;
+    console.log(`Server(): Azure AI Application Gateway URI: [${aisGtwyEndpoint}]`);
   }
   else {
-    console.log("Server(): Env. variable [AIS_API_GATEWAY_URI] not set, aborting ...");
+    console.log("Server(): Env. variable [API_GATEWAY_URI] not set, aborting ...");
     // exit program
     process.exit(1);
   };
 
-  if ( process.env.FRONTEND_SRV_CONFIG_FILE ) {
+  if (process.env.FRONTEND_SRV_CONFIG_FILE) {
     configFile = process.env.FRONTEND_SRV_CONFIG_FILE;
-    if ( ! fs.existsSync(configFile) ) {
+    if (!fs.existsSync(configFile)) {
       console.log(`Server(): Server configuration file: [${configFile}] not found! Aborting initialization.`);
       process.exit(1);
     };
@@ -62,13 +63,22 @@ function readFrontendEnvVars() {
     // exit program
     process.exit(1);
   };
+
+  aisGtwyAuth = (process.env.API_GATEWAY_AUTH === "true") ? true : false; // ID07302024.n
+  console.log(`Server(): Azure AI Application Gateway API security: [${aisGtwyAuth}]`);
 }
 
 function readConfigFile() {
-  const content = fs.readFileSync(configFile,{ encoding: 'utf8', flag: 'r' });  
+  const content = fs.readFileSync(configFile, { encoding: 'utf8', flag: 'r' });
 
   configObject = JSON.parse(content);
   configObject.aisGtwyEndpoint = aisGtwyEndpoint;
+  configObject.aisGtwyAuth = aisGtwyAuth;
+  if ( aisGtwyAuth ) { // ID07302024.n
+    configObject.azTenantId = process.env.AZURE_TENANT_ID;
+    configObject.appClientId = process.env.FRONTEND_CLIENT_ID;
+    configObject.apiGatewayAppId = process.env.API_GATEWAY_APP_ID;
+  };
 }
 
 function init_server() {
@@ -82,8 +92,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(srvUriPrefix,express.static('public'));
-app.use(srvUriPrefix,express.static('jscripts'));
+app.use(srvUriPrefix, express.static('public'));
+app.use(srvUriPrefix, express.static('jscripts'));
 
 app.get(srvUriPrefix.concat("healthz"), (req, res) => {
   let resp_obj = {
@@ -91,7 +101,7 @@ app.get(srvUriPrefix.concat("healthz"), (req, res) => {
     currentDate: new Date().toLocaleString(),
     startDate: srvStartTime,
     serverVersion: srvVersion,
-    serverStatus : "OK"
+    serverStatus: "OK"
   };
 
   res.status(200).json(resp_obj);
@@ -102,9 +112,9 @@ app.get(srvUriPrefix.concat('appconfig'), (req, res) => {
 });
 
 // app.listen(port,() => console.log(`Server(): AI Services API Gateway frontend server is listening on ${host}:${port}.`));
-app.listen(port,host, function(err) {
+app.listen(port, host, function (err) {
   if (err)
-    console.error("Encountered exception:\n",err);
+    console.error("Encountered exception:\n", err);
   else
-    console.log(`Server(): AI Services API Gateway frontend server is listening on ${host}:${port}.`);
+    console.log(`Server(): AI Chatbot Application server is listening on ${host}:${port}.`);
 });

@@ -10,6 +10,7 @@
   "author": "Ganesh Radhakrishnan",
   "license": "MIT",
   "dependencies": {
+    "@azure/msal-browser": "^3.20.0",
     "console-stamp": "^3.1.2",
     "express": "^4.19.2"
   }

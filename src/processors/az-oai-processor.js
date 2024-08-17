@@ -12,6 +12,7 @@
  * ID05312024: ganrad: (Bugfix) Save only the message content retrieved from cache in memory for a new thread.
  * ID06052024: ganrad: (Enhancement) Added streaming support for Azure OpenAI Chat Completion API call(s).
  * ID06132024: ganrad: (Enhancement) Adapted gateway error messages to be compliant with AOAI Service error messages.
+ * ID07292024: ganrad: (Minor update) Print authenticated user name along with the request.
  *
 */
 const path = require('path');
@@ -459,7 +460,7 @@ class AzOaiProcessor {
     let threadId = req.get(CustomRequestHeaders.ThreadId);
 
     // console.log(`*****\nAzOaiProcessor.processRequest():\n  URI: ${req.originalUrl}\n  Request ID: ${req.id}\n  Application ID: ${config.appId}\n  Type: ${config.appType}`);
-    logger.log({level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  URL: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n Request Payload: %s", splat: [scriptName,this.constructor.name,req.id,req.originalUrl,threadId,config.appId,config.appType,JSON.stringify(req.body)]});
+    logger.log({level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n Request Payload: %s", splat: [scriptName,this.constructor.name,req.id,req.originalUrl,req.user?.name,threadId,config.appId,config.appType,JSON.stringify(req.body)]}); // ID07292024.n
     
     let respMessage = null; // Populate this var before returning!
 
