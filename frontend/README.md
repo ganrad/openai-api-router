@@ -68,7 +68,7 @@ Option #3 is highly recommended for production deployments.
    You will see the application server startup message as shown in the snippet below.
 
    ```bash
-   > ais-gateway-frontend@1.0.0 start
+   > ai-chatbot-frontend@1.0.0 start
    > node ./src/server.js
 
    [2024/07/01 18:47:36.161] [LOG] Server(): Azure AI Application Gateway URI: [http://localhost:8000/api/v1/dev/apirouter/lb/]
