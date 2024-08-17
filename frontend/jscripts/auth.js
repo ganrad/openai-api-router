@@ -89,10 +89,17 @@ function selectAccount() {
 
 function updateHeader(aTitle) {
     const unameDiv = document.getElementById('uname-div');
-    if ( aTitle === "Sign-in" )
-        unameDiv.innerHTML = '<b>User: ' + username + '</b>';
-    else
+    const authBtn = document.getElementById('auth-anchor');
+    if ( aTitle === "Sign-in" ) {
+        console.log(`Authenticated user: ${username}`);
+        unameDiv.innerHTML = '<b>User:</b> ' + username;
+        authBtn.innerHTML = "Sign-out";
+    }
+    else {
+        console.log(`Signed out user: ${username}`);
         unameDiv.innerHTML = "";
+        authBtn.innerHTML = "Sign-in";
+    };
 }
 
 function authenticateUser() {
@@ -100,14 +107,10 @@ function authenticateUser() {
         return;
 
     const anchorText = document.getElementById('auth-anchor').innerHTML;
-    if ( anchorText === "Sign-in") {
+    if ( anchorText === "Sign-in")
         signIn();
-        document.getElementById('auth-anchor').innerHTML = "Sign-out";
-    }
-    else {
+    else
         signOut();
-        document.getElementById('auth-anchor').innerHTML = "Sign-in";
-    };
 }
 
 function handleResponse(response) {
@@ -118,7 +121,7 @@ function handleResponse(response) {
 
     if (response !== null) {
         username = response.account.username;
-        console.log(`Authenticated user: ${username}`);
+        // console.log(`Authenticated user: ${username}`);
         updateHeader("Sign-in");
     } else {
         selectAccount();
@@ -205,7 +208,7 @@ function signOut() {
     myMSALObj.logoutPopup(logoutRequest).then(() => {
         window.location.reload();
     });
-    updateHeader("Sign-out");
+    // updateHeader("Sign-out");
 }
 
 selectAccount();

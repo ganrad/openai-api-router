@@ -5,6 +5,7 @@
 * (Enhancement) The REST API's exposed by AI Application Gateway solution can now be secured using Microsoft Entra ID.  This feature is enabled by default.
 * Restructured the AI Gateway Server code and fixed a few minor bugs.
 * (Enhancement) Implemented security (user authentication) feature in the AI Chatbot application (SPA).  This feature is turned on by default. Use this feature to secure the SPA and authenticate users against Microsoft Entra ID.
+* Fixed minor bugs in AI Chatbot Application (SPA).
 
 ### Documentation changes
 * Renamed this repo. to *AI Application Gateway*.

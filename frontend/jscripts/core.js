@@ -60,6 +60,8 @@ async function readAiAppConfig() {
 
     if ( isAuthEnabled )
       loadAuthScript();
+    else // hide 'sign-in' link
+      document.getElementById("auth-anchor").style.display="none";
   } catch (error) {
     // Handle any errors that occurred during the fetch
     console.error('readAiAppConfig(): Error fetching data:', error);
