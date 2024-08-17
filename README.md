@@ -1,12 +1,12 @@
-# An Azure *AI Services API Gateway*
+# Azure *AI Application Gateway*
 
-If you're seeking the essential components for rapid implementation and deployment of **AI Information Assistant (a.k.a AI Chatbot)** solutions on Azure, the *AI Services API Gateway* is your go-to resource to expedite the development process and transition smoothly from pilot phase to full-scale production.
+If you're seeking the essential components for rapid implementation and deployment of **AI Information Assistant (a.k.a AI Chatbot)** solutions on Azure, the *AI Application Gateway* is your go-to resource to expedite the development process and transition smoothly from pilot phase to full-scale production.
 
 This *solution accelerator* is designed to deliver 80-90% of the core functionality essential for constructing and deploying AI Solutions and Chatbots. Most notably, it facilitates the use of a shared, minimal infrastructure component set, allowing for the smooth roll out of numerous AI Chatbots/Solutions on the same foundational infrastructure.
 
 Recipe | Components | Functional Architecture (**)
 ------ | ---------- | ----------------------------
-***AI Information Assistant*** | 1. **Chatbot User Interface** <br> 2. **Semantic Caching** <br> 3. **State Management** <br> 4. **API Traffic Routing** <br> 5. Azure OpenAI Service <br> 6. Azure AI Search (RAG/OYD) <br> 7. **Prompt Persistence** <br> 8. **API Metrics Collection** | ![alt tag](./images/ai-chatbot-usecase-gh.PNG)
+***AI Information Assistant*** | 1. **Chatbot User Interface** <br> 2. **Semantic Cache** <br> 3. **State Manager** <br> 4. **Intelligent Router** <br> 5. Azure OpenAI Service <br> 6. Azure AI Search Service (RAG/OYD) <br> 7. **Message Logger (Chat History)** <br> 8. **API Metrics Collector** | ![alt tag](./images/ai-chatbot-usecase-gh.PNG)
 
 ** Components marked by green circles are out of box features.
 
@@ -14,33 +14,34 @@ Recipe | Components | Functional Architecture (**)
 
 Feature/Capability | Azure AI Service | Description
 ------------------ | ---------------- | -----------
-**Shared Infrastructure Model** | All | The AI Services API Gateway simplifies and streamlines the deployment of multiple AI Solutions (Chatbots) by utilizing a shared infrastructure backbone. This approach allows for deploying the infrastructure once and subsequently scaling it to build and deploy numerous AI Chatbots.
-**Unified Management Plane** | All | The Gateway provides a unified management plane for sharing AI Service deployment endpoints among multiple AI Applications. The gateway is *AI Application Aware* meaning Azure AI Service endpoints can be configured separately for each *AI Application*.  This design not only makes it easier to share AI Service deployments among various AI Applications but also enhances metrics collection and request routing for each specific AI use case.
-**Intelligent Traffic Routing** | Azure OpenAI Service | **Circuit Breaker**: The Gateway can be configured with multiple Azure AI Service deployment URI's (a.k.a backend endpoints). When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.<br> **Rate Limiting**: Users can set up a *RPM Limit* for each OpenAI backend endpoint for any AI Application. When multiple AI Applications use the same endpoint, the gateway will enforce rate limiting and throttle excessive requests by returning http 429 status codes. This is especially useful for distributing model processing capacity (PTU deployment) evenly across different AI Applications.<br> **Traffic Splitting**: The Gateway provides the flexibility to split AI application traffic between multiple Azure AI Service deployment endpoints. In the case of Azure OpenAI Service, the AI application traffic can be split among multiple *Paygo* (tokens per minute) and *Provisioned Throughput Unit* (reserved capacity) model deployments.
-**Streaming API Responses** | Azure Open AI Service (Chat Completions API only) | The AI Services API Gateway fully supports the response *streaming* feature provided by Azure OpenAI Chat Completions API.  This function is seamlessly integrated with semantic caching, state management and traffic routing features.
-**Semantic Caching** | Azure OpenAI Service | This feature is seamlessly integrated into AI Services API Gateway and can be used to cache OpenAI Service prompts and responses. Cache hits are evaluated based on semantic similarity and the configured algorithm. With semantic caching, runtime performance of LLM/AI applications can be improved by up to 40%. This solution leverages the vectorization and semantic search features supported by the widely popular *PostgreSQL* open source database.
+**Shared Infrastructure Model** | All | The AI Application Gateway simplifies and streamlines the deployment of multiple AI Solutions (Chatbots) by utilizing a shared infrastructure backbone. This approach allows for deploying the infrastructure once and subsequently scaling it to build and deploy numerous AI Chatbots.
+**Unified Management Plane** | All | The Gateway provides a unified management plane for sharing Azure AI Service deployment endpoints among multiple AI Applications. The gateway is *AI Application Aware* meaning Azure AI Service endpoints can be configured separately for each *AI Application*.  This design not only makes it easier to share AI Service deployments among various AI Applications but also enhances metrics collection and request routing for each specific AI use case.
+**Intelligent Traffic Routing** | Azure OpenAI Service | **Circuit Breaker**: For each AI Application, multiple Azure AI Service deployment URI's (a.k.a backend endpoints) can be configured. When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.<br> **Rate Limiting**: Users can set up a *RPM Limit* for each OpenAI backend endpoint for any AI Application. When multiple AI Applications use the same endpoint, the gateway will enforce rate limiting and throttle excessive requests by returning http 429 status codes. This is especially useful for distributing model processing capacity (PTU deployment) evenly across different AI Applications.<br> **Traffic Splitting**: The Gateway provides the flexibility to split AI application traffic between multiple Azure AI Service deployment endpoints. In the case of Azure OpenAI Service, the AI application traffic can be split among multiple *Paygo* (Tokens per minute) and *Provisioned Throughput Unit* (Reserved capacity) model deployments.
+**Streaming API Responses** | Azure Open AI Service (Chat Completions API only) | The AI Application Gateway fully supports the response *streaming* feature provided by Azure OpenAI Chat Completions API.  This function is seamlessly integrated with semantic caching, state management and traffic routing features.
+**Semantic Caching** | Azure OpenAI Service | This feature is seamlessly integrated into AI Application Gateway and can be used to cache OpenAI Service prompts and responses. Cache hits are evaluated based on semantic similarity and the configured algorithm. With semantic caching, runtime performance of LLM/AI applications can be improved by up to 40%. This solution leverages the vectorization and semantic search features supported by the widely popular *PostgreSQL* open source database.
 **Conversational State Management** | Azure OpenAI Service (Chat Completion API only) | AI Chatbots must maintain context during end user sessions so they can reference previous user inputs, ensuring coherent and contextually relevant conversations.  This feature manages the conversational state and can effortlessly scale to support anywhere from 10 to hundreds of concurrent user sessions for multiple AI applications simultaneously. Additionally, it can function independently or in tandem with the *Semantic Caching* feature to enhance performance.
-**Prompt Persistence (Chat History)** | Azure OpenAI Service | This optional feature can be used to persist OpenAI Service *Prompts* (inputs) and *Completions* (responses) in a relational database table. With this feature, customers can analyze prompts and accordingly adjust the similarity distance for the chosen vector search algorithm to maximize performance (increase throughput).  This feature can also be used to introspect the prompt and completion tokens associated with a particular API request (Request ID) and troubleshoot content filteration issues quickly. The gateway currently supports PostgreSQL database as the persistence provider.
+**Message Persistence (Chat History)** | Azure OpenAI Service | This optional feature can be used to persist OpenAI Service *Prompts* (inputs) and *Completions* (responses) in a relational database table. With this feature, customers can analyze prompts and accordingly adjust the similarity distance for the chosen vector search algorithm to maximize performance (increase throughput).  This feature can also be used to introspect the prompt and completion tokens associated with a particular API request (Request ID) and troubleshoot content filteration issues quickly. The gateway currently supports PostgreSQL database as the persistence provider.
+**Secure by Design** | All | The API's exposed by the AI Application Gateway can be easily secured using Microsoft Entra ID. This is the default setting. This feature ensures only authenticated users or client applications are able to access the API endpoints. 
 **Dynamic Server Configuration** | All | The Gateway exposes a separate reconfig (/reconfig) endpoint to allow dynamic reconfiguration of backend endpoints. Backend endpoints can be reconfigured anytime even when the server is running thereby limiting AI application downtime.
 **API Metrics Collection** | All | The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the AI Application workload to the desired backend endpoints based on available and consumed capacity.
-**Observability and Traceability** | All | The AI Services Gateway is instrumented with Azure Application Insights SDK. When this setting is enabled, detailed telemetry information on Azure OpenAI and dependent services is collected and sent to Azure Monitor.
-**Client SDK's and AI Application (LLM) Frameworks** | Azure OpenAI Service | The AI Services Gateway server supports [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints) Client SDK.  The gateway has also been tested to work with [Prompt Flow](https://github.com/microsoft/promptflow) and [Langchain](https://python.langchain.com/docs/integrations/llms/azure_openai/) LLM frameworks.
-**Robust Runtime** | All | The AI Services Gateway is powered by tried and true Nodejs runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
+**Observability and Traceability** | All | The AI Application Gateway is instrumented with Azure Application Insights SDK. When this setting is enabled, detailed telemetry information on Azure OpenAI and dependent services is collected and sent to Azure Monitor.
+**Client SDK's and AI Application (LLM) Frameworks** | Azure OpenAI Service | The AI Application Gateway server supports [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints) Client SDK.  The gateway has also been tested to work with [Prompt Flow](https://github.com/microsoft/promptflow) and [Langchain](https://python.langchain.com/docs/integrations/llms/azure_openai/) LLM frameworks.
+**Robust Runtime** | All | The AI Application Gateway is powered by tried and true Nodejs runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
 
 ### Usage scenarios
 
-The AI Services Gateway can be used in the following scenarios.
+The AI Application Gateway can be used in the following scenarios.
 1. **Rapid deployment of AI Chatbots (or AI Information Assistants)**
    
-   The AI Services Gateway solution provides core features such as *Semantic Caching*, *State Management*, *Traffic Routing* and *API Metrics Collection* right out of the box, which are crucial for implementing conversational AI applications such as AI Chatbots.
+   The AI Application Gateway solution provides core features such as *Semantic Caching*, *State Management*, *Traffic Routing* and *API Metrics Collection* right out of the box, which are crucial for implementing conversational AI applications such as AI Chatbots.
 
 2. **Capturing Azure AI Service API usage metrics and estimating capacity for AI applications/workloads**
 
-   For each AI Application, the AI Services Gateway collects Azure AI Service endpoint usage metrics.  The metrics are collected for each AI application based on pre-configured time intervals. In the case of Azure OpenAI Service, the collected metrics include *Tokens per minute* (TPM) and *Requests per minute* (RPM). These metrics can then be used to estimate *Provisioned Throughput Units* for each OpenAI workload.
+   For each AI Application, the gateway collects Azure AI Service endpoint usage metrics.  The metrics are collected for each AI application based on pre-configured time intervals. In the case of Azure OpenAI Service, the collected metrics include *Tokens per minute* (TPM) and *Requests per minute* (RPM). These metrics can then be used to estimate *Provisioned Throughput Units* for each OpenAI workload.
 
 3. **Intelligently route AI Application requests to Azure AI Service deployments/backends**
 
-   For each AI Application, the AI Services Gateway functions as an intelligent router and distributes AI Service API traffic among multiple backend endpoints.  The gateway keeps track of unavailable/busy backend endpoints and automatically redirects traffic to available endpoints thereby distributing the API traffic load evenly and not overloading a given endpoint with too many requests.  
+   For each AI Application, the AI Application Gateway functions as an intelligent router and distributes AI Service API traffic among multiple backend endpoints.  The gateway keeps track of unavailable/busy backend endpoints and automatically redirects traffic to available endpoints thereby distributing the API traffic load evenly and not overloading a given endpoint with too many requests.  
 
    The gateway currently supports proxying requests to the following Azure AI Services.
      - Azure OpenAI Service (Full API support)
@@ -56,24 +57,24 @@ Feature/Capability | Configurable (Yes/No) | Azure OpenAI Service | Azure AI Sea
 **Semantic Cache** | Yes | Yes <br> - Completions API <br> - Chat Completions API | No | No | No | No
 **State Management** | Yes | Yes <br> - Chat Completions API | No | No | No | No
 **API Router** | Yes | Yes | Yes | Yes | Yes | Yes
-**Prompt Persistence** | Yes | Yes | No | No | No | No
+**Message Persistence** | Yes | Yes | No | No | No | No
 **Metrics Collection** | No | Yes | Yes | Yes | Yes | Yes
 
 ### Reference Architecture
 
 ![alt tag](./images/az-openai-api-gateway-ra.PNG)
 
-### AI Services API Router workflow for Azure OpenAI Service
+### AI Application Gateway workflow for Azure OpenAI Service
 
 ![alt tag](./images/aoai-api-gtwy-flow-chart.png)
 
 ### Bill Of Materials
-The AI Services API Gateway is designed from the grounds up to be a cost-effective solution and has minimal services footprint. For details on the Azure services needed to deploy this solution, please see the accompanying table below.
+The AI Application Gateway is designed from the grounds up to be a cost-effective solution and has minimal services footprint. For details on the Azure services needed to deploy this solution, please see the accompanying table below.
 
 | Environment | Azure Services | Notes
 | ----------- | -------------- | -----
 | - Development<br>- Testing | - Azure Linux VM (Minimum 2vCPUs; 8GB Memory)<br>- Azure Database for PostgreSQL Server (2-4 vCores; 8-16GB Memory; 1920-2880 max. iops)<br>- Azure OpenAI Service<br>- Azure AI Search<br>- Azure Storage | - The gateway can be run as a standalone server or can be containerized and run on the Linux VM.
-| - Pre-Production<br>- Production | - Azure Linux VM (4-8 vCPUs; 8-16GB Memory)<br>- Azure Database for PostgreSQL Server (4-8 vCores; 16-32GB Memory; 2880-4320 max iops)<br>- Azure Kubernetes Service / Azure Container Apps.<br>- Azure OpenAI Service<br>- Azure AI Search<br>- Azure Storage | - The AI Services Gateway can be deployed on AKS or Azure Container Apps. For large scale deployments, we recommend AKS.<br>- Select the appropriate deployment type(s) and OpenAI models for Azure OpenAI Service.<br>- Select the appropriate pricing tier (S, S2, S3) for Azure AI Search service to meet your data indexing & storage requirements.<br>- The Linux VM can be used as a jumpbox for testing the gateway server locally, connecting to the kubernetes cluster, managing other Azure resources etc.
+| - Pre-Production<br>- Production | - Azure Linux VM (4-8 vCPUs; 8-16GB Memory)<br>- Azure Database for PostgreSQL Server (4-8 vCores; 16-32GB Memory; 2880-4320 max iops)<br>- Azure Kubernetes Service / Azure Container Apps.<br>- Azure OpenAI Service<br>- Azure AI Search<br>- Azure Storage | - The AI Application Gateway can be deployed on AKS or Azure Container Apps. For large scale deployments, we recommend AKS.<br>- Select the appropriate deployment type(s) and OpenAI models for Azure OpenAI Service.<br>- Select the appropriate pricing tier (S, S2, S3) for Azure AI Search service to meet your data indexing & storage requirements.<br>- The Linux VM can be used as a jumpbox for testing the gateway server locally, connecting to the kubernetes cluster, managing other Azure resources etc.
 
 > **NOTE:**
 > Other Azure AI Services may be needed to implement functions specific to your use case.
@@ -87,7 +88,7 @@ The AI Services API Gateway is designed from the grounds up to be a cost-effecti
     - [Git SCM Docs](https://git-scm.com/book/en/v2)
     - [Docker Overview](https://docs.docker.com/engine/docker-overview/)
     - [Kubernetes Overview](https://kubernetes.io/docs/tutorials/kubernetes-basics/)
-5. (Optional) Download and install [Postman App](https://www.getpostman.com/apps), a REST API Client used for testing the AI Services Gateway.
+5. (Optional) Download and install [Postman App](https://www.getpostman.com/apps), a REST API Client used for testing the AI Application Gateway.
 
 Readers are advised to refer to the following on-line resources as needed.
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
@@ -103,11 +104,10 @@ Readers are advised to refer to the following on-line resources as needed.
 - [Azure Load Testing](https://learn.microsoft.com/en-us/azure/load-testing/)
 
 ## Disclaimer:
-- The software (AI Services Gateway) is provided "as is" without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non infringement.  In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software. Use at your own risk.
-- Currently, the Gateway does not secure the exposed API's by means of security tokens or API keys. Therefore, it's use should be limited to private virtual network deployments on Azure.  However, the gateway can be seamlessly integrated behind an application gateway or a firewall appliance (WAF) that offers advanced and robust security capabilities.
+The software (AI Application Gateway) is provided "as is" without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non infringement.  In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software. Use at your own risk.
 
 ### Deployment Options
-Deploy the AI Services API Gateway in a pre-production environment first and configure the desired features by setting the configuration parameters to appropriate values. The pre-production environment should be as close as possible to an actual production environment. Rigorously validate the features of routing, caching, state management, and persistence to confirm their optimal functionality as anticipated.
+Deploy the AI Application Gateway in a pre-production environment first and configure the desired features by setting the configuration parameters to appropriate values. The pre-production environment should be as close as possible to an actual production environment. Rigorously test and validate the API routing, caching, state management, security and persistence features to confirm their optimal functionality as anticipated.
 
 The Sections below describe the steps to configure and deploy the Gateway on Azure.  Although, there are multiple deployment options available on Azure, we will only describe the top two options recommended for production deployments.
 
@@ -117,10 +117,10 @@ The Sections below describe the steps to configure and deploy the Gateway on Azu
 
 **Recommended for Usage Scenario 3**
 
-1. Containerize the AI Services API Gateway and deploy it on a serverless container platform such as *Azure Container Apps*.
+1. Containerize the AI Application Gateway and deploy it on a serverless container platform such as *Azure Container Apps*.
 
    We will not be describing the steps for this option here.  Readers can follow the deployment instructions described in Azure Container Apps documentation [here](https://learn.microsoft.com/en-us/azure/container-apps/tutorial-code-to-cloud?source=recommendations&tabs=bash%2Ccsharp&pivots=acr-remote).
-2. Containerize the AI Services API Gateway and deploy it on a container platform such as *Azure Kubernetes Service*. Refer to Sections **B** and **E** below.
+2. Containerize the AI Application Gateway and deploy it on a container platform such as *Azure Kubernetes Service*. Refer to Sections **B** and **E** below.
 
 ### Important Notes
 
@@ -182,7 +182,7 @@ When interacting with AI Chatbots and information assistants, maintaining conver
 Prior to turning on *Conversational State Management* feature for an AI Application (in Production), please review the following notes.
 
 - Conversational state management feature is only supported for Azure OpenAI Chat Completion API.
-- When memory management is enabled for an AI application, the AI Services Gateway will return a custom http header `x-thread-id` in the API response.  This custom header will contain a unique value (GUID) representing a Thread ID.  To initiate a new user session and have the AI Services Gateway manage the conversational context, client applications must send this value in the http request header `x-thread-id`, in subsequent API calls.  The Thread ID represents an end user's session with an AI Chatbot/Assistant application.  A client application can end a user session at any time by not sending this custom http header in the API request.
+- When memory management is enabled for an AI application, the AI Application Gateway will return a custom http header `x-thread-id` in the API response.  This custom header will contain a unique value (GUID) representing a Thread ID.  To initiate a new user session and have the AI Application Gateway manage the conversational context, client applications must send this value in the http request header `x-thread-id`, in subsequent API calls.  The Thread ID represents an end user's session with an AI Chatbot/Assistant application.  A client application can end a user session at any time by not sending this custom http header in the API request.
 - Use the *memorySettings.msgCount* attribute to specify the number of end user interactions (messages) to persist for each user session. Once the number of saved user interactions reaches this max. value (specified by this attribute), the memory manager component will discard the oldest message and only keep the most recent messages.  For each user session, the first user interaction (message) will always be retained by the memory manager.
 - Use the *memorySettings.entryExpiry* attribute to specify the expiry time for user sessions.  After a user's session expires, API requests containing the expired Thread ID in the http header will receive an exception stating the session has expired.
 - To quickly test the user session state management feature, you can use one of the provided standalone nodejs applications. See below.
@@ -192,7 +192,7 @@ Prior to turning on *Conversational State Management* feature for an AI Applicat
 
 **Invalidating Memory Entries**
 
-- When conversational state management feature is enabled at the global level (*API_GATEWAY_STATE_MGMT=true*), the AI Services Gateway periodically runs a memory invalidator process on a pre-configured Cron schedule.  If no schedule is configured, the memory invalidator process is run on a default schedule every 10 minutes.  This default schedule can be overridden by setting the environment variable *API_GATEWAY_MEMORY_INVAL_SCHEDULE* as described in Section **A** below.
+- When conversational state management feature is enabled at the global level (*API_GATEWAY_STATE_MGMT=true*), the AI Application Gateway periodically runs a memory invalidator process on a pre-configured Cron schedule.  If no schedule is configured, the memory invalidator process is run on a default schedule every 10 minutes.  This default schedule can be overridden by setting the environment variable *API_GATEWAY_MEMORY_INVAL_SCHEDULE* as described in Section **A** below.
 - For each AI Application, memory entries can be invalidated (deleted) by setting the configuration attribute *memorySettings.entryExpiry*. This attribute must be set to a value that conforms to PostgreSQL *Interval* data type. If this attribute value is empty or not set, memory entry invalidation will be skipped.  Refer to the documentation [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT) to configure memory entry invalidation interval to an appropriate value.
 
 **Persisting Prompts**
@@ -201,15 +201,15 @@ Prior to turning on *Conversational State Management* feature for an AI Applicat
 - API Request *prompts* will not be persisted under the following conditions a) All backend endpoints for a given AI Application are busy/throttled.  In this case, the Gateway will return HTTP status code 429. b) API Gateway encounters an internal error while handling a request.  In this case, the Gateway will return HTTP status code 500.
 - The Gateway returns a unique (GUID) id *x-request-id* in the HTTP response header for every request.  This header value along with the *user* value sent in the API request (body) can be used to query table *apigtwyprompts* and troubleshoot issues.  For instance, these values could be used to query a request that failed due to application of a content filter (HTTP status = 400).
 
-The remainder of this readme describes how to configure/enable specific features and deploy the AI Services API Gateway on Azure.
+The remainder of this readme describes how to configure/enable specific features and deploy the AI Application Gateway on Azure.
 
-### A. Configure and run the AI Services API Gateway on a standalone *Virtual Machine*
+### A. Configure and run the AI Application Gateway on a standalone *Virtual Machine*
 
-Before we can get started, you will need a Linux Virtual Machine to run the AI Services Gateway. If you haven't already, provision a Virtual Machine with a Linux flavor of your choice on Azure.
+Before we can get started, you will need a Linux Virtual Machine to run the AI Application Gateway. If you haven't already, provision a Virtual Machine with a Linux flavor of your choice on Azure.
 
 1. Clone or fork this GitHub repository into a directory on the VM.
 
-   SSH login to the Virtual Machine using a terminal window. If you intend to customize the Gateway, it's best to fork this repository into your GitHub account and then clone the repository to the VM.
+   SSH login to the Virtual Machine using a terminal window. If you intend to customize the Gateway components, it's best to fork this repository into your GitHub account and then clone the repository to the VM.
 
 2. Install Node.js.
 
@@ -251,7 +251,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
    apigtwyprompts | This table stores prompts and completions
    apigtwymemory | This table stores state for user sessions (threads)
 
-4. Update the **AI Services Gateway Configuration file**.
+4. Update the **AI Application Gateway Configuration file**.
 
    Edit the `./api-router-config.json` file.
 
@@ -280,17 +280,18 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
 
      Attribute Name | Description
      -------------- | -----------
-     useCache | AI Services Gateway will cache OpenAI Service completions (output) based on this value.  If caching is desired, set it to *true*.  Default is *false*.
-     searchType | AI Services Gateway will search and retrieve OpenAI Service completions based on a semantic text similarity algorithm.<br>This attribute is used to specify the similarity distance function/algorithm for vector search.  Supported values are a) CS (= *Cosine Similarity*).  This is the default. b) LS (= *Level2 or Euclidean distance*) c) IP (= *Inner Product*).
+     useCache | AI Application Gateway will cache OpenAI Service completions (output) based on this value.  If caching is desired, set it to *true*.  Default is *false*.
+     searchType | AI Application Gateway will search and retrieve OpenAI Service completions based on a semantic text similarity algorithm.<br>This attribute is used to specify the similarity distance function/algorithm for vector search.  Supported values are a) CS (= *Cosine Similarity*).  This is the default. b) LS (= *Level2 or Euclidean distance*) c) IP (= *Inner Product*).
      searchDistance | This attribute is used to specify the search similarity threshold.  For instance, if the search type = CS, this value should be set to a value between 0 and 1.
      searchContent.term | This value specifies the attribute in the request payload which should be vectorized and used for semantic search. For OpenAI completions API, this value should be *prompt*.  For chat completions API, this value should be set to *messages*.
      searchContent.includeRoles | This attribute value should only be set for OpenAI models that expose chat completions API. Value can be a comma separated list.  Permissible values are system, user and assistant.
      entryExpiry | This attribute is used to specify when cached entries (*completions*) should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
+
    - (Optional) To enable conversational state management for user chat sessions, specify values for attributes contained within **memorySettings** attribute.  Refer to the table below and set appropriate values.
 
      Attribute Name | Description
      -------------- | -----------
-     useMemory | When this value is set to *true*, AI Services Gateway will manage state for user sessions.  Default is *false*.
+     useMemory | When this value is set to *true*, AI Application Gateway will manage state for user sessions.  Default is *false*.
      msgCount | This attribute is used to specify the number of messages (*user - assistant* interactions) to store and send to the LLM.
      entryExpiry | This attribute is used to specify when the user sessions should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
 
@@ -306,29 +307,32 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
 
    Set the environment variables to the correct values and export them before proceeding to the next step. Refer to the table below for descriptions of the environment variables.
 
+   > **NOTE**:
+   > You can update and run the shell script `./set-api-gtwy-env.sh` to set and export the environment variables.
+
    Env Variable Name | Description | Required | Default Value
    ----------------- | ----------- | -------- | ------------- 
-   API_GATEWAY_KEY | AI Services Gateway private key (secret) required to reconfigure backend (Azure OpenAI) endpoints | Yes | Set this value to an alphanumeric string
-   API_GATEWAY_CONFIG_FILE | The gateway configuration file location | Yes | Set the full or relative path to the *AI Services Gateway Configuration file* from the project root directory.
+   API_GATEWAY_KEY | AI Application Gateway private key (secret) required to reconfigure backend (Azure OpenAI) endpoints | Yes | Set this value to an alphanumeric string
+   API_GATEWAY_CONFIG_FILE | The gateway configuration file location | Yes | Set the full or relative path to the *AI Application Gateway Configuration file* from the project root directory.
    API_GATEWAY_NAME | Gateway instance name | Yes | Set a value such as 'Instance-01' ...
    API_GATEWAY_PORT | Gateway server listen port | No | 8000
    API_GATEWAY_ENV | Gateway environment | Yes | Set a value such as 'dev', 'test', 'pre-prod', 'prod' ...
    API_GATEWAY_LOG_LEVEL | Gateway logging level | No | Default=info.  Possible values are debug, info, warn, error, fatal.
+   API_GATEWAY_AUTH | Use this env variable to secure AI Application gateway endpoints using Microsoft Entra ID | No | true
+   AZURE_TENANT_ID | When security is turned on for the gateway, this value is required. Specify the correct Azure **Tenant ID**. | No | None
+   API_GATEWAY_CLIENT_ID | When security is turned on for the gateway, this value is required. Specify the correct **Client ID** for the AI Application Gateway as defined in Application Registrations on Azure.  | No | None
    API_GATEWAY_METRICS_CINTERVAL | Backend API metrics collection and aggregation interval (in minutes) | Yes | Set it to a numeric value eg., 60 (1 hour)
    API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numeric value (<= 600)  
    APPLICATIONINSIGHTS_CONNECTION_STRING | Azure Monitor connection string | No | Assign the value of the Azure Application Insights resource *connection string* (from Azure Portal)
    API_GATEWAY_USE_CACHE | Global setting for enabling semantic caching feature. This setting applies to all AI Applications.| No | false
-   API_GATEWAY_CACHE_INVAL_SCHEDULE | Global setting for configuring the frequency of *Cache Entry Invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/45 * * * *"
+   API_GATEWAY_CACHE_INVAL_SCHEDULE | Global setting for configuring the frequency of *Cache Entry Invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/5 * * * *"
    API_GATEWAY_STATE_MGMT | Global setting for enabling conversational state management feature.  This setting applies to all AI Applications. | No | false
-   API_GATEWAY_MEMORY_INVAL_SCHEDULE | Global setting for configuring the frequency of *Memory Invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/10 * * * *"
+   API_GATEWAY_MEMORY_INVAL_SCHEDULE | Global setting for configuring the frequency of *Memory Invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/5 * * * *"
    API_GATEWAY_PERSIST_PROMPTS | Global setting for persisting prompts and completions in a database table (PostgreSQL) | No | false
    API_GATEWAY_VECTOR_AIAPP | Name of the AI application that exposes endpoints for data *embedding* model. This value is required if semantic caching feature is enabled | No | None
    API_GATEWAY_SRCH_ENGINE | The vector search engine used by semantic caching feature | No | Postgresql/pgvector
 
-   > **NOTE**:
-   > You can update and run the shell script `./set-api-gtwy-env.sh` to set and export the environment variables.
-
-6. Run the AI Services Gateway.
+6. Run the AI Application Gateway.
 
    Switch to the project root directory. Then issue the command shown in the snippet below.
 
@@ -336,7 +340,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
    # Use the node package manager (npm) to install the server dependencies
    $ npm install
    #
-   # Start the AI Services Gateway Server
+   # Start the AI Application Gateway Server
    $ npm start
    #
    ```
@@ -344,18 +348,20 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
    You will see the API Gateway server start up message in the terminal window as shown in the snippet below.
 
    ```bash
-   > openai-api-router@1.8.0 start
+   > openai-api-router@2.0.0 start
    > node ./src/server.js
 
-   13-Jun-2024 06:51:31 [info] [server.js] Starting initialization of Azure AI Services API Gateway ...
-   13-Jun-2024 06:51:31 [info] [server.js] Azure Application Insights 'Connection string' not found. No telemetry data will be sent to App Insights.
+   06-Aug-2024 01:47:01 [info] [server.js] Starting initialization of Azure AI Services API Gateway ...
+   {"name":"AzureAD: Bearer Strategy","hostname":"ubuntu-lts22-jump-box","pid":574750,"level":30,"msg":"In BearerStrategy constructor: strategy created","time":"2024-08-06T01:47:02.005Z","v":0}
+   06-Aug-2024 01:47:02 [info] [server.js] Azure Application Insights 'Connection string' not found. No telemetry data will be sent to App Insights.
+   06-Aug-2024 01:47:02 [info] [server.js] Completions will be cached
+   06-Aug-2024 01:47:02 [info] [server.js] Prompts will be persisted
+   06-Aug-2024 01:47:02 [info] [server.js] Conversational state will be managed
+   06-Aug-2024 01:47:02 [info] [bootstrap-auth.js] initAuth(): Protected endpoint: [/api/v1/dev/apirouter]
+   06-Aug-2024 01:47:02 [info] [bootstrap-auth.js] initAuth(): Initialized passport for authenticating users/apps using Azure Entra ID (OP)
    Server(): Azure AI Services API Gateway server started successfully.
    Gateway uri: http://localhost:8080/api/v1/dev
-   13-Jun-2024 06:51:31 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
-   13-Jun-2024 06:51:31 [info] [server.js] Completions will be cached
-   13-Jun-2024 06:51:31 [info] [server.js] Prompts will be persisted
-   13-Jun-2024 06:51:31 [info] [server.js] Conversational state will be managed
-   13-Jun-2024 06:51:31 [info] [server.js] AI Application backend (Azure AI Service) endpoints:
+   06-Aug-2024 01:47:02 [info] [server.js] AI Application backend (Azure AI Service) endpoints:
    Application ID: language-app; Type: azure_language
      Priority: 0   Uri: https://gr-dev-lang.cognitiveservices.azure.com/language/:analyze-text?api-version=2022-05-01
    Application ID: translate-app; Type: azure_translator
@@ -378,16 +384,17 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
    Application ID: aidocusearchapp; Type: azure_oai; useCache=true; useMemory=false
      Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15
      Priority: 1   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
-   13-Jun-2024 06:51:31 [info] [server.js] Successfully loaded backend API endpoints for AI applications
-   13-Jun-2024 06:51:31 [info] [server.js] Cache entry invalidate run schedule (Cron) - */5 * * * *
-   13-Jun-2024 06:51:31 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */2 * * * *
+   06-Aug-2024 01:47:02 [info] [server.js] Successfully loaded backend API endpoints for AI applications
+   06-Aug-2024 01:47:02 [info] [server.js] Cache entry invalidate run schedule (Cron) - */5 * * * *
+   06-Aug-2024 01:47:02 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */5 * * * *
+   06-Aug-2024 01:47:02 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
    ```
 
    Leave the terminal window open.
 
-7. Retrieve the AI Services API Gateway Instance info (/instanceinfo)
+7. Retrieve the AI Application Gateway Instance info (/instanceinfo)
 
-   Use a web browser to access the AI Services API Gateway *info* endpoint - `/instanceinfo`. Specify correct values for the gateway listen port and environment. See below.
+   Use a web browser to access the AI Application Gateway *info* endpoint - `/instanceinfo`. Specify correct values for the gateway listen port and environment. See below.
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/instanceinfo
 
@@ -396,7 +403,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
    ```json
    {
      "serverName": "Gateway-Instance-01",
-     "serverVersion": "1.8.0",
+     "serverVersion": "2.0.0",
      "serverConfig": {
         "host": "localhost",
         "listenPort": 8000,
@@ -414,7 +421,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
      },
      "memorySettings": {
         "memoryEnabled": "true",
-        "memoryInvalidationSchedule": "*/10 * * * *"
+        "memoryInvalidationSchedule": "*/5 * * * *"
      },
      "aiApplications": [
         {
@@ -545,7 +552,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
    }
    ```
 
-8. Access the AI Services Gateway load balancer/router (/lb) endpoint
+8. Access the AI Application Gateway load balancer/router (/lb) endpoint
 
    Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* endpoint - `/lb`.  Remember to substitute the correct value for *AI_APPLICATION_ID* in the URL below.  The AI Application ID value should be one of the unique *appId* values specified in Gateway configuration file `./api-router-config.json`.
 
@@ -555,7 +562,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
 
 **IMPORTANT**:
 
-- For invoking the model deployment endpoints exposed by AI Services Gateway from a ***LangChain*** LLM application (/framework), two environment variables must be set. See below.
+- For invoking the model deployment endpoints exposed by AI Application Gateway from a ***LangChain*** LLM application (/framework), two environment variables must be set. See below.
   - _AZURE_OPENAI_BASE_PATH_: Set the value of this variable to the Gateway load balancer / router endpoint URI (/lb). This URI can also be specified as part of the OpenAI configuration object (in code).
   - _AZURE_OPENAI_API_DEPLOYMENT_NAME_: Set the value of this variable to the *AI Application* name/ID configured in the Gateway. This value can also be specified as part of the OpenAI configuration object (in code).
 
@@ -565,11 +572,11 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI S
   - Update and use the provided shell script `./tests/test-oai-api-gateway.sh` with sample data.  For an AI Application, observe how the Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
   - For simulating continuous API traffic and performing comprehensive load testing (capacity planning), use *Azure Load Testing* PaaS service.
 
-### B. Containerize the AI Services API Gateway and deploy it on the Virtual Machine
+### B. Containerize the AI Application Gateway and deploy it on the Virtual Machine
 
 Before getting started with this section, make sure you have installed a container runtime such as `docker` or `containerd` on the Linux VM. For installing docker engine, refer to the docs [here](https://docs.docker.com/engine/install/).
 
-1. Build the AI Services Gateway container image.
+1. Build the AI Application Gateway container image.
 
    Review the container image build script `./Dockerfile`.  Make any required updates to the environment variables.  The environment variables can also be passed to the docker engine at build time.  To do this, you can modify the provided container build script `./scripts/build-container.sh`.  After making the updates to this build shell script, run the script to build the Gateway container image.  See command snippet below.
 
@@ -582,12 +589,12 @@ Before getting started with this section, make sure you have installed a contain
    #
    ```
 
-2. Run the containerized AI Services Gateway server instance.
+2. Run the containerized AI Application Gateway server instance.
 
    Run the Gateway container instance using the provided `./scripts/start-container.sh` shell script.  Refer to the command snippet below.
 
    ```bash
-   # Run the AI Services Gateway container instance
+   # Run the AI Application Gateway container instance
    $ . ./scripts/start-container.sh
    #
    # Leave this terminal window open
@@ -606,7 +613,7 @@ Before getting started with this section, make sure you have installed a contain
 
 ### C. Analyze Azure OpenAI endpoint(s) traffic metrics
 
-1. Access the AI Services Gateway metrics endpoint and analyze OpenAI API metrics.
+1. Access the AI Application Gateway metrics endpoint and analyze OpenAI API metrics.
 
    Use a web browser and access the Gateway *metrics* endpoint to retrieve the backend OpenAI API metrics information.  The metrics endpoint URL - `/metrics`, is listed below.
 
@@ -860,7 +867,7 @@ Before getting started with this section, make sure you have installed a contain
    throughput.requestsPerMinute | Number of OpenAI API calls handled by this endpoint per minute
    latency.avgResponseTimeMsec | Average response time of OpenAI backend API call
 
-2. Access AI Services Gateway and OpenAI API metrics using *Azure Application Insights*
+2. Access AI Application Gateway and OpenAI API metrics using *Azure Application Insights*
 
    Login to Azure Portal and go to the **Overview** blade/tab of the Application Insights resource.  Here you can get a quick summary view of the Gateway server requests, availability, server response time and failed requests in the last 30 minutes, 1 hour .. 30 days. See screenshot below.
 
@@ -878,7 +885,7 @@ Before getting started with this section, make sure you have installed a contain
 
    ![alt tag](./images/api-gateway-telemetry-05.png)
 
-### D. Reload the AI Services API Gateway backend endpoints (Configuration)
+### D. Reload the AI Application Gateway backend endpoints (Configuration)
 
 The Gateway endpoint configuration can be updated even when the server is running. Follow the steps below.
 
@@ -898,7 +905,7 @@ The Gateway endpoint configuration can be updated even when the server is runnin
 - A side effect of reconfiguring the Gateway endpoints is that all current and historical metric values collected and cached by the server will be reset. Hence, if you want to retain metrics history, you should save the metrics (/metrics) endpoint output prior to reloading the updated OpenAI endpoints from the configuration file.
 - It is advised to reconfigure the backend endpoints during a maintenance time window (down time) when there is minimal to no API traffic.  Reconfiguring the backend endpoints when the gateway is actively serving API requests may result in undefined behavior.
 
-### E. Deploy the AI Services API Gateway on *Azure Kubernetes Service*
+### E. Deploy the AI Application Gateway on *Azure Kubernetes Service*
 
 Before proceeding with this section, make sure you have installed the following services on Azure.
 - An *Azure Container Registry* (ACR) instance
@@ -914,7 +921,7 @@ Additionally, the following resources should be deployed/configured.
 - A Kubernetes ingress controller (**Ngnix**) should be deployed and running on the AKS / Kubernetes cluster.
 - The AKS cluster should be attached to the ACR instance.  The cluster's managed identity should have *ACR Pull* permissions so cluster nodes can pull container images from the attached ACR.
 
-1. Push the AI Services Gateway container image into ACR.
+1. Push the AI Application Gateway container image into ACR.
 
    Refer the script snippet below to push the Gateway container image into ACR.  Remember to substitute ACR name with the name of your container registry.
 
@@ -928,7 +935,7 @@ Additionally, the following resources should be deployed/configured.
    # List container images on your VM
    $ docker images
    #
-   # Push the AI Services Gateway container image to ACR repo.
+   # Push the AI Application Gateway container image to ACR repo.
    $ docker push [acr-name].azurecr.io/az-ais-api-gateway:v1.9.0.062824
    #
    ```
@@ -958,14 +965,14 @@ Additionally, the following resources should be deployed/configured.
 
 3. Review and update the *Helm* deployment configuration file.
 
-   The Helm chart directory for the AI Services Gateway is located in `./aoai-api-gtwy-chart`. In this directory, go thru the variables defined in `values.yaml` file and update them as needed. 
+   The Helm chart directory for the AI Application Gateway is located in `./aoai-api-gtwy-chart`. In this directory, go thru the variables defined in `values.yaml` file and update them as needed. 
 
    Review/Update the following variable values.  See table below.
 
    Variable Name | Description | Default Value
    ----------------- | ----------- | ------------- 
    replicaCount | Number of Pod instances (gateway instances) | 1
-   image.repository | ACR location of the AI Services Gateway container image. Specify the correct values for `acr-name` and `api-gateway-repo-name`. | [acr-name].azurecr.io/[api-gateway-repo-name]
+   image.repository | ACR location of the AI Application Gateway container image. Specify the correct values for `acr-name` and `api-gateway-repo-name`. | [acr-name].azurecr.io/[api-gateway-repo-name]
    image.tag | Gateway container image tag. Specify correct value for the image tag. | v1.xxxxxx
    apigateway.name | The deployment name of Gateway server instance. | aoai-api-gateway-v1.5
    apigateway.instanceName | The name of Gateway server instance.  Can be set to any string. Use the model version as prefix or suffix to easily identify which models are served by specific gateway server instances. | aoai-api-gateway-gpt35
@@ -988,11 +995,11 @@ Additionally, the following resources should be deployed/configured.
    database.password | PostgreSQL database user password | None
    database.name | PostgreSQL database name | None
 
-4. Assign required compute resources to AI Services Gateway pods.
+4. Assign required compute resources to AI Application Gateway pods.
 
    Review/Update the Pod compute resources as needed in the `values.yaml` file.
 
-5. Deploy the AI Services Gateway on *Azure Kubernetes Service*.
+5. Deploy the AI Application Gateway on *Azure Kubernetes Service*.
 
    Refer to the command snippet below to deploy all Kubernetes resources for the Gateway.
 
@@ -1009,7 +1016,7 @@ Additionally, the following resources should be deployed/configured.
    First, confirm the Gateway Pod(s) is running. Refer to the command snippet below.
 
    ```bash
-   # Make sure the AI Services Gateway pod(s) are up and running. Output is shown below the command.
+   # Make sure the AI Application Gateway pod(s) are up and running. Output is shown below the command.
    #
    $ kubectl get pods -n apigateway
    NAME                                  READY   STATUS    RESTARTS   AGE
@@ -1150,4 +1157,4 @@ Additionally, the following resources should be deployed/configured.
 
    **Congratulations!**
 
-   You have reached the end of this how-to for deploying and scaling an *AI Services API Gateway* on Azure. Please feel free to customize and use the artifacts posted in this repository to efficiently distribute AI Application traffic among multiple Azure OpenAI model deployments and elastically scale the Gateway solution.
+   You have reached the end of this how-to for deploying and scaling an *AI Application Gateway* on Azure. Please feel free to customize and use the artifacts posted in this repository to efficiently distribute AI Application traffic among multiple Azure OpenAI model deployments and elastically scale the Gateway solution.

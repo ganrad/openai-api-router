@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [v2.0.0](https://github.com/ganrad/openai-api-router/compare/v1.9.0...v2.0.0)
+### Functionality changes
+* (Enhancement) The REST API's exposed by AI Application Gateway solution can now be secured using Microsoft Entra ID.  This feature is enabled by default.
+* Restructured the AI Gateway Server code and fixed a few minor bugs.
+* (Enhancement) Implemented security (user authentication) feature in the AI Chatbot application (SPA).  This feature is turned on by default. Use this feature to secure the SPA and authenticate users against Microsoft Entra ID.
+* Fixed minor bugs in AI Chatbot Application (SPA).
+
+### Documentation changes
+* Renamed this repo. to *AI Application Gateway*.
+* Updated functional and operational architecture diagrams.
+* Updated documentation for both AI Application Gateway and AI Chatbot Application (Frontend/SPA).  Included descriptions for new environment variables introduced in this release.
+
 ## [v1.9.0](https://github.com/ganrad/openai-api-router/compare/v1.8.0...v1.9.0)
 ### Functionality changes
 * (Bugfix) When response is served from cache, request id (x-request-id) was not being set (returned) in http response header.

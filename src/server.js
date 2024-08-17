@@ -18,6 +18,7 @@
  * ID05222024: ganrad : Enabled CORS
  * ID06092024: ganrad : Refactored code
  * ID06282024: ganrad : Check db connection status every 60 minutes and return result when '/healthz' endpoint is invoked. 
+ * ID07292024: ganrad : Gateway REST APIs can be secured using Microsoft Entra ID.  This is an optional feature.
 */
 
 // ID04272024.sn
@@ -43,12 +44,14 @@ const CacheConfig = require("./utilities/cache-config");
 const SchedulerFactory = require("./utilities/scheduler-factory"); // ID05062024.n
 const sFactory = new SchedulerFactory(); // ID05062024.n
 
+const initAuth = require("./auth/bootstrap-auth"); // ID07292024.n
+
 const app = express();
 var bodyParser = require('body-parser');
 // var morgan = require('morgan');
 
-// Server version v1.9.0 ~ 06282024.n
-const srvVersion = "1.9.0";
+// Server version v2.0.0 ~ 07292024.n
+const srvVersion = "2.0.0";
 // Server start date
 const srvStartDate = new Date().toLocaleString();
 
@@ -269,9 +272,26 @@ app.use(cors()); // ID05222024.n
 // app.use(morgan(log_mode ? log_mode : 'combined'));
 app.use(bodyParser.json());
 
+// ID07292024.sn
+// Generate request id prior to invoking router middleware (endpoints)
+app.use(endpoint + "/apirouter", (req, res, next) => {
+  logger(req,res);
+  next();
+});
+
+function initializeAuth() {
+  let secureApis = process.env.API_GATEWAY_AUTH;
+  if ( secureApis === "true" )
+    initAuth(app,endpoint + "/apirouter");
+  else
+    wlogger.log({level: "warn", message: "[%s] API Gateway endpoints are not secured by Microsoft Entra ID!", splat: [scriptName]});
+}
+initializeAuth(); // Initialize OAuth flow
+// ID07292024.en
+
 // GET - Instance info. endpoint
 app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
-  logger(req,res);
+  // logger(req,res); ID07292024.o
 
   let appcons = [];
   context.applications.forEach((aiapp) => {
@@ -353,7 +373,7 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
 
 // Health endpoint
 app.get(endpoint + "/apirouter/healthz", (req, res) => {
-  logger(req,res);
+  // logger(req,res); ID07292024.o
 
   let resp_obj = {
     endpointUri: req.url,
@@ -371,7 +391,7 @@ app.get(endpoint + "/apirouter/healthz", (req, res) => {
 
 // API Gateway/Server reconfiguration endpoint
 app.use(endpoint + "/apirouter/reconfig/:pkey", function(req, res, next) {
-  logger(req,res);
+  // logger(req,res); ID07292024.o
 
   let resp_obj;
   if ( req.params.pkey !== pkey ) { // Check if key matches gateway secret key
@@ -399,7 +419,7 @@ app.use(endpoint + "/apirouter/reconfig/:pkey", function(req, res, next) {
 // API Gateway 'root' endpoint
 app.use(endpoint + "/apirouter", function(req, res, next) {
   // Add logger
-  logger(req,res);
+  // logger(req,res); ID07292024.o
 
   // Add cache config
   req.cacheconfig = cacheConfig;

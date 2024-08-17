@@ -1,6 +1,6 @@
 # AI Chat Application (Single Page Application/Frontend)
 
-This application provides a thin client (browser) based chat interface for the Azure AI Services API Gateway. It's meant to be a starting point, and you're welcome to use it as is or customize and integrate the user interface components into your own web applications.
+This application provides a thin client (browser) based chat interface for the Azure AI Application Gateway. It's meant to be a starting point, and you're welcome to use it as is or customize and integrate the user interface components into your own web applications.
 
 The sections below detail the following steps -
 
@@ -16,7 +16,7 @@ Option #3 is highly recommended for production deployments.
 
    The application server is a light weight Nodejs **ExpressJS** application.  The source code for the application server is contained within `server.js`. The HTML files are located under sub-directory `public` and javascript files are located under `jscripts`.
 
-   The Javascript framework used to implement and render user interface components (HTML) is [Bootstrap](https://getbootstrap.com/docs/5.1/getting-started/introduction/) 
+   The Javascript framework used to implement and render user interface components (HTML) is [Bootstrap](https://getbootstrap.com/docs/5.1/getting-started/introduction/).
 
 2. Configure environment variables.
 
@@ -24,14 +24,18 @@ Option #3 is highly recommended for production deployments.
 
    Variable Name | Description
    ------------- | -----------
-   AIS_API_GATEWAY_URI | Set this environment variable to point to the Azure AI Services API Gateway load balancer URI. Example - `http://{host:port}/api/v1/{env}/apirouter/lb/`.
+   AIS_API_GATEWAY_URI | Set this environment variable to point to the Azure AI Application (API) Gateway load balancer URI. Example - `http://{host:port}/api/v1/{env}/apirouter/lb/`.
    FRONTEND_SRV_CONFIG_FILE | Set this env variable to the path/location of AI Chat Application configuration file.
    FRONTEND_SRV_HOST | (Optional) Use this env variable to specify hostname/IP address of application server.  Defaults to `localhost`.
    FRONTEND_SRV_PORT | (Optional) Set this env variable to the application server listen port.  Defaults to 8000.
+   API_GATEWAY_AUTH | Set this environment variable value to *true* to secure the AI Chatbot (SPA) application.  Default value is true.
+   AZURE_TENANT_ID | Set this variable to the Azure Tenant ID. This environment variable must be set when security is enabled for the Chatbot application.
+   FRONTEND_CLIENT_ID | This is the client/application ID of AI Chatbot Application registered in MSFT Entra. This env variable must be set when security is enabled.
+   API_GATEWAY_APP_ID | This is the Application ID of the AI Application Gateway registered in MSFT Entra. This env variable must be set when security is enabled.
 
-3. Configure AI chat applications.
+3. Configure AI Applications.
 
-   The AI Chat Application can be used to interact with one or more AI Applications which have been configured with the AI Services Gateway (a.k.a backend).
+   The AI Chat Application can be used to interact with one or more AI Applications which have been configured with the AI Application Gateway (a.k.a backend).
 
    Update default parameter values in the provided sample application configuration file - `app-config.json`. Configure AI Applications as per your requirements.
 
@@ -41,8 +45,8 @@ Option #3 is highly recommended for production deployments.
 
    Parameter Name | Required (Yes/No) | Description | 
    -------------- | ----------------- | ----------- |
-   ai_app_name | Yes | Set this value to the name of an AI Application.  This name should map and correspond to one of the AI Applications (App ID's) configured in the backend!
-   user | No | This parameter is optional and can be used to specify the user principal / identity invoking the Azure OpenAI API call thru the AI Services gateway.
+   ai_app_name | Yes | Set this value to the name of an AI Application.  This name should match and correspond to one of the AI Applications (App ID's) configured in the backend!
+   user | No | This parameter is optional and can be used to specify the user principal / identity invoking the Azure OpenAI API call thru the AI Application Gateway.
    sysPrompt | No | This optional parameter can be used to set the default system prompt.
    search_params.ai_search_app | No | This is a required parameter for Azure OpenAI OYD (On Your Data) API calls.  Specify the name of the AI Search application.  This name should map and correspond to one of the AI Applications (App ID's) configured in the backend.
 
@@ -56,7 +60,7 @@ Option #3 is highly recommended for production deployments.
    # Use the node package manager (npm) to install the server dependencies
    $ npm install
    #
-   # Start the AI Services Gateway Server
+   # Start the AI Chatbot Application (SPA)
    $ npm start
    #
    ```
@@ -64,12 +68,13 @@ Option #3 is highly recommended for production deployments.
    You will see the application server startup message as shown in the snippet below.
 
    ```bash
-   > ais-gateway-frontend@1.0.0 start
+   > ai-chatbot-frontend@1.0.0 start
    > node ./src/server.js
 
-   [2024/07/01 18:47:36.161] [LOG] Server(): Azure AI Services Gateway URI: [http://localhost:8000/api/v1/dev/apirouter/lb/]
+   [2024/07/01 18:47:36.161] [LOG] Server(): Azure AI Application Gateway URI: [http://localhost:8000/api/v1/dev/apirouter/lb/]
    [2024/07/01 18:47:36.162] [LOG] Server(): Server configuration file: [./app-config.json]
-   [2024/07/01 18:47:36.166] [LOG] Server(): AI Services API Gateway frontend server is listening on localhost:8000.
+   [2024/07/01 18:47:36.163] [LOG] Server(): Azure AI Application Gateway API security: [true]
+   [2024/07/01 18:47:36.166] [LOG] Server(): AI Chatbot Application server is listening on localhost:8000.
    ```
 
    Leave this terminal window open.
@@ -81,6 +86,8 @@ Option #3 is highly recommended for production deployments.
    http://locahost:8000/ais-chatbot/ui/index.html
 
    ![alt tag](./images/ai-chat-application-01.PNG)
+
+   If security is turned on for the AI Chatbot Application, click on the **Sign-in** link at the top and authenticate using Microsoft Entra ID. Refer to the screenshot above.
 
    Use the **AI Application** dropdown field to select an AI Application.  This will populate the default parameter values for the selected AI Application as per the values specified in the application configuration file.  You can update the system prompt as well as model and search parameters displayed in the right panel.  Remember to save the model and search parameter values.  Input the *Prompt* in the field located at the bottom of the middle column.  Hit **Send**.  You should be able to view the results in the chat panel right above the Prompt field.  See screenshot below.
 
@@ -99,11 +106,11 @@ Option #3 is highly recommended for production deployments.
    ![alt tag](./images/ai-chat-application-06.PNG) | ![alt tag](./images/ai-chat-application-07.PNG)
    
 
-   Click on the **Messages** tab to view the raw API messages sent to and received from the AI Services API Gateway. Here you can also view call completion times for each user interaction. See screenshot below.
+   Click on the **Messages** tab to view the raw API messages sent to and received from the AI Application Gateway. Here you can also view call completion times for each user interaction. See screenshot below.
  
    ![alt tag](./images/ai-chat-application-04.PNG)
 
-   Lastly, you can review any errors returned by the AI Services Gateway in the **Exceptions** tab.  See screenshot below.
+   Lastly, you can review any errors returned by the AI Application Gateway in the **Exceptions** tab.  See screenshot below.
 
    ![alt tag](./images/ai-chat-application-05.PNG)
 
@@ -157,7 +164,7 @@ Option #3 is highly recommended for production deployments.
    # List container images on your VM
    $ docker images
    #
-   # Push the AI Services Gateway container image to ACR repo.
+   # Push the AI Chatbot Application container image to ACR repo.
    $ docker push [acr-name].azurecr.io/ais-chat-app:v1.0.0.062824
    #
    ```
@@ -192,7 +199,7 @@ Option #3 is highly recommended for production deployments.
    image.tag | Chat Application container image tag. Specify correct value for the image tag. | v1.xxxxxx
    chatapp.host | AI Chat Application container hostname/IP Address | 0.0.0.0
    chatapp.configFile | Path to AI Chat Application configuration file within the container | /home/node/app/files/app-config.json
-   chatapp.aisGatewayEndpoint | Load balancer URI/Endpoint of the Azure AI Services API Gateway | None
+   chatapp.aisGatewayEndpoint | Load balancer URI/Endpoint of the Azure AI Application Gateway | None
    container.port | AI Chat Application container listen port | 8000
 
 4. Assign required compute resources to AI Chat Application pods.

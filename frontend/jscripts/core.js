@@ -4,35 +4,68 @@ const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // De
 let threadId = null;
 let aiAppObject = null;
 let promptObject = null;
-let lbEndpoint;
+let isAuthEnabled = false;
+let envContext; // Load the context on initialization!
 let aiAppConfig = new Map();
 let hdrs = new Map();
 const serverUriPrefix = "/ais-chatbot/ui/";
 
-function readAiAppConfig() {
-  fetch(serverUriPrefix.concat("appconfig"))
-    .then((response) => response.text())
-    .then((text) => {
-      const context = JSON.parse(text);
-		    
-      let selectElem = document.getElementById('appdropdown');
-      let idx = 1;
-      for (const app of context.ai_apps) {
-        console.log(`readAiAppConfig(): AI Application: ${app.ai_app_name}`);
-        aiAppConfig.set(app.ai_app_name, app);
+function loadAuthScript() {
+  let scriptEle = document.createElement('script');
+  scriptEle.setAttribute("src","./auth.js");
+  scriptEle.setAttribute("type","text/javascript");
+  scriptEle.setAttribute("async", false);
 
-        let opt = document.createElement('option');
-        opt.value = idx;
-        opt.innerHTML = app.ai_app_name;
-        selectElem.appendChild(opt);
-        idx++;
-      };
+  document.body.appendChild(scriptEle);
 
-      lbEndpoint = context.aisGtwyEndpoint; // Set the Azure AI Services Gateway load balancer endpoint
-    })
-    .catch((error) => {
-      console.log("readAiAppConfig(): Encountered exception loading app config file", error);
-    });
+  scriptEle.addEventListener("load", () => {
+    console.log('loadAuthScript(): auth.js has been loaded.');
+  });
+
+  scriptEle.addEventListener("error", () => {
+    console.error('loadAuthScript(): Error loading auth.js.');
+  });
+}
+
+async function readAiAppConfig() {
+  try {
+    // Wait for the fetch to complete
+    const response = await fetch(serverUriPrefix.concat("appconfig"));
+
+    // Check if the response is ok (status code 200-299)
+    if (!response.ok) {
+      throw new Error(`readAiAppConfig(): Encountered HTTP error! Status: ${response.status}`);
+    }
+
+    // Wait for the response to be parsed as JSON
+    const context = await response.json();
+
+    let selectElem = document.getElementById('appdropdown');
+    let idx = 1;
+    for (const app of context.ai_apps) {
+      console.log(`readAiAppConfig(): AI Application: ${app.ai_app_name}`);
+      aiAppConfig.set(app.ai_app_name, app);
+
+      let opt = document.createElement('option');
+      opt.value = idx;
+      opt.innerHTML = app.ai_app_name;
+      selectElem.appendChild(opt);
+      idx++;
+    };
+
+    envContext = context;
+    console.log(`readAiAppConfig(): AI APP Gateway URI: ${envContext.aisGtwyEndpoint}`);
+    isAuthEnabled = context.aisGtwyAuth; // Is security enabled on AI App Gateway?
+    console.log(`readAiAppConfig(): Backend security: ${isAuthEnabled}`);
+
+    if ( isAuthEnabled )
+      loadAuthScript();
+    else // hide 'sign-in' link
+      document.getElementById("auth-anchor").style.display="none";
+  } catch (error) {
+    // Handle any errors that occurred during the fetch
+    console.error('readAiAppConfig(): Error fetching data:', error);
+  };
 
   let sysPromptElem = document.getElementById("sysPromptField");
   sysPromptElem.innerHTML = defaultPrompt;
@@ -52,7 +85,7 @@ function setInferenceTarget() {
 
   // Set the model config form fields
   document.getElementById("descField").innerHTML = aiAppObject.description;
-  document.getElementById("uid").value = aiAppObject.user;
+  document.getElementById("uid").value = isAuthEnabled ? username : aiAppObject.user;
   document.getElementById("stream").checked = aiAppObject.model_params.stream;
   document.getElementById("stopSequence").value = aiAppObject.model_params.stop;
   document.getElementById("temperature").value = aiAppObject.model_params.temperature;
@@ -70,7 +103,7 @@ function setInferenceTarget() {
   promptObject = {
     messages: [],
     max_tokens: aiAppObject.model_params.max_tokens,
-    user: aiAppObject.user,
+    user: isAuthEnabled ? username : aiAppObject.user,
     stream: aiAppObject.model_params.stream,
     temperature: aiAppObject.model_params.temperature,
     top_p: aiAppObject.model_params.top_p,
@@ -99,20 +132,20 @@ function setInferenceTarget() {
       type: "azure_search",
       parameters: {
         endpoint: srchParams.endpoint,
-	index_name: srchParams.index_name,
-	authentication: {
-	  type: "api_key",
-	  key: srchParams.ai_search_app // Specify the API Key for chat completion + OYD calls
-	},
-	embedding_dependency: {
-	  deployment_name: srchParams.embedding_model,
-	  type: "deployment_name"
-	},
-	query_type: srchParams.query_type,
-	semantic_configuration: srchParams.semantic_config,
-	in_scope: srchParams.in_scope,
-	strictness: srchParams.strictness,
-	top_n_documents: srchParams.top_n_docs
+        index_name: srchParams.index_name,
+        authentication: {
+          type: "api_key",
+          key: srchParams.ai_search_app // Specify the API Key for chat completion + OYD calls
+        },
+        embedding_dependency: {
+          deployment_name: srchParams.embedding_model,
+          type: "deployment_name"
+        },
+        query_type: srchParams.query_type,
+        semantic_configuration: srchParams.semantic_config,
+        in_scope: srchParams.in_scope,
+        strictness: srchParams.strictness,
+        top_n_documents: srchParams.top_n_docs
       }
     };
 
@@ -164,26 +197,27 @@ function saveContent(configName) {
   };
 }
 
-function addJsonToAccordian(time, box, cls, accordian, req, res) {
+function addJsonToAccordian(time, box, cls, accordian, req, res, reqId) {
   const element = document.createElement('div');
   element.className = "accordian-item";
   element.innerHTML = '<h2 class="accordion-header" id="headingOne"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">' +
-	  new Date().toLocaleString('en-US', { timeZoneName: 'short' }) + ' (' + (time / 1000) + ' seconds)' +
-	  '</button></h2><div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#msgAccordian"><div class="accordion-body">' +
-	  '<p><b>Request:</b></p>' + '<pre class="' + cls + '">' + prettyPrintJson.toHtml(req) + '</pre>' +
-	  '<p><b>Response:</b></p>' + '<pre class="' + cls + '">' + prettyPrintJson.toHtml(res) + '</pre>' +
-	  '</div></div>';
+          new Date().toLocaleString('en-US', { timeZoneName: 'short' }) + ' (' + (time / 1000) + ' seconds)' +
+          '</button></h2><div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#msgAccordian"><div class="accordion-body">' +
+          '<p><b>Request: </b>(ID = ' + reqId + ')</p>' +
+          '<pre class="' + cls + '">' + prettyPrintJson.toHtml(req) + '</pre>' +
+          '<p><b>Response:</b></p>' + '<pre class="' + cls + '">' + prettyPrintJson.toHtml(res) + '</pre>' +
+          '</div></div>';
 
   if (!accordian) {
-	  box.innerHTML = '<div class="accordion" id="msgAccordian"></div>';
-	  accordian = document.getElementById('msgAccordian');
+          box.innerHTML = '<div class="accordion" id="msgAccordian"></div>';
+          accordian = document.getElementById('msgAccordian');
   };
 
   // accordian.appendChild(element);
   if (accordian.hasChildNodes())
-	  accordian.insertBefore(element, accordian.firstChild);
+          accordian.insertBefore(element, accordian.firstChild);
   else
-	  accordian.appendChild(element);
+          accordian.appendChild(element);
   // box.scrollTop = box.scrollHeight;
 }
 
@@ -193,9 +227,9 @@ function addJsonToBox(box, cls, msg) {
   element.innerHTML = prettyPrintJson.toHtml(msg);
 
   if ( box.hasChildNodes() )
-	  box.insertBefore(element,box.firstChild);
+          box.insertBefore(element,box.firstChild);
   else
-	  box.appendChild(element);
+          box.appendChild(element);
   // box.scrollTop = box.scrollHeight;
 }
 
@@ -219,15 +253,20 @@ function generateLinkWithOffcanvas(title, fp, body) {
   return (retHtml);
 }
 
+function extractAndEncloseImageURLs(text) {
+  const urlPattern = /(https?:\/\/[^\s]+?\.(?:jpg|jpeg|png|gif))/g;
+  return text.replace(urlPattern, '<img src="$1" alt="Image">');
+}
+
 function insertCitationLinks(cits) {
   let refList = '<ul class="list-group">';
   let docNo = 1;
 
   for (const citation of cits) {
     refList += '<li class="list-group-item"><b>' +
-	    docNo + '.</b> ' +
-	    generateLinkWithOffcanvas(citation.title, citation.filepath, citation.content) +
-	    '</li>';
+            docNo + '.</b> ' +
+            generateLinkWithOffcanvas(citation.title, citation.filepath, extractAndEncloseImageURLs(citation.content)) +
+            '</li>';
     docNo++;
   };
   refList += '</ul>';
@@ -252,9 +291,9 @@ function addMessageToChatBox(box, cls, msg, ctx) {
     for (const citation of ctx.citations) {
       content = content.replaceAll("[doc" + docNo + "]", "<sup>[" + docNo + "]</sup>");
       refList += '<li class="list-group-item"><b>' +
-	      docNo + '.</b> ' +
-	      generateLinkWithOffcanvas(citation.title, citation.filepath, citation.content) +
-	      '</li>';
+              docNo + '.</b> ' +
+              generateLinkWithOffcanvas(citation.title, citation.filepath, extractAndEncloseImageURLs(citation.content)) +
+              '</li>';
       // console.log(`Title: ${citation.title}; Filepath: ${citation.filepath}`);
       docNo++;
     };
@@ -277,10 +316,10 @@ function isMessageComplete(message) {
   let braces = 0;
   for (var i=0, len = message.length; i<len; ++i) {
     switch(message[i]) {
-      case '{' : 
+      case '{' :
       ++braces;
       break;
-      case '}' : 
+      case '}' :
       --braces;
       break;
     }
@@ -310,17 +349,17 @@ async function streamCompletion(uri,appId,hdrs,box) {
     if (status === 200) {
       // console.log("step-1");
       if (threadId === null) {
-	threadId = response.headers.get("x-thread-id");
-	const values = {
-		application_id: appId,
-		user: aiAppObject.user,
-		thread_id: threadId,
-		start_time: new Date().toLocaleString('en-US', { timeZoneName: 'short' })
-	};
-	addJsonToBox(
-		document.getElementById('infoBox'),
-		'json-container',
-		values);
+        threadId = response.headers.get("x-thread-id");
+        const values = {
+                application_id: appId,
+                user: aiAppObject.user,
+                thread_id: threadId,
+                start_time: new Date().toLocaleString('en-US', { timeZoneName: 'short' })
+        };
+        addJsonToBox(
+                document.getElementById('infoBox'),
+                'json-container',
+                values);
       };
 
       const divelem = document.createElement('div');
@@ -340,57 +379,57 @@ async function streamCompletion(uri,appId,hdrs,box) {
       let citLen = 0;
       while (true) {
       // eslint-disable-next-line no-await-in-loop
-	const { value, done } = await reader.read();
-	if (done) break;
-	if ( !ttToken ) ttToken = Date.now();
+        const { value, done } = await reader.read();
+        if (done) break;
+        if ( !ttToken ) ttToken = Date.now();
 
-	const arr = value.split('\n');
-	arr.forEach((data) => {
-	  // console.log(`Line: ${data}`);
-	  if (data.length === 0) return; // ignore empty message
-	  if (data === 'data: [DONE]') {
-	    calltime = Date.now() - sttime;
-	    return;
-	  };
-	  
-	  let pdata = data.replace("data: ","");
-	  pdata = chkPart.concat(pdata);
-	  pdata = pdata.trim();
-	  // console.log(`Data: ${pdata}`);
-	  if ( pdata.startsWith("{") && pdata.endsWith("}") && isMessageComplete(pdata) ) {
-	    chkPart = "";
+        const arr = value.split('\n');
+        arr.forEach((data) => {
+          // console.log(`Line: ${data}`);
+          if (data.length === 0) return; // ignore empty message
+          if (data === 'data: [DONE]') {
+            calltime = Date.now() - sttime;
+            return;
+          };
 
-	    const json = JSON.parse(pdata);
+          let pdata = data.replace("data: ","");
+          pdata = chkPart.concat(pdata);
+          pdata = pdata.trim();
+          // console.log(`Data: ${pdata}`);
+          if ( pdata.startsWith("{") && pdata.endsWith("}") && isMessageComplete(pdata) ) {
+            chkPart = "";
 
-	    if (!json.choices || json.choices.length === 0) console.log("streamCompletion(): Skipping this line");
-	    else {
-	      const msg = json.choices[0].delta.content;
-	      if ( msg ) {
-		const citLen = citations ? citations.length : 0;
-		let content = msg.replace(/(?:\r\n|\r|\n)/g, '<br>'); // Get rid of all the newlines
-		if ( citLen > 0 ) {
-		  for ( let i=1; i <= citLen; i++ )
-		    content = content.replaceAll("[doc" + i + "]", "<sup>[" + i + "]</sup>");
-		}
-		element.innerHTML += content;
-		box.scrollTop = box.scrollHeight;
-	      };
+            const json = JSON.parse(pdata);
 
-	      const context = json.choices[0].delta.context;
-	      if ( context ) {
-		if ( ! citations )
-		  citations = context.citations;
-		else
-		  citations = citations.concat(context.citations);
+            if (!json.choices || json.choices.length === 0) console.log("streamCompletion(): Skipping this line");
+            else {
+              const msg = json.choices[0].delta.content;
+              if ( msg ) {
+                const citLen = citations ? citations.length : 0;
+                let content = msg.replace(/(?:\r\n|\r|\n)/g, '<br>'); // Get rid of all the newlines
+                if ( citLen > 0 ) {
+                  for ( let i=1; i <= citLen; i++ )
+                    content = content.replaceAll("[doc" + i + "]", "<sup>[" + i + "]</sup>");
+                }
+                element.innerHTML += content;
+                box.scrollTop = box.scrollHeight;
+              };
 
-		citLen = citations ? citations.length : 0;
-		console.log(`streamCompletion(): No. of Citations: ${citLen}`);
-	      };
-	    };
-	  }
-	  else
-	    chkPart = pdata; 
-	});
+              const context = json.choices[0].delta.context;
+              if ( context ) {
+                if ( ! citations )
+                  citations = context.citations;
+                else
+                  citations = citations.concat(context.citations);
+
+                citLen = citations ? citations.length : 0;
+                console.log(`streamCompletion(): No. of Citations: ${citLen}`);
+              };
+            };
+          }
+          else
+            chkPart = pdata;
+        });
       }; // end of while
       if ( citLen > 0 )
         divelem.innerHTML += insertCitationLinks(citations);
@@ -399,45 +438,45 @@ async function streamCompletion(uri,appId,hdrs,box) {
         calltime = Date.now() - sttime;
 
       let strResponse = {
-	      code: 200,
-	      message: "OK",
-	      time_to_first_token: (ttToken - sttime) / 1000,
-	      total_call_time: calltime / 1000
+              code: 200,
+              message: "OK",
+              time_to_first_token: (ttToken - sttime) / 1000,
+              total_call_time: calltime / 1000
       };
       addJsonToAccordian(
-	      calltime,
-	      document.getElementById('msgBox'),
-	      'json-container',
-	      document.getElementById('msgAccordian'),
-	      promptObject, strResponse);
+              calltime,
+              document.getElementById('msgBox'),
+              'json-container',
+              document.getElementById('msgAccordian'),
+              promptObject, strResponse, response.headers.get("x-request-id"));
     }
     else {
       const data = await response.json();
-      if ( data.error.message.includes("Thread") ) {
-	let msg = "Your chat session [ID = " + threadId + "] has expired.  Please start a new chat session.";
-	addMessageToBox(chatBox,'mb-2 rounded bg-light text-info',msg);
+      if ( data.error.message?.includes("Thread") ) {
+        let msg = "Your chat session [ID = " + threadId + "] has expired.  Please start a new chat session.";
+        addMessageToBox(chatBox,'mb-2 rounded bg-light text-info',msg);
       }
       else {
-	let msg = "Received an exception from server.  Please refer to the error details in the 'Exceptions' tab.";
-	addMessageToBox(chatBox,'mb-2 rounded bg-light text-danger',msg);
+        let msg = "Received an exception from server.  Please refer to the error details in the 'Exceptions' tab.";
+        addMessageToBox(chatBox,'mb-2 rounded bg-light text-danger',msg);
       };
       addJsonToBox(
-	      document.getElementById('errorBox'),
-	      'json-container',
-	      data); //Assuming data returned is JSON!
+              document.getElementById('errorBox'),
+              'json-container',
+              data); //Assuming data returned is JSON!
     };
   }
   catch (error) {
     const errorDetails = {
-	    name: error.name,
-	    cause: error.cause,
-	    message: error.message,
-	    stack: error.stack,
+            name: error.name,
+            cause: error.cause,
+            message: error.message,
+            stack: error.stack,
     };
     addJsonToBox(
-	    document.getElementById('errorBox'),
-	    'json-container',
-	    errorDetails);
+            document.getElementById('errorBox'),
+            'json-container',
+            errorDetails);
   }
 }
 
@@ -445,12 +484,27 @@ async function sendMessage() {
   const aiAppElem = document.getElementById('appdropdown');
   const aiApp = aiAppElem.options[aiAppElem.selectedIndex].text;
   if (aiApp === "Choose from") { // AI Application not selected
-    let popover = new bootstrap.Popover(aiAppElem, { 
-	    animation: true,
-	    placement: "right",
-	    // title: "Alert",
-	    content: "Select an AI Application",
-	    trigger: "manual"
+
+    let popover = new bootstrap.Popover(aiAppElem, {
+            animation: true,
+            placement: "right",
+            // title: "Alert",
+            content: "Select an AI Application",
+            trigger: "manual"
+    });
+    popover.show();
+    setTimeout(function() { popover.dispose(); },2000);
+    return;
+  };
+  if ( isAuthEnabled && !username ) {
+    const loginBtn = document.getElementById('auth-anchor');
+
+    let popover = new bootstrap.Popover(loginBtn, {
+            animation: true,
+            placement: "top",
+            // title: "Alert",
+            content: "Sign in to the AI App Gateway",
+            trigger: "manual"
     });
     popover.show();
     setTimeout(function() { popover.dispose(); },2000);
@@ -459,7 +513,7 @@ async function sendMessage() {
 
   const userInput = document.getElementById('userInput');
   const message = userInput.value;
-  
+
   const chatBox = document.getElementById('chatBox');
 
   let data = null;
@@ -472,16 +526,16 @@ async function sendMessage() {
     document.getElementById('spinnerBtn').style.display = "block";
 
     addMessageToBox(
-	    // document.getElementById('chatBox'),
-	    chatBox,
-	    'mb-2 rounded bg-secondary text-white',
-	    message);
+            // document.getElementById('chatBox'),
+            chatBox,
+            'mb-2 rounded bg-secondary text-white',
+            message);
     userInput.value = '';
     userInput.disabled = true;
 
     let sysPrompt = document.getElementById('sysPromptField').value;
     if (!sysPrompt)
-	    sysPrompt = defaultPrompt;
+            sysPrompt = defaultPrompt;
 
     let requestHeaders = null;
     promptObject.messages.length = 0;
@@ -504,79 +558,87 @@ async function sendMessage() {
     };
 
     const appId = aiAppObject.ai_app_name;
-    const uri = lbEndpoint + appId;
+    const uri = envContext.aisGtwyEndpoint + appId;
+    if ( isAuthEnabled ) {
+      const accessToken = await getToken();
+      const bearer = `Bearer ${accessToken}`;
+      // console.log(`Token: [${bearer}]`);
+      requestHeaders.append('Authorization', bearer);
+    };
+
     if ( promptObject.stream ) // Stream response
       await streamCompletion(uri,appId,requestHeaders,chatBox);
     else {
+      let status;
       try {
-	const ds = promptObject.data_sources;
-	if ( threadId )
-		delete promptObject.data_sources;
-	const sttime = Date.now();
-	let response = await fetch(uri, {
-		method: "POST", headers: requestHeaders, body: JSON.stringify(promptObject)
-	});
-	if ( threadId )
-		promptObject.data_sources = ds;
+        const ds = promptObject.data_sources;
 
-	let status = response.status; data = await response.json();
-	const calltime = Date.now() - sttime;
+        if ( threadId )
+          delete promptObject.data_sources;
+        const sttime = Date.now();
+        let response = await fetch(uri, {
+          method: "POST", headers: requestHeaders, body: JSON.stringify(promptObject)
+        });
+        if ( threadId )
+          promptObject.data_sources = ds;
 
-	if (status === 200) {
-	  if (threadId === null) {
-	    threadId = response.headers.get("x-thread-id");
-	    const values = {
-		    application_id: appId,
-		    user: aiAppObject.user,
-		    thread_id: threadId,
-		    start_time: new Date().toLocaleString('en-US', { timeZoneName: 'short' })
-	    };
-	    addJsonToBox(
-		    document.getElementById('infoBox'),
-		    'json-container',
-		    values);
-	  };
+        status = response.status; data = await response.json();
+        const calltime = Date.now() - sttime;
+        if (status === 200) {
+          if (threadId === null) {
+            threadId = response.headers.get("x-thread-id");
+            const values = {
+                    application_id: appId,
+                    user: aiAppObject.user,
+                    thread_id: threadId,
+                    start_time: new Date().toLocaleString('en-US', { timeZoneName: 'short' })
+            };
+            addJsonToBox(
+                    document.getElementById('infoBox'),
+                    'json-container',
+                    values);
+          };
 
-	  addJsonToAccordian(
-		  calltime,
-		  document.getElementById('msgBox'),
-		  'json-container',
-		  document.getElementById('msgAccordian'),
-		  promptObject, data);
+          addJsonToAccordian(
+                  calltime,
+                  document.getElementById('msgBox'),
+                  'json-container',
+                  document.getElementById('msgAccordian'),
+                  promptObject, data, response.headers.get("x-request-id"));
 
-	  addMessageToChatBox(
-		  // document.getElementById('chatBox'),
-		  chatBox,
-		  'mb-2 rounded bg-light text-dark',
-		  data.choices[0].message.content,
-		  data.choices[0].message.context);
-	}
-	else {
-	  if ( data.error.message.includes("Thread") ) {
-	    let msg = "Your chat session [ID = " + threadId + "] has expired.  Please start a new chat session.";
-	    addMessageToBox(chatBox,'mb-2 rounded bg-light text-info',msg);
-	  }
-	  else {
-	    let msg = "Received an exception from server.  Please refer to the error details in the 'Exceptions' tab.";
-	    addMessageToBox(chatBox,'mb-2 rounded bg-light text-danger',msg);
-	  };
-	  addJsonToBox(
-		  document.getElementById('errorBox'),
-		  'json-container',
-		  data); //Assuming data returned is JSON!
-	};
+          addMessageToChatBox(
+                  // document.getElementById('chatBox'),
+                  chatBox,
+                  'mb-2 rounded bg-light text-dark',
+                  data.choices[0].message.content,
+                  data.choices[0].message.context);
+        }
+        else {
+          if ( data.error.message?.includes("Thread") ) {
+            let msg = "Your chat session [ID = " + threadId + "] has expired.  Please start a new chat session.";
+            addMessageToBox(chatBox,'mb-2 rounded bg-light text-info',msg);
+          }
+          else {
+            let msg = "Received an exception from server.  Please refer to the error details in the 'Exceptions' tab.";
+            addMessageToBox(chatBox,'mb-2 rounded bg-light text-danger',msg);
+          };
+          addJsonToBox(
+                  document.getElementById('errorBox'),
+                  'json-container',
+                  data); //Assuming data returned is JSON!
+        };
       }
       catch (error) {
-	const errorDetails = {
-		name: error.name,
-		cause: error.cause,
-		message: error.message,
-		stack: error.stack,
-	};
-	addJsonToBox(
-		document.getElementById('errorBox'),
-		'json-container',
-		errorDetails);
+          const errorDetails = {
+            name: error.name,
+            cause: error.cause,
+            message: error.message,
+            stack: error.stack,
+          };
+          addJsonToBox(
+            document.getElementById('errorBox'),
+            'json-container',
+            errorDetails);
       };
     };
     document.getElementById('spinnerBtn').style.display = "none";
