@@ -29,7 +29,7 @@ Option #3 is highly recommended for production deployments.
    FRONTEND_SRV_HOST | (Optional) Use this env variable to specify hostname/IP address of application server.  Defaults to `localhost`.
    FRONTEND_SRV_PORT | (Optional) Set this env variable to the application server listen port.  Defaults to 8000.
    API_GATEWAY_AUTH | Set this environment variable value to *true* to secure the AI Chatbot (SPA) application.  Default value is true.
-   AZURE_TENANT_ID | Set this variable to the Azure Tenant ID. This environment variable has to be set when security is enabled for the Chatbot application.
+   AZURE_TENANT_ID | Set this variable to the Azure Tenant ID. This environment variable must be set when security is enabled for the Chatbot application.
    FRONTEND_CLIENT_ID | This is the client/application ID of AI Chatbot Application registered in MSFT Entra. This env variable must be set when security is enabled.
    API_GATEWAY_APP_ID | This is the Application ID of the AI Application Gateway registered in MSFT Entra. This env variable must be set when security is enabled.
 
@@ -73,6 +73,7 @@ Option #3 is highly recommended for production deployments.
 
    [2024/07/01 18:47:36.161] [LOG] Server(): Azure AI Application Gateway URI: [http://localhost:8000/api/v1/dev/apirouter/lb/]
    [2024/07/01 18:47:36.162] [LOG] Server(): Server configuration file: [./app-config.json]
+   [2024/07/01 18:47:36.163] [LOG] Server(): Azure AI Application Gateway API security: [true]
    [2024/07/01 18:47:36.166] [LOG] Server(): AI Chatbot Application server is listening on localhost:8000.
    ```
 
