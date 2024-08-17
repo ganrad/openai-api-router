@@ -86,6 +86,8 @@ Option #3 is highly recommended for production deployments.
 
    ![alt tag](./images/ai-chat-application-01.PNG)
 
+   If security is turned on for the AI Chatbot Application, click on the **Sign-in** link at the top and authenticate using Microsoft Entra ID. Refer to the screenshot above.
+
    Use the **AI Application** dropdown field to select an AI Application.  This will populate the default parameter values for the selected AI Application as per the values specified in the application configuration file.  You can update the system prompt as well as model and search parameters displayed in the right panel.  Remember to save the model and search parameter values.  Input the *Prompt* in the field located at the bottom of the middle column.  Hit **Send**.  You should be able to view the results in the chat panel right above the Prompt field.  See screenshot below.
 
    ![alt tag](./images/ai-chat-application-02.PNG)
