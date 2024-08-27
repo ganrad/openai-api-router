@@ -1,5 +1,5 @@
 /**
- * Name: API Gateway/Router
+ * Name: API Gateway/Router (Single Agent)
  * Description: An intelligent stateful API gateway that routes incoming requests to backend 
  * OpenAI deployment resources based on 1) Priority and 2) Availability
  *
@@ -38,12 +38,12 @@ const path = require('path');
 const scriptName = path.basename(__filename);
 
 const express = require("express");
-const EndpointMetricsFactory = require("./utilities/ep-metrics-factory.js"); // ID04222024.n
-const AppConnections = require("./utilities/app-connection.js");
-const AppCacheMetrics = require("./utilities/cache-metrics.js"); // ID02202024.n
-const { AzAiServices, CustomRequestHeaders } = require("./utilities/app-gtwy-constants.js");
-const AiProcessorFactory = require("./processors/ai-processor-factory.js"); // ID04222024.n
-const logger = require("./utilities/logger.js"); // ID04272024.n
+const EndpointMetricsFactory = require("../utilities/ep-metrics-factory.js"); // ID04222024.n
+const AppConnections = require("../utilities/app-connection.js");
+const AppCacheMetrics = require("../utilities/cache-metrics.js"); // ID02202024.n
+const { AzAiServices, CustomRequestHeaders } = require("../utilities/app-gtwy-constants.js");
+const AiProcessorFactory = require("../processors/ai-processor-factory.js"); // ID04222024.n
+const logger = require("../utilities/logger.js"); // ID04272024.n
 const router = express.Router();
 
 // Total API calls handled by this router instance

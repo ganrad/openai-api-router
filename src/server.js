@@ -26,7 +26,7 @@ const path = require('path');
 const scriptName = path.basename(__filename);
 const wlogger = require('./utilities/logger.js');
 
-wlogger.log({level: "info", message: "[%s] Starting initialization of Azure AI Services API Gateway ...", splat: [scriptName]});
+wlogger.log({level: "info", message: "[%s] Starting initialization of AI Application Gateway ...", splat: [scriptName]});
 // ID04272024.en
 
 // ID02082024.sn: Configure Azure Monitor OpenTelemetry for instrumenting API gateway requests.
@@ -37,7 +37,7 @@ const fs = require("fs");
 const express = require("express");
 const cors = require("cors"); // ID05222024.n
 const { ServerDefaults, CustomRequestHeaders, SchedulerTypes, AzAiServices } = require("./utilities/app-gtwy-constants");
-const { apirouter, reconfigEndpoints } = require("./apirouter");
+const { apirouter, reconfigEndpoints } = require("./routes/apirouter");
 const pgdb = require("./services/cp-pg.js");
 const CacheConfig = require("./utilities/cache-config");
 // const runCacheInvalidator = require("./utilities/cache-invalidator"); ID05062024.o
@@ -431,5 +431,5 @@ app.use(endpoint + "/apirouter", function(req, res, next) {
 }, apirouter);
 
 app.listen(port, () => {
-  console.log(`Server(): Azure AI Services API Gateway server started successfully.\nGateway uri: http://${host}:${port}${endpoint}`);
+  console.log(`Server(): Azure AI Application Gateway started successfully.\nGateway uri: http://${host}:${port}${endpoint}`);
 });
