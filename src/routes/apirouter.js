@@ -31,6 +31,7 @@
  * ID06052024: ganrad: (Enhancement) Added streaming support for Azure OpenAI Chat Completion API call.
  * ID06132024: ganrad: (Enhancement) Adapted gateway error messages to be compliant with AOAI Service error messages.
  * ID06212024: ganrad: (Bugfix) Fixed an issue with returning 400's in stream mode.  Cleaned up the code.
+ * ID09032024: ganrad : AI Application Gateway name is now included in the configuration file.  Introduced server (agent) type attribute - single / multi
  *
 */
 
@@ -90,7 +91,16 @@ router.get("/metrics", (req, res) => {
   let res_obj = {
     hostName: process.env.API_GATEWAY_HOST,
     listenPort: process.env.API_GATEWAY_PORT,
-    instanceName: process.env.API_GATEWAY_NAME,
+    // instanceName: process.env.API_GATEWAY_NAME, // ID09032024.o
+    serverName: req.targeturis.serverId, // ID09032024.n (+ To be consistent with server, changed 'instanceName' to 'serverName')
+    serverType: req.targeturis.serverType, // ID09032024.n
+    // ID09032024.sn
+    containerInfo: {
+      imageID: process.env.IMAGE_ID,
+      nodeName: process.env.NODE_NAME,
+      podName: process.env.POD_NAME,
+    },
+    // ID09032024.en
     collectionIntervalMins: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
     historyCount: Number(process.env.API_GATEWAY_METRICS_CHISTORY),
     applicationMetrics: conList,

@@ -315,7 +315,6 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    ----------------- | ----------- | -------- | ------------- 
    API_GATEWAY_KEY | AI Application Gateway private key (secret) required to reconfigure backend (Azure OpenAI) endpoints | Yes | Set this value to an alphanumeric string
    API_GATEWAY_CONFIG_FILE | The gateway configuration file location | Yes | Set the full or relative path to the *AI Application Gateway Configuration file* from the project root directory.
-   API_GATEWAY_NAME | Gateway instance name | Yes | Set a value such as 'Instance-01' ...
    API_GATEWAY_PORT | Gateway server listen port | No | 8000
    API_GATEWAY_ENV | Gateway environment | Yes | Set a value such as 'dev', 'test', 'pre-prod', 'prod' ...
    API_GATEWAY_LOG_LEVEL | Gateway logging level | No | Default=info.  Possible values are debug, info, warn, error, fatal.
@@ -976,7 +975,6 @@ Additionally, the following resources should be deployed/configured.
    image.repository | ACR location of the AI Application Gateway container image. Specify the correct values for `acr-name` and `api-gateway-repo-name`. | [acr-name].azurecr.io/[api-gateway-repo-name]
    image.tag | Gateway container image tag. Specify correct value for the image tag. | v1.xxxxxx
    apigateway.name | The deployment name of Gateway server instance. | aoai-api-gateway-v1.5
-   apigateway.instanceName | The name of Gateway server instance.  Can be set to any string. Use the model version as prefix or suffix to easily identify which models are served by specific gateway server instances. | aoai-api-gateway-gpt35
    apigateway.configFile | Path to Gateway configuration file | /home/node/app/files/api-router-config.json
    apigateway.secretKey | Gateway private key. This key is required for reconfiguring the gateway with updated endpoint info. | None.
    apigateway.env | Gateway environment (eg., dev, test, pre-prod, prod) | dev

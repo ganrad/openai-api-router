@@ -29,8 +29,8 @@ serviceAccount:
 apigateway:
   # This is the deployment name
   name: ais-api-gateway-v1
-  # This is the API Gateway instance name
-  instanceName: AZ-AIS-API-Gateway-01
+  # This is the API Gateway instance name. ID09032024.n - server name and type are read from the configuration file!
+  # instanceName: AZ-AIS-API-Gateway-01
   configFile: /home/node/app/files/api-router-config.json
   # Set the private/secret key for the API Gateway
   # IMPORTANT: Change this private/secret key!!

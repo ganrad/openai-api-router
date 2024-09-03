@@ -6,6 +6,9 @@
 * Restructured the AI Gateway Server code and fixed a few minor bugs.
 * (Enhancement) Implemented security (user authentication) feature in the AI Chatbot application (SPA).  This feature is turned on by default. Use this feature to secure the SPA and authenticate users against Microsoft Entra ID.
 * Fixed minor bugs in AI Chatbot Application (SPA).
+* (Enhancement) Updated 'metrics' endpoint to include container info.
+* (Enhancement) The Gateway instance's unique identity (name) is now specified in the AI Application Gateway configuration file ('serverName' attribute).  This value no longer needs to be set as an environment variable ('API_GATEWAY_NAME') and passed to the gateway server.
+* (Enhancement) Introduced 'Server Type' attribute in AI Application Gateway configuration to support both single and multi domain servers.  This release only supports single domain AI Gateways.  Next release will include support for multi domain AI Gateways/Servers!
 
 ### Documentation changes
 * Renamed this repo. to *AI Application Gateway*.

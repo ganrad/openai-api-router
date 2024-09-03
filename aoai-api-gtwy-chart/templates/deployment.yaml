@@ -39,8 +39,6 @@ spec:
             - name: ais-gateway-cm-vol
               mountPath: /home/node/app/files
           env:
-            - name: API_GATEWAY_NAME
-              value: "{{ .Values.apigateway.instanceName }}"
             - name: API_GATEWAY_CONFIG_FILE
               value: "{{ .Values.apigateway.configFile }}"
             - name: API_GATEWAY_KEY

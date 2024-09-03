@@ -19,6 +19,7 @@
  * ID06092024: ganrad : Refactored code
  * ID06282024: ganrad : Check db connection status every 60 minutes and return result when '/healthz' endpoint is invoked. 
  * ID07292024: ganrad : Gateway REST APIs can be secured using Microsoft Entra ID.  This is an optional feature.
+ * ID09032024: ganrad : AI Application Gateway name is now included in the configuration file.  Introduced server (agent) type attribute - single / multi
 */
 
 // ID04272024.sn
@@ -332,7 +333,9 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
   });
 
   let resp_obj = {
-    serverName: process.env.API_GATEWAY_NAME,
+    // serverName: process.env.API_GATEWAY_NAME, ID09032024.o
+    serverName: context.serverId, // ID09032024.n
+    serverType: context.serverType, // ID09032024.n
     serverVersion: srvVersion,
     serverConfig: {
       host: host,

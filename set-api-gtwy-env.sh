@@ -1,7 +1,10 @@
+# The AI Application Gateway / Server configuration file
 export API_GATEWAY_CONFIG_FILE="./api-router-config.json"
-export API_GATEWAY_NAME="Gateway-Instance-01"
+# The AI Application Gateway / Server listen port
 export API_GATEWAY_PORT=8000
+# The AI Application Gateway / Server deployment environment.  For instance, dev, test, pre-prod, producution ...
 export API_GATEWAY_ENV="dev"
+# The AI Application Gateway / Server log level - trace, debug, info, warn, fatal.
 export API_GATEWAY_LOG_LEVEL="info"
 
 # Secure Gateway APIs? [ "true" | "false" ]
@@ -12,7 +15,7 @@ export AZURE_TENANT_ID="[Specify Azure Tenant ID]"
 # Microsoft Entra API Gateway Client ID
 export API_GATEWAY_CLIENT_ID="[Specify Microsoft Entra AI Application Gateway Client ID]"
 
-# AI Application Gateway Security Key
+# AI Application Gateway Security Key.  This key is required for reconfiguring the AI Application Gateway.
 export API_GATEWAY_KEY="abcxyz"
 
 # Metrics collection env variables
