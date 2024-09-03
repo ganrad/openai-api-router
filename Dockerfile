@@ -15,6 +15,7 @@
 # ID03152024 : ganrad : Added ARG and ENV variables for semantic caching
 # ID05062024 : ganrad : Added ARG and ENV variables for state management
 # ID07292024 : ganrad : Added ARG and ENV variables for securing the AI Gateway using MSFT Entra ID
+# ID09032024 : ganrad : AI Application Gateway name is now included in the configuration file
 # ----------------------------------------------------------------
 #
 FROM public.ecr.aws/docker/library/node:20.11.0-alpine3.19
@@ -32,8 +33,8 @@ ENV API_GATEWAY_CONFIG_FILE=$config_file
 ENV API_GATEWAY_KEY="abcxyz"
 
 # (Required) API Gateway name
-ARG gateway_name=Test-Gateway
-ENV API_GATEWAY_NAME=$gateway_name
+# ARG gateway_name=Test-Gateway
+# ENV API_GATEWAY_NAME=$gateway_name
 
 # (Optional) API Gateway listening port
 ARG listen_port=8000

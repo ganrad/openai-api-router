@@ -1,4 +1,6 @@
 {
+  "serverId": "Local-Gateway",
+  "serverType": "single",
   "applications": [
     {
       "appId": "language-app",
