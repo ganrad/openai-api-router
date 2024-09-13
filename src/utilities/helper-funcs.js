@@ -69,14 +69,13 @@ async function callRestApi(requestid, uname, epinfo, endpoints, prompt) {
           retryAfter = retryAfterSecs;
         metricsObj.updateFailedCalls(retryAfterSecs);
 
-	// logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message: %s", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,data]}); // ID09122024.o
-        logger.log({level: "warn", message: "[%s] callRestApi():\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Message: %s\n  Status Text: %s\n  Retry seconds: %d", splat: [scriptName,requestid,element.uri,status,data,response.statusText,retryAfterSecs]}); // ID09122024.n
+        logger.log({level: "warn", message: "[%s] callRestApi():\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Message: %s\n  Status Text: %s\n  Retry seconds: %d", splat: [scriptName,requestid,element.uri,status,data,response.statusText,retryAfterSecs]});
       }
       else { // Authzn failed!
 	data = await response.text();
 
-          // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n*****`);
-          logger.log({level: "warn", message: "[%s] callRestApi():\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message: %s", splat: [scriptName,requestid,element.uri,status,response.statusText,data]});
+	// logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message: %s", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,data]}); // ID09122024.o
+        logger.log({level: "warn", message: "[%s] callRestApi():\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message: %s", splat: [scriptName,requestid,element.uri,status,response.statusText,data]}); // ID09122024.n
       };
     }
     catch (error) {
