@@ -27,6 +27,8 @@ serviceAccount:
 
 chatapp:
   host: 0.0.0.0
+  # Enable/Disable AI Chat App security
+  auth: false
   configFile: /home/node/app/files/app-config.json
   # Specify the Azure AI Services API Gateway load balancer URI/Endpoint
   aisGatewayEndpoint: https://[GATEWAY_HOST]/api/v1/dev/apirouter/lb/

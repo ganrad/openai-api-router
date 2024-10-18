@@ -14,7 +14,7 @@
 #
 FROM public.ecr.aws/docker/library/node:20.11.0-alpine3.19
 LABEL name="Azure AI (frontend/client) Chat Application"
-LABEL version="1.0.0"
+LABEL version="1.0.1"
 LABEL description="This dockerfile is used to build a container image of the AI (frontend) chat application"
 LABEL author="Ganesh Radhakrishnan" email="ganrad01@gmail.com" dated="06-28-2024" license="MIT"
 
