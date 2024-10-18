@@ -13,6 +13,8 @@
  * ID06052024: ganrad: (Enhancement) Added streaming support for Azure OpenAI Chat Completion API call(s).
  * ID06132024: ganrad: (Enhancement) Adapted gateway error messages to be compliant with AOAI Service error messages.
  * ID07292024: ganrad: (Minor update) Print authenticated user name along with the request.
+ * ID09242024: ganrad: (Bugfix) Resolved JSON.parse error in streaming mode. Simplified streaming logic to improve performance
+ * and readability.
  *
 */
 const path = require('path');
@@ -197,6 +199,10 @@ class AzOaiProcessor {
     return (braces === 0) ? true : false;
   }
 
+  #sleep(time) {
+    return new Promise((resolve) => setTimeout(resolve,time));
+  }
+
   async #streamChatCompletion(req_id, t_id, app_id, router_res, oai_res) {
     const reader = oai_res.body.getReader(); // use Nodejs native fetch!
     // const reader = oai_res.body; // use node-fetch library!
@@ -214,13 +220,14 @@ class AzOaiProcessor {
     router_res.set("Access-Control-Expose-Headers", res_hdrs);
     router_res.flushHeaders();
 
-    let msg = "";
-    let recv_data = "";
+    let chkPart = null;
+    let recv_data = '';
     let call_data = null;
     while ( true ) {
       const { done, value } = await reader.read();
       if ( done ) {
-	// console.log("FINISHED");
+	// 1. Debugging start - Finished
+	// console.log("**** FINISHED ****");
 	break;
       };
 
@@ -228,11 +235,105 @@ class AzOaiProcessor {
 
       const decoder = new TextDecoder("utf-8");
       const chunk = decoder.decode(value);
-      // console.log(`Decoded value: ${chunk}`);
 
-      for ( const message of this.#processChunk(chunk) ) {
+      const arr = chunk.split('\n'); // ID09242024.sn
+      // arr.forEach((data) => {
+      for (const data of arr) {
+        // if (data.length === 0) return; // ignore empty message
+        if (data.length === 0) continue; // ignore empty message
+
+        if (data === 'data: [DONE]')
+          // return;
+          break;
+
+        // 2. Line data
+	// console.log(`**** DATA ****: ${data}`);
+        let pdata = '';
+	if ( data.includes("data: ") )
+	    pdata = data.substring("data: ".length);
+	else
+	    pdata = data;
+
+        if ( chkPart ) {
+          let cdata = chkPart.concat(pdata);
+	  if ( cdata.includes("data: ") )
+	    pdata = cdata.substring("data: ".length);
+	  else
+	    pdata = cdata;
+          // 3. Stitched line data fragments
+	  // console.log(`**** C-DATA ****: ${cdata}`);
+	};
+
+	try {
+          const jsonMsg = JSON.parse(pdata);
+	  // 4.a Parsed data
+	  // console.log(`**** P-DATA ****: ${pdata}`);
+          chkPart = null;
+
+          if (!jsonMsg.choices || jsonMsg.choices.length === 0)
+	    console.log("streamCompletion(): Skipping this line");
+          else {
+	    let content = jsonMsg.choices[0].delta.content;
+	    if ( content ) 
+	      // recv_data += jsonMsg.choices[0].delta.content;
+	      recv_data = recv_data.concat(content);
+
+      	    if ( ! call_data && (jsonMsg.created > 0) )
+	      call_data = {
+	        id: jsonMsg.id,
+	        object: jsonMsg.object,
+	        created: jsonMsg.created,
+	        model: jsonMsg.model,
+	        system_fingerprint: jsonMsg.system_fingerprint
+	      };
+          };
+	}
+	catch ( error ) {
+	  // let chkdata = ( chkPart) ? chkPart.concat(pdata) : pdata;
+          // chkPart = chkdata;
+          chkPart = pdata;
+	  // 4.b Partial data
+	  // console.log(`**** ChkPart ****: ${chkPart}`);
+	};
+
+	/**
+        if ( pdata.startsWith("{") && pdata.endsWith("}") && this.#checkIfMessageIsComplete(pdata) ) {
+          // 4. Parsed data
+	  console.log(`**** P-DATA ****: ${pdata}`);
+          chkPart = '';
+
+          const jsonMsg = JSON.parse(pdata);
+
+          if (!jsonMsg.choices || jsonMsg.choices.length === 0)
+	    console.log("streamCompletion(): Skipping this line");
+          else {
+	    let content = jsonMsg.choices[0].delta.content;
+	    if ( content ) 
+	      // recv_data += jsonMsg.choices[0].delta.content;
+	      recv_data = recv_data.concat(content);
+
+      	    if ( ! call_data && (jsonMsg.created > 0) )
+	      call_data = {
+	        id: jsonMsg.id,
+	        object: jsonMsg.object,
+	        created: jsonMsg.created,
+	        model: jsonMsg.model,
+	        system_fingerprint: jsonMsg.system_fingerprint
+	      };
+          };
+        }
+        else {
+	  let chkdata = chkPart + pdata;
+          chkPart = chkdata;
+	};
+	*/
+      }; // ID09242024.en
+      // });
+
+      /* for ( const message of this.#processChunk(chunk) ) { // ID09242024.so
         try {
 	  msg += message;
+          console.log(`MESSAGE: ${msg}`);
 
   	  if ( msg.startsWith("{") && msg.endsWith("}") && this.#checkIfMessageIsComplete(msg) ) {
             // console.log(`MESSAGE: ${msg}`);
@@ -249,19 +350,23 @@ class AzOaiProcessor {
 	        model: jsonMsg.model,
 	        system_fingerprint: jsonMsg.system_fingerprint
 	      };
-	    msg = "";
+	    msg = '';
 	  };
         }
         catch (error) {
           logger.log({level: "warn", message: "[%s] %s.streamChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Message:\n  %s\n Error:\n  %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,message,error]});
         }
-      };
+      }; ID09242024.eo */
     }; // end of while
+    // 5. Check if chunk part was not processed!
+    // console.log(`ChkPart: ${chkPart}`);
 
     logger.log({level: "debug", message: "[%s] %s.streamChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Completion: %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,recv_data]});
 
     let resp_data = this.#constructCompletionMessage(recv_data, null, call_data);
 
+    // 6. Final streamed response to be saved in cache/memory
+    // console.log(`**** CACHE/MEMORY DATA ****\n ${JSON.stringify(resp_data,null,2)}`);
     return resp_data;
   }
 
@@ -460,7 +565,7 @@ class AzOaiProcessor {
     let threadId = req.get(CustomRequestHeaders.ThreadId);
 
     // console.log(`*****\nAzOaiProcessor.processRequest():\n  URI: ${req.originalUrl}\n  Request ID: ${req.id}\n  Application ID: ${config.appId}\n  Type: ${config.appType}`);
-    logger.log({level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n Request Payload: %s", splat: [scriptName,this.constructor.name,req.id,req.originalUrl,req.user?.name,threadId,config.appId,config.appType,JSON.stringify(req.body)]}); // ID07292024.n
+    logger.log({level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n  Request Payload: %s", splat: [scriptName,this.constructor.name,req.id,req.originalUrl,req.user?.name,threadId,config.appId,config.appType,JSON.stringify(req.body)]}); // ID07292024.n
     
     let respMessage = null; // Populate this var before returning!
 
@@ -808,7 +913,7 @@ class AzOaiProcessor {
 	};
 	// ID06132024.en
         // console.log(`*****\nAzOaiProcessor.processRequest():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
-	logger.log({level: "error", message: "[%s] %s.processRequest():\n  Encountered exception:\n  %s", splat: [scriptName,this.constructor.name,err_msg]});
+	logger.log({level: "error", message: "[%s] %s.processRequest():\n  Encountered exception:\n  %s", splat: [scriptName,this.constructor.name,JSON.stringify(err_msg)]});
 
 	respMessage = {
           http_code: 500,

@@ -7,6 +7,7 @@
  * Version: 2.0 (Introduced)
  *
  * Notes:
+ * ID09272024: ganrad: (Bugfix) Bearer strategy object should only be instantiated when auth=true.
  */
 
 const passport = require('passport');
@@ -17,7 +18,10 @@ const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('../utilities/logger');
 
-const bearerStrategy = new passportAzureAd.BearerStrategy({
+function initAuth(app,endpoint) {
+  logger.log({level: "info", message: "[%s] initAuth(): Protected endpoint: [%s]", splat: [scriptName,endpoint]});
+
+  const bearerStrategy = new passportAzureAd.BearerStrategy({ // ID09272024.n
     identityMetadata: `https://${authConfig.metadata.authority}/${authConfig.credentials.tenantID}/${authConfig.metadata.version}/${authConfig.metadata.discovery}`,
     issuer: `https://${authConfig.metadata.authority}/${authConfig.credentials.tenantID}/${authConfig.metadata.version}`,
     clientID: authConfig.credentials.clientID,
@@ -26,7 +30,7 @@ const bearerStrategy = new passportAzureAd.BearerStrategy({
     passReqToCallback: authConfig.settings.passReqToCallback,
     loggingLevel: authConfig.settings.loggingLevel,
     loggingNoPII: authConfig.settings.loggingNoPII,
-}, (req, token, done) => {
+    }, (req, token, done) => {
 
     /**
      * Below you can do extended token validation and check for additional claims, such as:
@@ -71,10 +75,7 @@ const bearerStrategy = new passportAzureAd.BearerStrategy({
       email: token.preferred_username,
     };
     return done(null, userInfo, token);
-});
-
-function initAuth(app,endpoint) {
-  logger.log({level: "info", message: "[%s] initAuth(): Protected endpoint: [%s]", splat: [scriptName,endpoint]});
+  });
 
   app.use(passport.initialize());
 

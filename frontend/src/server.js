@@ -6,7 +6,7 @@
  * Date: 06-27-2024
  *
  * Notes:
- * ID07302024: ganrad: Introduced client authentication.  This features uses MSFT Entra ID to authenticate users.
+ * ID07302024: ganrad: Introduced client authentication.  This feature uses MSFT Entra ID to authenticate users.
  *
  */
 
@@ -16,7 +16,7 @@ require('console-stamp')(console, {
 const express = require('express');
 const fs = require('fs');
 
-const srvVersion = "1.0.0";
+const srvVersion = "1.0.1";
 const srvUriPrefix = "/ais-chatbot/ui/";
 const srvStartTime = new Date().toLocaleString();
 

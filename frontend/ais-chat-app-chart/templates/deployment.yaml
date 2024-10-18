@@ -43,10 +43,12 @@ spec:
             - name: ais-chat-app-cm-vol
               mountPath: /home/node/app/files
           env:
-            - name: AIS_API_GATEWAY_URI
+            - name: API_GATEWAY_URI
               value: "{{ .Values.chatapp.aisGatewayEndpoint }}"
             - name: FRONTEND_SRV_CONFIG_FILE
               value: "{{ .Values.chatapp.configFile }}"
+            - name: API_GATEWAY_AUTH
+              value: "{{ .Values.chatapp.auth }}"
             - name: FRONTEND_SRV_HOST
               value: "{{ .Values.chatapp.host }}"
             - name: FRONTEND_SRV_PORT

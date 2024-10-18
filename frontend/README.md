@@ -24,7 +24,7 @@ Option #3 is highly recommended for production deployments.
 
    Variable Name | Description
    ------------- | -----------
-   AIS_API_GATEWAY_URI | Set this environment variable to point to the Azure AI Application (API) Gateway load balancer URI. Example - `http://{host:port}/api/v1/{env}/apirouter/lb/`.
+   API_GATEWAY_URI | Set this environment variable to point to the Azure AI Application (API) Gateway load balancer URI. Example - `http://{host:port}/api/v1/{env}/apirouter/lb/`.
    FRONTEND_SRV_CONFIG_FILE | Set this env variable to the path/location of AI Chat Application configuration file.
    FRONTEND_SRV_HOST | (Optional) Use this env variable to specify hostname/IP address of application server.  Defaults to `localhost`.
    FRONTEND_SRV_PORT | (Optional) Set this env variable to the application server listen port.  Defaults to 8000.

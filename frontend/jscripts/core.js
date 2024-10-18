@@ -4,11 +4,45 @@ const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // De
 let threadId = null;
 let aiAppObject = null;
 let promptObject = null;
+// let lbEndpoint;
 let isAuthEnabled = false;
 let envContext; // Load the context on initialization!
 let aiAppConfig = new Map();
 let hdrs = new Map();
 const serverUriPrefix = "/ais-chatbot/ui/";
+
+/* function readAiAppConfig() {
+  fetch(serverUriPrefix.concat("appconfig"))
+    .then((response) => response.text())
+    .then((text) => {
+      const context = JSON.parse(text);
+
+      let selectElem = document.getElementById('appdropdown');
+      let idx = 1;
+      for (const app of context.ai_apps) {
+        console.log(`readAiAppConfig(): AI Application: ${app.ai_app_name}`);
+        aiAppConfig.set(app.ai_app_name, app);
+
+        let opt = document.createElement('option');
+        opt.value = idx;
+        opt.innerHTML = app.ai_app_name;
+        selectElem.appendChild(opt);
+        idx++;
+      };
+
+      envContext = context;
+      // lbEndpoint = context.aisGtwyEndpoint; // Set the Azure AI App Gateway load balancer endpoint
+      console.log(`readAiAppConfig(): AI APP Gateway URI: ${envContext.aisGtwyEndpoint}`);
+      isAuthEnabled = context.aisGtwyAuth; // Is security enabled on AI App Gateway?
+      console.log(`readAiAppConfig(): Backend security: ${isAuthEnabled}`);
+    })
+    .catch((error) => {
+      console.log("readAiAppConfig(): Encountered exception loading app config file", error);
+    });
+
+  let sysPromptElem = document.getElementById("sysPromptField");
+  sysPromptElem.innerHTML = defaultPrompt;
+} */
 
 function loadAuthScript() {
   let scriptEle = document.createElement('script');
@@ -283,7 +317,9 @@ function addMessageToChatBox(box, cls, msg, ctx) {
   const element = document.createElement('div');
   element.className = cls;
 
-  let content = msg.replace(/(?:\r\n|\r|\n)/g, '<br>'); // Get rid of all the newlines
+  console.log(`Message: ${JSON.stringify(msg, null, 2)}`);
+  let content = msg.replace(/(?:\r\n|\r|\n)/g, '<br>');
+  // let content = ( msg instanceof String) ? msg.replace(/(?:\r\n|\r|\n)/g, '<br>') : prettyPrintJson.toHtml(msg); // Get rid of all the newlines
   if (ctx) {
     let refList = '<ul class="list-group">';
     let docNo = 1;
@@ -372,7 +408,7 @@ async function streamCompletion(uri,appId,hdrs,box) {
       // console.log("step-2");
       box.appendChild(divelem);
       // eslint-disable-next-line no-constant-condition
-      let chkPart = "";
+      let chkPart = '';
       let calltime = 0;
       let ttToken = 0;
       let citations = null;
@@ -392,16 +428,68 @@ async function streamCompletion(uri,appId,hdrs,box) {
             return;
           };
 
-          let pdata = data.replace("data: ","");
-          pdata = chkPart.concat(pdata);
-          pdata = pdata.trim();
-          // console.log(`Data: ${pdata}`);
-          if ( pdata.startsWith("{") && pdata.endsWith("}") && isMessageComplete(pdata) ) {
-            chkPart = "";
+          // let pdata = data.replace('data: ','');
+          // let pdata = data.splice(6);
+          // let pdata = data.substring("data: ".length);
+          let pdata = '';
+          if ( data.includes("data: ") )
+            pdata = data.substring("data: ".length);
+          else
+            pdata = data;
+
+          if ( chkPart ) {
+            let cdata = chkPart + pdata;
+            if ( cdata.includes("data: ") )
+              pdata = cdata.substring("data: ".length);
+            else
+              pdata = cdata;
+          };
+          try {
+            const json = JSON.parse(pdata);
+            console.log(`**** P-DATA ****: ${pdata}`);
+            chkPart = '';
+  
+            if (!json.choices || json.choices.length === 0)
+              console.log("streamCompletion(): Skipping this line");
+            else {
+              const msg = json.choices[0].delta.content;
+              if ( msg ) {
+                const citLen = citations ? citations.length : 0;
+                let content = msg.replace(/(?:\r\n|\r|\n)/g, '<br>'); // Get rid of all the newlines
+                if ( citLen > 0 ) {
+                  for ( let i=1; i <= citLen; i++ )
+                    content = content.replaceAll("[doc" + i + "]", "<sup>[" + i + "]</sup>");
+                }
+                element.innerHTML += content;
+                box.scrollTop = box.scrollHeight;
+              };
+
+              const context = json.choices[0].delta.context;
+              if ( context ) {
+                if ( ! citations )
+                  citations = context.citations;
+                else
+                  citations = citations.concat(context.citations);
+
+                citLen = citations ? citations.length : 0;
+                console.log(`streamCompletion(): No. of Citations: ${citLen}`);
+              };
+            }
+          }
+          catch (error) {
+            let chkdata = chkPart + pdata;
+            chkPart = chkdata;
+          };
+
+          // pdata = pdata.trim();
+          /** if ( pdata.startsWith("{") && pdata.endsWith("}") && isMessageComplete(pdata) ) {
+            console.log(`**** P-Data ****: ${pdata}`);
+            chkPart = '';
 
             const json = JSON.parse(pdata);
 
-            if (!json.choices || json.choices.length === 0) console.log("streamCompletion(): Skipping this line");
+            if (!json.choices || json.choices.length === 0)
+              console.log("streamCompletion(): Skipping this line");
             else {
               const msg = json.choices[0].delta.content;
               if ( msg ) {
@@ -428,7 +516,7 @@ async function streamCompletion(uri,appId,hdrs,box) {
             };
           }
           else
-            chkPart = pdata;
+            chkPart = pdata; */
         });
       }; // end of while
       if ( citLen > 0 )
@@ -478,6 +566,14 @@ async function streamCompletion(uri,appId,hdrs,box) {
             'json-container',
             errorDetails);
   }
+}
+
+function getAiAppGatewayUri(appId) {
+  let endpointUri = envContext.aisGtwyEndpoint + appId;
+  if ( document.getElementById("cache").checked )
+    endpointUri += "?use_cache=false";
+
+  return(endpointUri);
 }
 
 async function sendMessage() {
@@ -558,7 +654,7 @@ async function sendMessage() {
     };
 
     const appId = aiAppObject.ai_app_name;
-    const uri = envContext.aisGtwyEndpoint + appId;
+    const uri = getAiAppGatewayUri(appId);
     if ( isAuthEnabled ) {
       const accessToken = await getToken();
       const bearer = `Bearer ${accessToken}`;

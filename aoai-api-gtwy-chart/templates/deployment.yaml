@@ -41,6 +41,8 @@ spec:
           env:
             - name: API_GATEWAY_CONFIG_FILE
               value: "{{ .Values.apigateway.configFile }}"
+            - name: API_GATEWAY_AUTH
+              value: "{{ .Values.apigateway.auth }}"
             - name: API_GATEWAY_KEY
               value: "{{ .Values.apigateway.secretKey }}"
             - name: API_GATEWAY_ENV

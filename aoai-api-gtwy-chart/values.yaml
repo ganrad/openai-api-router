@@ -29,9 +29,11 @@ serviceAccount:
 apigateway:
   # This is the deployment name
   name: ais-api-gateway-v1
-  # This is the API Gateway instance name. ID09032024.n - server name and type are read from the configuration file!
+  # This is the API Gateway instance name. Not needed, read from config file - ID09032024.n
   # instanceName: AZ-AIS-API-Gateway-01
   configFile: /home/node/app/files/api-router-config.json
+  # Enable/Disable authentication for AI App. Gateway.  Additional env vars may need to be set to enable auth!
+  auth: false
   # Set the private/secret key for the API Gateway
   # IMPORTANT: Change this private/secret key!!
   secretKey: abcxyz
@@ -51,6 +53,7 @@ apigateway:
   memoryInvalSchedule: "*/8 * * * *"
   # To enable prompt + completion persistence, set this value to true
   persistPrompts: false
+  # Make sure an AI App used to vectorize data is defined in the AI Gateway config file!
   vectorAiApp: vectorizedata
   searchEngine: Postgresql/pgvector
 
