@@ -565,7 +565,7 @@ class AzOaiProcessor {
     let threadId = req.get(CustomRequestHeaders.ThreadId);
 
     // console.log(`*****\nAzOaiProcessor.processRequest():\n  URI: ${req.originalUrl}\n  Request ID: ${req.id}\n  Application ID: ${config.appId}\n  Type: ${config.appType}`);
-    logger.log({level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n  Request Payload: %s", splat: [scriptName,this.constructor.name,req.id,req.originalUrl,req.user?.name,threadId,config.appId,config.appType,JSON.stringify(req.body)]}); // ID07292024.n
+    logger.log({level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n  Request Payload:\n  %s", splat: [scriptName,this.constructor.name,req.id,req.originalUrl,req.user?.name,threadId,config.appId,config.appType,JSON.stringify(req.body,null,2)]}); // ID07292024.n
     
     let respMessage = null; // Populate this var before returning!
 
@@ -635,7 +635,7 @@ class AzOaiProcessor {
 	    // ID05312024.en
             // req.body.messages.push(completion.choices[0].message); ID05312024.o
             req.body.messages.push(saveMsg); // ID05312024.n
-            logger.log({level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Cached Message: %s", splat: [scriptName,this.constructor.name,req.id,threadId,JSON.stringify(req.body.messages)]});
+            logger.log({level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Cached Message:\n  %s", splat: [scriptName,this.constructor.name,req.id,threadId,JSON.stringify(req.body.messages,null,2)]});
 
             memoryDao = new PersistDao(persistdb, TblNames.Memory);
             values = [
@@ -675,7 +675,7 @@ class AzOaiProcessor {
 
 	req.body.messages = ctxMsgs;
 
-        logger.log({level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Retrieved Message: %s", splat: [scriptName,this.constructor.name,req.id,threadId,JSON.stringify(req.body.messages)]});
+        logger.log({level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Retrieved Message:\n  %s", splat: [scriptName,this.constructor.name,req.id,threadId,JSON.stringify(req.body.messages,null,2)]});
       }
       else {
 	/* ID06132024.so
@@ -823,7 +823,7 @@ class AzOaiProcessor {
 	  metricsObj.updateFailedCalls(status,retryAfterSecs);
 
           // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n  Retry seconds: ${retryAfterSecs}\n*****`);
-	  logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message: %s\n  Retry seconds: %d", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,JSON.stringify(data),retryAfterSecs]});
+	  logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s\n  Retry seconds: %d", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,JSON.stringify(data,null,2),retryAfterSecs]});
         }
         else if ( status === 400 ) { // Invalid prompt ~ content filtered
           data = await response.json();
@@ -848,7 +848,7 @@ class AzOaiProcessor {
           // ID03012024.en
 
           // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n*****`);
-	  logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message: %s", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,JSON.stringify(data)]});
+	  logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,JSON.stringify(data,null,2)]});
 
 	  metricsObj.updateFailedCalls(status,0);
 	  respMessage = {
@@ -863,7 +863,7 @@ class AzOaiProcessor {
           data = await response.text();
 
           // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n*****`);
-	  logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message: %s", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,JSON.stringify(data)]});
+	  logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,JSON.stringify(data,null,2)]});
 
 	  metricsObj.updateFailedCalls(status,0);
 
@@ -913,7 +913,7 @@ class AzOaiProcessor {
 	};
 	// ID06132024.en
         // console.log(`*****\nAzOaiProcessor.processRequest():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
-	logger.log({level: "error", message: "[%s] %s.processRequest():\n  Encountered exception:\n  %s", splat: [scriptName,this.constructor.name,JSON.stringify(err_msg)]});
+	logger.log({level: "error", message: "[%s] %s.processRequest():\n  Encountered exception:\n  %s", splat: [scriptName,this.constructor.name,JSON.stringify(err_msg,null,2)]});
 
 	respMessage = {
           http_code: 500,
@@ -995,7 +995,7 @@ class AzOaiProcessor {
       if ( ! threadId )
 	threadId = randomUUID();
 
-      logger.log({level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Completed Message: %s", splat: [scriptName,this.constructor.name,req.id,threadId,JSON.stringify(req.body.messages)]});
+      logger.log({level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Completed Message:\n  %s", splat: [scriptName,this.constructor.name,req.id,threadId,JSON.stringify(req.body.messages,null,2)]});
 	
       values = [
         req.id,

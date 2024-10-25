@@ -25,13 +25,14 @@
  * ID04272024: ganrad : Centralized logging with winstonjs
  * ID05032024: ganrad : Added traffic routing support for Azure AI Content Safety service APIs
  * ID05062024: ganrad : Introduced memory (state management) for appType = Azure OpenAI Service
- * ID05282024: ganrad : Implemented rate limiting feature for appType = Azure OpenAI Service.
+ * ID05282024: ganrad : (Enhancement) Implemented rate limiting feature for appType = Azure OpenAI Service.
  * ID05302024: ganrad : (Bugfix) For CORS requests, the thread ID (x-thread-id) is not set in the response header.
  * ID06042024: ganrad : (Enhancement) Allow SPA's to invoke AOAI OYD calls by specifying AI Search application name instead of AI Search API Key.
  * ID06052024: ganrad: (Enhancement) Added streaming support for Azure OpenAI Chat Completion API call.
  * ID06132024: ganrad: (Enhancement) Adapted gateway error messages to be compliant with AOAI Service error messages.
  * ID06212024: ganrad: (Bugfix) Fixed an issue with returning 400's in stream mode.  Cleaned up the code.
- * ID09032024: ganrad : AI Application Gateway name is now included in the configuration file.  Introduced server (agent) type attribute - single / multi
+ * ID09032024: ganrad : (Enhancement) AI Application Gateway name is now included in the configuration file.  Introduced server (agent) type attribute - single / multi
+ * ID10232024: ganrad : (Enhancement) For OYD calls, support system assigned managed identity for authenticating AOAI service with AI search service.
  *
 */
 
@@ -213,7 +214,8 @@ router.post(["/lb/:app_id","/lb/openai/deployments/:app_id/*","/lb/:app_id/*"], 
     if ( application.appId === appId ) {
       if ( application.appType === AzAiServices.OAI ) { 
 	// ID06042024.sn
-	if ( req.body.data_sources )
+	// if ( req.body.data_sources ) ID10232024.o
+	if ( req.body.data_sources && ( req.body.data_sources[0].parameters.authentication.type === "api_key" ) ) // ID10232024.n
 	  if ( application.searchAiApp === req.body.data_sources[0].parameters.authentication.key )
 	    req.body.data_sources[0].parameters.authentication.key = getAiSearchAppApikey(eps,application.searchAiApp);
 	// ID06042024.en

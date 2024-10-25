@@ -244,7 +244,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    #
    ```
 
-   Connect to the database (using *psql*) and verify the database tables were created successfully. The following two tables should have been created.
+   Connect to the database (using *psql*) and verify the database tables were created successfully. The following 3 tables should have been created.
 
    Table Name | Description
    ---------- | -----------
@@ -274,7 +274,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      Attribute Name | Description
      -------------- | -----------
      uri | AI Service endpoint URI
-     apiKey | AI Service API Key
+     apikey | AI Service API Key
      rpm | Requests per minute (RPM) rate limit to be applied to this endpoint.  This attribute is optional.  When it is not specified, no rate limits are applied.
 
    - (Optional) To enable caching and retrieval of OpenAI Service completions (Semantic Caching feature), specify values for attributes contained within **cacheSettings** attribute.  Refer to the table below and set appropriate values.
@@ -348,7 +348,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    You will see the API Gateway server start up message in the terminal window as shown in the snippet below.
 
    ```bash
-   > openai-api-router@2.0.0 start
+   > openai-api-router@2.0.1 start
    > node ./src/server.js
 
    06-Aug-2024 01:47:01 [info] [server.js] Starting initialization of Azure AI Services API Gateway ...
@@ -403,7 +403,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    ```json
    {
      "serverName": "Gateway-Instance-01",
-     "serverVersion": "2.0.0",
+     "serverType": "single-domain",
+     "serverVersion": "2.0.1",
      "serverConfig": {
         "host": "localhost",
         "listenPort": 8000,
@@ -411,7 +412,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
         "persistPrompts": "true",
         "collectInterval": 1,
         "collectHistoryCount": 2,
-        "configFile": "./api-router-config-test.json"
+        "configFile": "./api-router-config.json"
      },
      "cacheSettings": {
         "cacheEnabled": true,

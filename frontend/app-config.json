@@ -32,6 +32,8 @@
         "search_params": {
           "ai_search_app": "search-garmin-docs",
           "endpoint": "https://gr-dev-rag-ais.search.windows.net",
+	  "auth_type": "system_assigned_managed_identity",
+	  "mid_resource_id": "",
           "index_name": "dev-garmin-idx",
           "embedding_model": "dev-embedd-ada-002",
           "query_type": "vector_semantic_hybrid",

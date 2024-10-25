@@ -5,6 +5,8 @@
 * (Bugfix) Resolved JSON parse issue for streamed chat completion response.
 * (Enhancement) Simplified logic for streamed responses.  The modified logic is more performant and enhances maintainability.
 * (Bugfix) Auth strategy will only be configured when authenication is enabled for the gateway.  This was causing a server startup issue.
+* (Enhancement) Structured log messages
+* (Enhancement) For OYD calls, API Keys, User assigned and System assigned managed identity auth types are supported for AI Search Service.
 
 ## [v2.0.0](https://github.com/ganrad/openai-api-router/compare/v1.9.0...v2.0.0)
 ### Functionality changes
