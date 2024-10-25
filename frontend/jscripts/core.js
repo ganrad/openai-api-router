@@ -1,3 +1,14 @@
+/**
+ * Name: SPA UI/Frontend core logic.
+ * Description: This script contains the core logic for the AI App Gateway SPA frontend/UI.
+ * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
+ * Date: 07-01-2024
+ * Version (Introduced): v1.0.0
+ *  
+ * Notes:
+ * ID10232024: ganrad : v2.0.1:v1.0.1 : 1) Added support for MID - user and system assigned MID 2) (Bugfix) OYD stream response was failing intermittently.
+ *
+ */
 // Adjust the system prompt as needed
 const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // Default prompt
 
@@ -132,6 +143,7 @@ function setInferenceTarget() {
   document.getElementById("perf_o").value = aiAppObject.model_params.presence_penalty;
   document.getElementById("topp").value = aiAppObject.model_params.top_p;
   document.getElementById("topp_o").value = aiAppObject.model_params.top_p;
+  document.getElementById("cache").checked = false; // ID10232024.n
 
   // Construct & populate a new prompt object
   promptObject = {
@@ -162,15 +174,45 @@ function setInferenceTarget() {
     document.getElementById("docs").value = srchParams.top_n_docs;
     document.getElementById("docs_o").value = srchParams.top_n_docs;
 
+    // ID10232024.sn
+    let aiSrchAuth;
+    switch ( srchParams.auth_type ) {
+      case "api_key":
+        aiSrchAuth = {
+          type: srchParams.auth_type,
+          key: srchParams.ai_search_app // Specify either [ API Key / AI Search App Name registered in App Gateway ] for chat completion + OYD calls
+        };
+        break;
+      case "system_assigned_managed_identity":
+        aiSrchAuth = {
+          type: srchParams.auth_type
+        };
+        break;
+      case "user_assigned_managed_identify":
+        aiSrchAuth = {
+          type: srchParams.auth_type,
+          managed_identity_resource_id: srchParams.mid_resource_id // The resource ID of the user-assigned managed identity to use for authentication.
+        };
+        break;
+      default: // System assigned managed identity
+        aiSrchAuth = {
+          type: "system_assigned_managed_identity"
+        };
+    };
+    // ID10232024.en
+
     let dataSource = {
       type: "azure_search",
       parameters: {
         endpoint: srchParams.endpoint,
         index_name: srchParams.index_name,
+	/* ID10232024.so
         authentication: {
           type: "api_key",
           key: srchParams.ai_search_app // Specify the API Key for chat completion + OYD calls
         },
+	ID10232024.eo */
+	authentication: aiSrchAuth, // ID10232024.n
         embedding_dependency: {
           deployment_name: srchParams.embedding_model,
           type: "deployment_name"
@@ -477,8 +519,9 @@ async function streamCompletion(uri,appId,hdrs,box) {
             }
           }
           catch (error) {
-            let chkdata = chkPart + pdata;
-            chkPart = chkdata;
+            // let chkdata = chkPart + pdata;
+            // chkPart = chkdata;
+	    chkPart = pdata; // ID10232024.n
           };
 
           // pdata = pdata.trim();
