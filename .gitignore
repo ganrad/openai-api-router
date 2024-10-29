@@ -128,3 +128,16 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Deno generated files
+deno.lock
+
+# Bun generated files
+**/*.bun
+
+# MacOS generated files
+.DS_Store
+.DS_Store?
+
+# NPM lock file
+package-lock.json
