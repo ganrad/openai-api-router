@@ -41,6 +41,7 @@ build/Release
 # Dependency directories
 node_modules/
 jspm_packages/
+bower_components/
 
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
@@ -135,9 +136,13 @@ deno.lock
 # Bun generated files
 **/*.bun
 
-# MacOS generated files
+# OS Metadata files
 .DS_Store
 .DS_Store?
+Thumbs.db
 
 # NPM lock file
 package-lock.json
+
+# Yarn lock file
+yarn.lock
