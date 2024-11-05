@@ -124,7 +124,7 @@ async function readApiGatewayEnvVars() {
     process.exit(1);
   };
 
-  let azAppInsightsConString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+  let azAppInsightsConString = process.env.APPLICATION_INSIGHTS_CONNECTION_STRING;
   if ( azAppInsightsConString ) {
     useAzureMonitor();
     wlogger.log({level: "info", message: "[%s] Azure Application Monitor OpenTelemetry configured.", splat: [scriptName]});

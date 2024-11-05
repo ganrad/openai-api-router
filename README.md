@@ -309,7 +309,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    Set the environment variables to the correct values and export them before proceeding to the next step. Refer to the table below for descriptions of the environment variables.
 
    > **NOTE**:
-   > You can update and run the shell script `./set-api-gtwy-env.sh` to set and export the environment variables.
+   > You can source the shell script `. ./set-api-gtwy-env.sh` to read and export the environment variables contained in your .env file.
 
    Env Variable Name | Description | Required | Default Value
    ----------------- | ----------- | -------- | ------------- 
@@ -323,7 +323,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    API_GATEWAY_CLIENT_ID | When security is turned on for the gateway, this value is required. Specify the correct **Client ID** for the AI Application Gateway as defined in Application Registrations on Azure.  | No | None
    API_GATEWAY_METRICS_CINTERVAL | Backend API metrics collection and aggregation interval (in minutes) | Yes | Set it to a numeric value eg., 60 (1 hour)
    API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numeric value (<= 600)  
-   APPLICATIONINSIGHTS_CONNECTION_STRING | Azure Monitor connection string | No | Assign the value of the Azure Application Insights resource *connection string* (from Azure Portal)
+   APPLICATION_INSIGHTS_CONNECTION_STRING | Azure Monitor connection string | No | Assign the value of the Azure Application Insights resource *connection string* (from Azure Portal)
    API_GATEWAY_USE_CACHE | Global setting for enabling semantic caching feature. This setting applies to all AI Applications.| No | false
    API_GATEWAY_CACHE_INVAL_SCHEDULE | Global setting for configuring the frequency of *Cache Entry Invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/5 * * * *"
    API_GATEWAY_STATE_MGMT | Global setting for enabling conversational state management feature.  This setting applies to all AI Applications. | No | false
