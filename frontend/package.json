@@ -1,6 +1,6 @@
 {
   "name": "ai-chatbot-frontend",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Reference implementation of AI Application Gateway frontend ~ AI Chatbot User Interface.",
   "main": "src/server.js",
   "scripts": {

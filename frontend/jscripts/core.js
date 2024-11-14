@@ -1,26 +1,36 @@
 /**
- * Name: SPA UI/Frontend core logic.
+ * Name: SPA UI/Frontend core logic for RAPID.
  * Description: This script contains the core logic for the AI App Gateway SPA frontend/UI.
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 07-01-2024
  * Version (Introduced): v1.0.0
  *  
  * Notes:
- * ID10232024: ganrad : v2.0.1:v1.0.1 : 1) Added support for MID - user and system assigned MID 2) (Bugfix) OYD stream response was failing intermittently.
- *
- */
+ * ID10232024: ganrad: v2.0.1-v1.0.1: 1) Added support for MID - user and system assigned MID 2) (Bugfix) OYD stream response was failing intermittently.
+ * ID11012024: ganrad: v2.1.0-v1.1.0: Setting the default system prompt causes issues with multi-domain gateway.  Hence not setting it by default.
+ * ID11082024: ganrad: v2.1.0-v1.1.0: LLMs exposed by AI Model Inference API expect a value for 'stop' parameter.
+ * ID11122024: ganrad: v2.1.0-v1.1.0: (Enhancement) Request ID included in the 'Info' pane is now a link. Clicking this link shows the request details.
+ * ID11132024: ganrad: v2.1.0-v1.1.0: (Enhancement) Introduced support for multiple single and multi-domain AI App Gateways.
+*/
 // Adjust the system prompt as needed
 const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // Default prompt
 
 let threadId = null;
-let aiAppObject = null;
-let promptObject = null;
+let aiAppObject = null; // AI Application Object selected by the user
+let promptObject = null; // AI Application model object
 // let lbEndpoint;
 let isAuthEnabled = false;
-let envContext; // Load the context on initialization!
+let envContext; // Load the context on initialization. Object used by auth.js.
+// Map => [AI App name : AI App object]
 let aiAppConfig = new Map();
+
+// Map => [AI Gateway name : Map => [AI App name : AI App object] ]
+let aiGatewayConfig = new Map(); // ID11132024.n 
+// Map => [AI Gateway name : Gateway object]
+let aiGatewayMap = new Map(); // ID11132024.n
+
 let hdrs = new Map();
-const serverUriPrefix = "/ais-chatbot/ui/";
+const serverUriPrefix = "/ais-chatbot/ui/"; // Frontend / UI uri prefix
 
 /* function readAiAppConfig() {
   fetch(serverUriPrefix.concat("appconfig"))
@@ -57,8 +67,8 @@ const serverUriPrefix = "/ais-chatbot/ui/";
 
 function loadAuthScript() {
   let scriptEle = document.createElement('script');
-  scriptEle.setAttribute("src","./auth.js");
-  scriptEle.setAttribute("type","text/javascript");
+  scriptEle.setAttribute("src", "./auth.js");
+  scriptEle.setAttribute("type", "text/javascript");
   scriptEle.setAttribute("async", false);
 
   document.body.appendChild(scriptEle);
@@ -85,6 +95,32 @@ async function readAiAppConfig() {
     // Wait for the response to be parsed as JSON
     const context = await response.json();
 
+    // ID11132024.sn
+    // Populate AI Gateway config
+    let appConfig;
+    let srvElem = document.getElementById('srvdropdown');
+    let srv_idx = 1;
+    for (const srv of context.ai_app_gateways) {
+      console.log(`readAiAppConfig(): AI Gateway: ${srv.name}`);
+
+      appConfig = new Map();
+      for (const app of srv.ai_apps) {
+        console.log(`readAiAppConfig(): AI Application: ${app.ai_app_name}`);
+        appConfig.set(app.ai_app_name, app);
+      };
+      aiGatewayConfig.set(srv.name, appConfig);
+
+      let opt = document.createElement('option');
+      opt.value = srv_idx;
+      opt.innerHTML = srv.name;
+      srvElem.appendChild(opt);
+      srv_idx++;
+
+      aiGatewayMap.set(srv.name, srv);
+    };
+    // ID11132024.en
+
+    /* ID11132024.o
     let selectElem = document.getElementById('appdropdown');
     let idx = 1;
     for (const app of context.ai_apps) {
@@ -97,16 +133,17 @@ async function readAiAppConfig() {
       selectElem.appendChild(opt);
       idx++;
     };
+    */
 
     envContext = context;
-    console.log(`readAiAppConfig(): AI APP Gateway URI: ${envContext.aisGtwyEndpoint}`);
+    // console.log(`readAiAppConfig(): AI APP Gateway URI: ${envContext.aisGtwyEndpoint}`); ID11132024.o
     isAuthEnabled = context.aisGtwyAuth; // Is security enabled on AI App Gateway?
     console.log(`readAiAppConfig(): Backend security: ${isAuthEnabled}`);
 
-    if ( isAuthEnabled )
+    if (isAuthEnabled)
       loadAuthScript();
     else // hide 'sign-in' link
-      document.getElementById("auth-anchor").style.display="none";
+      document.getElementById("auth-anchor").style.display = "none";
   } catch (error) {
     // Handle any errors that occurred during the fetch
     console.error('readAiAppConfig(): Error fetching data:', error);
@@ -118,6 +155,48 @@ async function readAiAppConfig() {
 
 readAiAppConfig();
 
+// ID11132024.sn
+function setAiApps() {
+  const aiSrvElem = document.getElementById('srvdropdown');
+  const aiGtwy = aiSrvElem.options[aiSrvElem.selectedIndex].text;
+  // console.log(`setAiApps(): Selected AI Gateway: ${aiGtwy}`);
+
+  if ( aiGtwy === "Choose from" ) {
+    aiSrvElem.title = "";
+    return;
+  };
+
+  const gtwyObject = aiGatewayMap.get(aiGtwy);
+  aiSrvElem.title = gtwyObject.uri;
+
+  const aiSrvTypeElem = document.getElementById('srvtype');
+  aiSrvTypeElem.value = gtwyObject.type;
+
+  aiAppConfig = aiGatewayConfig.get(aiGtwy);
+
+  let appElem = document.getElementById('appdropdown');
+  // First remove all options / apps in the drop down control
+  let i, L = appElem.options.length - 1;
+  for (i = L; i >= 0; i--) {
+    appElem.remove(i);
+  };
+
+  // Populate AI Apps in the drop down control
+  let idx = 1;
+  for (const app of aiAppConfig.keys()) {
+    // console.log(`setAiApps(): Adding AI App: ${app}`);
+
+    let opt = document.createElement('option');
+    opt.value = idx;
+    opt.innerHTML = app;
+    appElem.appendChild(opt);
+    idx++;
+  };
+
+  setInferenceTarget();
+}
+// ID11132024.en
+
 function setInferenceTarget() {
   const aiAppElem = document.getElementById('appdropdown');
   const aiApp = aiAppElem.options[aiAppElem.selectedIndex].text;
@@ -125,7 +204,7 @@ function setInferenceTarget() {
   aiAppObject = aiAppConfig.get(aiApp);
 
   // Set the system prompt
-  if ( aiAppObject.sysPrompt )
+  if (aiAppObject.sysPrompt)
     document.getElementById("sysPromptField").value = aiAppObject.sysPrompt;
 
   // Set the model config form fields
@@ -176,7 +255,7 @@ function setInferenceTarget() {
 
     // ID10232024.sn
     let aiSrchAuth;
-    switch ( srchParams.auth_type ) {
+    switch (srchParams.auth_type) {
       case "api_key":
         aiSrchAuth = {
           type: srchParams.auth_type,
@@ -206,13 +285,13 @@ function setInferenceTarget() {
       parameters: {
         endpoint: srchParams.endpoint,
         index_name: srchParams.index_name,
-	/* ID10232024.so
+        /* ID10232024.so
         authentication: {
           type: "api_key",
           key: srchParams.ai_search_app // Specify the API Key for chat completion + OYD calls
         },
-	ID10232024.eo */
-	authentication: aiSrchAuth, // ID10232024.n
+        ID10232024.eo */
+        authentication: aiSrchAuth, // ID10232024.n
         embedding_dependency: {
           deployment_name: srchParams.embedding_model,
           type: "deployment_name"
@@ -246,20 +325,40 @@ function clearContent(elementId) {
 }
 
 function saveContent(configName) {
+  if ( ! promptObject ) { // ID11132024.n
+    const aiSrvElem = document.getElementById('srvdropdown');
+    const aiSrv = aiSrvElem.options[aiSrvElem.selectedIndex].text;
+    if (aiSrv === "Choose from") { // AI Application Gateway not selected
+
+      let popover = new bootstrap.Popover(aiSrvElem, {
+        animation: true,
+        placement: "right",
+        // title: "Alert",
+        content: "Select an AI Application Gateway",
+        trigger: "manual"
+      });
+      popover.show();
+      setTimeout(function () { popover.dispose(); }, 2000);
+      return;
+    };
+  };
+
   if (configName === "modelConfig") {
     promptObject.stream = document.getElementById("stream").checked;
     promptObject.max_tokens = Number(document.getElementById("mtokens").value);
     promptObject.temperature = Number(document.getElementById("temperature").value);
     promptObject.presence_penalty = Number(document.getElementById("presence").value);
     promptObject.frequency_penalty = Number(document.getElementById("frequency").value);
-    promptObject.stop = document.getElementById("stopSequence").value;
+    let val = document.getElementById("stopSequence").value; // ID11082024.n
+    if ((val !== "undefined") && val)
+      promptObject.stop = val;
     promptObject.top_p = Number(document.getElementById("topp").value);
 
     const alert = document.getElementById('modelConfigToast'); //select id of toast
     const bsAlert = new bootstrap.Toast(alert); //initialize it
     bsAlert.show(); //show it
   };
-
+  // console.log(`--- ${JSON.stringify(promptObject,null,2)} ---`);
   if ((configName === "searchConfig") && (promptObject.data_sources)) {
     promptObject.data_sources[0].parameters.in_scope = document.getElementById("scope").checked;
     promptObject.data_sources[0].parameters.query_type = document.getElementById("queryType").value;
@@ -277,23 +376,24 @@ function addJsonToAccordian(time, box, cls, accordian, req, res, reqId) {
   const element = document.createElement('div');
   element.className = "accordian-item";
   element.innerHTML = '<h2 class="accordion-header" id="headingOne"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">' +
-          new Date().toLocaleString('en-US', { timeZoneName: 'short' }) + ' (' + (time / 1000) + ' seconds)' +
-          '</button></h2><div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#msgAccordian"><div class="accordion-body">' +
-          '<p><b>Request: </b>(ID = ' + reqId + ')</p>' +
-          '<pre class="' + cls + '">' + prettyPrintJson.toHtml(req) + '</pre>' +
-          '<p><b>Response:</b></p>' + '<pre class="' + cls + '">' + prettyPrintJson.toHtml(res) + '</pre>' +
-          '</div></div>';
+    new Date().toLocaleString('en-US', { timeZoneName: 'short' }) + ' (' + (time / 1000) + ' seconds)' +
+    '</button></h2><div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#msgAccordian"><div class="accordion-body">' +
+    '<p><b>Request: </b>(ID = <a href="' + getAiAppGatewayAppReqsUri(aiAppObject.ai_app_name,reqId) + 
+    '" class="link-info link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover" target="_blank">' + reqId + '</a>)</p>' +
+    '<pre class="' + cls + '">' + prettyPrintJson.toHtml(req) + '</pre>' +
+    '<p><b>Response:</b></p>' + '<pre class="' + cls + '">' + prettyPrintJson.toHtml(res) + '</pre>' +
+    '</div></div>'; // ID11122024.n
 
   if (!accordian) {
-          box.innerHTML = '<div class="accordion" id="msgAccordian"></div>';
-          accordian = document.getElementById('msgAccordian');
+    box.innerHTML = '<div class="accordion" id="msgAccordian"></div>';
+    accordian = document.getElementById('msgAccordian');
   };
 
   // accordian.appendChild(element);
   if (accordian.hasChildNodes())
-          accordian.insertBefore(element, accordian.firstChild);
+    accordian.insertBefore(element, accordian.firstChild);
   else
-          accordian.appendChild(element);
+    accordian.appendChild(element);
   // box.scrollTop = box.scrollHeight;
 }
 
@@ -302,10 +402,10 @@ function addJsonToBox(box, cls, msg) {
   element.className = cls;
   element.innerHTML = prettyPrintJson.toHtml(msg);
 
-  if ( box.hasChildNodes() )
-          box.insertBefore(element,box.firstChild);
+  if (box.hasChildNodes())
+    box.insertBefore(element, box.firstChild);
   else
-          box.appendChild(element);
+    box.appendChild(element);
   // box.scrollTop = box.scrollHeight;
 }
 
@@ -340,9 +440,9 @@ function insertCitationLinks(cits) {
 
   for (const citation of cits) {
     refList += '<li class="list-group-item"><b>' +
-            docNo + '.</b> ' +
-            generateLinkWithOffcanvas(citation.title, citation.filepath, extractAndEncloseImageURLs(citation.content)) +
-            '</li>';
+      docNo + '.</b> ' +
+      generateLinkWithOffcanvas(citation.title, citation.filepath, extractAndEncloseImageURLs(citation.content)) +
+      '</li>';
     docNo++;
   };
   refList += '</ul>';
@@ -369,9 +469,9 @@ function addMessageToChatBox(box, cls, msg, ctx) {
     for (const citation of ctx.citations) {
       content = content.replaceAll("[doc" + docNo + "]", "<sup>[" + docNo + "]</sup>");
       refList += '<li class="list-group-item"><b>' +
-              docNo + '.</b> ' +
-              generateLinkWithOffcanvas(citation.title, citation.filepath, extractAndEncloseImageURLs(citation.content)) +
-              '</li>';
+        docNo + '.</b> ' +
+        generateLinkWithOffcanvas(citation.title, citation.filepath, extractAndEncloseImageURLs(citation.content)) +
+        '</li>';
       // console.log(`Title: ${citation.title}; Filepath: ${citation.filepath}`);
       docNo++;
     };
@@ -392,14 +492,14 @@ function addMessageToChatBox(box, cls, msg, ctx) {
 
 function isMessageComplete(message) {
   let braces = 0;
-  for (var i=0, len = message.length; i<len; ++i) {
-    switch(message[i]) {
-      case '{' :
-      ++braces;
-      break;
-      case '}' :
-      --braces;
-      break;
+  for (var i = 0, len = message.length; i < len; ++i) {
+    switch (message[i]) {
+      case '{':
+        ++braces;
+        break;
+      case '}':
+        --braces;
+        break;
     }
   }
   return (braces === 0) ? true : false;
@@ -410,17 +510,17 @@ function isMessageComplete(message) {
 * @param{string} prompt
 * @param{any} parameters
 */
-async function streamCompletion(uri,appId,hdrs,box) {
+async function streamCompletion(uri, appId, hdrs, box) {
   try {
     const ds = promptObject.data_sources;
-    if ( threadId ) // No OYD call when user session is alive
+    if (threadId) // No OYD call when user session is alive
       delete promptObject.data_sources;
 
     const sttime = Date.now();
     let response = await fetch(uri, {
       method: "POST", headers: hdrs, body: JSON.stringify(promptObject)
     });
-    if ( threadId )
+    if (threadId)
       promptObject.data_sources = ds;
 
     let status = response.status;
@@ -429,15 +529,15 @@ async function streamCompletion(uri,appId,hdrs,box) {
       if (threadId === null) {
         threadId = response.headers.get("x-thread-id");
         const values = {
-                application_id: appId,
-                user: aiAppObject.user,
-                thread_id: threadId,
-                start_time: new Date().toLocaleString('en-US', { timeZoneName: 'short' })
+          application_id: appId,
+          user: aiAppObject.user,
+          thread_id: threadId,
+          start_time: new Date().toLocaleString('en-US', { timeZoneName: 'short' })
         };
         addJsonToBox(
-                document.getElementById('infoBox'),
-                'json-container',
-                values);
+          document.getElementById('infoBox'),
+          'json-container',
+          values);
       };
 
       const divelem = document.createElement('div');
@@ -456,11 +556,12 @@ async function streamCompletion(uri,appId,hdrs,box) {
       let citations = null;
       let citLen = 0;
       while (true) {
-      // eslint-disable-next-line no-await-in-loop
+        // eslint-disable-next-line no-await-in-loop
         const { value, done } = await reader.read();
         if (done) break;
-        if ( !ttToken ) ttToken = Date.now();
+        if (!ttToken) ttToken = Date.now();
 
+        console.log(`Raw line: ${value}`);
         const arr = value.split('\n');
         arr.forEach((data) => {
           // console.log(`Line: ${data}`);
@@ -474,14 +575,14 @@ async function streamCompletion(uri,appId,hdrs,box) {
           // let pdata = data.splice(6);
           // let pdata = data.substring("data: ".length);
           let pdata = '';
-          if ( data.includes("data: ") )
+          if (data.includes("data: "))
             pdata = data.substring("data: ".length);
           else
             pdata = data;
 
-          if ( chkPart ) {
+          if (chkPart) {
             let cdata = chkPart + pdata;
-            if ( cdata.includes("data: ") )
+            if (cdata.includes("data: "))
               pdata = cdata.substring("data: ".length);
             else
               pdata = cdata;
@@ -490,16 +591,16 @@ async function streamCompletion(uri,appId,hdrs,box) {
             const json = JSON.parse(pdata);
             console.log(`**** P-DATA ****: ${pdata}`);
             chkPart = '';
-  
+
             if (!json.choices || json.choices.length === 0)
               console.log("streamCompletion(): Skipping this line");
             else {
               const msg = json.choices[0].delta.content;
-              if ( msg ) {
+              if (msg) {
                 const citLen = citations ? citations.length : 0;
                 let content = msg.replace(/(?:\r\n|\r|\n)/g, '<br>'); // Get rid of all the newlines
-                if ( citLen > 0 ) {
-                  for ( let i=1; i <= citLen; i++ )
+                if (citLen > 0) {
+                  for (let i = 1; i <= citLen; i++)
                     content = content.replaceAll("[doc" + i + "]", "<sup>[" + i + "]</sup>");
                 }
                 element.innerHTML += content;
@@ -507,8 +608,8 @@ async function streamCompletion(uri,appId,hdrs,box) {
               };
 
               const context = json.choices[0].delta.context;
-              if ( context ) {
-                if ( ! citations )
+              if (context) {
+                if (!citations)
                   citations = context.citations;
                 else
                   citations = citations.concat(context.citations);
@@ -519,9 +620,9 @@ async function streamCompletion(uri,appId,hdrs,box) {
             }
           }
           catch (error) {
-            // let chkdata = chkPart + pdata;
+            // let chkdata = chkPart + pdata; ID10232024.o
             // chkPart = chkdata;
-	    chkPart = pdata; // ID10232024.n
+            chkPart = pdata; // ID10232024.n
           };
 
           // pdata = pdata.trim();
@@ -562,91 +663,109 @@ async function streamCompletion(uri,appId,hdrs,box) {
             chkPart = pdata; */
         });
       }; // end of while
-      if ( citLen > 0 )
+      if (citLen > 0)
         divelem.innerHTML += insertCitationLinks(citations);
 
-      if ( calltime === 0 ) // If response was served from cache!
+      if (calltime === 0) // If response was served from cache!
         calltime = Date.now() - sttime;
 
       let strResponse = {
-              code: 200,
-              message: "OK",
-              time_to_first_token: (ttToken - sttime) / 1000,
-              total_call_time: calltime / 1000
+        code: 200,
+        message: "OK",
+        time_to_first_token: (ttToken - sttime) / 1000,
+        total_call_time: calltime / 1000
       };
       addJsonToAccordian(
-              calltime,
-              document.getElementById('msgBox'),
-              'json-container',
-              document.getElementById('msgAccordian'),
-              promptObject, strResponse, response.headers.get("x-request-id"));
+        calltime,
+        document.getElementById('msgBox'),
+        'json-container',
+        document.getElementById('msgAccordian'),
+        promptObject, strResponse, response.headers.get("x-request-id"));
     }
     else {
       const data = await response.json();
-      if ( data.error.message?.includes("Thread") ) {
+      if (data.error?.message?.includes("Thread")) { // ID11082024.n
         let msg = "Your chat session [ID = " + threadId + "] has expired.  Please start a new chat session.";
-        addMessageToBox(chatBox,'mb-2 rounded bg-light text-info',msg);
+        addMessageToBox(chatBox, 'mb-2 rounded bg-light text-info', msg);
       }
       else {
         let msg = "Received an exception from server.  Please refer to the error details in the 'Exceptions' tab.";
-        addMessageToBox(chatBox,'mb-2 rounded bg-light text-danger',msg);
+        addMessageToBox(chatBox, 'mb-2 rounded bg-light text-danger', msg);
       };
       addJsonToBox(
-              document.getElementById('errorBox'),
-              'json-container',
-              data); //Assuming data returned is JSON!
+        document.getElementById('errorBox'),
+        'json-container',
+        data); //Assuming data returned is JSON!
     };
   }
   catch (error) {
     const errorDetails = {
-            name: error.name,
-            cause: error.cause,
-            message: error.message,
-            stack: error.stack,
+      name: error.name,
+      cause: error.cause,
+      message: error.message,
+      stack: error.stack,
     };
     addJsonToBox(
-            document.getElementById('errorBox'),
-            'json-container',
-            errorDetails);
+      document.getElementById('errorBox'),
+      'json-container',
+      errorDetails);
   }
 }
 
-function getAiAppGatewayUri(appId) {
-  let endpointUri = envContext.aisGtwyEndpoint + appId;
-  if ( document.getElementById("cache").checked )
+function getAiAppGatewayAppReqsUri(appId, requestId) { // ID11122024.n
+  const srvElem = document.getElementById('srvdropdown');
+  const selectedIndex = srvElem.selectedIndex;
+  const srvName = srvElem.options[selectedIndex].text;
+
+  const srv_endpoint = aiGatewayMap.get(srvName).uri;
+
+  return (`${srv_endpoint}/apprequests/${appId}/${requestId}`);
+}
+
+function getAiAppGatewayLoadBalancerUri(appId) {
+  // ID11132024.sn
+  const srvElem = document.getElementById('srvdropdown');
+  const selectedIndex = srvElem.selectedIndex;
+  const srvName = srvElem.options[selectedIndex].text;
+
+  let endpointUri = aiGatewayMap.get(srvName).uri + '/lb/' + appId;
+  // ID11132024.en
+
+  // let endpointUri = envContext.aisGtwyEndpoint + '/lb/' + appId; ID11132024.o
+  if (document.getElementById("cache").checked)
     endpointUri += "?use_cache=false";
 
-  return(endpointUri);
+  return (endpointUri);
 }
 
 async function sendMessage() {
-  const aiAppElem = document.getElementById('appdropdown');
-  const aiApp = aiAppElem.options[aiAppElem.selectedIndex].text;
-  if (aiApp === "Choose from") { // AI Application not selected
+  const aiSrvElem = document.getElementById('srvdropdown'); // ID11132024.n
+  const aiSrv = aiSrvElem.options[aiSrvElem.selectedIndex].text;
+  if (aiSrv === "Choose from") { // AI Application Gateway not selected
 
-    let popover = new bootstrap.Popover(aiAppElem, {
-            animation: true,
-            placement: "right",
-            // title: "Alert",
-            content: "Select an AI Application",
-            trigger: "manual"
+    let popover = new bootstrap.Popover(aiSrvElem, {
+      animation: true,
+      placement: "right",
+      // title: "Alert",
+      content: "Select an AI Application Gateway",
+      trigger: "manual"
     });
     popover.show();
-    setTimeout(function() { popover.dispose(); },2000);
+    setTimeout(function () { popover.dispose(); }, 2000);
     return;
   };
-  if ( isAuthEnabled && !username ) {
+  if (isAuthEnabled && !username) {
     const loginBtn = document.getElementById('auth-anchor');
 
     let popover = new bootstrap.Popover(loginBtn, {
-            animation: true,
-            placement: "top",
-            // title: "Alert",
-            content: "Sign in to the AI App Gateway",
-            trigger: "manual"
+      animation: true,
+      placement: "top",
+      // title: "Alert",
+      content: "Sign in to the AI App Gateway",
+      trigger: "manual"
     });
     popover.show();
-    setTimeout(function() { popover.dispose(); },2000);
+    setTimeout(function () { popover.dispose(); }, 2000);
     return;
   };
 
@@ -665,16 +784,16 @@ async function sendMessage() {
     document.getElementById('spinnerBtn').style.display = "block";
 
     addMessageToBox(
-            // document.getElementById('chatBox'),
-            chatBox,
-            'mb-2 rounded bg-secondary text-white',
-            message);
+      // document.getElementById('chatBox'),
+      chatBox,
+      'mb-2 rounded bg-secondary text-white',
+      message);
     userInput.value = '';
     userInput.disabled = true;
 
     let sysPrompt = document.getElementById('sysPromptField').value;
-    if (!sysPrompt)
-            sysPrompt = defaultPrompt;
+    // if (!sysPrompt) // ID11012024.o
+    // sysPrompt = defaultPrompt;
 
     let requestHeaders = null;
     promptObject.messages.length = 0;
@@ -692,33 +811,34 @@ async function sendMessage() {
       hdrs.set("Content-Type", "application/json");
       requestHeaders = new Headers(hdrs);
 
-      promptObject.messages.push({ role: "system", content: sysPrompt })
+      if (sysPrompt) // ID11012024.n
+        promptObject.messages.push({ role: "system", content: sysPrompt })
       promptObject.messages.push({ role: "user", content: message });
     };
 
     const appId = aiAppObject.ai_app_name;
-    const uri = getAiAppGatewayUri(appId);
-    if ( isAuthEnabled ) {
+    const uri = getAiAppGatewayLoadBalancerUri(appId);
+    if (isAuthEnabled) {
       const accessToken = await getToken();
       const bearer = `Bearer ${accessToken}`;
       // console.log(`Token: [${bearer}]`);
       requestHeaders.append('Authorization', bearer);
     };
 
-    if ( promptObject.stream ) // Stream response
-      await streamCompletion(uri,appId,requestHeaders,chatBox);
+    if (promptObject.stream) // Stream response
+      await streamCompletion(uri, appId, requestHeaders, chatBox);
     else {
       let status;
       try {
         const ds = promptObject.data_sources;
 
-        if ( threadId )
+        if (threadId)
           delete promptObject.data_sources;
         const sttime = Date.now();
         let response = await fetch(uri, {
           method: "POST", headers: requestHeaders, body: JSON.stringify(promptObject)
         });
-        if ( threadId )
+        if (threadId)
           promptObject.data_sources = ds;
 
         status = response.status; data = await response.json();
@@ -727,57 +847,61 @@ async function sendMessage() {
           if (threadId === null) {
             threadId = response.headers.get("x-thread-id");
             const values = {
-                    application_id: appId,
-                    user: aiAppObject.user,
-                    thread_id: threadId,
-                    start_time: new Date().toLocaleString('en-US', { timeZoneName: 'short' })
+              application_id: appId,
+              user: aiAppObject.user,
+              thread_id: threadId,
+              start_time: new Date().toLocaleString('en-US', { timeZoneName: 'short' })
             };
             addJsonToBox(
-                    document.getElementById('infoBox'),
-                    'json-container',
-                    values);
+              document.getElementById('infoBox'),
+              'json-container',
+              values);
           };
 
           addJsonToAccordian(
-                  calltime,
-                  document.getElementById('msgBox'),
-                  'json-container',
-                  document.getElementById('msgAccordian'),
-                  promptObject, data, response.headers.get("x-request-id"));
+            calltime,
+            document.getElementById('msgBox'),
+            'json-container',
+            document.getElementById('msgAccordian'),
+            promptObject, data, response.headers.get("x-request-id"));
 
           addMessageToChatBox(
-                  // document.getElementById('chatBox'),
-                  chatBox,
-                  'mb-2 rounded bg-light text-dark',
-                  data.choices[0].message.content,
-                  data.choices[0].message.context);
+            // document.getElementById('chatBox'),
+            chatBox,
+            'mb-2 rounded bg-light text-dark',
+            data.choices[0].message.content,
+            data.choices[0].message.context);
         }
         else {
-          if ( data.error.message?.includes("Thread") ) {
+          if (data.error.message?.includes("Thread")) {
             let msg = "Your chat session [ID = " + threadId + "] has expired.  Please start a new chat session.";
-            addMessageToBox(chatBox,'mb-2 rounded bg-light text-info',msg);
+            addMessageToBox(chatBox, 'mb-2 rounded bg-light text-info', msg);
           }
           else {
             let msg = "Received an exception from server.  Please refer to the error details in the 'Exceptions' tab.";
-            addMessageToBox(chatBox,'mb-2 rounded bg-light text-danger',msg);
-          };
-          addJsonToBox(
-                  document.getElementById('errorBox'),
-                  'json-container',
-                  data); //Assuming data returned is JSON!
-        };
-      }
-      catch (error) {
-          const errorDetails = {
-            name: error.name,
-            cause: error.cause,
-            message: error.message,
-            stack: error.stack,
+            addMessageToBox(chatBox, 'mb-2 rounded bg-light text-danger', msg);
           };
           addJsonToBox(
             document.getElementById('errorBox'),
             'json-container',
-            errorDetails);
+            data); //Assuming data returned is JSON!
+        };
+      }
+      catch (error) {
+        const errorDetails = {
+          message: error.message,
+          name: error.name,
+          stack: error.stack
+        };
+        console.error('Fetch error:', {
+          message: error.message,
+          name: error.name,
+          stack: error.stack,
+        });
+        addJsonToBox(
+          document.getElementById('errorBox'),
+          'json-container',
+          errorDetails);
       };
     };
     document.getElementById('spinnerBtn').style.display = "none";

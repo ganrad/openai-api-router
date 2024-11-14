@@ -6,8 +6,9 @@
  * Date: 06-27-2024
  *
  * Notes:
- * ID07302024: ganrad: Introduced client authentication.  This feature uses MSFT Entra ID to authenticate users.
- *
+ * ID07302024: ganrad: Introduced client authentication.  This features uses MSFT Entra ID to authenticate users.
+ * ID11122024: ganrad: v2.1.0-v1.1.0: Introduced multiple UI updates.
+ * ID11132024: ganrad: v2.1.0-v1.1.0: AI App Gateway URI(s) are now contained within the configuration file.
  */
 
 require('console-stamp')(console, {
@@ -16,7 +17,7 @@ require('console-stamp')(console, {
 const express = require('express');
 const fs = require('fs');
 
-const srvVersion = "1.0.1";
+const srvVersion = "1.1.0";
 const srvUriPrefix = "/ais-chatbot/ui/";
 const srvStartTime = new Date().toLocaleString();
 
@@ -40,6 +41,7 @@ function readFrontendEnvVars() {
   else
     port = 8000; // default listen port
 
+  /* ID11132024.so
   if (process.env.API_GATEWAY_URI) {
     aisGtwyEndpoint = process.env.API_GATEWAY_URI;
     console.log(`Server(): Azure AI Application Gateway URI: [${aisGtwyEndpoint}]`);
@@ -49,6 +51,7 @@ function readFrontendEnvVars() {
     // exit program
     process.exit(1);
   };
+  ID11132024.eo */
 
   if (process.env.FRONTEND_SRV_CONFIG_FILE) {
     configFile = process.env.FRONTEND_SRV_CONFIG_FILE;
@@ -72,7 +75,7 @@ function readConfigFile() {
   const content = fs.readFileSync(configFile, { encoding: 'utf8', flag: 'r' });
 
   configObject = JSON.parse(content);
-  configObject.aisGtwyEndpoint = aisGtwyEndpoint;
+  // configObject.aisGtwyEndpoint = aisGtwyEndpoint; ID11132024.o
   configObject.aisGtwyAuth = aisGtwyAuth;
   if ( aisGtwyAuth ) { // ID07302024.n
     configObject.azTenantId = process.env.AZURE_TENANT_ID;

@@ -1,0 +1,144 @@
+{
+    "serverId": "Local-Multi-Domain-Gateway",
+    "serverType": "multi-domain",
+    "aiGatewayUri": "http://localhost:8080/api/v1/dev/apirouter/lb",
+    "applications": [
+      {
+        "appId": "multi-domain-ai-assistant",
+        "description": "An intelligent AI Application that composes a response to the end user's query by orchestrating the execution of a series of LLM Apps.",
+        "enableToolTrace": true,
+        "appTools": [
+          {
+            "toolName": "GetDomainType",
+            "description": "This tool identifies the user query's intent/domain type - SQL Query, Document Search",
+            "toolType": "aiapp_gateway",
+            "appName": "classify-intent",
+            "prompt": {
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "You are a intent classifier agent whose primary goal is to ascertain if a user query requires running a SQL query or search support manuals for Garmin GPS devices. For every user query you will precisely answer if the request requires running a SQL query or performing a search in a document.  Your response should be comprised of one word depending upon the end user query 1) SQL or 2) Document. You are to strictly follow these instructions and should not provide answers that are not related to the two query types (SQL or Document). If the user query is not related to either of these query types just say politely that the query falls outside the realm of your knowledge base."
+                }
+              ],
+              "max_tokens": 100,
+              "user": "rapid",
+              "stream": false,
+              "temperature": 0.1,
+              "top_p": 0.1,
+              "stop": "",
+              "presence_penalty": 0,
+              "frequency_penalty": 0
+            },
+            "targetUri": "",
+            "condition": "branch"
+          },
+          {
+            "toolName": "Document",
+            "description": "This tool allows users to query Garmin GPS manuals",
+            "toolType": "aiapp_gateway",
+            "appName": "garmin-ai-chatbot-gpt4o",
+            "prompt": {
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "You are a helpful AI Assistant trained by OpenAI"
+                }
+              ],
+              "max_tokens": 1000,
+              "user": "rapid",
+              "stream": false,
+              "temperature": 0.1,
+              "top_p": 0.1,
+              "stop": "",
+              "presence_penalty": 0,
+              "frequency_penalty": 0,
+              "data_sources": [
+                {
+                  "type": "azure_search",
+                  "parameters": {
+                    "endpoint": "https://gr-dev-rag-ais.search.windows.net",
+                    "index_name": "dev-garmin-idx",
+                    "authentication": {
+                      "type": "api_key",
+                      "key": "search-garmin-docs"
+                    },
+                    "embedding_dependency": {
+                      "deployment_name": "dev-embedd-ada-002",
+                      "type": "deployment_name"
+                    },
+                    "query_type": "vector_semantic_hybrid",
+                    "semantic_configuration": "default",
+                    "in_scope": true,
+                    "strictness": 3,
+                    "top_n_documents": 3
+                  }
+                }
+              ]
+            },
+            "targetUri": "",
+            "stateful": true,
+            "condition": "stop"
+          },
+          {
+            "toolName": "SQL",
+            "description": "This tool translates a user NL query to a SQL query",
+            "toolType": "aiapp_gateway",
+            "appName": "ai-chatbot-gpt4o",
+            "prompt": {
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "Your job is to convert the user's query into a SQL query.  The database against which the query will be run against is PostgreSQL.  The relational schema for the database tables are provided below.\n -----\n TABLE apigtwyprompts\n {\n id serial PRIMARY KEY,\n requestid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, exec_time_secs real, timestamp_ TIMESTAMPTZ default current_timestamp\n }\n\n TABLE apigtwymemory\n {\n id serial PRIMARY KEY, requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), context JSON, timestamp_ TIMESTAMPTZ default current_timestamp\n }\n ------\n Queries pertaining to end user sessions should use table 'apigtwaymemory'.  The thread field in this table maps to a user session.\n Only return the SQL query statement in the response. Do not include any newline characters in the query.  Do not prefix or suffix the SQL query with any special characters!\n\n In case the user's query is unrelated, please politely say I don't understand your question."
+                }
+              ],
+              "max_tokens": 1000,
+              "user": "rapid",
+              "stream": false,
+              "temperature": 0.1,
+              "top_p": 0.1,
+              "stop": "",
+              "presence_penalty": 0,
+              "frequency_penalty": 0
+            },
+            "targetUri": ""
+          },
+          {
+            "toolName": "ExecuteSQL",
+            "description": "This tool invokes a web api which executes a SQL query & returns results (JSON)",
+            "toolType": "webapi_app",
+            "prompt": {
+              "messages": []
+            },
+            "targetUri": "http://localhost:3000/run-sql",
+            "payloadToolId": ["SQL"],
+            "queryParams": ""
+          },
+          {
+            "toolName": "SummarizeResults",
+            "description": "This tool summarizes results of a SQL query",
+            "toolType": "aiapp_gateway",
+            "appName": "ai-chatbot-gpt4o",
+            "prompt": {
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "Convert the json object to an html table.  Return the html markup as a string. Do not prefix or suffix the html markup with any special characters.  Do not include any newline characters within the html markup.  Use borders for the html table. Use dark borders for the html table columns.  The html table column headers should be in uppercase. Use alternate colors gray and white for html table rows, for background and text.  Only return the markup for the html table element. Again, do not include newline characters within the markup!"
+                }
+              ],
+              "max_tokens": 4000,
+              "user": "rapid",
+              "stream": false,
+              "temperature": 0.1,
+              "top_p": 0.1,
+              "stop": "",
+              "presence_penalty": 0,
+              "frequency_penalty": 0
+            },
+            "targetUri": "",
+            "payloadToolId": ["ExecuteSQL"],
+            "stateful": true
+          }
+        ]
+      }
+    ]
+  }

@@ -48,6 +48,25 @@
         <!-- First Column -->
         <div class="col-md-2">
           <div class="mb-2">
+            <label for="srvdropdown" class="form-label"
+              ><b>AI App Gateway/Agent</b></label
+            >
+            <select
+              id="srvdropdown"
+              class="form-select"
+              onchange="setAiApps()"
+              data-bs-toggle="tooltip" data-bs-placement="right"
+            >
+              <option selected="selected">Choose from</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label for="srvtype" class="form-label"
+              ><b>Gateway/Agent Type</b></label
+            >
+            <input class="form-control" id="srvtype" input="text" placeholder="AI Gateway/Agent Type" readonly />
+          </div>
+          <div class="mb-2">
             <label for="appdropdown" class="form-label"
               ><b>AI Application</b></label
             >
@@ -63,7 +82,7 @@
             <label class="form-label"><b>Description</b></label>
             <div
               class="border rounded p-3 mb-2"
-              style="height: 200px; overflow-y: auto"
+              style="height: 150px; overflow-y: auto"
               id="descField"
             ></div>
           </div>
@@ -73,7 +92,7 @@
               id="sysPromptField"
               style="resize: none"
               class="form-control"
-              rows="10"
+              rows="8"
             ></textarea>
           </div>
         </div>
@@ -465,7 +484,9 @@
                     value=""
                     id="cache"
                   />
-                  <label class="form-check-label" for="cache"> Disable Cache </label>
+                  <label class="form-check-label" for="cache">
+                    Disable Cache
+                  </label>
                 </div>
                 <div class="form-check">
                   <input

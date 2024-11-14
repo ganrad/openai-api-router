@@ -8,7 +8,7 @@
  * Notes:
  * ID05032024: ganrad: Added traffic routing support for Azure AI Content Safety service APIs
  * ID05282024: ganrad: Updated getMetricsObject() signature to accept variable number of args ~ rest parameter
- *
+ * ID11052024: ganrad: v2.1.0: Added support for LLMs that support Azure AI Model Inference API (Chat completion).
 */
 
 const AzOaiEpMetrics = require("./az-oai-ep-metrics.js"); // Open AI Metrics
@@ -21,24 +21,25 @@ const { AzAiServices } = require("./app-gtwy-constants.js"); // AI Service types
 class EndpointMetricsFactory {
 
   constructor() { // Singleton 
-    if (! EndpointMetricsFactory.instance)
+    if (!EndpointMetricsFactory.instance)
       EndpointMetricsFactory.instance = this;
 
     return EndpointMetricsFactory.instance;
   }
- 
+
   // getMetricsObject(appType, uri) { ID05282024.o
   getMetricsObject(appType, uri, ...epConfig) { // ID05282024.n
     let metricsObj = null;
 
     switch (appType) {
       case AzAiServices.OAI:
+      case AzAiServices.AzAiModelInfApi: // ID11052024.n
         metricsObj = new AzOaiEpMetrics(
           uri,
           process.env.API_GATEWAY_METRICS_CINTERVAL,
           // process.env.API_GATEWAY_METRICS_CHISTORY); ID05282024.o
           process.env.API_GATEWAY_METRICS_CHISTORY,
-	  epConfig[0]); // ID05282024.n
+          epConfig[0]); // ID05282024.n
         break;
       case AzAiServices.AiSearch:
         metricsObj = new AzAiSearchEpMetrics(
@@ -63,7 +64,7 @@ class EndpointMetricsFactory {
           uri,
           process.env.API_GATEWAY_METRICS_CINTERVAL,
           process.env.API_GATEWAY_METRICS_CHISTORY);
-	break;
+        break;
       default:
         metricsObj = new AzOaiEpMetrics(
           uri,

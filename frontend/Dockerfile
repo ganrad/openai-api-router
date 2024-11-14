@@ -10,11 +10,12 @@
 #
 # NOTES:
 # ID07302024: ganrad: Introduced client/user authentication.  This feature uses Microsoft Entra ID
+# ID11132024: ganrad: v2.1.0-v1.1.0: AI App Gateway URI(s) are now contained within the configuration file.
 # ----------------------------------------------------------------
 #
 FROM public.ecr.aws/docker/library/node:20.11.0-alpine3.19
 LABEL name="Azure AI (frontend/client) Chat Application"
-LABEL version="1.0.1"
+LABEL version="1.1.0"
 LABEL description="This dockerfile is used to build a container image of the AI (frontend) chat application"
 LABEL author="Ganesh Radhakrishnan" email="ganrad01@gmail.com" dated="06-28-2024" license="MIT"
 
@@ -23,8 +24,9 @@ ARG config_file=./app-config.json
 ENV FRONTEND_SRV_CONFIG_FILE=$config_file
 
 # (Required) AI Application Gateway load balancer endpoint
-ARG lb_endpoint=http://0.0.0.0:8080/api/v1/dev/apirouter/lb/
-ENV AIS_API_GATEWAY_URI=$lb_endpoint
+# ID11132024.o
+# ARG lb_endpoint=http://0.0.0.0:8080/api/v1/dev/apirouter/lb/
+# ENV AIS_API_GATEWAY_URI=$lb_endpoint
 
 # (Optional) Frontend application server (Express) listening port
 ARG listen_port=8000
