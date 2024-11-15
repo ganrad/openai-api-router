@@ -61,7 +61,7 @@ Feature/Capability | Configurable (Yes/No) | Azure OpenAI Service | Azure AI Sea
 **Message Persistence** | Yes | Yes | No | No | No | No
 **Metrics Collection** | No | Yes | Yes | Yes | Yes | Yes
 
-### Reference Architecture
+### Reference Architecture: Single Domain AI Application Gateway
 
 ![alt tag](./images/az-openai-api-gateway-ra.PNG)
 
@@ -404,7 +404,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    Details:
      Name: Local-Gateway
      Type: single-domain
-     Endpoint URI: http://localhost:8080/api/v1/dev
+     Endpoint URI: http://localhost:8080/api/v1/dev/apirouter
    15-Nov-2024 02:47:33 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
    ```
 

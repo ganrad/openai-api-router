@@ -893,11 +893,7 @@ async function sendMessage() {
           name: error.name,
           stack: error.stack
         };
-        console.error('Fetch error:', {
-          message: error.message,
-          name: error.name,
-          stack: error.stack,
-        });
+        console.error('Fetch error:', errorDetails);
         addJsonToBox(
           document.getElementById('errorBox'),
           'json-container',

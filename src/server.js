@@ -25,10 +25,12 @@
  * ID11052024: rashedtalukder: v2.1.0: Renamed Azure App Insights env variable.
  * ID11112024: ganrad: v2.1.0: (Bugfix) After re-configuring the server, the cache and memory invalidation schedulers were still using 
  * the old app config. memory and state eviction intervals!
- * ID11112024: ganrad: v2.1.0: Introduced instanceName (server ID + '-' + Pod Name).  Instance name will be stored along with cache, memory, prompt & 
+ * ID11112024: ganrad: v2.1.0: (Enhancement) Introduced instanceName (server ID + '-' + Pod Name).  Instance name will be stored along with cache, memory, prompt & 
  * tool trace records. This will allow cache and memory invalidators associated with an instance to only operate on records created by self. 
  * Users can also easily identify which server instance served a request.  This feature is important when multiple server instances are deployed
  * on a container platform ~ Kubernetes.
+ * ID11152024: ganrad: v2.1.0: (Cleanup) Updated 'endpoint' variable (uri) to point to '/../apirouter'.  Introduced separate var for 
+ * API version 'apiVersion'.
 */
 
 // ID04272024.sn
@@ -62,8 +64,10 @@ const app = express();
 var bodyParser = require('body-parser');
 // var morgan = require('morgan');
 
-// Server version v2.1.0 ~ 09202024.n
+// Server version v2.1.0 ~ ID11142024.n
 const srvVersion = "2.1.0";
+// AI Application Gateway API version - ID11152024.n
+const apiVersion = "/api/v1/";
 // Server start date
 const srvStartDate = new Date().toLocaleString();
 
@@ -105,7 +109,7 @@ async function checkDbConnectionStatus() {
 
 var host; // API Gateway host
 var port; // API Gateway listen port
-var endpoint; // API Gateway base URI
+var endpoint; // API Gateway base URI - /api/v1/{env}/apirouter ID11152024.n
 var pkey; // API Gateway private key (used for reconfiguring endpoints)
 // ID02202024.sn
 function readApiGatewayEnvVars() {
@@ -120,7 +124,8 @@ function readApiGatewayEnvVars() {
     port = 8000;
 
   if (process.env.API_GATEWAY_ENV)
-    endpoint = "/api/v1/" + process.env.API_GATEWAY_ENV;
+    // endpoint = "/api/v1/" + process.env.API_GATEWAY_ENV; ID11152024.o
+    endpoint = apiVersion + process.env.API_GATEWAY_ENV + "/apirouter"; // ID11152024.n
   else {
     wlogger.log({ level: "error", message: "[%s] Env. variable [API_GATEWAY_ENV] not set, aborting ...", splat: [scriptName] });
     // exit program
@@ -331,7 +336,8 @@ app.use(bodyParser.json());
 
 // ID07292024.sn
 // Generate request id prior to invoking router middleware (endpoints)
-app.use(endpoint + "/apirouter", (req, res, next) => {
+// app.use(endpoint + "/apirouter", (req, res, next) => { ID11152024.o
+app.use(endpoint, (req, res, next) => { // ID11152024.n
   logger(req, res);
   next();
 });
@@ -339,7 +345,8 @@ app.use(endpoint + "/apirouter", (req, res, next) => {
 function initializeAuth() {
   let secureApis = process.env.API_GATEWAY_AUTH;
   if (secureApis === "true")
-    initAuth(app, endpoint + "/apirouter");
+    // initAuth(app, endpoint + "/apirouter"); // ID11152024.o
+    initAuth(app, endpoint); // ID11152024.n
   else
     wlogger.log({ level: "warn", message: "[%s] API Gateway endpoints are not secured by Microsoft Entra ID!", splat: [scriptName] });
 }
@@ -419,7 +426,8 @@ function getSingleDomainAgentMetadata(req) {
       podServiceAccount: process.env.POD_SVC_ACCOUNT
     },
     // nodejs: process.versions,
-    aiAppGatewayUri: endpoint + "/apirouter",
+    // aiAppGatewayUri: endpoint + "/apirouter", ID11152024.o
+    aiAppGatewayUri: endpoint, // ID11152024.n
     endpointUri: req.url,
     serverStartDate: srvStartDate,
     status: "OK"
@@ -475,7 +483,8 @@ function getMultiDomainAgentMetadata(req) {
       podServiceAccount: process.env.POD_SVC_ACCOUNT
     },
     // nodejs: process.versions,
-    aiAppGatewayUri: endpoint + "/apirouter",
+    // aiAppGatewayUri: endpoint + "/apirouter", ID11152024.o
+    aiAppGatewayUri: endpoint, // ID11152024.n
     endpointUri: req.url,
     serverStartDate: srvStartDate,
     status: "OK"
@@ -487,7 +496,8 @@ function getMultiDomainAgentMetadata(req) {
 
 // GET - Instance info. endpoint
 // Endpoint: /apirouter/instanceinfo
-app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
+// app.get(endpoint + "/apirouter/instanceinfo", (req, res) => { ID11152024.o
+app.get(endpoint + "/instanceinfo", (req, res) => { // ID11152024.n
   // logger(req,res); ID07292024.o
 
 
@@ -498,7 +508,8 @@ app.get(endpoint + "/apirouter/instanceinfo", (req, res) => {
 
 // API Gateway/Server Health Check endpoint
 // Endpoint: /apirouter/healthz
-app.get(endpoint + "/apirouter/healthz", (req, res) => {
+// app.get(endpoint + "/apirouter/healthz", (req, res) => { ID11152024.o
+app.get(endpoint + "/healthz", (req, res) => { // ID11152024.n
   // logger(req,res); ID07292024.o
 
   let resp_obj = {
@@ -517,7 +528,8 @@ app.get(endpoint + "/apirouter/healthz", (req, res) => {
 
 // API Gateway/Server reconfiguration endpoint
 // Endpoint: /apirouter/reconfig
-app.use(endpoint + "/apirouter/reconfig/:pkey", function (req, res, next) {
+// app.use(endpoint + "/apirouter/reconfig/:pkey", function (req, res, next) { ID11152024.o
+app.use(endpoint + "/reconfig/:pkey", function (req, res, next) { // ID11152024.n
   // logger(req,res); ID07292024.o
 
   let resp_obj;
@@ -548,7 +560,8 @@ app.use(endpoint + "/apirouter/reconfig/:pkey", function (req, res, next) {
 });
 
 // API Gateway 'root' endpoint
-app.use(endpoint + "/apirouter", function (req, res, next) {
+// app.use(endpoint + "/apirouter", function (req, res, next) { ID11152024.o
+app.use(endpoint, function (req, res, next) { // ID11152024.n
   // Add logger
   // logger(req,res); ID07292024.o
 
