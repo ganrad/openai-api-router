@@ -1,6 +1,6 @@
 {
   "serverId": "Local-Gateway",
-  "serverType": "single",
+  "serverType": "single-domain",
   "applications": [
     {
       "appId": "language-app",
@@ -72,6 +72,58 @@
         {
           "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15",
           "apikey": "ed9a4c4c"
+        }
+      ]
+    },
+    {
+      "appId": "classify-intent",
+      "description": "This is a FT LLM model that classifes the user's query as SQL or Document.",
+      "appType": "azure_oai",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CosineSimilarity",
+        "searchDistance": 0.98,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "2 minutes"
+      },
+      "memorySettings": {
+        "useMemory": false
+      },
+      "endpoints": [
+        {
+          "rpm": 10,
+          "uri": "https://oai-dev-assistants.openai.azure.com/openai/deployments/gpt-35-turbo-0125-intent-classify/chat/completions?api-version=2024-02-01",
+          "apikey": "496087e7"
+        }
+      ]
+    },
+    {
+      "appId": "ai-chatbot-phi-3-small-8k",
+      "description": "An AI Assistant / Chatbot application which uses MSFT phi-3-small-8k-instruct model for answering GK questions.",
+      "appType": "azure_aimodel_inf",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CosineSimilarity",
+        "searchDistance": 0.92,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "2 minutes"
+      },
+      "memorySettings": {
+        "useMemory": true,
+        "msgCount": 1,
+        "entryExpiry": "5 minutes"
+      },
+      "endpoints": [
+        {
+          "rpm": 10,
+          "uri": "https://Phi-3-small-8k-instruct-11042024.eastus2.models.ai.azure.com/chat/completions?api-version=2024-04-01-preview",
+          "apikey": "dxI84GEK"
         }
       ]
     },
