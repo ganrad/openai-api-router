@@ -75,7 +75,7 @@ The AI Application Gateway is designed from the grounds up to be a cost-effectiv
 | Environment | Azure Services | Notes
 | ----------- | -------------- | -----
 | - Development<br>- Testing | - Azure Linux VM (Minimum 2vCPUs; 8GB Memory)<br>- Azure Database for PostgreSQL Server (2-4 vCores; 8-16GB Memory; 1920-2880 max. iops)<br>- Azure OpenAI Service<br>- Azure AI Search<br>- Azure Storage | - The gateway can be run as a standalone server or can be containerized and run on the Linux VM.
-| - Pre-Production<br>- Production | - Azure Linux VM (4-8 vCPUs; 8-16GB Memory)<br>- Azure Database for PostgreSQL Server (4-8 vCores; 16-32GB Memory; 2880-4320 max iops)<br>- Azure Kubernetes Service / Azure Container Apps.<br>- Azure OpenAI Service<br>- Azure AI Search<br>- Azure Storage | - The AI Application Gateway can be deployed on AKS or Azure Container Apps. For large scale deployments, we recommend AKS.<br>- Select the appropriate deployment type(s) and OpenAI models for Azure OpenAI Service.<br>- Select the appropriate pricing tier (S, S2, S3) for Azure AI Search service to meet your data indexing & storage requirements.<br>- The Linux VM can be used as a jumpbox for testing the gateway server locally, connecting to the kubernetes cluster, managing other Azure resources etc.
+| - Pre-Production<br>- Production | - Azure Linux VM (4-8 vCPUs; 8-16GB Memory)<br>- Azure Database for PostgreSQL Server (4-8 vCores; 16-32GB Memory; 2880-4320 max iops)<br>- Azure Kubernetes Service / Azure Container Apps.<br>- Azure Container Registry<br>- Azure OpenAI Service<br>- Azure AI Search<br>- Azure Storage | - The AI Application Gateway can be deployed on AKS or Azure Container Apps. For large scale deployments, we recommend AKS.<br>- Select the appropriate deployment type(s) and OpenAI models for Azure OpenAI Service.<br>- Select the appropriate pricing tier (S, S2, S3) for Azure AI Search service to meet your data indexing & storage requirements.<br>- The Linux VM can be used as a jumpbox for testing the gateway server locally, connecting to the kubernetes cluster, managing other Azure resources etc.
 
 > **NOTE:**
 > Other Azure AI Services may be needed to implement functions specific to your use case.
@@ -244,17 +244,18 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    #
    ```
 
-   Connect to the database (using *psql*) and verify the database tables were created successfully. The following 3 tables should have been created.
+   Connect to the database (using *psql*) and verify the database tables were created ok. The following tables should have been created.
 
    Table Name | Description
    ---------- | -----------
    apigtwycache | This table stores vectorized prompts and completions
    apigtwyprompts | This table stores prompts and completions
    apigtwymemory | This table stores state for user sessions (threads)
+   aiapptoolstrace | This table stores the tool execution details for multi-domain AI Applications. 
 
 4. Update the **AI Application Gateway Configuration file**.
 
-   Edit the `./api-router-config.json` file.
+   When the AI App Gateway is deployed in single domain mode, edit the `./api-router-config.json` file.
 
    For each AI Application, 
 
@@ -282,7 +283,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      Attribute Name | Description
      -------------- | -----------
      useCache | AI Application Gateway will cache OpenAI Service completions (output) based on this value.  If caching is desired, set it to *true*.  Default is *false*.
-     searchType | AI Application Gateway will search and retrieve OpenAI Service completions based on a semantic text similarity algorithm.<br>This attribute is used to specify the similarity distance function/algorithm for vector search.  Supported values are a) CS (= *Cosine Similarity*).  This is the default. b) LS (= *Level2 or Euclidean distance*) c) IP (= *Inner Product*).
+     searchType | AI Application Gateway will search and retrieve OpenAI Service completions based on a semantic text similarity algorithm.<br>This attribute is used to specify the similarity distance function/algorithm for vector search.  Supported values are a) CosineSimilarity (= *Cosine Similarity*).  This is the default. b) EuclideanDistance (= *Level 2 or Euclidean distance*) c) InnerProduct (= *Inner Product*).
      searchDistance | This attribute is used to specify the search similarity threshold.  For instance, if the search type = CS, this value should be set to a value between 0 and 1.
      searchContent.term | This value specifies the attribute in the request payload which should be vectorized and used for semantic search. For OpenAI completions API, this value should be *prompt*.  For chat completions API, this value should be set to *messages*.
      searchContent.includeRoles | This attribute value should only be set for OpenAI models that expose chat completions API. Value can be a comma separated list.  Permissible values are system, user and assistant.
@@ -348,46 +349,63 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    You will see the API Gateway server start up message in the terminal window as shown in the snippet below.
 
    ```bash
-   > openai-api-router@2.0.1 start
+   > openai-api-router@2.1.0 start
    > node ./src/server.js
 
-   06-Aug-2024 01:47:01 [info] [server.js] Starting initialization of Azure AI Services API Gateway ...
-   {"name":"AzureAD: Bearer Strategy","hostname":"ubuntu-lts22-jump-box","pid":574750,"level":30,"msg":"In BearerStrategy constructor: strategy created","time":"2024-08-06T01:47:02.005Z","v":0}
-   06-Aug-2024 01:47:02 [info] [server.js] Azure Application Insights 'Connection string' not found. No telemetry data will be sent to App Insights.
-   06-Aug-2024 01:47:02 [info] [server.js] Completions will be cached
-   06-Aug-2024 01:47:02 [info] [server.js] Prompts will be persisted
-   06-Aug-2024 01:47:02 [info] [server.js] Conversational state will be managed
-   06-Aug-2024 01:47:02 [info] [bootstrap-auth.js] initAuth(): Protected endpoint: [/api/v1/dev/apirouter]
-   06-Aug-2024 01:47:02 [info] [bootstrap-auth.js] initAuth(): Initialized passport for authenticating users/apps using Azure Entra ID (OP)
-   Server(): Azure AI Services API Gateway server started successfully.
-   Gateway uri: http://localhost:8080/api/v1/dev
-   06-Aug-2024 01:47:02 [info] [server.js] AI Application backend (Azure AI Service) endpoints:
-   Application ID: language-app; Type: azure_language
-     Priority: 0   Uri: https://gr-dev-lang.cognitiveservices.azure.com/language/:analyze-text?api-version=2022-05-01
-   Application ID: translate-app; Type: azure_translator
-     Priority: 0   Uri: https://api.cognitive.microsofttranslator.com/
-   Application ID: content-safety-app; Type: azure_content_safety
-     Priority: 0   Uri: https://gr-dev-cont-safety.cognitiveservices.azure.com/contentsafety/text:analyze?api-version=2023-10-01
-   Application ID: search-app-ak-stip-v2; Type: azure_search
-     Priority: 0   Uri: https://gr-dev-rag-ais.search.windows.net/indexes/ak-stip-v2/docs/search?api-version=2023-11-01
-   Application ID: search-app-ak-stip-aisrch-iv; Type: azure_search
-     Priority: 0   Uri: https://gr-dev-rag-ais.search.windows.net/indexes/ak-stip-aisrch-iv/docs/search?api-version=2023-10-01-preview
+   15-Nov-2024 02:47:32 [info] [server.js] Starting initialization of AI Application Gateway ...
+   15-Nov-2024 02:47:33 [info] [server.js] Azure Application Insights 'Connection string' not found. No telemetry data will be sent to App Insights.
+   15-Nov-2024 02:47:33 [info] [server.js] Completions will be cached
+   15-Nov-2024 02:47:33 [info] [server.js] Prompts will be persisted
+   15-Nov-2024 02:47:33 [info] [server.js] Conversational state will be managed
+   15-Nov-2024 02:47:33 [info] [validate-config.js] validateSchema():
+     Result: OK
+     Schema: {
+       '$schema': 'https://json-schema.org/draft/2020-12/schema',
+       '$id': 'https://github.com/openai-api-router.schema.json',
+       title: 'SingleDomainAgent',
+       description: 'A single domain AI Agent',
+       type: 'object',
+       properties: [Object]
+     }
+     Errors:  []
+   15-Nov-2024 02:47:33 [info] [server.js] Listing AI Application backend (Azure AI Service) endpoints:
    Application ID: search-garmin-docs; Type: azure_search
      Priority: 0   Uri: https://gr-dev-rag-ais.search.windows.net/indexes/dev-garmin-idx/docs/search?api-version=2023-10-01-preview
    Application ID: vectorizedata; Type: azure_oai; useCache=false; useMemory=false
      Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15
-   Application ID: ai-doc-assistant-gpt-4t-0125; Type: azure_oai; useCache=true; useMemory=true
-     Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01
-   Application ID: aichatbotapp; Type: azure_oai; useCache=true; useMemory=true
-     Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01
-     Priority: 1   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01
-   Application ID: aidocusearchapp; Type: azure_oai; useCache=true; useMemory=false
+   Application ID: classify-intent; Type: azure_oai; useCache=true; useMemory=false
+     Priority: 0   Uri: https://oai-dev-assistants.openai.azure.com/openai/deployments/gpt-35-turbo-0125-intent-classify/chat/completions?api-version=2024-02-01
+   Application ID: garmin-ai-chatbot-gpt4o; Type: azure_oai; useCache=true; useMemory=true
+     Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt-4o/chat/completions?api-version=2024-02-01
+   Application ID: ai-chatbot-gpt4o; Type: azure_oai; useCache=true; useMemory=true
+     Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01
+   Application ID: ai-chatbot-phi-3.5-MoE; Type: azure_aimodel_inf; useCache=true; useMemory=true
+     Priority: 0   Uri: https://Phi-3-5-MoE-instruct-110424.eastus2.models.ai.azure.com/chat/completions?api-version=2024-04-01-preview
+   Application ID: ai-chatbot-phi-3-small-8k; Type: azure_aimodel_inf; useCache=true; useMemory=true
+     Priority: 0   Uri: https://Phi-3-small-8k-instruct-11042024.eastus2.models.ai.azure.com/chat/completions?api-version=2024-04-01-preview
+   Application ID: ai-chatbot-mistral-nemo; Type: azure_aimodel_inf; useCache=true; useMemory=true
+     Priority: 0   Uri: https://Mistral-Nemo-12B-1108.eastus2.models.ai.azure.com/chat/completions
+   Application ID: ai-chatbot-mistral-small; Type: azure_aimodel_inf; useCache=true; useMemory=true
+     Priority: 0   Uri: https://Mistral-small-110524.eastus2.models.ai.azure.com/chat/completions
+   Application ID: ai-chatbot-mistral-large; Type: azure_aimodel_inf; useCache=true; useMemory=true
+     Priority: 0   Uri: https://Mistral-large-11gr.eastus2.models.ai.azure.com/chat/completions
+   Application ID: ai-chatbot-llama-3.1-70B; Type: azure_aimodel_inf; useCache=true; useMemory=true
+     Priority: 0   Uri: https://Meta-Llama-3-1-70B-Instruct-11gr.eastus2.models.ai.azure.com/chat/completions
+   Application ID: ai-chatbot-llama-3.1-405B-Instruct; Type: azure_aimodel_inf; useCache=true; useMemory=true
+     Priority: 0   Uri: https://Meta-Llama-3-1-405B-Instruct-gr.eastus2.models.ai.azure.com/chat/completions
+   Application ID: ai-text-generate-gpt35; Type: azure_oai; useCache=true; useMemory=false
      Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15
      Priority: 1   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
-   06-Aug-2024 01:47:02 [info] [server.js] Successfully loaded backend API endpoints for AI applications
-   06-Aug-2024 01:47:02 [info] [server.js] Cache entry invalidate run schedule (Cron) - */5 * * * *
-   06-Aug-2024 01:47:02 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */5 * * * *
-   06-Aug-2024 01:47:02 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
+   15-Nov-2024 02:47:33 [info] [server.js] Successfully loaded backend API endpoints for AI applications
+   15-Nov-2024 02:47:33 [info] [server.js] Cache entry invalidate run schedule (Cron) - */2 * * * *
+   15-Nov-2024 02:47:33 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */4 * * * *
+   15-Nov-2024 02:47:33 [warn] [server.js] API Gateway endpoints are not secured by Microsoft Entra ID!
+   Server(): Azure AI Application Gateway started successfully.
+   Details:
+     Name: Local-Gateway
+     Type: single-domain
+     Endpoint URI: http://localhost:8080/api/v1/dev
+   15-Nov-2024 02:47:33 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
    ```
 
    Leave the terminal window open.
@@ -397,161 +415,6 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    Use a web browser to access the AI Application Gateway *info* endpoint - `/instanceinfo`. Specify correct values for the gateway listen port and environment. See below.
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/instanceinfo
-
-   If you get a json response similar to the one shown in the snippet below then the Gateway server is ready to accept Azure OpenAI service requests.
-
-   ```json
-   {
-     "serverName": "Gateway-Instance-01",
-     "serverType": "single-domain",
-     "serverVersion": "2.0.1",
-     "serverConfig": {
-        "host": "localhost",
-        "listenPort": 8000,
-        "environment": "dev",
-        "persistPrompts": "true",
-        "collectInterval": 1,
-        "collectHistoryCount": 2,
-        "configFile": "./api-router-config.json"
-     },
-     "cacheSettings": {
-        "cacheEnabled": true,
-        "embeddAiApp": "vectorizedata",
-        "searchEngine": "Postgresql/pgvector",
-        "cacheInvalidationSchedule": "*/5 * * * *"
-     },
-     "memorySettings": {
-        "memoryEnabled": "true",
-        "memoryInvalidationSchedule": "*/5 * * * *"
-     },
-     "aiApplications": [
-        {
-            "applicationId": "language-app",
-            "description": "Azure AI Language Service test application",
-            "type": "azure_language",
-            "cacheSettings": {
-                "useCache": false
-            },
-            "endpoints": {
-                "0": {
-		  "uri": "https://gr-dev-lang.cognitiveservices.azure.com/language/:analyze-text?api-version=2022-05-01"
-		}
-            }
-        },
-        {
-            "applicationId": "translate-app",
-            "description": "Azure AI Translator Service test application",
-            "type": "azure_translator",
-            "cacheSettings": {
-                "useCache": false
-            },
-            "endpoints": {
-                "0": {
-		  "uri": "https://api.cognitive.microsofttranslator.com/"
-		}
-            }
-        },
-        {
-            "applicationId": "vectorizedata",
-            "description": "Application that uses OAI model to generate data embeddings/vectors",
-            "type": "azure_oai",
-            "cacheSettings": {
-                "useCache": false
-            },
-            "memorySettings": {
-                "useMemory": false
-            },
-            "endpoints": {
-                "0": {
-		  "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15"
-		}
-            }
-        },
-        {
-            "applicationId": "ai-doc-assistant-gpt-4t-0125",
-            "description": "An AI Assistant / Chatbot application",
-            "type": "azure_oai",
-            "cacheSettings": {
-                "useCache": true,
-                "searchType": "CS",
-                "searchDistance": 0.95,
-                "searchContent": {
-                    "term": "messages",
-                    "includeRoles": "user"
-                },
-                "entryExpiry": "2 minutes"
-            },
-            "memorySettings": {
-                "useMemory": true,
-                "msgCount": 5,
-                "entryExpiry": "5 minutes"
-            },
-            "endpoints": {
-                "0": {
-                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01"
-                }
-            }
-        },
-        {
-            "applicationId": "aichatbotapp",
-            "description": "A test AI Assistant / Chatbot application",
-            "type": "azure_oai",
-            "cacheSettings": {
-                "useCache": true,
-                "searchType": "CS",
-                "searchDistance": 0.98,
-                "searchContent": {
-                    "term": "messages",
-                    "includeRoles": "user"
-                },
-                "entryExpiry": "2 minutes"
-            },
-            "memorySettings": {
-                "useMemory": true,
-                "msgCount": 1,
-                "entryExpiry": "5 minutes"
-            },
-            "endpoints": {
-                "0": {
-                    "rpm": 10,
-                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01"
-                },
-                "1": {
-                    "rpm": 10,
-                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01"
-                }
-            }
-        },
-        {
-            "applicationId": "aidocusearchapp",
-            "description": "A test AI text generation application",
-            "type": "azure_oai",
-            "cacheSettings": {
-                "useCache": true,
-                "searchType": "CS",
-                "searchDistance": 0.95,
-                "searchContent": {
-                    "term": "prompt"
-                },
-                "entryExpiry": "1 day"
-            },
-            "endpoints": {
-                "0": {
-                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15"
-                },
-                "1": {
-                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
-                }
-            }
-        }
-     ],
-     "containerInfo": {},
-     "apiGatewayUri": "/api/v1/dev/apirouter",
-     "endpointUri": "/api/v1/dev/apirouter/instanceinfo",
-     "serverStartDate": "6/13/2024, 6:57:56 AM",
-     "status": "OK"
-   }
-   ```
 
 8. Access the AI Application Gateway load balancer/router (/lb) endpoint
 
@@ -619,208 +482,6 @@ Before getting started with this section, make sure you have installed a contain
    Use a web browser and access the Gateway *metrics* endpoint to retrieve the backend OpenAI API metrics information.  The metrics endpoint URL - `/metrics`, is listed below.
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/metrics
-    
-   A sample Json output snippet is pasted below.
-
-   ```json
-   {
-     "listenPort": "8000",
-     "instanceName": "Gateway-Instance-01",
-     "collectionIntervalMins": 1,
-     "historyCount": 5,
-     "applicationMetrics": [
-	{
-            "applicationId": "language-app",
-            "endpointMetrics": [
-                {
-                    "endpoint": "https://gr-dev-lang.cognitiveservices.azure.com/language/:analyze-text?api-version=2022-05-01",
-                    "priority": 0,
-                    "metrics": {
-                        "apiCalls": 6,
-                        "languageDetectionApiCalls": 1,
-                        "namedEntityRecognitionApiCalls": 1,
-                        "keyPhraseExtractionApiCalls": 1,
-                        "entityLinkingApiCalls": 1,
-                        "sentimentAnalysisApiCalls": 1,
-                        "piiEntityRecognitionApiCalls": 1,
-                        "failedApiCalls": 0,
-                        "totalApiCalls": 6,
-                        "history": {}
-                    }
-                }
-            ]
-        },
-	{
-            "applicationId": "vectorizedata",
-            "endpointMetrics": [
-                {
-                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15",
-                    "priority": 0,
-                    "metrics": {
-                        "apiCalls": 319,
-                        "failedApiCalls": 0,
-                        "throttledApiCalls": 0,
-                        "filteredApiCalls": 0,
-                        "totalApiCalls": 319,
-                        "kInferenceTokens": 3.135,
-                        "history": {
-                            "1": {
-                                "collectionTime": "5/5/2024, 7:18:59 PM",
-                                "collectedMetrics": {
-                                    "apiCalls": 239,
-                                    "failedApiCalls": 0,
-                                    "throttledApiCalls": 0,
-                                    "filteredApiCalls": 0,
-                                    "totalApiCalls": 239,
-                                    "throughput": {
-                                        "kTokensPerWindow": 2.318,
-                                        "requestsPerWindow": 13.908000000000001,
-                                        "avgTokensPerCall": 9.698744769874477,
-                                        "avgRequestsPerCall": 0.05819246861924686,
-                                        "tokensPerMinute": 2318,
-                                        "requestsPerMinute": 239
-                                    },
-                                    "latency": {
-                                        "avgResponseTimeMsec": 108.7489539748954
-                                    }
-                                }
-                            },
-                            "2": {
-                                "collectionTime": "5/5/2024, 7:19:59 PM",
-                                "collectedMetrics": {
-                                    "apiCalls": 268,
-                                    "failedApiCalls": 0,
-                                    "throttledApiCalls": 0,
-                                    "filteredApiCalls": 0,
-                                    "totalApiCalls": 268,
-                                    "throughput": {
-                                        "kTokensPerWindow": 2.647,
-                                        "requestsPerWindow": 15.881999999999998,
-                                        "avgTokensPerCall": 9.876865671641792,
-                                        "avgRequestsPerCall": 0.05926119402985075,
-                                        "tokensPerMinute": 2647,
-                                        "requestsPerMinute": 268
-                                    },
-                                    "latency": {
-                                        "avgResponseTimeMsec": 101.9776119402985
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            ]
-        },
-	{
-            "applicationId": "aichatbotapp",
-            "cacheMetrics": {
-                "hitCount": 7,
-                "avgScore": 0.9999999148505135
-            },
-            "endpointMetrics": [
-                {
-                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01",
-                    "priority": 0,
-                    "metrics": {
-                        "apiCalls": 2,
-                        "failedApiCalls": 0,
-                        "throttledApiCalls": 0,
-                        "filteredApiCalls": 0,
-                        "totalApiCalls": 2,
-                        "kInferenceTokens": 723,
-                        "history": {
-                            "0": {
-                                "collectionTime": "5/5/2024, 7:35:50 PM",
-                                "collectedMetrics": {
-                                    "apiCalls": 0,
-                                    "failedApiCalls": 0,
-                                    "throttledApiCalls": 0,
-                                    "filteredApiCalls": 0,
-                                    "totalApiCalls": 0,
-                                    "throughput": {
-                                        "kTokensPerWindow": 0,
-                                        "requestsPerWindow": 0,
-                                        "avgTokensPerCall": 0,
-                                        "avgRequestsPerCall": 0,
-                                        "tokensPerMinute": 0,
-                                        "requestsPerMinute": 0
-                                    },
-                                    "latency": {
-                                        "avgResponseTimeMsec": 0
-                                    }
-                                }
-                            },
-                            "1": {
-                                "collectionTime": "5/5/2024, 7:42:25 PM",
-                                "collectedMetrics": {
-                                    "apiCalls": 9,
-                                    "failedApiCalls": 0,
-                                    "throttledApiCalls": 0,
-                                    "filteredApiCalls": 0,
-                                    "totalApiCalls": 9,
-                                    "throughput": {
-                                        "kTokensPerWindow": 4.367,
-                                        "requestsPerWindow": 26.201999999999998,
-                                        "avgTokensPerCall": 485.22222222222223,
-                                        "avgRequestsPerCall": 2.9113333333333333,
-                                        "tokensPerMinute": 4367,
-                                        "requestsPerMinute": 9
-                                    },
-                                    "latency": {
-                                        "avgResponseTimeMsec": 5201.666666666667
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            ]
-        },
-	{
-            "applicationId": "aidocusearchapp",
-            "cacheMetrics": {
-                "hitCount": 1750,
-                "avgScore": 0.9999999147483241
-            },
-            "endpointMetrics": [
-                {
-                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
-                    "priority": 0,
-                    "metrics": {
-                        "apiCalls": 0,
-                        "failedApiCalls": 0,
-                        "throttledApiCalls": 0,
-                        "filteredApiCalls": 0,
-                        "totalApiCalls": 0,
-                        "kInferenceTokens": 0,
-                        "history": {}
-                    }
-                },
-                {
-                    "endpoint": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15",
-                    "priority": 1,
-                    "metrics": {
-                        "apiCalls": 0,
-                        "failedApiCalls": 0,
-                        "throttledApiCalls": 0,
-                        "filteredApiCalls": 0,
-                        "totalApiCalls": 0,
-                        "kInferenceTokens": 0,
-                        "history": {}
-                    }
-                }
-            ]
-        }
-     ],
-     "successApiCalls": 17,
-     "cachedApiCalls": 1757,
-     "failedApiCalls": 0,
-     "totalApiCalls": 1774,
-     "endpointUri": "/api/v1/dev/apirouter/metrics",
-     "currentDate": "5/5/2024, 7:45:55 PM",
-     "status": "OK"
-   }
-   ```
 
    Azure AI Service endpoint metrics collected by the Gateway server across all AI Applications is described in the table below.
 
@@ -1038,115 +699,6 @@ Additionally, the following resources should be deployed/configured.
 
    http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV}/apirouter/instanceinfo
 
-   The Json output is shown below.
-
-   ```json
-   {
-      "serverName": "AZ-AIS-API-Gateway-01",
-      "serverVersion": "1.9.0",
-      "serverConfig": {
-        "host": "10.244.0.4",
-        "listenPort": 8000,
-        "environment": "dev",
-        "persistPrompts": "true",
-        "collectInterval": 60,
-        "collectHistoryCount": 8,
-        "configFile": "/home/node/app/files/api-router-config.json"
-      },
-      "cacheSettings": {
-        "cacheEnabled": true,
-        "embeddAiApp": "vectorizedata",
-        "searchEngine": "Postgresql/pgvector",
-        "cacheInvalidationSchedule": "*/10 * * * *"
-      },
-      "memorySettings": {
-        "memoryEnabled": "true",
-        "memoryInvalidationSchedule": "*/8 * * * *"
-      },
-      "aiApplications": [
-        {
-            "applicationId": "vectorizedata",
-            "description": "Application that uses OAI model to generate data embeddings/vectors",
-            "type": "azure_oai",
-            "cacheSettings": {
-                "useCache": false
-            },
-            "memorySettings": {
-                "useMemory": false
-            },
-            "endpoints": {
-                "0": {
-                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15"
-                }
-            }
-        },
-        {
-            "applicationId": "aichatbotapp",
-            "description": "An AI Assistant / Chatbot application which splits inferencing traffic between the faster gpt-35-turbo (16k) model and gpt-4-0125 turbo model",
-            "type": "azure_oai",
-            "cacheSettings": {
-                "useCache": true,
-                "searchType": "CS",
-                "searchDistance": 0.98,
-                "searchContent": {
-                    "term": "messages",
-                    "includeRoles": "user"
-                },
-                "entryExpiry": "2 minutes"
-            },
-            "memorySettings": {
-                "useMemory": true,
-                "msgCount": 1,
-                "entryExpiry": "5 minutes"
-            },
-            "endpoints": {
-                "0": {
-                    "rpm": 10,
-                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-16k/chat/completions?api-version=2024-02-01"
-                },
-                "1": {
-                    "rpm": 10,
-                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4-0125/chat/completions?api-version=2024-02-01"
-                }
-            }
-        },
-        {
-            "applicationId": "aidocusearchapp",
-            "description": "An AI text generation application which uses gpt-35-turbo instruct model",
-            "type": "azure_oai",
-            "cacheSettings": {
-                "useCache": true,
-                "searchType": "CS",
-                "searchDistance": 0.95,
-                "searchContent": {
-                    "term": "prompt"
-                },
-                "entryExpiry": "1 day"
-            },
-            "endpoints": {
-                "0": {
-                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15"
-                },
-                "1": {
-                    "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15"
-                }
-            }
-        }
-     ],
-     "containerInfo": {
-        "imageID": "oaiapigateway.azurecr.io/az-ais-api-gateway:v1.9.0.062824",
-        "nodeName": "aks-nodepool1-35747021-vmss00000g",
-        "podName": "ais-api-gateway-v1-645cb7496d-fjptl",
-        "podNamespace": "apigateway",
-        "podServiceAccount": "default"
-     },
-     "apiGatewayUri": "/api/v1/dev/apirouter",
-     "endpointUri": "/api/v1/dev/apirouter/instanceinfo",
-     "serverStartDate": "7/2/2024, 9:38:23 PM",
-     "status": "OK"
-   }
-   ```
-
    Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* endpoint - `/lb`.  See URL below.
 
    http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV}/apirouter/lb/{AI_APPLICATION_ID}
@@ -1157,4 +709,4 @@ Additionally, the following resources should be deployed/configured.
 
    **Congratulations!**
 
-   You have reached the end of this how-to for deploying and scaling an *AI Application Gateway* on Azure. Please feel free to customize and use the artifacts posted in this repository to efficiently distribute AI Application traffic among multiple Azure OpenAI model deployments and elastically scale the Gateway solution.
+   You have reached the end of this how-to for deploying and scaling an *AI Application Gateway* on Azure. Please feel free to customize and use the artifacts posted in this repository. Explore the out of box features supported by the gateway such as intelligent API traffic routing, conversational state management, response caching, message logging and building more complex agentic AI workflows that require chaining of multiple LLM calls.

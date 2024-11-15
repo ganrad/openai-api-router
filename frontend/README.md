@@ -43,7 +43,7 @@ Option #3 is highly recommended for production deployments.
    Parameter Name | Required (Yes/No) | Description | 
    -------------- | ----------------- | ----------- |
    name | Yes | Name of the AI Application Gateway.  This can be any name which uniquely identifies the backend AI Application Gateway server/instance.
-   type | Yes | Should be one of these values - `single-domain`, `multi-domain`
+   type | Yes | Type of the AI Application Gateway.  Currently, two gateway types are supported 1) Single domain & 2) Multi domain<br>`type` should be set to one of these values - `single-domain`, `multi-domain`
    uri | Yes | AI Application Gateway URI. Should be in the format:<br> http://[host:port]/api/v1/[env]/apirouter<br>Make sure there are no trailing slashes!
    ai_apps | Yes | An array of AI Applications that have been configured in the respective AI Application Gateway.  Refer to the next section for details.
 
