@@ -18,8 +18,8 @@ const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('../utilities/logger');
 
-function initAuth(app,endpoint) {
-  logger.log({level: "info", message: "[%s] initAuth(): Protected endpoint: [%s]", splat: [scriptName,endpoint]});
+function initAuth(app, endpoint) {
+  logger.log({ level: "info", message: "[%s] initAuth(): Protected endpoint: [%s]", splat: [scriptName, endpoint] });
 
   const bearerStrategy = new passportAzureAd.BearerStrategy({ // ID09272024.n
     identityMetadata: `https://${authConfig.metadata.authority}/${authConfig.credentials.tenantID}/${authConfig.metadata.version}/${authConfig.metadata.discovery}`,
@@ -30,7 +30,7 @@ function initAuth(app,endpoint) {
     passReqToCallback: authConfig.settings.passReqToCallback,
     loggingLevel: authConfig.settings.loggingLevel,
     loggingNoPII: authConfig.settings.loggingNoPII,
-    }, (req, token, done) => {
+  }, (req, token, done) => {
 
     /**
      * Below you can do extended token validation and check for additional claims, such as:
@@ -63,7 +63,7 @@ function initAuth(app,endpoint) {
      * 'roles' (for application permissions) claim are not to be honored.
      */
     if (!token.hasOwnProperty('scp') && !token.hasOwnProperty('roles')) {
-        return done(new Error('Unauthorized'), null, "No delegated or app permission claims found");
+      return done(new Error('Unauthorized'), null, "No delegated or app permission claims found");
     }
 
     /**
@@ -82,44 +82,44 @@ function initAuth(app,endpoint) {
   passport.use(bearerStrategy);
 
   app.use(endpoint, (req, res, next) => {
-    logger.log({level: "info", message: "[%s] initAuth(): Request ID: [%s], validating token ...", splat: [scriptName, req.id]});
+    logger.log({ level: "info", message: "[%s] initAuth(): Request ID: [%s], validating token ...", splat: [scriptName, req.id] });
     passport.authenticate('oauth-bearer', {
-        session: false,
+      session: false,
 
-        /**
-         * If you are building a multi-tenant application and you need supply the tenant ID or name dynamically,
-         * uncomment the line below and pass in the tenant information. For more information, see:
-         * https://github.com/AzureAD/passport-azure-ad#423-options-available-for-passportauthenticate
-         */
+      /**
+       * If you are building a multi-tenant application and you need supply the tenant ID or name dynamically,
+       * uncomment the line below and pass in the tenant information. For more information, see:
+       * https://github.com/AzureAD/passport-azure-ad#423-options-available-for-passportauthenticate
+       */
 
-        // tenantIdOrName: <some-tenant-id-or-name>
+      // tenantIdOrName: <some-tenant-id-or-name>
 
     }, (err, user, info) => {
-        if (err) {
-            /**
-             * An error occurred during authorization. Either pass the error to the next function
-             * for Express error handler to handle, or send a response with the appropriate status code.
-             */
-            return res.status(401).json({ error: err.message });
-        }
+      if (err) {
+        /**
+         * An error occurred during authorization. Either pass the error to the next function
+         * for Express error handler to handle, or send a response with the appropriate status code.
+         */
+        return res.status(401).json({ error: err.message });
+      }
 
-        if (!user) {
-            // If no user object found, send a 401 response.
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
+      if (!user) {
+        // If no user object found, send a 401 response.
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
 
-        if (info) {
-            // access token payload will be available in req.authInfo downstream
-            req.authInfo = info; // store the auth info in request object
-	    logger.log({level: "info", message: "[%s] initAuth():\n  Request ID: [%s]\n  Auth. Info: [%s]", splat: [scriptName,req.id,info]});
-        };
+      if (info) {
+        // access token payload will be available in req.authInfo downstream
+        req.authInfo = info; // store the auth info in request object
+        logger.log({ level: "info", message: "[%s] initAuth():\n  Request ID: [%s]\n  Auth. Info: [%s]", splat: [scriptName, req.id, info] });
+      };
 
-	req.user = user; // store the user info in request object
-	logger.log({level: "info", message: "[%s] initAuth():\n  Request ID: [%s]\n  User Info: [%s]", splat: [scriptName,req.id,user]});
-	return next();
+      req.user = user; // store the user info in request object
+      logger.log({ level: "info", message: "[%s] initAuth():\n  Request ID: [%s]\n  User Info: [%s]", splat: [scriptName, req.id, user] });
+      return next();
     })(req, res, next);
   }); // end of middleware
-  logger.log({level: "info", message: "[%s] initAuth(): Initialized passport for authenticating users/apps using Azure Entra ID (OP)", splat: [scriptName]});
+  logger.log({ level: "info", message: "[%s] initAuth(): Initialized passport for authenticating users/apps using Azure Entra ID (OP)", splat: [scriptName] });
 }
 
 module.exports = initAuth;

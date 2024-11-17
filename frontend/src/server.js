@@ -25,7 +25,7 @@ const app = express();
 
 let host; // AOAI frontend server host
 let port; // AOAI frontend server listen port
-let aisGtwyEndpoint; // Azure AI Application API Gateway URL/Endpoint
+// let aisGtwyEndpoint; // Azure AI Application API Gateway URL/Endpoint ID11132024.o
 let aisGtwyAuth; // Is security enabled on AI Application Gateway APIs? ID07302024.n
 let configFile; // AOAI frontend server configuration file location (Full path)
 let configObject; // Frontend configuration object

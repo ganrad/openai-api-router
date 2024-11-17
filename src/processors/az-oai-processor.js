@@ -24,6 +24,7 @@
  * records. This will allow cache and memory invalidators associated with an instance to only operate on records created by self. 
  * Users can also easily identify which server instance served a request.  This feature is important when multiple server instances are deployed
  * on a container platform ~ Kubernetes.
+ * ID11152024: ganrad: v2.1.0: (Bugfix)  Both API Gateway Entra ID Auth + AOAI MID Auth should not be used together!  Only one of them can be used.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -741,13 +742,13 @@ class AzOaiProcessor {
         meta.set('Content-Type', 'application/json');
         const bearerToken = req.get("Authorization"); // case-insensitive header match ID10302024.sn
         if ( config.appType === AzAiServices.OAI ) { // ID11052024.n
-          if ( bearerToken ) // Authorization header present; Use MID Auth ID10302024.n
+          if ( bearerToken && !req.authInfo ) // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
             meta.set('Authorization', bearerToken);
           else // Use API Key Auth ID10302024.en
             meta.set('api-key', element.apikey);
         }
         else { // ID11052024.n (Az Ai Model Inference API models)
-          if ( bearerToken ) // Authorization header present; Use MID Auth ID10302024.n
+          if ( bearerToken && !req.authInfo ) // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
             meta.set('Authorization', bearerToken);
           else // Use API Key Auth ID10302024.en
             meta.set('Authorization', "Bearer " + element.apikey);
