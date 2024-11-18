@@ -42,8 +42,9 @@ class AiAppGatewayTool {
       meta.set('Content-Type', 'application/json');
       if (threadId)
         meta.set(CustomRequestHeaders.ThreadId, threadId);
-
-      // meta.set('api-key',element.apikey);
+      const bearerToken = req.get("Authorization");
+      if ( bearerToken  ) // Authorization header present; 
+        meta.set('Authorization', bearerToken);
 
       payload = JSON.parse(JSON.stringify(toolConfig.prompt)); // Create a new copy of the prompt object; messages array
       // console.log(`Prompt: ${JSON.stringify(payload)}`);
