@@ -106,7 +106,7 @@ function initAuth(app, endpoint) {
 
       // ID11192024.sn
       if ( !user ) {
-        if ( info.aud === authConfig.credentials.clientID )
+        if ( info && (info.aud === authConfig.credentials.clientID) )
           // access token payload will be available in req.authInfo downstream
           req.authInfo = info; // store the auth info in request object
         else
