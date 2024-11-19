@@ -104,7 +104,8 @@ function initAuth(app, endpoint) {
         return res.status(401).json({ error: err.message });
       }
 
-      if (!user) {
+      // ID11192024.sn
+      if ( !user ) {
         if ( info.aud === authConfig.credentials.clientID )
           // access token payload will be available in req.authInfo downstream
           req.authInfo = info; // store the auth info in request object
@@ -115,6 +116,7 @@ function initAuth(app, endpoint) {
         req.user = user; // store the user info in request object
         req.authInfo = info;
       };
+      // ID11192024.en
 
       logger.log({ level: "info", message: "[%s] initAuth():\n  Request ID: [%s]\n  Auth. Info: [%s]\n  User Info: [%s]", splat: [scriptName, req.id, req.authInfo, req.user] });
       return next();
