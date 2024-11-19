@@ -8,6 +8,7 @@
  *
  * Notes:
  * ID09272024: ganrad: (Bugfix) Bearer strategy object should only be instantiated when auth=true.
+ * ID11192024: ganrad: (Enhancement) Support User + Client App OR Client App only authentication.
  */
 
 const passport = require('passport');
@@ -104,18 +105,18 @@ function initAuth(app, endpoint) {
       }
 
       if (!user) {
-        // If no user object found, send a 401 response.
-        return res.status(401).json({ error: 'Unauthorized' });
+        if ( info.aud === authConfig.credentials.clientID )
+          // access token payload will be available in req.authInfo downstream
+          req.authInfo = info; // store the auth info in request object
+        else
+          return res.status(401).json({ error: "Invalid Auth token. User Auth and Client App. Auth failed! Unable to process request." });
       }
-
-      if (info) {
-        // access token payload will be available in req.authInfo downstream
-        req.authInfo = info; // store the auth info in request object
-        logger.log({ level: "info", message: "[%s] initAuth():\n  Request ID: [%s]\n  Auth. Info: [%s]", splat: [scriptName, req.id, info] });
+      else {
+        req.user = user; // store the user info in request object
+        req.authInfo = info;
       };
 
-      req.user = user; // store the user info in request object
-      logger.log({ level: "info", message: "[%s] initAuth():\n  Request ID: [%s]\n  User Info: [%s]", splat: [scriptName, req.id, user] });
+      logger.log({ level: "info", message: "[%s] initAuth():\n  Request ID: [%s]\n  Auth. Info: [%s]\n  User Info: [%s]", splat: [scriptName, req.id, req.authInfo, req.user] });
       return next();
     })(req, res, next);
   }); // end of middleware
