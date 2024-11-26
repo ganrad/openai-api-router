@@ -8,7 +8,8 @@
  *
  * Notes:
  * ID09272024: ganrad: (Bugfix) Bearer strategy object should only be instantiated when auth=true.
- * ID11192024: ganrad: (Enhancement) Support User + Client App OR Client App only authentication.
+ * ID11192024: ganrad: (Enhancement) a) Support User + Client App OR Client App only authentication. b) Bypass Auth check for 
+ * 'healthz' endpoint.
  */
 
 const passport = require('passport');
@@ -18,6 +19,15 @@ const authConfig = require('./config');
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('../utilities/logger');
+
+// ID11192024.sn
+function isAuthCheckRequiredForUri(req) {
+  if ( req.path === '/healthz' ) // No auth check required for '/healthz' endpoint
+    return false;
+
+  return true;
+}
+// ID11192024.en
 
 function initAuth(app, endpoint) {
   logger.log({ level: "info", message: "[%s] initAuth(): Protected endpoint: [%s]", splat: [scriptName, endpoint] });
@@ -83,7 +93,14 @@ function initAuth(app, endpoint) {
   passport.use(bearerStrategy);
 
   app.use(endpoint, (req, res, next) => {
-    logger.log({ level: "info", message: "[%s] initAuth(): Request ID: [%s], validating token ...", splat: [scriptName, req.id] });
+    logger.log({
+      level: "info", message: "[%s] initAuth(): Auth check ...\n  Request ID: %s\n  URL: %s\n  Base URL: %s\n  Path: %s",
+      splat: [scriptName, req.id, req.originalUrl, req.baseUrl, req.path]
+    });
+
+    if ( ! isAuthCheckRequiredForUri(req) )
+      return next();
+
     passport.authenticate('oauth-bearer', {
       session: false,
 
@@ -105,8 +122,8 @@ function initAuth(app, endpoint) {
       }
 
       // ID11192024.sn
-      if ( !user ) {
-        if ( info && (info.aud === authConfig.credentials.clientID) )
+      if (!user) {
+        if (info && (info.aud === authConfig.credentials.clientID))
           // access token payload will be available in req.authInfo downstream
           req.authInfo = info; // store the auth info in request object
         else
