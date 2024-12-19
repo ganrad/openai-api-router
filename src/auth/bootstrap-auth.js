@@ -98,7 +98,7 @@ function initAuth(app, endpoint) {
       splat: [scriptName, req.id, req.originalUrl, req.baseUrl, req.path]
     });
 
-    if ( ! isAuthCheckRequiredForUri(req) )
+    if ( ! isAuthCheckRequiredForUri(req) ) // ID11192024.n
       return next();
 
     passport.authenticate('oauth-bearer', {
