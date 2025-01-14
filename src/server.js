@@ -31,6 +31,8 @@
  * on a container platform ~ Kubernetes.
  * ID11152024: ganrad: v2.1.0: (Cleanup) Updated 'endpoint' variable (uri) to point to '/../apirouter'.  Introduced separate var for 
  * API version 'apiVersion'.
+ * ID12192024: ganrad: v2.1.0: Introduced function to capture termination signal(s).  Use this function to perform cleanup tasks prior to
+ * exiting the server (Terminate gracefully).
 */
 
 // ID04272024.sn
@@ -320,11 +322,30 @@ function readApiGatewayConfigFile() { // ID11112024.n
 };
 // readApiGatewayConfigFile(); // ID04302024.o
 
+// ID12192024.sn
+function configureSignals() {
+  process.on('SIGINT', () => {
+    // Perform cleanup tasks
+
+    console.log(`Server(): Received [SIGINT] signal. Azure AI Application Gateway [${context.serverId}] shutting down ...`);
+    process.exit();
+  });
+
+  process.on('SIGTERM', () => {
+    // Perform cleanup tasks
+
+    console.log(`Server(): Received [SIGTERM] signal. Azure AI Application Gateway [${context.serverId}] shutting down ...`);
+    process.exit();
+  })
+}
+// ID12192024.en
+
 // ID06092024.sn
 function initServer() {
   readApiGatewayEnvVars();
   // readApiGatewayConfigFile(true); // ID04302024.n, ID11112024.o
   readApiGatewayConfigFile();
+  configureSignals(); // ID12192024.n
 }
 initServer();// Initialize the server
 // ID06092024.en
