@@ -16,15 +16,15 @@ Feature/Capability | Azure AI Service | Description
 ------------------ | ---------------- | -----------
 **Shared Infrastructure Model** | All | The AI Application Gateway simplifies and streamlines the deployment of multiple AI Solutions (Chatbots) by utilizing a shared infrastructure backbone. This approach allows for deploying the infrastructure once and subsequently scaling it to build and deploy numerous AI Chatbots.
 **Enhanced AI Application Deployments** | All | The gateway is designed to be AI Application *Aware*, allowing Azure AI Service deployments to be configured individually for each AI Application. This approach not only simplifies the sharing of AI Service deployments across different AI Applications but also improves metrics collection and request routing tailored to each specific use case.
-**Model Agnostic Endpoints** | Azure OpenAI Service | The gateway (router component) exposes each AI Application through a unique endpoint, which effectively hides the underlying AI Service's deployments (model type, version and endpoint) from client applications. As such, AI Service deployments configured with AI applications can be updated at anytime without requiring any changes to the client applications.  This design enables quick testing/onboarding of newer model versions as soon as they become available.
+**Model Agnostic Endpoints** | Azure OpenAI Service<br> Azure AI Foundry | The gateway (router component) exposes each AI Application through a unique endpoint, which effectively hides the underlying AI Service's deployments (model type, version and endpoint) from client applications. AI Service model deployments configured with AI applications can be updated at anytime without requiring any changes to the client applications.  LLM models deployed on both Azure OpenAI Service and AI Foundry can be routed/proxied thru the gateway.  This unified API design enables quick testing/onboarding of newer OpenAI model versions and Open Source LLM's as soon as they become generally available.
 **Intelligent Traffic Routing** | Azure OpenAI Service | **Circuit Breaker**: For each AI Application, multiple Azure AI Service deployment URI's (a.k.a backend endpoints) can be configured. When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.<br> **Rate Limiting**: Users can set up a *RPM Limit* for each OpenAI backend endpoint for any AI Application. When multiple AI Applications use the same endpoint, the gateway will enforce rate limiting and throttle excessive requests by returning http 429 status codes. This is especially useful for distributing model processing capacity (PTU deployment) evenly across different AI Applications.<br> **Traffic Splitting**: The Gateway provides the flexibility to split AI application traffic between multiple Azure AI Service deployment endpoints. In the case of Azure OpenAI Service, the AI application traffic can be split among multiple *Paygo* (Tokens per minute) and *Provisioned Throughput Unit* (Reserved capacity) model deployments.
 **Streaming API Responses** | Azure Open AI Service (Chat Completions API only) | The AI Application Gateway fully supports the response *streaming* feature provided by Azure OpenAI Chat Completions API.  This function is seamlessly integrated with semantic caching, state management and traffic routing features.
 **Semantic Caching** | Azure OpenAI Service | This feature is seamlessly integrated into AI Application Gateway and can be used to cache OpenAI Service prompts and responses. Cache hits are evaluated based on semantic similarity and the configured algorithm. With semantic caching, runtime performance of LLM/AI applications can be improved by up to 40%. This solution leverages the vectorization and semantic search features supported by the widely popular *PostgreSQL* open source database.
 **Conversational State Management** | Azure OpenAI Service (Chat Completion API only) | AI Chatbots must maintain context during end user sessions so they can reference previous user inputs, ensuring coherent and contextually relevant conversations.  This feature manages the conversational state and can effortlessly scale to support anywhere from 10 to hundreds of concurrent user sessions for multiple AI applications simultaneously. Additionally, it can function independently or in tandem with the *Semantic Caching* feature to enhance performance.
-**Message Persistence (Chat History)** | Azure OpenAI Service | This optional feature can be used to persist OpenAI Service *Prompts* (inputs) and *Completions* (responses) in a relational database table. With this feature, customers can analyze prompts and accordingly adjust the similarity distance for the chosen vector search algorithm to maximize performance (increase throughput).  This feature can also be used to introspect the prompt and completion tokens associated with a particular API request (Request ID) and troubleshoot content filteration issues quickly. The gateway currently supports PostgreSQL database as the persistence provider.
-**Secure by Design** | All | The API's exposed by the AI Application Gateway can be easily secured using Microsoft Entra ID. This is the default setting. This feature ensures only authenticated users or client applications are able to access the API endpoints. 
-**Dynamic Server Configuration** | All | The Gateway exposes a separate reconfig (/reconfig) endpoint to allow dynamic reconfiguration of backend endpoints. Backend endpoints can be reconfigured anytime even when the server is running thereby limiting AI application downtime.
-**API Metrics Collection** | All | The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Users can analyze the throughput and latency metrics and reconfigure the gateway's backend endpoint priority list to effectively route/shift the AI Application workload to the desired backend endpoints based on available and consumed capacity.
+**Message Persistence (Chat History)** | Azure OpenAI Service | This optional feature can be used to persist OpenAI Service *Prompts* (inputs) and *Completions* (responses) in a relational database table. This feature can be used to introspect the prompt and completion tokens associated with a particular API request (Request ID) and troubleshoot content filteration issues quickly. The gateway currently supports PostgreSQL database as the persistence provider.
+**Secure by Design** | All | The API's exposed by the AI Application Gateway can be easily secured using Microsoft Entra ID (Default). This feature ensures only authenticated users or client applications are able to access the API endpoints. 
+**Dynamic Server Configuration** | All | In standalone mode (**single instance**), the AI Gateway server exposes a separate reconfiguration (/reconfig) endpoint to enable rapid deployment and testing of backend endpoints.
+**API Metrics Collection** | All | The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Using this feature, users can analyze the throughput and latency metrics for each AI Application & optimize traffic routing.
 **Observability and Traceability** | All | The AI Application Gateway is instrumented with Azure Application Insights SDK. When this setting is enabled, detailed telemetry information on Azure OpenAI and dependent services is collected and sent to Azure Monitor.
 **Client SDK's and AI Application (LLM) Frameworks** | Azure OpenAI Service | The AI Application Gateway server supports [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints) Client SDK.  The gateway has also been tested to work with [Prompt Flow](https://github.com/microsoft/promptflow) and [Langchain](https://python.langchain.com/docs/integrations/llms/azure_openai/) LLM frameworks.
 **Robust Runtime** | All | The AI Application Gateway is powered by tried and true Nodejs runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
@@ -46,6 +46,7 @@ The AI Application Gateway can be used in the following scenarios.
 
    The gateway currently supports proxying requests to the following Azure AI Services.
      - Azure OpenAI Service (Full API support)
+     - Azure AI Foundry (Support for models that support the *Azure AI Model Inference API*)
      - Azure AI Search (Full API support)
      - Azure AI Language (Limited API support - Entity Linking, Language detection, Key phrase extraction, NER, PII, Sentiment analysis and opinion mining only)
      - Azure AI Translator (Limited API support - Text Translation only)
@@ -53,7 +54,7 @@ The AI Application Gateway can be used in the following scenarios.
 
 ### Feature/Capability Support Matrix
 
-Feature/Capability | Configurable (Yes/No) | Azure OpenAI Service | Azure AI Search | Azure AI Language | Azure AI Translator | Azure AI Content Safety |
+Feature/Capability | Configurable (Yes/No) | Azure OpenAI Service<br> Azure AI Foundry | Azure AI Search | Azure AI Language | Azure AI Translator | Azure AI Content Safety |
 ------------------ | --------------------- | -------------------- | --------------- | ----------------- | ------------------- | ----------------------- |
 **Semantic Cache** | Yes | Yes <br> - Completions API <br> - Chat Completions API | No | No | No | No
 **State Management** | Yes | Yes <br> - Chat Completions API | No | No | No | No
@@ -257,6 +258,13 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
 
    When the AI App Gateway is deployed in single domain mode, edit the `./api-router-config.json` file.
 
+   Specify, the AI Application Gateway server **type**.  Refer to the table below.
+
+   Server Type | Description
+   ----------- | -----------
+   single-domain | A single domain gateway server used to deploy and manage AI Applications that use an LLM grounded with data from a single data repository (RAG appplications).
+   multi-domain | A multi domain gateway server used to deploy and manage complex workflows that comprise of multiple AI agent and tool calls.   
+
    For each AI Application, 
 
    - Specify a unique *appId* and an optional *description*.
@@ -264,11 +272,12 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      
      Application Type | Description
      ---------------- | -----------
+     azure_oai | This value denotes Azure OpenAI service
+     azure_aimodel_inf | This value denotes Azure AI Foundry Service
      azure_language | This value denotes Azure AI Language service
      azure_translator | This value denotes Azure AI Translator service
      azure_content_safety | This value denotes Azure AI Content Safety service
      azure_search | This value denotes Azure AI Search service
-     azure_oai | This value denotes Azure OpenAI service
 
    - Specify Azure AI Service endpoints/URI's and corresponding API key values within **endpoints** attribute.  Refer to the table below and set appropriate values for each attribute.
 
