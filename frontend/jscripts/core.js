@@ -11,6 +11,10 @@
  * ID11082024: ganrad: v2.1.0-v1.1.0: LLMs exposed by AI Model Inference API expect a value for 'stop' parameter.
  * ID11122024: ganrad: v2.1.0-v1.1.0: (Enhancement) Request ID included in the 'Info' pane is now a link. Clicking this link shows the request details.
  * ID11132024: ganrad: v2.1.0-v1.1.0: (Enhancement) Introduced support for multiple single and multi-domain AI App Gateways.
+ * ID11262024: ganrad: v2.1.0-v1.1.0: (Bugfix) When user has signed in and is already authenticated, the 'Sign-in' label was not getting updated.
+ * ID12022024: ganrad: v2.1.0-v1.1.0: (Enhancement) Changed font of query + response. GitHub markup returned in OAI model response is converted into HTML 
+ * prior to rendering.
+ * ID12202024: ganrad: v2.1.0-v1.1.0: (Enhancement) Updated code to support 'o1' family of models.
 */
 // Adjust the system prompt as needed
 const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // Default prompt
@@ -349,16 +353,16 @@ function saveContent(configName) {
     promptObject.temperature = Number(document.getElementById("temperature").value);
     promptObject.presence_penalty = Number(document.getElementById("presence").value);
     promptObject.frequency_penalty = Number(document.getElementById("frequency").value);
-    let val = document.getElementById("stopSequence").value; // ID11082024.n
-    if ((val !== "undefined") && val)
-      promptObject.stop = val;
+    let value = document.getElementById("stopSequence").value; // ID11082024.n
+    if ((value !== "undefined") && value)
+      promptObject.stop = value;
     promptObject.top_p = Number(document.getElementById("topp").value);
 
     const alert = document.getElementById('modelConfigToast'); //select id of toast
     const bsAlert = new bootstrap.Toast(alert); //initialize it
     bsAlert.show(); //show it
   };
-  // console.log(`--- ${JSON.stringify(promptObject,null,2)} ---`);
+
   if ((configName === "searchConfig") && (promptObject.data_sources)) {
     promptObject.data_sources[0].parameters.in_scope = document.getElementById("scope").checked;
     promptObject.data_sources[0].parameters.query_type = document.getElementById("queryType").value;
@@ -372,7 +376,7 @@ function saveContent(configName) {
   };
 }
 
-function addJsonToAccordian(time, box, cls, accordian, req, res, reqId) {
+function addJsonToAccordian_0(time, box, cls, accordian, req, res, reqId) { // ID11122024.so (Not used!)
   const element = document.createElement('div');
   element.className = "accordian-item";
   element.innerHTML = '<h2 class="accordion-header" id="headingOne"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">' +
@@ -395,7 +399,70 @@ function addJsonToAccordian(time, box, cls, accordian, req, res, reqId) {
   else
     accordian.appendChild(element);
   // box.scrollTop = box.scrollHeight;
-}
+} // ID11122024.eo
+
+async function callAppRequestsApi(uri) { // ID11122024.sn
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  if (isAuthEnabled) {
+    const accessToken = await getToken();
+    const bearer = `Bearer ${accessToken}`;
+    headers.set('Authorization', bearer);
+  };
+
+  let status;
+  let data;
+  try {
+    let response = await fetch(uri, {method: "GET", headers: headers});
+
+    status = response.status;
+    data = await response.json();
+  }
+  catch (e) {
+    console.warn(`callAppRequestsApi(): Status: ${status}, URI: ${uri},\nException: ${e}`);
+  };
+  if ( status === 200 ) {
+    // Open a new tab
+    const newTab = window.open();
+
+    // Write the data to the new tab
+    newTab.document.write(`<pre>${JSON.stringify(data,null,2)}</pre>`);
+
+    // Close the document to finish loading the content
+    newTab.document.close();
+  }
+  else
+    console.warn(`callAppRequestsApi(): Status: ${status}, URI: ${uri}`);
+} // ID11122024.en
+
+function addJsonToAccordian(time, box, cls, accordian, req, res, reqId) { // ID11122024.sn
+  const element = document.createElement('div');
+  element.className = "accordian-item";
+  let ct = '<h2 class="accordion-header" id="headingOne"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">' +
+    new Date().toLocaleString('en-US', { timeZoneName: 'short' }) + ' (' + (time / 1000) + ' seconds)' +
+    '</button></h2><div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#msgAccordian"><div class="accordion-body">';
+  if ( isAuthEnabled )
+    ct += '<p><b>Request: </b>(ID = <a href="#" onclick="callAppRequestsApi(\'' + getAiAppGatewayAppReqsUri(aiAppObject.ai_app_name,reqId) + '\'); return false;"' +
+    ' class="link-info link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover">' + reqId + '</a>)</p>';
+  else
+    ct += '<p><b>Request: </b>(ID = <a href="' + getAiAppGatewayAppReqsUri(aiAppObject.ai_app_name,reqId) + 
+    '" class="link-info link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover" target="_blank">' + reqId + '</a>)</p>';
+  ct += '<pre class="' + cls + '">' + prettyPrintJson.toHtml(req) + '</pre>' +
+    '<p><b>Response:</b></p>' + '<pre class="' + cls + '">' + prettyPrintJson.toHtml(res) + '</pre>' +
+    '</div></div>';
+
+  element.innerHTML = ct;
+
+  if (!accordian) {
+    box.innerHTML = '<div class="accordion" id="msgAccordian"></div>';
+    accordian = document.getElementById('msgAccordian');
+  };
+
+  if (accordian.hasChildNodes())
+    accordian.insertBefore(element, accordian.firstChild);
+  else
+    accordian.appendChild(element);
+} // ID11122024.en
 
 function addJsonToBox(box, cls, msg) {
   const element = document.createElement('pre');
@@ -413,19 +480,22 @@ function addMessageToBox(box, cls, msg) {
   const element = document.createElement('div');
   element.className = cls;
 
-  element.innerHTML = msg;
+  element.innerHTML = '<pre style="white-space: pre-wrap; overflow-wrap: break-word">' + msg + '</pre>';
 
   box.appendChild(element);
   box.scrollTop = box.scrollHeight;
 }
 
 function generateLinkWithOffcanvas(title, fp, body) {
+  // console.log(`Citation before: ${body}`);
+
   let uuid = 'offcanvas-' + Math.random().toString(36).slice(2, 7);
-  let content = body.replace(/(?:\r\n|\r|\n)/g, '<br>'); // Get rid of all the newlines
+  // let content = body.replace(/(?:\r\n|\r|\n)/g, '<br>'); // Get rid of all the newlines ID12022024.o
+  let content = '<pre style="white-space: pre-wrap; overflow-wrap: break-word">' + body + '</pre>'; // ID12022024.n
 
   let retHtml = '<a class="btn btn-light btn-sm" data-bs-toggle="offcanvas" href="' + '#' + uuid + '" role="button" aria-controls="' + uuid + '">' + fp + '</a>';
-  retHtml += '<div class="offcanvas offcanvas-end" tabindex="-1" id="' + uuid + '" aria-labelledby="' + uuid + 'Label"><div class="offcanvas-header"><h5 class="offcanvas-title" id="' + uuid + 'Label">' + title + '</h5><button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button></div><div class="offcanvas-body"><p class="fs-6">' + content + '</p></div></div>';
-
+  // retHtml += '<div class="offcanvas offcanvas-end" tabindex="-1" id="' + uuid + '" aria-labelledby="' + uuid + 'Label"><div class="offcanvas-header"><h5 class="offcanvas-title" id="' + uuid + 'Label">' + title + '</h5><button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button></div><div class="offcanvas-body"><p class="fs-6">' + content + '</p></div></div>'; ID12022024.o
+  retHtml += '<div class="offcanvas offcanvas-end" tabindex="-1" id="' + uuid + '" aria-labelledby="' + uuid + 'Label"><div class="offcanvas-header"><h5 class="offcanvas-title" id="' + uuid + 'Label">' + title + '</h5><button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button></div><div class="offcanvas-body">' + content + '</div></div>'; // ID12022024.n
   return (retHtml);
 }
 
@@ -455,11 +525,12 @@ function insertCitationLinks(cits) {
   return content;
 }
 
-function addMessageToChatBox(box, cls, msg, ctx) {
+function addMessageToChatBox_0(box, cls, msg, ctx) { // ID12022024.so (Not used!)
   const element = document.createElement('div');
   element.className = cls;
 
-  console.log(`Message: ${JSON.stringify(msg, null, 2)}`);
+  // console.log(`Message: ${JSON.stringify(msg, null, 2)}`);
+  console.log(`Message before: ${msg}`);
   let content = msg.replace(/(?:\r\n|\r|\n)/g, '<br>');
   // let content = ( msg instanceof String) ? msg.replace(/(?:\r\n|\r|\n)/g, '<br>') : prettyPrintJson.toHtml(msg); // Get rid of all the newlines
   if (ctx) {
@@ -488,7 +559,58 @@ function addMessageToChatBox(box, cls, msg, ctx) {
 
   box.appendChild(element);
   box.scrollTop = box.scrollHeight;
-}
+} // ID12022024.eo
+
+function addMessageToChatBox(box, cls, msg, ctx) { // ID12022024.sn
+  const element = document.createElement('div');
+  element.className = cls;
+
+  // console.log(`Message before: ${msg}`);
+  let content = msg;
+
+  let refList = '<ul class="list-group">';
+  let docNo = 1;
+  if (ctx) {
+    for (const citation of ctx.citations) {
+      content = content.replaceAll("[doc" + docNo + "]", "<sup>[" + docNo + "]</sup>");
+      refList += '<li class="list-group-item"><b>' +
+        docNo + '.</b> ' +
+        generateLinkWithOffcanvas(citation.title, citation.filepath, extractAndEncloseImageURLs(citation.content)) +
+        '</li>';
+      // console.log(`Title: ${citation.title}; Filepath: ${citation.filepath}`);
+      docNo++;
+    };
+    refList += '</ul>';
+  };
+
+  const contentElem = document.createElement('pre');
+  // Add styles for wrapping words
+  contentElem.style.whiteSpace = 'pre-wrap';
+  contentElem.style.overflowWrap = 'break-word';
+
+  const mdElem = document.createElement('md');
+  mdElem.innerHTML = content;
+  contentElem.appendChild(mdElem);
+
+  element.appendChild(contentElem);
+
+  if ( ctx ) {
+    const citElement = document.createElement('span');
+
+    content = '';
+    content += '<button class="btn btn-info btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRefs" aria-expanded="false" aria-controls="collapseRefs">' + (--docNo) + ' references</button>';
+    content += '<div class="collapse" id="collapseRefs"><div class="card card-body">';
+    content += refList;
+    content += '</div>';
+
+    citElement.innerHTML = content;
+    element.appendChild(citElement);
+  };
+
+  box.appendChild(element);
+  box.scrollTop = box.scrollHeight;
+  renderMarkdown();
+} // ID12022024.en
 
 function isMessageComplete(message) {
   let braces = 0;
@@ -541,9 +663,18 @@ async function streamCompletion(uri, appId, hdrs, box) {
       };
 
       const divelem = document.createElement('div');
-      const element = document.createElement('p');
+      // const element = document.createElement('p'); ID12022024.o
+      const preElim = document.createElement('pre'); // ID12022024.sn
+      // Add styles for wrapping words
+      preElim.style.whiteSpace = 'pre-wrap';
+      preElim.style.overflowWrap = 'break-word';
+
+      const element = document.createElement('md');
+      preElim.appendChild(element); // ID12022024.en
+
       divelem.className = 'mb-2 rounded bg-light text-dark';
-      divelem.appendChild(element);
+      // divelem.appendChild(element); ID12022024.o
+      divelem.appendChild(preElim); // ID12022024.n
 
       const reader = response.body?.pipeThrough(new TextDecoderStream()).getReader();
       if (!reader) return;
@@ -561,7 +692,7 @@ async function streamCompletion(uri, appId, hdrs, box) {
         if (done) break;
         if (!ttToken) ttToken = Date.now();
 
-        console.log(`Raw line: ${value}`);
+        // console.log(`Raw line: ${value}`);
         const arr = value.split('\n');
         arr.forEach((data) => {
           // console.log(`Line: ${data}`);
@@ -589,7 +720,7 @@ async function streamCompletion(uri, appId, hdrs, box) {
           };
           try {
             const json = JSON.parse(pdata);
-            console.log(`**** P-DATA ****: ${pdata}`);
+            // console.log(`**** P-DATA ****: ${pdata}`);
             chkPart = '';
 
             if (!json.choices || json.choices.length === 0)
@@ -598,7 +729,8 @@ async function streamCompletion(uri, appId, hdrs, box) {
               const msg = json.choices[0].delta.content;
               if (msg) {
                 const citLen = citations ? citations.length : 0;
-                let content = msg.replace(/(?:\r\n|\r|\n)/g, '<br>'); // Get rid of all the newlines
+                // let content = msg.replace(/(?:\r\n|\r|\n)/g, '<br>'); // Get rid of all the newlines ID12022024.o
+                let content = msg; // ID12022024.n
                 if (citLen > 0) {
                   for (let i = 1; i <= citLen; i++)
                     content = content.replaceAll("[doc" + i + "]", "<sup>[" + i + "]</sup>");
@@ -666,6 +798,8 @@ async function streamCompletion(uri, appId, hdrs, box) {
       if (citLen > 0)
         divelem.innerHTML += insertCitationLinks(citations);
 
+      renderMarkdown(); // ID12022024.n
+
       if (calltime === 0) // If response was served from cache!
         calltime = Date.now() - sttime;
 
@@ -685,12 +819,12 @@ async function streamCompletion(uri, appId, hdrs, box) {
     else {
       const data = await response.json();
       if (data.error?.message?.includes("Thread")) { // ID11082024.n
-        let msg = "Your chat session [ID = " + threadId + "] has expired.  Please start a new chat session.";
-        addMessageToBox(chatBox, 'mb-2 rounded bg-light text-info', msg);
+        let msg = "Your session [ID = " + threadId + "] has expired.  Please start a new chat session.";
+        addMessageToBox(box, 'mb-2 rounded bg-light text-info', msg);
       }
       else {
         let msg = "Received an exception from server.  Please refer to the error details in the 'Exceptions' tab.";
-        addMessageToBox(chatBox, 'mb-2 rounded bg-light text-danger', msg);
+        addMessageToBox(box, 'mb-2 rounded bg-light text-danger', msg);
       };
       addJsonToBox(
         document.getElementById('errorBox'),
@@ -754,19 +888,23 @@ async function sendMessage() {
     setTimeout(function () { popover.dispose(); }, 2000);
     return;
   };
-  if (isAuthEnabled && !username) {
-    const loginBtn = document.getElementById('auth-anchor');
+  if ( isAuthEnabled ) {
+    if ( !username ) { // ID11262024.n
+      const loginBtn = document.getElementById('auth-anchor');
 
-    let popover = new bootstrap.Popover(loginBtn, {
-      animation: true,
-      placement: "top",
-      // title: "Alert",
-      content: "Sign in to the AI App Gateway",
-      trigger: "manual"
-    });
-    popover.show();
-    setTimeout(function () { popover.dispose(); }, 2000);
-    return;
+      let popover = new bootstrap.Popover(loginBtn, {
+        animation: true,
+        placement: "top",
+        // title: "Alert",
+        content: "Sign in to the AI App Gateway",
+        trigger: "manual"
+      });
+      popover.show();
+      setTimeout(function () { popover.dispose(); }, 2000);
+      return;
+    }
+    else // ID11262024.n
+      updateHeader("Sign-in"); // In case user is already logged in, change the header!  In case token has expired, user will be asked to re-auth again.
   };
 
   const userInput = document.getElementById('userInput');
@@ -812,7 +950,10 @@ async function sendMessage() {
       requestHeaders = new Headers(hdrs);
 
       if (sysPrompt) // ID11012024.n
-        promptObject.messages.push({ role: "system", content: sysPrompt })
+        if ( aiAppObject.model_family ) // ID12202024.n; 'o1' model family doesn't support 'system' roles!
+          promptObject.messages.push({ role: "developer", content: sysPrompt });
+        else
+          promptObject.messages.push({ role: "system", content: sysPrompt });
       promptObject.messages.push({ role: "user", content: message });
     };
 
@@ -824,6 +965,19 @@ async function sendMessage() {
       // console.log(`Token: [${bearer}]`);
       requestHeaders.append('Authorization', bearer);
     };
+
+    // ID12202024.sn
+    if ( aiAppObject.model_family ) { // 'o1' model family doesn't support these params!
+      delete promptObject.temperature;
+      delete promptObject.stop;
+      delete promptObject.top_p;
+      if ( promptObject.max_tokens ) {
+        promptObject.max_completion_tokens = promptObject.max_tokens;
+        delete promptObject.max_tokens;
+      };
+      promptObject.stream = false; // No streaming!
+    }
+    // ID12202024.en
 
     if (promptObject.stream) // Stream response
       await streamCompletion(uri, appId, requestHeaders, chatBox);
@@ -874,7 +1028,7 @@ async function sendMessage() {
         }
         else {
           if (data.error.message?.includes("Thread")) {
-            let msg = "Your chat session [ID = " + threadId + "] has expired.  Please start a new chat session.";
+            let msg = "Your session [ID = " + threadId + "] has expired.  Please start a new chat session.";
             addMessageToBox(chatBox, 'mb-2 rounded bg-light text-info', msg);
           }
           else {

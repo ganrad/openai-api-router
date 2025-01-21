@@ -9,7 +9,8 @@
  * ID07302024: ganrad: Introduced client authentication.  This features uses MSFT Entra ID to authenticate users.
  * ID11122024: ganrad: v2.1.0-v1.1.0: Introduced multiple UI updates.
  * ID11132024: ganrad: v2.1.0-v1.1.0: AI App Gateway URI(s) are now contained within the configuration file.
- * ID11192024: ganrad: v2.1.0-v1.1.0: (Bugfix) When auth is enabled, check all required variables and throw an exception if any one of them is not set!
+ * ID11192024: ganrad: v2.1.0-v1.1.0: (Bugfix) When auth is enabled, check all required variables and throw an 
+ * exception if any one of them is not set!
  */
 
 require('console-stamp')(console, {
@@ -72,7 +73,7 @@ function readFrontendEnvVars() {
   console.log(`Server(): Azure AI Application Gateway API security: [${aisGtwyAuth}]`);
 }
 
-function readConfigFile() {
+async function readConfigFile() {
   const content = fs.readFileSync(configFile, { encoding: 'utf8', flag: 'r' });
 
   configObject = JSON.parse(content);
@@ -98,9 +99,9 @@ function readConfigFile() {
   };
 }
 
-function init_server() {
+async function init_server() {
   readFrontendEnvVars(); // Read the env vars
-  readConfigFile(); // Read the frontend configuration file
+  await readConfigFile(); // Read the frontend configuration file
 }
 init_server(); // Initialize the server
 
