@@ -556,25 +556,25 @@ Before getting started with this section, make sure you have installed a contain
 
    ![alt tag](./images/api-gateway-telemetry-05.png)
 
-### D. Reload the AI Application Gateway backend endpoints (Configuration)
+### D. Reconfigure the AI Application Gateway
 
-The Gateway endpoint configuration can be updated even when the server is running. Follow the steps below.
+In standalone mode (single instance), the AI Application Gateway configuration can be updated when the server is running. Follow the steps below.
 
-1. Update the Gateway endpoint configuration file.
+1. Update the AI Application Gateway.
 
-   Open the Gateway endpoint configuration json file (`api-router-config.json`) and update the OpenAI endpoints as needed.  Save this file.
+   Open the AI Gateway configuration file (`api-router-config.json`) and update configurations for AI Applications as needed.  Save this file.
 
-2. Reload the Gateway endpoint configuration.
+2. Reload the AI Application Gateway configuration.
 
    Use **Curl** command in a terminal window or a web browser to access the gateway *reconfiguration* endpoint - `/reconfig`.  See URL below.
-   The private key of the Gateway is required to reload the endpoint configuration.
+   The private key of the Gateway is required to reload the gateway configuration.
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/reconfig/{API_GATEWAY_KEY}
 
 **IMPORTANT**:
 
-- A side effect of reconfiguring the Gateway endpoints is that all current and historical metric values collected and cached by the server will be reset. Hence, if you want to retain metrics history, you should save the metrics (/metrics) endpoint output prior to reloading the updated OpenAI endpoints from the configuration file.
-- It is advised to reconfigure the backend endpoints during a maintenance time window (down time) when there is minimal to no API traffic.  Reconfiguring the backend endpoints when the gateway is actively serving API requests may result in undefined behavior.
+- A side effect of reconfiguring the Gateway is that all current and historical endpoint metric values collected and cached by the server will be reset. Hence, if you want to retain endpoint metrics history, you should save the metrics (/metrics) output prior to reloading the updated configuration file.
+- It is advised to reconfigure the gateway during a maintenance time window (down time) when there is minimal to no API traffic.  Reconfiguring the gateway when it is actively serving API requests may result in undefined behavior.
 
 ### E. Deploy the AI Application Gateway on *Azure Kubernetes Service*
 
