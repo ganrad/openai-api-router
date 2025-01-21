@@ -484,11 +484,11 @@ Before getting started with this section, make sure you have installed a contain
    > **TIP**:
    > You can update and use the shell script `./tests/test-oai-api-gateway.sh` with sample data to test how the Gateway intelligently distributes the OpenAI API requests among multiple configured backend endpoints.
 
-### C. Analyze Azure OpenAI endpoint(s) traffic metrics
+### C. Analyze Azure AI Service API traffic metrics
 
-1. Access the AI Application Gateway metrics endpoint and analyze OpenAI API metrics.
+1. Access the AI Application Gateway metrics endpoint and analyze Azure AI Service API metrics.
 
-   Use a web browser and access the Gateway *metrics* endpoint to retrieve the backend OpenAI API metrics information.  The metrics endpoint URL - `/metrics`, is listed below.
+   Use a web browser and access the Gateway *metrics* endpoint to retrieve the backend API metrics information.  The metrics endpoint URL - `/metrics`, is listed below.
 
    http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/metrics
 
