@@ -127,7 +127,7 @@ function initAuth(app, endpoint) {
           // access token payload will be available in req.authInfo downstream
           req.authInfo = info; // store the auth info in request object
         else
-          return res.status(401).json({ error: "Invalid Auth token. User Auth and Client App. Auth failed! Unable to process request." });
+          return res.status(401).json({ error: "Authentication/Authorization failed! Unable to process request." });
       }
       else {
         req.user = user; // store the user info in request object

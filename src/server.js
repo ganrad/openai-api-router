@@ -1,5 +1,5 @@
 /**
- * Name: AI Application API Gateway/Router
+ * Name: AI Application Gateway/Router
  * Description: A light-weight intelligent AI Application Gateway / Server
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
@@ -33,6 +33,7 @@
  * API version 'apiVersion'.
  * ID12192024: ganrad: v2.1.0: Introduced function to capture termination signal(s).  Use this function to perform cleanup tasks prior to
  * exiting the server (Terminate gracefully).
+ * ID01212025: ganrad: v2.1.0: AI Gateway can only be reconfigured when run in single process/instance standalone mode. 
 */
 
 // ID04272024.sn
@@ -102,6 +103,11 @@ let dbCheckTime = srvStartDate;
 async function checkDbConnectionStatus() {
   dbConnectionStatus = await pgdb.checkDbConnection();
 
+  if ( !dbConnectionStatus ) {
+    wlogger.log({ level: "error", message: "[%s] Could not connect to PostgreSQL DB. Aborting server ...", splat: [scriptName] });
+    process.exit(1);
+  };
+
   setInterval(async function () {
     dbConnectionStatus = await pgdb.checkDbConnection();
     dbCheckTime = new Date().toLocaleString();
@@ -157,29 +163,20 @@ function readApiGatewayEnvVars() {
   if ((cacheResults === "true") || (persistPrompts === "true") || (manageState === "true")) {
     // let retval = await pgdb.checkDbConnection(); // ID06282024.o
     checkDbConnectionStatus(); // ID06282024.n
-    if (dbConnectionStatus) {
-      if (cacheResults === "true")
-        wlogger.log({ level: "info", message: "[%s] Completions will be cached", splat: [scriptName] });
-      else
-        wlogger.log({ level: "info", message: "[%s] Completions will not be cached", splat: [scriptName] });
-
-      if (persistPrompts === "true")
-        wlogger.log({ level: "info", message: "[%s] Prompts will be persisted", splat: [scriptName] });
-      else
-        wlogger.log({ level: "info", message: "[%s] Prompts will not be persisted", splat: [scriptName] });
-
-      if (manageState === "true")
-        wlogger.log({ level: "info", message: "[%s] Conversational state will be managed", splat: [scriptName] });
-      else
-        wlogger.log({ level: "info", message: "[%s] Conversational state will not be managed", splat: [scriptName] });
-    }
+    if (cacheResults === "true")
+      wlogger.log({ level: "info", message: "[%s] Completions will be cached", splat: [scriptName] });
     else
-      process.exit(1);
-  }
-  else {
-    wlogger.log({ level: "info", message: "[%s] Completions will not be cached", splat: [scriptName] });
-    wlogger.log({ level: "info", message: "[%s] Conversational state will not be managed", splat: [scriptName] });
-    wlogger.log({ level: "info", message: "[%s] Prompts will not be persisted", splat: [scriptName] });
+      wlogger.log({ level: "info", message: "[%s] Completions will not be cached", splat: [scriptName] });
+
+    if (persistPrompts === "true")
+      wlogger.log({ level: "info", message: "[%s] Prompts will be persisted", splat: [scriptName] });
+    else
+      wlogger.log({ level: "info", message: "[%s] Prompts will not be persisted", splat: [scriptName] });
+
+    if (manageState === "true")
+      wlogger.log({ level: "info", message: "[%s] Conversational state will be managed", splat: [scriptName] });
+    else
+      wlogger.log({ level: "info", message: "[%s] Conversational state will not be managed", splat: [scriptName] });
   };
 }
 
@@ -187,8 +184,7 @@ var context; // AI Applications Context
 var cacheConfig;
 let cacheInvalidator = null; // ID11112024.n ~ Cache entry invalidator instance
 let memoryInvalidator = null; // ID11112024.n ~ Memory entry evictor instance
-// function readApiGatewayConfigFile(startScheduler) { // ID09042024.n - Restructured this function. Made this function sync!; ID11112024.o
-function readApiGatewayConfigFile() { // ID11112024.n
+function readApiGatewayConfigFile(reconfig) { // ID09042024.n - Restructured this function. Made this function sync!; ID11112024.n; ID01212025.n
   let vectorAppFound = false;
 
   let cacheResults = process.env.API_GATEWAY_USE_CACHE;
@@ -217,12 +213,19 @@ function readApiGatewayConfigFile() { // ID11112024.n
 
   try {
     let data = fs.readFileSync(process.env.API_GATEWAY_CONFIG_FILE, { encoding: 'utf8', flag: 'r' });
-    context = JSON.parse(data);
+    // context = JSON.parse(data); ID01212025.o
+    let ctx = JSON.parse(data); // ID01212025.n
     // ID09202024.sn
-    if (!validateSchema(context)) {
-      wlogger.log({ level: "error", message: "[%s] Error parsing AI Application Gateway configuration file. Please check the logs.", splat: [scriptName] });
-      process.exit(1);
+    // if (!validateSchema(context)) { ID01212025.o
+    if (!validateSchema(ctx)) { // ID01212025.n
+      wlogger.log({ level: "error", message: "[%s] Error parsing AI Application Gateway configuration file, aborting ...", splat: [scriptName] });
+
+      if ( reconfig ) // ID01212025.n
+        return(false);
+      else
+        process.exit(1);
     };
+    context = ctx; // ID01212025.n; Set global context variable!
     // ID09202024.en
 
     if (context.serverType === ServerTypes.SingleDomain) { // ID09042024.n
@@ -247,7 +250,8 @@ function readApiGatewayConfigFile() { // ID11112024.n
       wlogger.log({ level: "info", message: "[%s] Successfully loaded backend API endpoints for AI applications", splat: [scriptName] });
     }
     else if (context.serverType === ServerTypes.MultiDomain) {
-      checkDbConnectionStatus(); // AI Apps can enable tool tracing; Check DB status
+      if ( ! reconfig ) // ID01212025.n (Start the db connection check thread only on init!)
+        checkDbConnectionStatus(); // AI Apps can enable tool tracing; Check DB status
 
       const aiGatewayUri = context.aiGatewayUri;
       wlogger.log({ level: "info", message: "[%s] Listing AI Applications:", splat: [scriptName] });
@@ -317,8 +321,13 @@ function readApiGatewayConfigFile() { // ID11112024.n
   catch (error) {
     wlogger.log({ level: "error", message: "[%s] Error loading gateway config file. Error=%s", splat: [scriptName, error] });
     // exit program
-    process.exit(1);
+    if ( reconfig ) // ID01212025.n
+      return(false);
+    else
+      process.exit(1);
   };
+
+  return(true); // ID01212025.n
 };
 // readApiGatewayConfigFile(); // ID04302024.o
 
@@ -343,8 +352,7 @@ function configureSignals() {
 // ID06092024.sn
 function initServer() {
   readApiGatewayEnvVars();
-  // readApiGatewayConfigFile(true); // ID04302024.n, ID11112024.o
-  readApiGatewayConfigFile();
+  readApiGatewayConfigFile(false); // ID01212025.n
   configureSignals(); // ID12192024.n
 }
 initServer();// Initialize the server
@@ -554,19 +562,39 @@ app.use(endpoint + "/reconfig/:pkey", function (req, res, next) { // ID11152024.
   // logger(req,res); ID07292024.o
 
   let resp_obj;
+  // ID01212025.sn
+  if ( process.env.POD_NAME ) {
+    resp_obj = {
+      endpointUri: req.originalUrl,
+      currentDate: new Date().toLocaleString(),
+      status: "AI Application Gateway cannot be reconfigured when run in multi processor mode!  Stop all gateway server instances and restart them."
+    };
+    res.status(400).json(resp_obj); // 400 = Bad Request
+    return;
+  };
+  // ID01212025.en
+
   if (req.params.pkey !== pkey) { // Check if key matches gateway secret key
     resp_obj = {
       endpointUri: req.originalUrl,
       currentDate: new Date().toLocaleString(),
-      status: `Incorrect AI Application Gateway Key=[${req.params.pkey}]`
+      status: `Invalid AI Application Gateway Key=[${req.params.pkey}]`
     };
     res.status(400).json(resp_obj); // 400 = Bad Request
     return;
   };
 
   // readApiGatewayConfigFile(); // ID04302024.o
-  // readApiGatewayConfigFile(false); // ID04302024.n, ID11112024.o
-  readApiGatewayConfigFile(); // ID11112024.n
+  if ( ! readApiGatewayConfigFile(true) ) { // ID11112024.n, ID01212025.n
+    resp_obj = {
+      endpointUri: req.originalUrl,
+      currentDate: new Date().toLocaleString(),
+      status: "Error parsing AI Application Gateway configuration file. Validation failed!  Refer to server logs."
+    };
+    res.status(422).json(resp_obj); // 422 = Unprocessable Entity
+    return;
+  };
+
   if (context.serverType === ServerTypes.SingleDomain) // Reconfigure single-domain gateway server
     reconfigEndpoints();
   else // Reconfigure multi-domain gateway server
