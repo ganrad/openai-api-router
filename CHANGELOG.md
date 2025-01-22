@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## [v2.1.0](https://github.com/ganrad/openai-api-router/compare/v2.0.0...v2.1.0)
+### Functionality changes
+* (Enhancement) The AI App Gateway engine has been enhanced to support multi-domain orchestration of complex AI workflows, involving multiple AI agents and tool invocations.
+* (Enhancement) The App Gateway configuration file (JSON) is now validated at server startup, logging any parsing errors and exiting if necessary. 
+* (Enhancement) API support has been added for models deployed in Azure AI Foundry, allowing the load balancer/router API endpoint to route requests to models that support the Azure AI Model Inference API. 
+* (Enhancement) A new '/apprequests' API endpoint has been introduced to retrieve details of specific inferencing API requests. 
+* (Enhancement) A unique server instance ID (server name + pod name) is now captured for each API request and stored in cache, memory, prompts, and tools trace database tables. 
+* (Enhancement) A new field 'exec_time_secs' has been added to the prompts table to store API request processing times.
+* (Enhancement) The Azure App Insights environment variable has been renamed. The server code has been restructured for better readability and maintenance. 
+* (Enhancement) A new function has been introduced to gracefully exit the gateway server upon receiving SIGKILL and SIGTERM signals. 
+* (Enhancement) Reconfiguration of the AI Application Gateway is now only supported in standalone mode. 
+* A bugfix has been implemented to ensure cache and memory invalidation schedulers use the updated configuration after reconfiguring the gateway server.
+
+### Documentation changes
+* Updated operational architecture diagram.
+* Updated documentation for both AI Application Gateway and AI Chatbot Application (Frontend / SPA)
+
 ## [v2.0.1](https://github.com/ganrad/openai-api-router/compare/v2.0.0...v2.0.1)
 ### Functionality changes
 * (Bugfix) Resolved JSON parse issue for streamed chat completion response.

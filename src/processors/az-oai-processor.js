@@ -15,7 +15,16 @@
  * ID07292024: ganrad: (Minor update) Print authenticated user name along with the request.
  * ID09242024: ganrad: (Bugfix) Resolved JSON.parse error in streaming mode. Simplified streaming logic to improve performance
  * and readability.
- *
+ * ID10302024: ganrad: v2.1.0: (Enhancement) Support MSFT Entra ID auth (managed identity) for Azure OAI API calls (In addition
+ * to supporting API Keys).
+ * ID11052024: ganrad: v2.1.0: (Enhancement) Added support for LLMs which use Azure AI Model Inference API (Chat completion).
+ * ID11062024: ganrad: v2.1.0: (Bugfix) Capture AI Model Inference API 422's.
+ * ID11082024: ganrad: v2.1.0: (Enhancement) Added new field 'exec_time_secs' (~ execution time) to the 'apigtwyprompts' table.
+ * ID11112024: ganrad: v2.1.0: Introduced instanceName (server ID + '-' + Pod Name) field.  Instance name will be stored along with cache, memory & prompt 
+ * records. This will allow cache and memory invalidators associated with an instance to only operate on records created by self. 
+ * Users can also easily identify which server instance served a request.  This feature is important when multiple server instances are deployed
+ * on a container platform ~ Kubernetes.
+ * ID11152024: ganrad: v2.1.0: (Bugfix)  Both API Gateway Entra ID Auth + AOAI MID Auth should not be used together!  Only one of them can be used.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -27,7 +36,7 @@ const cachedb = require("../services/cp-pg.js"); // ID02202024.n
 const { TblNames, PersistDao } = require("../utilities/persist-dao.js"); // ID03012024.n
 const persistdb = require("../services/pp-pg.js"); // ID03012024.n
 const pgvector = require("pgvector/pg"); // ID02202024.n
-const { CustomRequestHeaders } = require("../utilities/app-gtwy-constants.js"); // ID05062024.n
+const { CustomRequestHeaders, AzAiServices } = require("../utilities/app-gtwy-constants.js"); // ID05062024.n
 const { randomUUID } = require('node:crypto'); // ID05062024.n
 
 class AzOaiProcessor {
@@ -35,15 +44,15 @@ class AzOaiProcessor {
   constructor() {
   }
 
-  #checkAndPruneCtxMsgs(count,msgs) {
+  #checkAndPruneCtxMsgs(count, msgs) {
     let aCount = 3 + (count * 2);
-    
+
     let mLength = msgs.length;
 
-    if ( mLength > aCount )
-      msgs.splice(3,2); // keep the original system + prompt and completion
+    if (mLength > aCount)
+      msgs.splice(3, 2); // 1) Keep the original 3 messages => role = system + user and assistant & 2) Delete the next 2 messages (role=user + assistant)
 
-    return(msgs)
+    return (msgs)
   }
 
   // ID06052024.sn
@@ -56,24 +65,24 @@ class AzOaiProcessor {
 
       let eolIndex;
       while ((eolIndex = previous.indexOf("\n")) >= 0) {
-      // line includes the EOL
+        // line includes the EOL
         const line = previous.slice(0, eolIndex + 1).trimEnd();
         if (line === "data: [DONE]") break;
         // if (line.startsWith("data: ")) yield line;
-	if ( line ) yield line;
+        if (line) yield line;
         previous = previous.slice(eolIndex + 1);
       }
     };
-    if ( previous.startsWith("data: " ) ) yield previous;
+    if (previous.startsWith("data: ")) yield previous;
   }
 
   * #linesToMessages(linesAsync) {
     let message;
     for (const line of linesAsync) {
-      if ( line.startsWith("data: ") )
+      if (line.startsWith("data: "))
         message = line.substring("data: ".length);
       else
-	message = line;
+        message = line;
 
       yield message;
     }
@@ -86,7 +95,7 @@ class AzOaiProcessor {
   #constructCompletionMessage(completion, citations, metadata) {
     let completionObj = null;
 
-    if ( citations ) {
+    if (citations) {
       const citsObj = JSON.parse(citations);
       completionObj = {
         id: metadata.id,
@@ -96,17 +105,17 @@ class AzOaiProcessor {
         choices: [
           {
             message: {
-	      role: "assistant",
-	      content: completion,
-	      context: {
-	        citations: citsObj.choices[0].delta.context.citations,
-	        intent: citsObj.choices[0].delta.context.intent,
-	        all_retrieved_documents: citsObj.choices[0].delta.context.all_retrieved_documents
-	      }
-	    },
-	    finish_reason: "stop",
-	    index: 0
-	  }
+              role: "assistant",
+              content: completion,
+              context: {
+                citations: citsObj.choices[0].delta.context.citations,
+                intent: citsObj.choices[0].delta.context.intent,
+                all_retrieved_documents: citsObj.choices[0].delta.context.all_retrieved_documents
+              }
+            },
+            finish_reason: "stop",
+            index: 0
+          }
         ],
         system_fingerprint: metadata.system_fingerprint
       };
@@ -120,30 +129,30 @@ class AzOaiProcessor {
         choices: [
           {
             message: {
-	      role: "assistant",
-	      content: completion,
-	    },
-	    finish_reason: "stop",
-	    index: 0
-	  }
+              role: "assistant",
+              content: completion,
+            },
+            finish_reason: "stop",
+            index: 0
+          }
         ],
         system_fingerprint: metadata.system_fingerprint
       };
     };
 
-    return(completionObj);
+    return (completionObj);
   }
 
   #constructCompletionStreamMessage(completion) {
     let completionObj = {
       choices: [
-	{
-	  index: 0,
+        {
+          index: 0,
           delta: {
-	    content: completion.choices[0].message.content
+            content: completion.choices[0].message.content
           },
-	  finish_reason: null
-	}
+          finish_reason: null
+        }
       ],
       created: completion.created,
       id: completion.id,
@@ -153,25 +162,25 @@ class AzOaiProcessor {
     };
 
     let citationsObj = null;
-    if ( completion.choices[0].message?.context ) {
+    if (completion.choices[0].message?.context) {
       citationsObj = {
         id: completion.id,
-	created: completion.created,
-	model: completion.model,
-	object: completion.object,
+        created: completion.created,
+        model: completion.model,
+        object: completion.object,
         choices: [
-	  {
-	    index: 0,
+          {
+            index: 0,
             delta: {
-	      role: "assistant",
-	      context: {
-	        citations: completion.choices[0].message.context.citations,
-	        intent: completion.choices[0].message.context.intent
-	      }
+              role: "assistant",
+              context: {
+                citations: completion.choices[0].message.context.citations,
+                intent: completion.choices[0].message.context.intent
+              }
             },
-	    end_turn: false,
-	    finish_reason: null
-	  }
+            end_turn: false,
+            finish_reason: null
+          }
         ]
       };
     };
@@ -186,12 +195,12 @@ class AzOaiProcessor {
 
   #checkIfMessageIsComplete(message) {
     let braces = 0;
-    for (var i=0, len = message.length; i<len; ++i) {
-      switch(message[i]) {
-        case '{' : 
+    for (var i = 0, len = message.length; i < len; ++i) {
+      switch (message[i]) {
+        case '{':
           ++braces;
           break;
-        case '}' : 
+        case '}':
           --braces;
           break;
       }
@@ -200,7 +209,7 @@ class AzOaiProcessor {
   }
 
   #sleep(time) {
-    return new Promise((resolve) => setTimeout(resolve,time));
+    return new Promise((resolve) => setTimeout(resolve, time));
   }
 
   async #streamChatCompletion(req_id, t_id, app_id, router_res, oai_res) {
@@ -209,11 +218,11 @@ class AzOaiProcessor {
 
     // Send 200 response status and headers
     let res_hdrs = CustomRequestHeaders.RequestId;
-    router_res.setHeader('Content-Type','text/event-stream');
-    router_res.setHeader('Cache-Control','no-cache');
-    router_res.setHeader('Connection','keep-alive');
+    router_res.setHeader('Content-Type', 'text/event-stream');
+    router_res.setHeader('Cache-Control', 'no-cache');
+    router_res.setHeader('Connection', 'keep-alive');
     router_res.set(CustomRequestHeaders.RequestId, req_id);
-    if ( t_id) {
+    if (t_id) {
       res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
       router_res.set(CustomRequestHeaders.ThreadId, t_id);
     };
@@ -223,12 +232,12 @@ class AzOaiProcessor {
     let chkPart = null;
     let recv_data = '';
     let call_data = null;
-    while ( true ) {
+    while (true) {
       const { done, value } = await reader.read();
-      if ( done ) {
-	// 1. Debugging start - Finished
-	// console.log("**** FINISHED ****");
-	break;
+      if (done) {
+        // 1. Debugging start - Finished
+        // console.log("**** FINISHED ****");
+        break;
       };
 
       router_res.write(value); // write the value out to router response/output stream
@@ -247,111 +256,111 @@ class AzOaiProcessor {
           break;
 
         // 2. Line data
-	// console.log(`**** DATA ****: ${data}`);
+        // console.log(`**** DATA ****: ${data}`);
         let pdata = '';
-	if ( data.includes("data: ") )
-	    pdata = data.substring("data: ".length);
-	else
-	    pdata = data;
+        if (data.includes("data: "))
+          pdata = data.substring("data: ".length);
+        else
+          pdata = data;
 
-        if ( chkPart ) {
+        if (chkPart) {
           let cdata = chkPart.concat(pdata);
-	  if ( cdata.includes("data: ") )
-	    pdata = cdata.substring("data: ".length);
-	  else
-	    pdata = cdata;
+          if (cdata.includes("data: "))
+            pdata = cdata.substring("data: ".length);
+          else
+            pdata = cdata;
           // 3. Stitched line data fragments
-	  // console.log(`**** C-DATA ****: ${cdata}`);
-	};
+          // console.log(`**** C-DATA ****: ${cdata}`);
+        };
 
-	try {
+        try {
           const jsonMsg = JSON.parse(pdata);
-	  // 4.a Parsed data
-	  // console.log(`**** P-DATA ****: ${pdata}`);
+          // 4.a Parsed data
+          // console.log(`**** P-DATA ****: ${pdata}`);
           chkPart = null;
 
           if (!jsonMsg.choices || jsonMsg.choices.length === 0)
-	    console.log("streamCompletion(): Skipping this line");
+            console.log("streamCompletion(): Skipping this line");
           else {
-	    let content = jsonMsg.choices[0].delta.content;
-	    if ( content ) 
-	      // recv_data += jsonMsg.choices[0].delta.content;
-	      recv_data = recv_data.concat(content);
+            let content = jsonMsg.choices[0].delta.content;
+            if (content)
+              // recv_data += jsonMsg.choices[0].delta.content;
+              recv_data = recv_data.concat(content);
 
-      	    if ( ! call_data && (jsonMsg.created > 0) )
-	      call_data = {
-	        id: jsonMsg.id,
-	        object: jsonMsg.object,
-	        created: jsonMsg.created,
-	        model: jsonMsg.model,
-	        system_fingerprint: jsonMsg.system_fingerprint
-	      };
-          };
-	}
-	catch ( error ) {
-	  // let chkdata = ( chkPart) ? chkPart.concat(pdata) : pdata;
-          // chkPart = chkdata;
-          chkPart = pdata;
-	  // 4.b Partial data
-	  // console.log(`**** ChkPart ****: ${chkPart}`);
-	};
-
-	/**
-        if ( pdata.startsWith("{") && pdata.endsWith("}") && this.#checkIfMessageIsComplete(pdata) ) {
-          // 4. Parsed data
-	  console.log(`**** P-DATA ****: ${pdata}`);
-          chkPart = '';
-
-          const jsonMsg = JSON.parse(pdata);
-
-          if (!jsonMsg.choices || jsonMsg.choices.length === 0)
-	    console.log("streamCompletion(): Skipping this line");
-          else {
-	    let content = jsonMsg.choices[0].delta.content;
-	    if ( content ) 
-	      // recv_data += jsonMsg.choices[0].delta.content;
-	      recv_data = recv_data.concat(content);
-
-      	    if ( ! call_data && (jsonMsg.created > 0) )
-	      call_data = {
-	        id: jsonMsg.id,
-	        object: jsonMsg.object,
-	        created: jsonMsg.created,
-	        model: jsonMsg.model,
-	        system_fingerprint: jsonMsg.system_fingerprint
-	      };
+            if (!call_data && (jsonMsg.created > 0))
+              call_data = {
+                id: jsonMsg.id,
+                object: jsonMsg.object,
+                created: jsonMsg.created,
+                model: jsonMsg.model,
+                system_fingerprint: jsonMsg.system_fingerprint
+              };
           };
         }
-        else {
-	  let chkdata = chkPart + pdata;
-          chkPart = chkdata;
-	};
-	*/
+        catch (error) {
+          // let chkdata = ( chkPart) ? chkPart.concat(pdata) : pdata;
+          // chkPart = chkdata;
+          chkPart = pdata;
+          // 4.b Partial data
+          // console.log(`**** ChkPart ****: ${chkPart}`);
+        };
+
+        /**
+              if ( pdata.startsWith("{") && pdata.endsWith("}") && this.#checkIfMessageIsComplete(pdata) ) {
+                // 4. Parsed data
+          console.log(`**** P-DATA ****: ${pdata}`);
+                chkPart = '';
+      
+                const jsonMsg = JSON.parse(pdata);
+      
+                if (!jsonMsg.choices || jsonMsg.choices.length === 0)
+            console.log("streamCompletion(): Skipping this line");
+                else {
+            let content = jsonMsg.choices[0].delta.content;
+            if ( content ) 
+              // recv_data += jsonMsg.choices[0].delta.content;
+              recv_data = recv_data.concat(content);
+      
+                  if ( ! call_data && (jsonMsg.created > 0) )
+              call_data = {
+                id: jsonMsg.id,
+                object: jsonMsg.object,
+                created: jsonMsg.created,
+                model: jsonMsg.model,
+                system_fingerprint: jsonMsg.system_fingerprint
+              };
+                };
+              }
+              else {
+          let chkdata = chkPart + pdata;
+                chkPart = chkdata;
+        };
+        */
       }; // ID09242024.en
       // });
 
       /* for ( const message of this.#processChunk(chunk) ) { // ID09242024.so
         try {
-	  msg += message;
+    msg += message;
           console.log(`MESSAGE: ${msg}`);
 
-  	  if ( msg.startsWith("{") && msg.endsWith("}") && this.#checkIfMessageIsComplete(msg) ) {
+      if ( msg.startsWith("{") && msg.endsWith("}") && this.#checkIfMessageIsComplete(msg) ) {
             // console.log(`MESSAGE: ${msg}`);
 
             const jsonMsg = JSON.parse(msg);
-	    if ( (jsonMsg.choices.length > 0) && jsonMsg.choices[0].delta.content )
-	      recv_data += jsonMsg.choices[0].delta.content;
+      if ( (jsonMsg.choices.length > 0) && jsonMsg.choices[0].delta.content )
+        recv_data += jsonMsg.choices[0].delta.content;
 
-      	    if ( ! call_data && (jsonMsg.created > 0) )
-	      call_data = {
-	        id: jsonMsg.id,
-	        object: jsonMsg.object,
-	        created: jsonMsg.created,
-	        model: jsonMsg.model,
-	        system_fingerprint: jsonMsg.system_fingerprint
-	      };
-	    msg = '';
-	  };
+            if ( ! call_data && (jsonMsg.created > 0) )
+        call_data = {
+          id: jsonMsg.id,
+          object: jsonMsg.object,
+          created: jsonMsg.created,
+          model: jsonMsg.model,
+          system_fingerprint: jsonMsg.system_fingerprint
+        };
+      msg = '';
+    };
         }
         catch (error) {
           logger.log({level: "warn", message: "[%s] %s.streamChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Message:\n  %s\n Error:\n  %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,message,error]});
@@ -361,7 +370,7 @@ class AzOaiProcessor {
     // 5. Check if chunk part was not processed!
     // console.log(`ChkPart: ${chkPart}`);
 
-    logger.log({level: "debug", message: "[%s] %s.streamChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Completion: %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,recv_data]});
+    logger.log({ level: "debug", message: "[%s] %s.streamChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Completion: %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, recv_data] });
 
     let resp_data = this.#constructCompletionMessage(recv_data, null, call_data);
 
@@ -375,11 +384,11 @@ class AzOaiProcessor {
 
     // Send 200 response status and headers
     let res_hdrs = CustomRequestHeaders.RequestId;
-    router_res.setHeader('Content-Type','text/event-stream');
-    router_res.setHeader('Cache-Control','no-cache');
-    router_res.setHeader('Connection','keep-alive');
+    router_res.setHeader('Content-Type', 'text/event-stream');
+    router_res.setHeader('Cache-Control', 'no-cache');
+    router_res.setHeader('Connection', 'keep-alive');
     router_res.set(CustomRequestHeaders.RequestId, req_id);
-    if ( t_id ) {
+    if (t_id) {
       res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
       router_res.set(CustomRequestHeaders.ThreadId, t_id);
     };
@@ -390,9 +399,9 @@ class AzOaiProcessor {
     let cit_data = "";
     let chunkCount = 0;
     let call_data = null;
-    while ( true ) {
+    while (true) {
       const { done, value } = await reader.read();
-      if ( done ) break;
+      if (done) break;
 
       router_res.write(value); // write the value out to router response/output stream
 
@@ -400,47 +409,47 @@ class AzOaiProcessor {
       const chunk = decoder.decode(value);
       // console.log(`Decoded value: ${chunk}`);
 
-      if ( chunk.startsWith("data: ") )
+      if (chunk.startsWith("data: "))
         chunkCount++;
 
-      if ( chunkCount === 1 ) { // Citation data
-        const clean_data = chunk.replace(/^data: /,"").trim();
+      if (chunkCount === 1) { // Citation data
+        const clean_data = chunk.replace(/^data: /, "").trim();
         cit_data += clean_data;
       };
 
-      if ( chunkCount > 1 ) { // Content data
+      if (chunkCount > 1) { // Content data
         const lines = chunk.split("data:");
         // console.log(`chunk_count: ${chunkCount}; length: ${lines.length}`);
         const parsedLines = lines
           .map((line) => line.replace(/^data: /, "").trim()) // Remove the "data: " prefix
           .filter((line) => line !== "" && line !== "[DONE]") // Remove empty lines and "[DONE]"
           .map((line) => {
-	    // console.log(`Parsed Line: ${line}`);
-	    return(JSON.parse(line))
-	  }); // Parse the JSON string 
-		
+            // console.log(`Parsed Line: ${line}`);
+            return (JSON.parse(line))
+          }); // Parse the JSON string 
+
         for (const parsedLine of parsedLines) {
           const { choices } = parsedLine;
-   	  if ( choices.length > 0 ) {
+          if (choices.length > 0) {
             const { delta } = choices[0];
             const { content } = delta;
             if (content)
-	      recv_data += content;
+              recv_data += content;
 
-      	    if ( ! call_data )
-	      call_data = {
-	        id: parsedLine.id,
-	        object: parsedLine.object,
-	        created: parsedLine.created,
-	        model: parsedLine.model,
-	        system_fingerprint: parsedLine.system_fingerprint
-	      };
-	  };
-	}; // end of for loop
-      }; 
+            if (!call_data)
+              call_data = {
+                id: parsedLine.id,
+                object: parsedLine.object,
+                created: parsedLine.created,
+                model: parsedLine.model,
+                system_fingerprint: parsedLine.system_fingerprint
+              };
+          };
+        }; // end of for loop
+      };
     }; // end of while loop
 
-    logger.log({level: "debug", message: "[%s] %s.streamChatCompletionOyd():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Citations:\n  %s\n  Completion:\n  %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,cit_data,recv_data]});
+    logger.log({ level: "debug", message: "[%s] %s.streamChatCompletionOyd():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Citations:\n  %s\n  Completion:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, cit_data, recv_data] });
 
     let resp_data = this.#constructCompletionMessage(recv_data, cit_data, call_data);
 
@@ -455,11 +464,11 @@ class AzOaiProcessor {
     res_payload) {
     // Send 200 response status and headers
     let res_hdrs = CustomRequestHeaders.RequestId;
-    router_res.setHeader('Content-Type','text/event-stream');
-    router_res.setHeader('Cache-Control','no-cache');
-    router_res.setHeader('Connection','keep-alive');
+    router_res.setHeader('Content-Type', 'text/event-stream');
+    router_res.setHeader('Cache-Control', 'no-cache');
+    router_res.setHeader('Connection', 'keep-alive');
     router_res.set(CustomRequestHeaders.RequestId, req_id);
-    if ( t_id ) {
+    if (t_id) {
       res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
       router_res.set(CustomRequestHeaders.ThreadId, t_id);
     };
@@ -468,10 +477,10 @@ class AzOaiProcessor {
 
     let msgChunk = this.#constructCompletionStreamMessage(res_payload)
     // console.log(`***** CACHED MESSAGE:\n${JSON.stringify(msgChunk)}`);
-    if ( msgChunk.citations ) {
+    if (msgChunk.citations) {
       const cit_data = "data: " + JSON.stringify(msgChunk.citations) + "\n\n";
-      router_res.write(cit_data, 'utf8',() => {
-        logger.log({level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Citations:\n  %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,cit_data]});
+      router_res.write(cit_data, 'utf8', () => {
+        logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Citations:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, cit_data] });
       });
     };
 
@@ -482,46 +491,46 @@ class AzOaiProcessor {
       model: "",
       object: "",
       prompt_filter_results: [  // Safe to return 'safe sev' for all harm categories as this is a cached response!
-	{
-	  prompt_index: 0,
-	  content_filter_results: {
-	    hate: {
-	      filtered: false,
-	      severity: "safe",
-	    },
-	    self_harm: {
-	      filtered: false,
-	      severity: "safe",
-	    },
-	    sexual: {
-	      filtered: false,
-	      severity: "safe",
-	    },
-	    violence: {
-	      filtered: false,
-	      severity: "safe",
-	    }
-	  }
-	}
+        {
+          prompt_index: 0,
+          content_filter_results: {
+            hate: {
+              filtered: false,
+              severity: "safe",
+            },
+            self_harm: {
+              filtered: false,
+              severity: "safe",
+            },
+            sexual: {
+              filtered: false,
+              severity: "safe",
+            },
+            violence: {
+              filtered: false,
+              severity: "safe",
+            }
+          }
+        }
       ]
     }) + "\n\n";
-    router_res.write(value0,'utf8',() => { 
-      logger.log({level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Prompt-Filter:\n  %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,value0]});
+    router_res.write(value0, 'utf8', () => {
+      logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Prompt-Filter:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, value0] });
     });
 
     const value1 = "data: " + JSON.stringify(msgChunk.completion) + "\n\n";
-    router_res.write(value1,'utf8',() => { 
-      logger.log({level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Completion:\n  %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,value1]});
+    router_res.write(value1, 'utf8', () => {
+      logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Completion:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, value1] });
     });
 
     const value2 = "data: " + JSON.stringify({
       choices: [
         {
-	  content_filter_results: {},
-	  delta: {},
-	  finish_reason: "stop",
-	  index: 0
-	}
+          content_filter_results: {},
+          delta: {},
+          finish_reason: "stop",
+          index: 0
+        }
       ],
       created: msgChunk.completion.created,
       id: msgChunk.completion.id,
@@ -529,13 +538,13 @@ class AzOaiProcessor {
       object: msgChunk.completion.object,
       system_fingerprint: null
     }) + "\n\n";
-    router_res.write(value2,'utf8',() => { 
-      logger.log({level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Stop:\n  %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,value2]});
+    router_res.write(value2, 'utf8', () => {
+      logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Stop:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, value2] });
     });
 
     const value3 = 'data: [\"Done\"]\n\n';
-    router_res.write(value3,'utf8',() => {
-      logger.log({level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Done:\n  %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,value3]});
+    router_res.write(value3, 'utf8', () => {
+      logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Done:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, value3] });
     });
 
     return {
@@ -556,24 +565,25 @@ class AzOaiProcessor {
     let appConnections = arguments[4]; // EP metrics obj for all apps
     let cacheMetrics = arguments[5]; // Cache hit metrics obj for all apps
     let manageState = (process.env.API_GATEWAY_STATE_MGMT === 'true') ? true : false
-	
+    let instanceName = (process.env.POD_NAME) ? apps.serverId + '-' + process.env.POD_NAME : apps.serverId; // Server instance name ID11112024.n
+
     // State management is only supported for chat completion API!
-    if ( memoryConfig && (! req.body.messages) ) // If the request is not of type == chat completion
+    if (memoryConfig && (!req.body.messages)) // If the request is not of type == chat completion
       memoryConfig = null;
 
-    // 1. Check thread ID in request header
+    // 1. Get thread ID in request header
     let threadId = req.get(CustomRequestHeaders.ThreadId);
 
     // console.log(`*****\nAzOaiProcessor.processRequest():\n  URI: ${req.originalUrl}\n  Request ID: ${req.id}\n  Application ID: ${config.appId}\n  Type: ${config.appType}`);
-    logger.log({level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n  Request Payload:\n  %s", splat: [scriptName,this.constructor.name,req.id,req.originalUrl,req.user?.name,threadId,config.appId,config.appType,JSON.stringify(req.body,null,2)]}); // ID07292024.n
-    
+    logger.log({ level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n  Request Payload:\n  %s", splat: [scriptName, this.constructor.name, req.id, req.originalUrl, req.user?.name, threadId, config.appId, config.appType, JSON.stringify(req.body, null, 2)] }); // ID07292024.n
+
     let respMessage = null; // Populate this var before returning!
 
     // 2. Check prompt present in cache
     // Has caching been disabled on the request using query param ~
     // 'use_cache=false' ?
     let useCache = config.useCache;
-    if ( useCache && req.query.use_cache )
+    if (useCache && req.query.use_cache)
       useCache = req.query.use_cache === 'false' ? false : useCache;
 
     let vecEndpoints = null;
@@ -584,10 +594,10 @@ class AzOaiProcessor {
     let err_msg = null;
     let uriIdx = 0;
 
-    if (! threadId) { 
-      if ( cacheConfig.cacheResults && useCache ) { // Is caching enabled?
-        for ( const application of apps.applications) {
-          if ( application.appId == cacheConfig.embeddApp ) {
+    if (!threadId) {
+      if (cacheConfig.cacheResults && useCache) { // Is caching enabled?
+        for (const application of apps.applications) {
+          if (application.appId == cacheConfig.embeddApp) {
             vecEndpoints = application.endpoints;
 
             break;
@@ -602,7 +612,7 @@ class AzOaiProcessor {
           config.srchDistance,
           config.srchContent);
 
-        const {rowCount, simScore, completion, embeddings} =
+        const { rowCount, simScore, completion, embeddings } =
           await cacheDao.queryVectorDB(
             req.id,
             config.appId,
@@ -610,48 +620,49 @@ class AzOaiProcessor {
             cachedb
           );
 
-        if ( rowCount === 1 ) { // Cache hit!
+        if (rowCount === 1) { // Cache hit!
           cacheMetrics.updateCacheMetrics(config.appId, simScore);
 
-          if ( req.body.messages && manageState && memoryConfig && memoryConfig.useMemory ) // Generate thread id if manage state == true
-	    threadId = randomUUID();
-		 
-	  respMessage = ( req.body.stream ) ?
-   	    this.#streamCachedChatCompletion(req.id, threadId, config.appId, res, completion) :
-	    {
-	      http_code: 200, // All ok. Serving completion from cache.
-	      cached: true,
-	      data: completion
-	    };
+          if (req.body.messages && manageState && memoryConfig && memoryConfig.useMemory) // Generate thread id if manage state == true
+            threadId = randomUUID();
 
-          if ( req.body.messages && manageState && memoryConfig && memoryConfig.useMemory ) { // Manage state for this AI application?
+          respMessage = (req.body.stream) ?
+            this.#streamCachedChatCompletion(req.id, threadId, config.appId, res, completion) :
+            {
+              http_code: 200, // All ok. Serving completion from cache.
+              cached: true,
+              data: completion
+            };
+
+          if (req.body.messages && manageState && memoryConfig && memoryConfig.useMemory) { // Manage state for this AI application?
             respMessage.threadId = threadId;
 
-	    // ID05312024.sn
-	    let saveMsg = {
-	      role: completion.choices[0].message.role,
-	      content: completion.choices[0].message.content
-	    };
-	    // ID05312024.en
+            // ID05312024.sn
+            let saveMsg = {
+              role: completion.choices[0].message.role,
+              content: completion.choices[0].message.content
+            };
+            // ID05312024.en
             // req.body.messages.push(completion.choices[0].message); ID05312024.o
             req.body.messages.push(saveMsg); // ID05312024.n
-            logger.log({level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Cached Message:\n  %s", splat: [scriptName,this.constructor.name,req.id,threadId,JSON.stringify(req.body.messages,null,2)]});
+            logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Cached Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, JSON.stringify(req.body.messages, null, 2)] });
 
             memoryDao = new PersistDao(persistdb, TblNames.Memory);
             values = [
               req.id,
+              instanceName, // ID11112024.n
               threadId,
               config.appId,
-	      {
-	        content: req.body.messages
-	      },
-	      req.body.user // ID04112024.n
+              {
+                content: req.body.messages
+              },
+              req.body.user // ID04112024.n
             ];
 
-            await memoryDao.storeEntity(0,values);
-	  };
+            await memoryDao.storeEntity(req.id, 0, values);
+          };
 
-          return(respMessage);
+          return (respMessage);
         }
         else
           embeddedPrompt = embeddings;
@@ -663,44 +674,44 @@ class AzOaiProcessor {
         threadId,
         config.appId
       ];
-      
+
       // retrieve the thread context
-      const userContext = await memoryDao.queryTable(req.id,0,values)
-      if ( userContext.rCount === 1 ) {
-	let ctxContent = userContext.data[0].context.content;
-	let ctxMsgs = ctxContent.concat(req.body.messages);
+      const userContext = await memoryDao.queryTable(req.id, 1, values)
+      if (userContext.rCount === 1) {
+        let ctxContent = userContext.data[0].context.content;
+        let ctxMsgs = ctxContent.concat(req.body.messages);
 
-	if ( memoryConfig.msgCount >= 1 ) 
-	  this.#checkAndPruneCtxMsgs(memoryConfig.msgCount, ctxMsgs);
+        if (memoryConfig.msgCount >= 1)
+          this.#checkAndPruneCtxMsgs(memoryConfig.msgCount, ctxMsgs);
 
-	req.body.messages = ctxMsgs;
+        req.body.messages = ctxMsgs;
 
-        logger.log({level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Retrieved Message:\n  %s", splat: [scriptName,this.constructor.name,req.id,threadId,JSON.stringify(req.body.messages,null,2)]});
+        logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Retrieved Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, JSON.stringify(req.body.messages, null, 2)] });
       }
       else {
-	/* ID06132024.so
+        /* ID06132024.so
+              err_msg = {
+                endpointUri: req.originalUrl,
+                currentDate: new Date().toLocaleString(),
+                errorMessage: `The user session associated with Thread ID=[${threadId}] has either expired or is invalid! Start a new user session.`
+              };
+        ID06132024.eo */
+        // ID06132024.sn  
         err_msg = {
-          endpointUri: req.originalUrl,
-          currentDate: new Date().toLocaleString(),
-          errorMessage: `The user session associated with Thread ID=[${threadId}] has either expired or is invalid! Start a new user session.`
+          error: {
+            target: req.originalUrl,
+            message: `The user session associated with Thread ID=[${threadId}] has either expired or is invalid! Start a new user session.`,
+            code: "invalidPayload"
+          }
         };
-	ID06132024.eo */
-	// ID06132024.sn  
-	err_msg = {
-	  error: {
-	    target: req.originalUrl,
-	    message: `The user session associated with Thread ID=[${threadId}] has either expired or is invalid! Start a new user session.`,
-	    code: "invalidPayload"
-	  }
-	};
-	// ID06132024.en  
+        // ID06132024.en  
 
-	respMessage = {
-	  http_code: 400, // Bad request
-	  data: err_msg
-	};
+        respMessage = {
+          http_code: 400, // Bad request
+          data: err_msg
+        };
 
-	return(respMessage);
+        return (respMessage);
       };
     }; // end of user session if
 
@@ -714,55 +725,72 @@ class AzOaiProcessor {
     for (const element of config.appEndpoints) { // start of endpoint loop
       uriIdx++;
 
-      let metricsObj = epdata.get(element.uri); 
+      let metricsObj = epdata.get(element.uri);
       let healthArr = metricsObj.isEndpointHealthy();
       // console.log(`******isAvailable=${healthArr[0]}; retryAfter=${healthArr[1]}`);
-      if ( ! healthArr[0] ) {
-        if ( retryAfter > 0 )
-  	  retryAfter = (healthArr[1] < retryAfter) ? healthArr[1] : retryAfter;
-	else
-	  retryAfter = healthArr[1];
-        
-	continue;
+      if (!healthArr[0]) {
+        if (retryAfter > 0)
+          retryAfter = (healthArr[1] < retryAfter) ? healthArr[1] : retryAfter;
+        else
+          retryAfter = healthArr[1];
+
+        continue;
       };
 
       try {
         const meta = new Map();
-        meta.set('Content-Type','application/json');
-        meta.set('api-key',element.apikey);
+        meta.set('Content-Type', 'application/json');
+        const bearerToken = req.get("Authorization"); // case-insensitive header match ID10302024.sn
+        if ( config.appType === AzAiServices.OAI ) { // ID11052024.n
+          if ( bearerToken && !req.authInfo ) // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
+            meta.set('Authorization', bearerToken);
+          else // Use API Key Auth ID10302024.en
+            meta.set('api-key', element.apikey);
+        }
+        else { // ID11052024.n (Az Ai Model Inference API models)
+          if ( bearerToken && !req.authInfo ) // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
+            meta.set('Authorization', bearerToken);
+          else // Use API Key Auth ID10302024.en
+            meta.set('Authorization', "Bearer " + element.apikey);
+          /*
+          delete req.body.presence_penalty;
+          delete req.body.frequency_penalty; */
+          meta.set('extra-parameters', 'drop'); // Drop any parameters the model doesn't understand; Don't return an error!
+        };
 
         response = await fetch(element.uri, {
           method: req.method,
-	  headers: meta,
+          headers: meta,
           body: JSON.stringify(req.body)
         });
 
-	let status = response.status;
-        if ( status === 200 ) { // All Ok
+        let status = response.status;
+        if (status === 200) { // All Ok
           // data = await response.json(); ID06052024.o
-	  // ID06052024.sn
-	  let th_id = ! threadId && ( manageState && memoryConfig && memoryConfig.useMemory ) ? randomUUID() : threadId;
-	  if ( req.body.stream ) // Streaming request?
-	    data = ( req.body.data_sources ) ? 
-	      await this.#streamChatCompletionOyd(req.id,th_id,config.appId,res,response) :  // OYD call
-	      await this.#streamChatCompletion(req.id,th_id,config.appId,res,response); // Chat completion call
-	  else
+          // ID06052024.sn
+          let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? randomUUID() : threadId;
+          if (req.body.stream) // Streaming request?
+            data = (req.body.data_sources) ?
+              await this.#streamChatCompletionOyd(req.id, th_id, config.appId, res, response) :  // OYD call
+              await this.#streamChatCompletion(req.id, th_id, config.appId, res, response); // Chat completion call
+          else
             data = await response.json();
-	  // ID06052024.en
+          // ID06052024.en
 
           let respTime = Date.now() - stTime;
-	  metricsObj.updateApiCallsAndTokens(
+          metricsObj.updateApiCallsAndTokens(
             data.usage?.total_tokens,
             respTime);
 
           // ID02202024.sn
-          if ( (! threadId) && cacheDao && embeddedPrompt ) { // Cache results ?
+          if ((!threadId) && cacheDao && embeddedPrompt) { // Cache results ?
             let prompt = req.body.prompt;
-            if ( ! prompt )
+            if (!prompt)
               prompt = JSON.stringify(req.body.messages);
 
             let values = [
               req.id,
+              instanceName, // ID11112024.n
               config.appId,
               prompt,
               pgvector.toSql(embeddedPrompt),
@@ -777,70 +805,77 @@ class AzOaiProcessor {
           };
           // ID02202024.en
 
-	  if ( th_id && req.body.stream ) // ID06052024.n
-	    threadId = th_id;
+          if (th_id && req.body.stream) // ID06052024.n
+            threadId = th_id;
 
+          
           // ID03012024.sn
           let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
-          if ( persistPrompts ) { // Persist prompt and completion ?
+          if (persistPrompts) { // Persist prompt and completion ?
             let promptDao = new PersistDao(persistdb, TblNames.Prompts);
             let values = [
               req.id,
+              instanceName, // ID11112024.n
               config.appId,
               req.body,
-	      data, // ID04112024.n
-	      req.body.user // ID04112024.n
+              data, // ID04112024.n
+              req.body.user, // ID04112024.n
+              respTime / 1000 // ID11082024.n
             ];
 
             await promptDao.storeEntity(
+              req.id,
               0,
               values
             );
           };
           // ID03012024.en
 
-	  respMessage = {
-	    http_code: status,
+          respMessage = {
+            http_code: status,
             uri_idx: (uriIdx - 1),
-	    cached: false,
-	    data: data
-	  };
+            cached: false,
+            data: data
+          };
 
           retryAfter = 0;  // ID05282024.n (Bugfix; Set the retry after var to zero!!)
-	  break; // break out from the endpoint loop!
+          break; // break out from the endpoint loop!
         }
-        else if ( status === 429 ) { // endpoint is busy so try next one
+        else if (status === 429) { // endpoint is busy so try next one
           data = await response.json();
 
-	  let retryAfterSecs = response.headers.get('retry-after');
-	  // let retryAfterMs = headers.get('retry-after-ms');
+          let retryAfterSecs = response.headers.get('retry-after');
+          // let retryAfterMs = headers.get('retry-after-ms');
 
-	  if ( retryAfter > 0 )
-	    retryAfter = (retryAfterSecs < retryAfter) ? retryAfterSecs : retryAfter;
-	  else
-	    retryAfter = retryAfterSecs;
+          if (retryAfter > 0)
+            retryAfter = (retryAfterSecs < retryAfter) ? retryAfterSecs : retryAfter;
+          else
+            retryAfter = retryAfterSecs;
 
-	  metricsObj.updateFailedCalls(status,retryAfterSecs);
+          metricsObj.updateFailedCalls(status, retryAfterSecs);
 
           // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n  Retry seconds: ${retryAfterSecs}\n*****`);
-	  logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s\n  Retry seconds: %d", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,JSON.stringify(data,null,2),retryAfterSecs]});
+          logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s\n  Retry seconds: %d", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, status, response.statusText, JSON.stringify(data, null, 2), retryAfterSecs] });
         }
-        else if ( status === 400 ) { // Invalid prompt ~ content filtered
+        else if (status === 400 || status === 422) { // Invalid prompt ~ content filtered; ID11062024.n
           data = await response.json();
 
           // ID03012024.sn
           let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
-          if ( persistPrompts ) { // Persist prompts ?
+          if (persistPrompts) { // Persist prompts ?
             let promptDao = new PersistDao(persistdb, TblNames.Prompts);
             let values = [
               req.id,
+              instanceName, // ID11112024.n
               config.appId,
               req.body,
-	      data, // ID04112024.n
-	      req.body.user // ID04112024.n
+              data, // ID04112024.n
+              req.body.user, // ID04112024.n
+              (Date.now() - stTime) / 1000 // ID11082024.n
             ];
 
             await promptDao.storeEntity(
+              req.id,
               0,
               values
             );
@@ -848,14 +883,14 @@ class AzOaiProcessor {
           // ID03012024.en
 
           // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n*****`);
-	  logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,JSON.stringify(data,null,2)]});
+          logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, status, response.statusText, JSON.stringify(data, null, 2)] });
 
-	  metricsObj.updateFailedCalls(status,0);
-	  respMessage = {
-	    http_code: status,
-	    status_text: response.statusText,
-	    data: data
-	  };
+          metricsObj.updateFailedCalls(status, 0);
+          respMessage = {
+            http_code: status,
+            status_text: response.statusText,
+            data: data
+          };
 
           break;
         }
@@ -863,62 +898,64 @@ class AzOaiProcessor {
           data = await response.text();
 
           // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n*****`);
-	  logger.log({level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s", splat: [scriptName,this.constructor.name,config.appId,req.id,element.uri,status,response.statusText,JSON.stringify(data,null,2)]});
+          logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, status, response.statusText, JSON.stringify(data, null, 2)] });
 
-	  metricsObj.updateFailedCalls(status,0);
+          metricsObj.updateFailedCalls(status, 0);
 
-	  /* ID06132024.so
-	  err_msg = {
-            appId: config.appId,
-            reqId: req.id,
-            targetUri: element.uri,
-            http_code: status,
-	    status_text: response.statusText,
-	    data: data,
-            cause: `AI Service endpoint returned exception message [${response.statusText}]`
+          /* ID06132024.so
+          err_msg = {
+                  appId: config.appId,
+                  reqId: req.id,
+                  targetUri: element.uri,
+                  http_code: status,
+            status_text: response.statusText,
+            data: data,
+                  cause: `AI Service endpoint returned exception message [${response.statusText}]`
+                };
+          ID06132024.eo */
+          // ID06132024.sn
+          err_msg = {
+            error: {
+              target: element.uri,
+              message: `AI Service endpoint returned exception: [${data}].`,
+              code: "unauthorized"
+            }
           };
-	  ID06132024.eo */
-	  // ID06132024.sn
-	  err_msg = {
-	    error: {
-	      target: element.uri,
-	      message: `AI Service endpoint returned exception: [${data}].`,
-	      code: "unauthorized"
-	    }
-	  };
-	  // ID06132024.en
-	
-	  respMessage = {
-	    http_code: status,
-	    data: err_msg
-	  };
+          // ID06132024.en
+
+          respMessage = {
+            http_code: status,
+            data: err_msg
+          };
+
+          break;
         };
       }
       catch (error) {
-	/* ID06132024.so
+        /* ID06132024.so
+              err_msg = {
+          appId: config.appId,
+          reqId: req.id,
+          targetUri: element.uri,
+          cause: error
+        };
+        ID06132024.eo */
+        // ID06132024.sn
         err_msg = {
-	  appId: config.appId,
-	  reqId: req.id,
-	  targetUri: element.uri,
-	  cause: error
-	};
-	ID06132024.eo */
-	// ID06132024.sn
-	err_msg = {
-	  error: {
-	    target: element.uri,
-	    message: `AI Services Gateway encountered exception: [${error}].`,
-	    code: "internalFailure"
-	  }
-	};
-	// ID06132024.en
+          error: {
+            target: element.uri,
+            message: `AI Services Gateway encountered exception: [${error}].`,
+            code: "internalFailure"
+          }
+        };
+        // ID06132024.en
         // console.log(`*****\nAzOaiProcessor.processRequest():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
-	logger.log({level: "error", message: "[%s] %s.processRequest():\n  Encountered exception:\n  %s", splat: [scriptName,this.constructor.name,JSON.stringify(err_msg,null,2)]});
+        logger.log({ level: "error", message: "[%s] %s.processRequest():\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, JSON.stringify(err_msg, null, 2)] });
 
-	respMessage = {
+        respMessage = {
           http_code: 500,
-	  data: err_msg
-	};
+          data: err_msg
+        };
 
         break; // ID04172024.n
       };
@@ -926,7 +963,7 @@ class AzOaiProcessor {
 
     // instanceFailedCalls++;
 
-    if ( retryAfter > 0 ) {
+    if (retryAfter > 0) {
       /* ID06132024.so
       err_msg = {
         endpointUri: req.originalUrl,
@@ -937,10 +974,10 @@ class AzOaiProcessor {
       // ID06132024.sn
       err_msg = {
         error: {
-	  target: req.originalUrl,
-	  message: `All backend Azure OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`,
-	  code: "tooManyRequests"
-	}
+          target: req.originalUrl,
+          message: `All backend Azure OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`,
+          code: "tooManyRequests"
+        }
       };
       // ID06132024.en
 
@@ -948,75 +985,76 @@ class AzOaiProcessor {
       respMessage = {
         http_code: 429, // Server is busy, retry later!
         data: err_msg,
-	retry_after: retryAfter
+        retry_after: retryAfter
       };
     }
     else {
-      if ( respMessage == null ) {
-	/* ID06132024.so
-        err_msg = {
-          endpointUri: req.originalUrl,
-          currentDate: new Date().toLocaleString(),
-          errorMessage: "Internal server error. Unable to process request. Check server logs."
-        };
-	ID06132024.eo */
-	// ID06132024.sn
+      if (respMessage == null) {
+        /* ID06132024.so
+              err_msg = {
+                endpointUri: req.originalUrl,
+                currentDate: new Date().toLocaleString(),
+                errorMessage: "Internal server error. Unable to process request. Check server logs."
+              };
+        ID06132024.eo */
+        // ID06132024.sn
         err_msg = {
           error: {
-	    target: req.originalUrl,
-	    message: "Internal server error. Unable to process request. Please check server logs.",
-	    code: "internalFailure"
-	  }
+            target: req.originalUrl,
+            message: "Internal server error. Unable to process request. Please check server logs.",
+            code: "internalFailure"
+          }
         };
-	// ID06132024.en
+        // ID06132024.en
 
-	respMessage = {
-	  http_code: 500, // Internal API Gateway server error!
-	  data: err_msg
-	};
+        respMessage = {
+          http_code: 500, // Internal API Gateway server error!
+          data: err_msg
+        };
       };
     };
 
     // ID05062024.sn
-    if ( (respMessage.http_code === 200) && 
-	  req.body.messages && // state management is only supported for chat completions API
-	  manageState && 
-	  memoryConfig && 
-	  memoryConfig.useMemory ) { // Manage state for this AI application?
+    if ((respMessage.http_code === 200) &&
+      req.body.messages && // state management is only supported for chat completions API
+      manageState &&
+      memoryConfig &&
+      memoryConfig.useMemory) { // Manage state for this AI application?
 
       let completionMsg = {
-	role: data.choices[0].message.role,
-	content: data.choices[0].message.content
+        role: data.choices[0].message.role,
+        content: data.choices[0].message.content
       };
 
-      req.body.messages.push(completionMsg); 
+      req.body.messages.push(completionMsg);
 
       memoryDao = new PersistDao(persistdb, TblNames.Memory);
-      if ( ! threadId )
-	threadId = randomUUID();
+      if (!threadId)
+        threadId = randomUUID();
 
-      logger.log({level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Completed Message:\n  %s", splat: [scriptName,this.constructor.name,req.id,threadId,JSON.stringify(req.body.messages,null,2)]});
-	
+      logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Completed Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, JSON.stringify(req.body.messages, null, 2)] });
+
       values = [
         req.id,
+        instanceName, // ID11112024.n
         threadId,
         config.appId,
         {
           content: req.body.messages
-	},
-	req.body.user // ID04112024.n
+        },
+        req.body.user // ID04112024.n
       ];
 
-      if ( req.get(CustomRequestHeaders.ThreadId) ) // Update
-	await memoryDao.storeEntity(1,values);
+      if (req.get(CustomRequestHeaders.ThreadId)) // Update
+        await memoryDao.storeEntity(req.id, 1, values);
       else // Insert
-        await memoryDao.storeEntity(0,values);
+        await memoryDao.storeEntity(req.id, 0, values);
 
       respMessage.threadId = threadId;
     };
     // ID05062024.en
 
-    return(respMessage);
+    return (respMessage);
   } // end of processRequest()
 }
 

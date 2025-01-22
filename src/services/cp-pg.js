@@ -7,6 +7,9 @@
  *
  * Notes:
  * ID04272024: ganrad: Centralized logging with winstonjs
+ * ID11112024: ganrad: v2.1.0: (Enhancement) Added new field 'srv_name' to cache table.  This field will allow
+ * a) Each server instance to cleanly evict cached entries independently of other instances within a replica set & 
+ * b) Provide info. on which server instance actually created a record in the cache table.
  *
 */
 
@@ -20,8 +23,8 @@ const pgConfig = require('./pg-config');
 
 const createTblStmts = [
   // Use this DDL for testing only!
-  "CREATE TABLE apigtwycache (id serial PRIMARY KEY, aiappname VARCHAR(100), prompt text, embedding vector(3), completion JSON, timestamp_ TIMESTAMPTZ default current_timestamp)",
-  "CREATE TABLE apigtwycache (id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, requestid VARCHAR(50), aiappname VARCHAR(100), prompt text, embedding vector(1536), completion JSON, timestamp_ TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+  "CREATE TABLE apigtwycache (id serial PRIMARY KEY, srv_name VARCHAR(100), aiappname VARCHAR(100), prompt text, embedding vector(3), completion JSON, timestamp_ TIMESTAMPTZ default current_timestamp)",
+  "CREATE TABLE IF NOT EXISTS apigtwycache (id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, srv_name VARCHAR(100), requestid VARCHAR(100), aiappname VARCHAR(100), prompt text, embedding vector(1536), completion JSON, timestamp_ TIMESTAMP DEFAULT CURRENT_TIMESTAMP)" // ID11112024.n
 ];
 
 const dropTblStmts = [

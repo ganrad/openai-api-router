@@ -1,49 +1,148 @@
 {
-    "ai_apps": [
-      {
-        "ai_app_name": "ai-chatbot-gpt4o",
-        "description": "An AI Assistant / Chatbot application which uses gpt-4o (Omni) model for answering GK questions.",
-        "user": "rapid",
-        "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
-        "model_params": {
-          "temperature": 0.1,
-          "max_tokens": 1000,
-          "top_p": 0.1,
-          "stream": false,
-          "stop": "",
-          "frequency_penalty": 0,
-          "presence_penalty": 0
-        }
-      },
-      {
-        "ai_app_name": "garmin-ai-chatbot-gpt4o",
-        "description": "An AI Assistant application which uses gpt-4o (Omni) model for performing Q&A on Garmin GPS support manuals.",
-        "user": "rapid",
-        "sysPrompt": "You are a helpful AI Assistant.",
-        "model_params": {
-          "temperature": 0.1,
-          "max_tokens": 500,
-          "top_p": 0.1,
-          "stream": false,
-          "stop": "",
-          "frequency_penalty": 0,
-          "presence_penalty": 0
+  "ai_app_gateways": [
+    {
+      "name": "Local-Single-Domain",
+      "type": "single-domain",
+      "uri": "http://0.0.0.0:8080/api/v1/dev/apirouter",
+      "ai_apps": [
+        {
+          "ai_app_name": "ai-chatbot-gpt4o",
+          "description": "An AI Assistant / Chatbot application which uses gpt-4o (Omni) model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
         },
-        "search_params": {
-          "ai_search_app": "search-garmin-docs",
-          "endpoint": "https://gr-dev-rag-ais.search.windows.net",
-	  "auth_type": "system_assigned_managed_identity",
-	  "mid_resource_id": "",
-          "index_name": "dev-garmin-idx",
-          "embedding_model": "dev-embedd-ada-002",
-          "query_type": "vector_semantic_hybrid",
-          "semantic_config": "default",
-          "in_scope": true,
-          "strictness": 3,
-          "top_n_docs": 3,
-          "role_info": "",
-          "include_contexts": ""
+        {
+          "ai_app_name": "ai-chatbot-phi-3.5-MoE",
+          "description": "An AI Assistant / Chatbot application which uses MSFT PHI-3.5-MoE-Instruct model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-phi-3-small-8k",
+          "description": "An AI Assistant / Chatbot application which uses MSFT phi-3-small-8k-instruct model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-mistral-nemo",
+          "description": "An AI Assistant / Chatbot application which uses Mistral-nemo SLM chat completion model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-mistral-small",
+          "description": "An AI Assistant / Chatbot application which uses Mistral-small chat completion model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-llama-3.1-70B",
+          "description": "An AI Assistant / Chatbot application which uses Llama-3.1-70B chat completion model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "garmin-ai-chatbot-gpt4o",
+          "description": "An AI Assistant application which uses gpt-4o (Omni) model for performing Q&A on Garmin GPS support manuals.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 500,
+            "top_p": 0.1,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          },
+          "search_params": {
+            "ai_search_app": "search-garmin-docs",
+            "endpoint": "https://gr-dev-rag-ais.search.windows.net",
+            "auth_type": "system_assigned_managed_identity",
+            "mid_resource_id": "",
+            "index_name": "dev-garmin-idx",
+            "embedding_model": "dev-embedd-ada-002",
+            "query_type": "vector_semantic_hybrid",
+            "semantic_config": "default",
+            "in_scope": true,
+            "strictness": 3,
+            "top_n_docs": 3,
+            "role_info": "",
+            "include_contexts": ""
+          }
         }
-      }
-    ]
+      ]
+    },
+    {
+      "name": "Local-Multi-Domain",
+      "type": "multi-domain",
+      "uri": "http://0.0.0.0:8000/api/v1/dev/apirouter",
+      "ai_apps": [
+        {
+          "ai_app_name": "garmin-docs-sql-ai-assistant",
+          "description": "An intelligent AI Application that composes a response to the end user's query by orchestrating the execution of a series of LLM Apps.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 500,
+            "top_p": 0.1,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        }
+      ]
+    }
+  ]
 }

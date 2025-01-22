@@ -6,8 +6,11 @@
  * Date: 06-27-2024
  *
  * Notes:
- * ID07302024: ganrad: Introduced client authentication.  This feature uses MSFT Entra ID to authenticate users.
- *
+ * ID07302024: ganrad: Introduced client authentication.  This features uses MSFT Entra ID to authenticate users.
+ * ID11122024: ganrad: v2.1.0-v1.1.0: Introduced multiple UI updates.
+ * ID11132024: ganrad: v2.1.0-v1.1.0: AI App Gateway URI(s) are now contained within the configuration file.
+ * ID11192024: ganrad: v2.1.0-v1.1.0: (Bugfix) When auth is enabled, check all required variables and throw an 
+ * exception if any one of them is not set!
  */
 
 require('console-stamp')(console, {
@@ -16,7 +19,7 @@ require('console-stamp')(console, {
 const express = require('express');
 const fs = require('fs');
 
-const srvVersion = "1.0.1";
+const srvVersion = "1.1.0";
 const srvUriPrefix = "/ais-chatbot/ui/";
 const srvStartTime = new Date().toLocaleString();
 
@@ -24,7 +27,7 @@ const app = express();
 
 let host; // AOAI frontend server host
 let port; // AOAI frontend server listen port
-let aisGtwyEndpoint; // Azure AI Application API Gateway URL/Endpoint
+// let aisGtwyEndpoint; // Azure AI Application API Gateway URL/Endpoint ID11132024.o
 let aisGtwyAuth; // Is security enabled on AI Application Gateway APIs? ID07302024.n
 let configFile; // AOAI frontend server configuration file location (Full path)
 let configObject; // Frontend configuration object
@@ -40,6 +43,7 @@ function readFrontendEnvVars() {
   else
     port = 8000; // default listen port
 
+  /* ID11132024.so
   if (process.env.API_GATEWAY_URI) {
     aisGtwyEndpoint = process.env.API_GATEWAY_URI;
     console.log(`Server(): Azure AI Application Gateway URI: [${aisGtwyEndpoint}]`);
@@ -49,6 +53,7 @@ function readFrontendEnvVars() {
     // exit program
     process.exit(1);
   };
+  ID11132024.eo */
 
   if (process.env.FRONTEND_SRV_CONFIG_FILE) {
     configFile = process.env.FRONTEND_SRV_CONFIG_FILE;
@@ -59,7 +64,7 @@ function readFrontendEnvVars() {
     console.log(`Server(): Server configuration file: [${configFile}]`);
   }
   else {
-    console.log("Server(): Env. variable [FRONTEND_SRV_CONFIG_FILE] not set, aborting ...");
+    console.log("Server(): Env. Variable [FRONTEND_SRV_CONFIG_FILE] not set, aborting ...");
     // exit program
     process.exit(1);
   };
@@ -68,22 +73,35 @@ function readFrontendEnvVars() {
   console.log(`Server(): Azure AI Application Gateway API security: [${aisGtwyAuth}]`);
 }
 
-function readConfigFile() {
+async function readConfigFile() {
   const content = fs.readFileSync(configFile, { encoding: 'utf8', flag: 'r' });
 
   configObject = JSON.parse(content);
-  configObject.aisGtwyEndpoint = aisGtwyEndpoint;
+  // configObject.aisGtwyEndpoint = aisGtwyEndpoint; ID11132024.o
   configObject.aisGtwyAuth = aisGtwyAuth;
   if ( aisGtwyAuth ) { // ID07302024.n
     configObject.azTenantId = process.env.AZURE_TENANT_ID;
+    if ( ! configObject.azTenantId ) { // ID11192024.n
+      console.log("Server(): Env. Variable [AZURE_TENANT_ID] not set, aborting ...");
+      process.exit(1);
+    };
     configObject.appClientId = process.env.FRONTEND_CLIENT_ID;
+    if ( ! configObject.appClientId ) { // ID11192024.n
+      console.log("Server(): Env. Variable [FRONTEND_CLIENT_ID] not set, aborting ...");
+      process.exit(1);
+    };
     configObject.apiGatewayAppId = process.env.API_GATEWAY_APP_ID;
+    if ( ! configObject.apiGatewayAppId ) { // ID11192024.n
+      console.log("Server(): Env. Variable [API_GATEWAY_APP_ID] not set, aborting ...");
+      process.exit(1);
+    };
+    // ID11192024.en
   };
 }
 
-function init_server() {
+async function init_server() {
   readFrontendEnvVars(); // Read the env vars
-  readConfigFile(); // Read the frontend configuration file
+  await readConfigFile(); // Read the frontend configuration file
 }
 init_server(); // Initialize the server
 

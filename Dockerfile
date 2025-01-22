@@ -12,15 +12,16 @@
 # to scale and support 10s ... 1000's of concurrent API requests/connections.
 #
 # NOTES:
-# ID03152024 : ganrad : Added ARG and ENV variables for semantic caching
-# ID05062024 : ganrad : Added ARG and ENV variables for state management
-# ID07292024 : ganrad : Added ARG and ENV variables for securing the AI Gateway using MSFT Entra ID
-# ID09032024 : ganrad : AI Application Gateway name is now included in the configuration file
+# ID03152024: ganrad: Added ARG and ENV variables for semantic caching
+# ID05062024: ganrad: Added ARG and ENV variables for state management
+# ID07292024: ganrad: Added ARG and ENV variables for securing the AI Gateway using MSFT Entra ID
+# ID09032024: ganrad: v2.0.1: AI Application Gateway name is now included in the configuration file
+# ID11142024: ganrad: v2.1.0: Added ARG and ENV variable for persisting prompts and completions.
 # ----------------------------------------------------------------
 #
 FROM public.ecr.aws/docker/library/node:20.11.0-alpine3.19
 LABEL name="Azure AI Application Gateway server"
-LABEL version="2.0.1"
+LABEL version="2.1.0"
 LABEL description="This container image exposes endpoints to 1) Track API usage for capacity planning (Azure OAI Service) 2) Load balancing AI Application requests across multiple Azure AI Services deployments/endpoints + many more value add features"
 LABEL author="Ganesh Radhakrishnan" email="ganrad01@gmail.com" dated="01-28-2024" license="MIT"
 
@@ -63,6 +64,10 @@ ENV API_GATEWAY_USE_CACHE=$use_cache
 # (Required) Use Conversational State Management? // ID05062024.n
 ARG use_memory="false"
 ENV API_GATEWAY_STATE_MGMT=$use_memory
+
+# (Optional) Persist prompts and completions? // ID11142024.n
+ARG persist_prompts="false"
+ENV API_GATEWAY_PERSIST_PROMPTS=$persist_prompts
 
 # (Required) Secure the AI App Gateway with Microsoft Entra ID? // ID07292024.n
 # IMPORTTANT: When running the container, make sure to set values for the following env vars.

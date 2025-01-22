@@ -8,7 +8,7 @@ image:
   repository: oaiapigateway.azurecr.io/ais-chat-app
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "v1.0.0"
+  tag: "v1.1.0"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -31,7 +31,8 @@ chatapp:
   auth: false
   configFile: /home/node/app/files/app-config.json
   # Specify the Azure AI Services API Gateway load balancer URI/Endpoint
-  aisGatewayEndpoint: https://[GATEWAY_HOST]/api/v1/dev/apirouter/lb/
+  # ID11132024.n - AI App Gateway URI's are not part of the configuration file
+  # aisGatewayEndpoint: https://[GATEWAY_HOST]/api/v1/dev/apirouter/lb/
 
 podAnnotations: {}
 podLabels: {}
