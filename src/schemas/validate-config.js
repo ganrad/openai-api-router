@@ -90,14 +90,16 @@ let singleDomainAgentSchema = {
 										"type": "string"
 									}
 								},
-								"required": ["term"]
+								"required": ["term"],
+								"additionalProperties": false
 							},
 							"entryExpiry": {
 								"description": "Time interval used to invalidate/evict cached entries",
 								"type": "string"
 							}
 						},
-						"required": ["useCache"]
+						"required": ["useCache"],
+						"additionalProperties": false
 					},
 					"memorySettings": {
 						"description": "Memory settings for an AI Application",
@@ -117,7 +119,8 @@ let singleDomainAgentSchema = {
 								"type": "string"
 							}
 						},
-						"required": ["useMemory"]
+						"required": ["useMemory"],
+						"additionalProperties": false
 					},
 					"endpoints": {
 						"description": "Endpoint settings for an AI Application",
@@ -139,17 +142,20 @@ let singleDomainAgentSchema = {
 									"type": "string"
 								}
 							},
-							"required": ["uri", "apikey"]
+							"required": ["uri", "apikey"],
+							"additionalProperties": false
 						},
 						"minItems": 1,
 					}
 				},
-				"required": ["appId", "appType", "cacheSettings", "memorySettings", "endpoints"]
+				"required": ["appId", "appType", "cacheSettings", "memorySettings", "endpoints"],
+				"additionalProperties": false
 			},
 			"minItems": 1,
 			"uniqueItems": true
 		},
-		"required": ["serverId", "serverType", "applications"]
+		"required": ["serverId", "serverType", "applications"],
+		"additionalProperties": false
 	}
 };
 
@@ -286,13 +292,15 @@ let multiDomainAgentSchema = {
 						"uniqueItems": true
 					}
 				},
-				"required": ["appId", "appTools"]
+				"required": ["appId", "appTools"],
+				"additionalProperties": false
 			},
 			"minItems": 1,
 			"uniqueItems": true
 		}
 	},
-	"required": ["serverId", "serverType", "applications"]
+	"required": ["serverId", "serverType", "applications"],
+	"additionalProperties": false
 };
 
 exports.validateSchema = (srvConfig) => {
