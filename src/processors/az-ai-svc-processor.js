@@ -17,7 +17,7 @@ const logger = require('../utilities/logger');
 
 const { AzAiServices } = require('../utilities/app-gtwy-constants');
 
-const fetch = require('node-fetch');
+// const fetch = require('node-fetch');
 
 class AzAiSvcProcessor {
 

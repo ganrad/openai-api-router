@@ -34,6 +34,8 @@
  * ID12192024: ganrad: v2.1.0: Introduced function to capture termination signal(s).  Use this function to perform cleanup tasks prior to
  * exiting the server (Terminate gracefully).
  * ID01212025: ganrad: v2.1.0: AI Gateway can only be reconfigured when run in single process/instance standalone mode. 
+ * ID01312025: ganrad: v2.1.1: (Bugfix) Rolled back update introduced in ID11052024. This env variable (name) is defined by Azure Monitor OpenTelemetry library.
+ * Also, Azure Monitor initialization code has been moved to global space.  This fixes the telemetry ingestion issue.
 */
 
 // ID04272024.sn
@@ -47,6 +49,17 @@ wlogger.log({ level: "info", message: "[%s] Starting initialization of AI Applic
 // ID02082024.sn: Configure Azure Monitor OpenTelemetry for instrumenting API gateway requests.
 const { useAzureMonitor } = require("@azure/monitor-opentelemetry");
 // ID02082024.en
+
+let azAppInsightsConString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING; // ID01312025.n, ID11052024.o
+// let azAppInsightsConString = process.env.APPLICATION_INSIGHTS_CONNECTION_STRING; // ID01312025.o, ID11052024.n
+// ID01312025.sn
+if (azAppInsightsConString) {
+  useAzureMonitor();
+  wlogger.log({ level: "info", message: "[%s] Azure Application Monitor OpenTelemetry configured.", splat: [scriptName] });
+}
+else
+  wlogger.log({ level: "info", message: "[%s] Azure Application Insights 'Connection string' not found. No telemetry data will be sent to App Insights.", splat: [scriptName] });
+// ID01312025.en
 
 const fs = require("fs");
 const express = require("express");
@@ -147,15 +160,6 @@ function readApiGatewayEnvVars() {
     // exit program
     process.exit(1);
   };
-
-  // let azAppInsightsConString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING; ID11052024.o
-  let azAppInsightsConString = process.env.APPLICATION_INSIGHTS_CONNECTION_STRING; // ID11052024.n
-  if (azAppInsightsConString) {
-    useAzureMonitor();
-    wlogger.log({ level: "info", message: "[%s] Azure Application Monitor OpenTelemetry configured.", splat: [scriptName] });
-  }
-  else
-    wlogger.log({ level: "info", message: "[%s] Azure Application Insights 'Connection string' not found. No telemetry data will be sent to App Insights.", splat: [scriptName] });
 
   let persistPrompts = process.env.API_GATEWAY_PERSIST_PROMPTS; // ID03012024.n
   let cacheResults = process.env.API_GATEWAY_USE_CACHE;

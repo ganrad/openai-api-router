@@ -13,7 +13,7 @@ const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('../utilities/logger');
 
-const fetch = require("node-fetch");
+// const fetch = require("node-fetch");
 
 class AzAiSearchProcessor {
 

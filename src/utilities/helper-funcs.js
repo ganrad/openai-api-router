@@ -14,7 +14,7 @@ const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('./logger');
 
-const fetch = require("node-fetch");
+// const fetch = require("node-fetch");
 
 async function callRestApi(requestid, uname, epinfo, endpoints, prompt) {
   let retryAfter = 0;
