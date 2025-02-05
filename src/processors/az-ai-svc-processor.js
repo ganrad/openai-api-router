@@ -9,6 +9,7 @@
  *
  * Notes:
  * ID04272024: ganrad: Centralized logging with winstonjs
+ * ID01312025: ganrad: v2.1.1: (Bugfix) Standardize on nodejs fetch for outbound http calls.
  *
 */
 const path = require('path');
@@ -17,7 +18,7 @@ const logger = require('../utilities/logger');
 
 const { AzAiServices } = require('../utilities/app-gtwy-constants');
 
-// const fetch = require('node-fetch');
+// const fetch = require('node-fetch'); ID01312025.o
 
 class AzAiSvcProcessor {
 
