@@ -1,0 +1,116 @@
+{
+    "$id": "https://github.com/ganrad/rapid/schemas/sd-ai-app-schema.json",
+    "title": "SingleDomainAiApp",
+	"description": "A single domain AI Application",
+    "type": "object",
+    "properties": {
+        "appId": {
+            "description": "Unique AI Application ID",
+            "type": "string",
+            "unique": true
+        },
+        "description": {
+            "description": "AI Application description",
+            "type": "string"
+        },
+        "appType": {
+            "description": "Type of AI Application",
+            "type": "string",
+            "enum": ["azure_language", "azure_translator", "azure_content_safety", "azure_search", "azure_oai", "azure_aimodel_inf"]
+        },
+        "searchAiApp": {
+            "description": "Name of the AI Search Application",
+            "type": "string"
+        },
+        "cacheSettings": {
+            "description": "Cache settings for an AI Application",
+            "type": "object",
+            "properties": {
+                "useCache": {
+                    "description": "Enable cache for AI Application?",
+                    "type": "boolean"
+                },
+                "searchType": {
+                    "description": "Type of algorithm used to match vector entities",
+                    "type": "string",
+                    "enum": ["CosineSimilarity", "EuclideanDistance"]
+                },
+                "searchDistance": {
+                    "description": "Search algorithm match rate - 1.0 to 100.0%",
+                    "type": "number"
+                },
+                "searchContent": {
+                    "description": "Search content to match in request object",
+                    "type": "object",
+                    "properties": {
+                        "term": {
+                            "description": "Search terms - prompt or messages",
+                            "type": "string",
+                            "enum": ["prompt", "messages"]
+                        },
+                        "includeRoles": {
+                            "description": "Role values to extract and include in search",
+                            "type": "string"
+                        }
+                    },
+                    "required": ["term"],
+                    "additionalProperties": false
+                },
+                "entryExpiry": {
+                    "description": "Time interval used to invalidate/evict cached entries",
+                    "type": "string"
+                }
+            },
+            "required": ["useCache"],
+            "additionalProperties": false
+        },
+        "memorySettings": {
+            "description": "Memory settings for an AI Application",
+            "type": "object",
+            "properties": {
+                "useMemory": {
+                    "description": "Enable memory for user sessions/threads?",
+                    "type": "boolean"
+                },
+                "msgCount": {
+                    "description": "No. of messages to save in memory for a given user session",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                },
+                "entryExpiry": {
+                    "description": "Time interval used to invalidate/evict memory entries",
+                    "type": "string"
+                }
+            },
+            "required": ["useMemory"],
+            "additionalProperties": false
+        },
+        "endpoints": {
+            "description": "Endpoint settings for an AI Application",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "rpm": {
+                        "description": "Rate limit in requests per minute (RPM) for this endpoint",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                    },
+                    "uri": {
+                        "description": "AI Service endpoint URI",
+                        "type": "string"
+                    },
+                    "apikey": {
+                        "description": "AI Service API Key",
+                        "type": "string"
+                    }
+                },
+                "required": ["uri", "apikey"],
+                "additionalProperties": false
+            },
+            "minItems": 1
+        }
+    },
+    "required": ["appId", "appType", "cacheSettings", "memorySettings", "endpoints"],
+    "additionalProperties": false
+}

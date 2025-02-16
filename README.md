@@ -16,18 +16,18 @@ Feature/Capability | Azure AI Service | Description
 ------------------ | ---------------- | -----------
 **Shared Infrastructure Model** | All | The AI Application Gateway simplifies and streamlines the deployment of multiple AI Solutions (Chatbots) by utilizing a shared infrastructure backbone. This approach allows for deploying the infrastructure once and subsequently scaling it to build and deploy numerous AI Chatbots.
 **Enhanced AI Application Deployments** | All | The gateway is designed to be AI Application *Aware*, allowing Azure AI Service deployments to be configured individually for each AI Application. This approach not only simplifies the sharing of AI Service deployments across different AI Applications but also improves metrics collection and request routing tailored to each specific use case.
-**Model Agnostic Endpoints** | Azure OpenAI Service<br> Azure AI Foundry | The gateway (router component) exposes each AI Application through a unique endpoint, which effectively hides the underlying AI Service's deployments (model type, version and endpoint) from client applications. AI Service model deployments configured with AI applications can be updated at anytime without requiring any changes to the client applications.  LLM models deployed on both Azure OpenAI Service and AI Foundry can be routed/proxied thru the gateway.  This unified API design enables quick testing/onboarding of newer OpenAI model versions and Open Source LLM's as soon as they become generally available.
-**Intelligent Traffic Routing** | Azure OpenAI Service | **Circuit Breaker**: For each AI Application, multiple Azure AI Service deployment URI's (a.k.a backend endpoints) can be configured. When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.<br> **Rate Limiting**: Users can set up a *RPM Limit* for each OpenAI backend endpoint for any AI Application. When multiple AI Applications use the same endpoint, the gateway will enforce rate limiting and throttle excessive requests by returning http 429 status codes. This is especially useful for distributing model processing capacity (PTU deployment) evenly across different AI Applications.<br> **Traffic Splitting**: The Gateway provides the flexibility to split AI application traffic between multiple Azure AI Service deployment endpoints. In the case of Azure OpenAI Service, the AI application traffic can be split among multiple *Paygo* (Tokens per minute) and *Provisioned Throughput Unit* (Reserved capacity) model deployments.
+**Model Agnostic Endpoints** | Azure OpenAI Service<br> Azure AI Foundry | The gateway exposes each AI Application through a unique endpoint, hiding the underlying AI Service deployments from client applications. Model deployments can be updated without changes to client applications. It supports routing LLM models from Azure OpenAI Service and AI Foundry, enabling quick testing and onboarding of new OpenAI model versions and open-source LLMs.
+**Intelligent Traffic Routing** | Azure OpenAI Service<br> Azure AI Foundry | **Circuit Breaker**: For each AI Application, multiple Azure AI Service deployment URI's (a.k.a backend endpoints) can be configured. When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.<br> **Rate Limiting**: Users can set up a *RPM Limit* for each OpenAI backend endpoint for any AI Application. When multiple AI Applications use the same endpoint, the gateway will enforce rate limiting and throttle excessive requests by returning http 429 status codes. This is especially useful for distributing model processing capacity (PTU deployment) evenly across different AI Applications.<br> **Traffic Splitting**: The Gateway can split AI application traffic across multiple Azure AI Service model deployment endpoints, including various LLM model deployments for GenAI hosted in Azure AI Foundry.
 **Streaming API Responses** | Azure Open AI Service (Chat Completions API only) | The AI Application Gateway fully supports the response *streaming* feature provided by Azure OpenAI Chat Completions API.  This function is seamlessly integrated with semantic caching, state management and traffic routing features.
-**Semantic Caching** | Azure OpenAI Service | This feature is seamlessly integrated into AI Application Gateway and can be used to cache OpenAI Service prompts and responses. Cache hits are evaluated based on semantic similarity and the configured algorithm. With semantic caching, runtime performance of LLM/AI applications can be improved by up to 40%. This solution leverages the vectorization and semantic search features supported by the widely popular *PostgreSQL* open source database.
-**Conversational State Management** | Azure OpenAI Service (Chat Completion API only) | AI Chatbots must maintain context during end user sessions so they can reference previous user inputs, ensuring coherent and contextually relevant conversations.  This feature manages the conversational state and can effortlessly scale to support anywhere from 10 to hundreds of concurrent user sessions for multiple AI applications simultaneously. Additionally, it can function independently or in tandem with the *Semantic Caching* feature to enhance performance.
-**Message Persistence (Chat History)** | Azure OpenAI Service | This optional feature can be used to persist OpenAI Service *Prompts* (inputs) and *Completions* (responses) in a relational database table. This feature can be used to introspect the prompt and completion tokens associated with a particular API request (Request ID) and troubleshoot content filteration issues quickly. The gateway currently supports PostgreSQL database as the persistence provider.
+**Semantic Caching** | Azure OpenAI Service | This feature, integrated into the AI Application Gateway, caches OpenAI Service prompts and responses based on semantic similarity. It can improve runtime performance of LLM/AI applications by up to 40%, leveraging *PostgreSQL's* vectorization and semantic search capabilities.
+**Conversational State Management** | Azure OpenAI Service (Chat Completion API only) | AI Chatbots must maintain context during end user sessions so they can reference previous user inputs, ensuring coherent and contextually relevant conversations.  This feature manages conversational state, scaling to support 10 to hundreds of concurrent user sessions for multiple AI applications. It can operate independently or with *Semantic Caching* to enhance performance.
+**Message Persistence (Chat History)** | Azure OpenAI Service | This feature allows persisting Azure OpenAI Service *Prompts* and *Completions* in a PostgreSQL database for introspection and quick troubleshooting of API requests.
 **Secure by Design** | All | The API's exposed by the AI Application Gateway can be easily secured using Microsoft Entra ID (Default). This feature ensures only authenticated users or client applications are able to access the API endpoints. 
 **Dynamic Server Configuration** | All | In standalone mode (**single instance**), the AI Gateway server exposes a separate reconfiguration (/reconfig) endpoint to enable rapid deployment and testing of backend endpoints.
 **API Metrics Collection** | All | The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Using this feature, users can analyze the throughput and latency metrics for each AI Application & optimize traffic routing.
-**Observability and Traceability** | All | The AI Application Gateway is instrumented with Azure Application Insights SDK. When this setting is enabled, detailed telemetry information on Azure OpenAI and dependent services is collected and sent to Azure Monitor.
+**Observability and Traceability** | All | The AI Application Gateway uses the Azure Application Insights SDK to collect and send detailed telemetry on Azure OpenAI and dependent services to Azure Monitor.
 **Client SDK's and AI Application (LLM) Frameworks** | Azure OpenAI Service | The AI Application Gateway server supports [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints) Client SDK.  The gateway has also been tested to work with [Prompt Flow](https://github.com/microsoft/promptflow) and [Langchain](https://python.langchain.com/docs/integrations/llms/azure_openai/) LLM frameworks.
-**Robust Runtime** | All | The AI Application Gateway is powered by tried and true Nodejs runtime.  Nodejs uses a single threaded event loop to asynchronously serve requests. It is built on Chrome V8 engine and extremely performant. The server can easily scale to handle 10's ... 1000's of concurrent requests simultaneously.
+**Robust Runtime** | All | The AI Application Gateway, powered by the Node.js runtime and Chrome V8 engine, uses a single-threaded event loop for asynchronous request handling. It is highly performant and can scale to manage thousands of concurrent requests.
 
 ### Usage scenarios
 
@@ -197,7 +197,7 @@ Prior to turning on *Conversational State Management* feature for an AI Applicat
 - When conversational state management feature is enabled at the global level (*API_GATEWAY_STATE_MGMT=true*), the AI Application Gateway periodically runs a memory invalidator process on a pre-configured Cron schedule.  If no schedule is configured, the memory invalidator process is run on a default schedule every 10 minutes.  This default schedule can be overridden by setting the environment variable *API_GATEWAY_MEMORY_INVAL_SCHEDULE* as described in Section **A** below.
 - For each AI Application, memory entries can be invalidated (deleted) by setting the configuration attribute *memorySettings.entryExpiry*. This attribute must be set to a value that conforms to PostgreSQL *Interval* data type. If this attribute value is empty or not set, memory entry invalidation will be skipped.  Refer to the documentation [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT) to configure memory entry invalidation interval to an appropriate value.
 
-**Persisting Prompts**
+**Persisting Prompts and Completions**
 
 - When global environment variable *API_GATEWAY_PERSIST_PROMPTS* is set to *true*, prompts and completions along with other API request related metadata will be persisted in database table *apigtwyprompts*.
 - API Request *prompts* will not be persisted under the following conditions a) All backend endpoints for a given AI Application are busy/throttled.  In this case, the Gateway will return HTTP status code 429. b) API Gateway encounters an internal error while handling a request.  In this case, the Gateway will return HTTP status code 500.
@@ -240,6 +240,8 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
 
    ```bash
    # Make sure you are in the project's root directory.
+   # Use 'drop-tables' option if you want to delete and recreate the tables.
+   # Usage: node ./db-scripts/pg-test.js [drop-tables]
    #
    $ node ./db-scripts/pg-test.js
    #
@@ -256,7 +258,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
 
 4. Update the **AI Application Gateway Configuration file**.
 
-   When the AI App Gateway is deployed in single domain mode, edit the `./api-router-config.json` file.
+   Edit the `./api-router-config.json` file.
 
    Specify, the AI Application Gateway server **type**.  Refer to the table below.
 
@@ -293,9 +295,9 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      -------------- | -----------
      useCache | AI Application Gateway will cache OpenAI Service completions (output) based on this value.  If caching is desired, set it to *true*.  Default is *false*.
      searchType | AI Application Gateway will search and retrieve OpenAI Service completions based on a semantic text similarity algorithm.<br>This attribute is used to specify the similarity distance function/algorithm for vector search.  Supported values are a) CosineSimilarity (= *Cosine Similarity*).  This is the default. b) EuclideanDistance (= *Level 2 or Euclidean distance*) c) InnerProduct (= *Inner Product*).
-     searchDistance | This attribute is used to specify the search similarity threshold.  For instance, if the search type = CS, this value should be set to a value between 0 and 1.
+     searchDistance | This attribute is used to specify the search similarity threshold.  For instance, if the search type = *CosineSimilarity*, this value should be set to a value between 0 and 1.
      searchContent.term | This value specifies the attribute in the request payload which should be vectorized and used for semantic search. For OpenAI completions API, this value should be *prompt*.  For chat completions API, this value should be set to *messages*.
-     searchContent.includeRoles | This attribute value should only be set for OpenAI models that expose chat completions API. Value can be a comma separated list.  Permissible values are system, user and assistant.
+     searchContent.includeRoles | This attribute value should only be set for OpenAI models that expose chat completions API. Value can be a comma separated list.  Permissible values are *system*, *user* and *assistant*.
      entryExpiry | This attribute is used to specify when cached entries (*completions*) should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
 
    - (Optional) To enable conversational state management for user chat sessions, specify values for attributes contained within **memorySettings** attribute.  Refer to the table below and set appropriate values.
@@ -323,8 +325,10 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
 
    Env Variable Name | Description | Required | Default Value
    ----------------- | ----------- | -------- | ------------- 
+   API_GATEWAY_ID | Unique ID of the AI Application Gateway | Yes | None.  Set this to a unique string value.
+   API_GATEWAY_TYPE | Type of the AI Application Gateway<br>- single-domain<br>- multi-domain (Experimental) | Yes | single-domain
    API_GATEWAY_KEY | AI Application Gateway private key (secret) required to reconfigure backend (Azure OpenAI) endpoints | Yes | Set this value to an alphanumeric string
-   API_GATEWAY_CONFIG_FILE | The gateway configuration file location | Yes | Set the full or relative path to the *AI Application Gateway Configuration file* from the project root directory.
+   API_GATEWAY_CONFIG_FILE | The AI Application Gateway configuration file location. If this variable is not set, gateway resource definitions will be saved in a SQL table (*'aiappservers'*). | Yes | Set the full or relative path to the *AI Application Gateway Configuration file* from the project root directory.
    API_GATEWAY_PORT | Gateway server listen port | No | 8000
    API_GATEWAY_ENV | Gateway environment | Yes | Set a value such as 'dev', 'test', 'pre-prod', 'prod' ...
    API_GATEWAY_LOG_LEVEL | Gateway logging level | No | Default=info.  Possible values are debug, info, warn, error, fatal.
@@ -358,63 +362,39 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    You will see the API Gateway server start up message in the terminal window as shown in the snippet below.
 
    ```bash
-   > openai-api-router@2.1.0 start
+   > openai-api-router@2.2.0 start
    > node ./src/server.js
 
-   15-Nov-2024 02:47:32 [info] [server.js] Starting initialization of AI Application Gateway ...
-   15-Nov-2024 02:47:33 [info] [server.js] Azure Application Insights 'Connection string' not found. No telemetry data will be sent to App Insights.
-   15-Nov-2024 02:47:33 [info] [server.js] Completions will be cached
-   15-Nov-2024 02:47:33 [info] [server.js] Prompts will be persisted
-   15-Nov-2024 02:47:33 [info] [server.js] Conversational state will be managed
-   15-Nov-2024 02:47:33 [info] [validate-config.js] validateSchema():
-     Result: OK
-     Schema: {
-       '$schema': 'https://json-schema.org/draft/2020-12/schema',
-       '$id': 'https://github.com/openai-api-router.schema.json',
-       title: 'SingleDomainAgent',
-       description: 'A single domain AI Agent',
-       type: 'object',
-       properties: [Object]
-     }
-     Errors:  []
-   15-Nov-2024 02:47:33 [info] [server.js] Listing AI Application backend (Azure AI Service) endpoints:
-   Application ID: search-garmin-docs; Type: azure_search
-     Priority: 0   Uri: https://gr-dev-rag-ais.search.windows.net/indexes/dev-garmin-idx/docs/search?api-version=2023-10-01-preview
-   Application ID: vectorizedata; Type: azure_oai; useCache=false; useMemory=false
-     Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15
-   Application ID: classify-intent; Type: azure_oai; useCache=true; useMemory=false
-     Priority: 0   Uri: https://oai-dev-assistants.openai.azure.com/openai/deployments/gpt-35-turbo-0125-intent-classify/chat/completions?api-version=2024-02-01
-   Application ID: garmin-ai-chatbot-gpt4o; Type: azure_oai; useCache=true; useMemory=true
-     Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt-4o/chat/completions?api-version=2024-02-01
+   16-Feb-2025 04:23:32 [info] [server.js] Starting initialization of AI Application Gateway ...
+   16-Feb-2025 04:23:33 [info] [server.js] Azure Application Monitor OpenTelemetry configured.
+   16-Feb-2025 04:23:33 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
+   16-Feb-2025 04:23:33 [info] [server.js] Completions will be cached
+   16-Feb-2025 04:23:33 [info] [server.js] Prompts will be persisted
+   16-Feb-2025 04:23:33 [info] [server.js] Conversational state will be managed
+   16-Feb-2025 04:23:33 [info] [validate-json-config.js] validateAiServerSchema():
+   Result:
+   {
+   "schema_compliant": true,
+   "errors": "None"
+   }
+   16-Feb-2025 04:23:33 [info] [server.js] Listing AI Application backend (Azure AI Service) endpoints:
    Application ID: ai-chatbot-gpt4o; Type: azure_oai; useCache=true; useMemory=true
-     Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01
-   Application ID: ai-chatbot-phi-3.5-MoE; Type: azure_aimodel_inf; useCache=true; useMemory=true
-     Priority: 0   Uri: https://Phi-3-5-MoE-instruct-110424.eastus2.models.ai.azure.com/chat/completions?api-version=2024-04-01-preview
-   Application ID: ai-chatbot-phi-3-small-8k; Type: azure_aimodel_inf; useCache=true; useMemory=true
-     Priority: 0   Uri: https://Phi-3-small-8k-instruct-11042024.eastus2.models.ai.azure.com/chat/completions?api-version=2024-04-01-preview
-   Application ID: ai-chatbot-mistral-nemo; Type: azure_aimodel_inf; useCache=true; useMemory=true
-     Priority: 0   Uri: https://Mistral-Nemo-12B-1108.eastus2.models.ai.azure.com/chat/completions
-   Application ID: ai-chatbot-mistral-small; Type: azure_aimodel_inf; useCache=true; useMemory=true
-     Priority: 0   Uri: https://Mistral-small-110524.eastus2.models.ai.azure.com/chat/completions
-   Application ID: ai-chatbot-mistral-large; Type: azure_aimodel_inf; useCache=true; useMemory=true
-     Priority: 0   Uri: https://Mistral-large-11gr.eastus2.models.ai.azure.com/chat/completions
-   Application ID: ai-chatbot-llama-3.1-70B; Type: azure_aimodel_inf; useCache=true; useMemory=true
-     Priority: 0   Uri: https://Meta-Llama-3-1-70B-Instruct-11gr.eastus2.models.ai.azure.com/chat/completions
-   Application ID: ai-chatbot-llama-3.1-405B-Instruct; Type: azure_aimodel_inf; useCache=true; useMemory=true
-     Priority: 0   Uri: https://Meta-Llama-3-1-405B-Instruct-gr.eastus2.models.ai.azure.com/chat/completions
-   Application ID: ai-text-generate-gpt35; Type: azure_oai; useCache=true; useMemory=false
-     Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15
-     Priority: 1   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15
-   15-Nov-2024 02:47:33 [info] [server.js] Successfully loaded backend API endpoints for AI applications
-   15-Nov-2024 02:47:33 [info] [server.js] Cache entry invalidate run schedule (Cron) - */2 * * * *
-   15-Nov-2024 02:47:33 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */4 * * * *
-   15-Nov-2024 02:47:33 [warn] [server.js] API Gateway endpoints are not secured by Microsoft Entra ID!
-   Server(): Azure AI Application Gateway started successfully.
+   Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-10-21
+   Application ID: vectorizedata; Type: azure_oai; useCache=false; useMemory=false
+   Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15
+   16-Feb-2025 04:23:33 [info] [server.js] Cache entry invalidate run schedule (Cron) - */2 * * * *
+   16-Feb-2025 04:23:33 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */4 * * * *
+   16-Feb-2025 04:23:33 [warn] [server.js] AI Application Gateway endpoints are not secured by Microsoft Entra ID!
+   16-Feb-2025 04:23:33 [info] [server.js] Server(): Azure AI Application Gateway started successfully.
+   -----
    Details:
-     Name: Local-Gateway
-     Type: single-domain
-     Endpoint URI: http://localhost:8080/api/v1/dev/apirouter
-   15-Nov-2024 02:47:33 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
+   Server Name: Ai-App-Gateway-Local
+   Server Type: single-domain
+   Version: 2.2.0
+   Config. Provider Type: File
+   Endpoint URI: http://localhost:8080/api/v1/dev/apirouter
+   Start Date: 2/16/2025, 4:23:33 AM
+   -----
    ```
 
    Leave the terminal window open.

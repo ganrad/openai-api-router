@@ -1,11 +1,26 @@
 # CHANGELOG
 
+## [v2.2.0](https://github.com/ganrad/openai-api-router/compare/v2.1.0...v2.2.0)
+### Functionality changes
+* (Bugfix) Resolved the telemetry ingestion issue for AI App Gateway in Azure Application Insights, allowing detailed telemetry and metrics information for AI App Gateway APIs, Azure AI Service APIs, and Azure Database for PostgreSQL DB calls. Metrics can now be logged and viewed in AppInsights. This enhancement facilitates distributed tracing and helps identify connectivity and performance related issues. 
+* (Enhancement) Introduced a new SQL-based configuration provider for AI App Gateway resources, enabling configurations to be stored in either a file (default) or a SQL database table ('aiappservers'). SQL provider is now recommended for production deployments. 
+* (Enhancement) Added control plane APIs for managing the lifecycle of AI Apps, allowing real-time updates to individual AI App Gateway resources. The use of the control plane API is recommended in single server mode only.
+* (Enhancement) Added two new fields in table 'apigtwyprompts' to capture user's session id and store AOAI API response headers. These fields will help with troubleshooting & quick problem resolution.
+* (Enhancement) A new '/apirouter/sessions' API endpoint has been introduced.  This API can be used to retrieve all AOAI API requests associated with a user session.
+* (Enhancement) The JSON schema parser has been upgraded from 'jsonschema' to a more robust implementation using 'ajv' library. This change enhances the reliability and performance of schema validation's for gateway resources.
+* (Enhancement) For Azure OAI streamed API calls, token usage information is now saved along with the request in 'apigtwyprompts' table.
+* (Enhancement) Standardized the use of Node.js's 'fetch' API for all outbound Azure AI Service API calls.
+* (Enhancement) Multiple performance related improvements have been made. 
+
+### Documentation changes
+* Updated the documentation to reflect changes introduced in this release. Included descriptions for new environment variables added in this release.
+
 ## [v2.1.0](https://github.com/ganrad/openai-api-router/compare/v2.0.0...v2.1.0)
 ### Functionality changes
 * (Enhancement) The AI App Gateway engine has been enhanced to support multi-domain orchestration of complex AI workflows, involving multiple AI agents and tool invocations.
 * (Enhancement) The App Gateway configuration file (JSON) is now validated at server startup, logging any parsing errors and exiting if necessary. 
 * (Enhancement) API support has been added for models deployed in Azure AI Foundry, allowing the load balancer/router API endpoint to route requests to models that support the Azure AI Model Inference API. 
-* (Enhancement) A new '/apprequests' API endpoint has been introduced to retrieve details of specific inferencing API requests. 
+* (Enhancement) A new '/apirouter/requests' API endpoint has been introduced.  This API can be used to retrieve details of specific inferencing (Azure OAI) API requests. 
 * (Enhancement) A unique server instance ID (server name + pod name) is now captured for each API request and stored in cache, memory, prompts, and tools trace database tables. 
 * (Enhancement) A new field 'exec_time_secs' has been added to the prompts table to store API request processing times.
 * (Enhancement) The Azure App Insights environment variable has been renamed. The server code has been restructured for better readability and maintenance. 

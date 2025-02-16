@@ -17,15 +17,16 @@
 # ID07292024: ganrad: Added ARG and ENV variables for securing the AI Gateway using MSFT Entra ID
 # ID09032024: ganrad: v2.0.1: AI Application Gateway name is now included in the configuration file
 # ID11142024: ganrad: v2.1.0: Added ARG and ENV variable for persisting prompts and completions.
+# ID09042024: ganrad: v2.1.0: Introduced multi domain AI App Engine (Distributed server).
 # ----------------------------------------------------------------
 #
 FROM public.ecr.aws/docker/library/node:20.11.0-alpine3.19
 LABEL name="Azure AI Application Gateway server"
-LABEL version="2.1.0"
+LABEL version="2.2.0"
 LABEL description="This container image exposes endpoints to 1) Track API usage for capacity planning (Azure OAI Service) 2) Load balancing AI Application requests across multiple Azure AI Services deployments/endpoints + many more value add features"
 LABEL author="Ganesh Radhakrishnan" email="ganrad01@gmail.com" dated="01-28-2024" license="MIT"
 
-# (Required) API Gateway config file
+# (Optional) API Gateway config file. If this env is not set, SQL DB config. provider will be used.
 ARG config_file=./api-router-config.json
 ENV API_GATEWAY_CONFIG_FILE=$config_file
 
@@ -33,9 +34,13 @@ ENV API_GATEWAY_CONFIG_FILE=$config_file
 # IMPORTANT: Change this value before building the image!!
 ENV API_GATEWAY_KEY="abcxyz"
 
-# (Required) API Gateway name
-# ARG gateway_name=Test-Gateway
-# ENV API_GATEWAY_NAME=$gateway_name
+# (Required) API Gateway ID
+ARG gateway_name=Test-Gateway
+ENV API_GATEWAY_ID=$gateway_name
+
+# (Required) API Gateway type - single-domain / multi-domain ID09042024.n
+ARG gateway_type=single-domain
+ENV API_GATEWAY_TYPE=$gateway_type
 
 # (Optional) API Gateway listening port
 ARG listen_port=8000

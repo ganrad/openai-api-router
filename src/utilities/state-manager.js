@@ -45,7 +45,7 @@ class StateManager {
       logger.log({ level: "info", message: "[%s] %s.runSchedule(): Instance ID=[%s], Cron schedule=[%s]", splat: [scriptName, this.constructor.name, this.instanceName, schedule] });
 
       // ctx.applications.forEach(async (app) => { ID11112024.o
-      this.context.applications.forEach(async (app) => { // ID11112024.n
+      this.context.applications?.forEach(async (app) => { // ID11112024.n
         // if ( (app.appType === AzAiServices.OAI) && app.memorySettings?.useMemory ) { // ID11042024.o
         if ( AppTypes.includes(app.appType) && app.memorySettings?.useMemory ) { // ID11042024.n
           let entryExpiry = app.memorySettings.entryExpiry;

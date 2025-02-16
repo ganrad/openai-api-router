@@ -47,7 +47,7 @@ class CacheEntryInvalidator {
 
       let query;
       // ctx.applications.forEach(async (app) => { ID11112024.o
-      this.context.applications.forEach(async (app) => { // ID11112024.n
+      this.context.applications?.forEach(async (app) => { // ID11112024.n
         // if ( (app.appType === AzAiServices.OAI) && app.cacheSettings.useCache ) { ID11042024.o
         if ( AppTypes.includes(app.appType) && app.cacheSettings?.useCache ) { // ID11042024.n
           let entryExpiry = app.cacheSettings.entryExpiry;

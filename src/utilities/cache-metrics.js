@@ -6,7 +6,7 @@
  * Date: 02-27-2024
  *
  * Notes:
- *
+ * 
 */
 
 class AiApplication {
@@ -31,7 +31,7 @@ class AppCacheMetrics {
     this.cacheMetrics = new Map();
   }
 
-  addAiApplication(aiapp) {
+  addAiApplication(aiapp) {  // Adds or updates the internal cache with ai app cache-metrics
     let aiApplication = new AiApplication();
 
     this.cacheMetrics.set(aiapp,aiApplication);

@@ -6,7 +6,7 @@
  * Date: 04-24-2024
  *
  * Notes:
- * ID04272024: ganrad: Centralized logging with winstonjs
+ * ID04272024: ganrad: Switched to centralized logging with winstonjs
  * ID05062024: ganrad: Introduced memory feature (state management) for appType = Azure OpenAI Service
  * ID05282024: ganrad: (Bugfix) Reset the 'retryAfter' value when the request is served with an available endpoint.
  * ID05312024: ganrad: (Bugfix) Save only the message content retrieved from cache in memory for a new thread.
@@ -25,12 +25,17 @@
  * Users can also easily identify which server instance served a request.  This feature is important when multiple server instances are deployed
  * on a container platform ~ Kubernetes.
  * ID11152024: ganrad: v2.1.0: (Bugfix)  Both API Gateway Entra ID Auth + AOAI MID Auth should not be used together!  Only one of them can be used.
+ * ID02112025: ganrad: v2.2.0: (Enhancement) Store AOAI API response headers in 'apigtwyprompts' table.
+ * ID02142025: ganrad: v2.2.0: (Enhancement) Store user session (thread ID) in 'apigtwyprompts' table.
+ * ID02152025: ganrad: v2.2.0: (Enhancement) For streamed API calls, include token usage info. before persisting the request in 
+ * 'apigtwyprompts' table.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('../utilities/logger');
 
-// const fetch = require("node-fetch"); ID06052024.o
+// const fetch = require("node-fetch"); // ID06052024.o
+
 const CacheDao = require("../utilities/cache-dao.js"); // ID02202024.n
 const cachedb = require("../services/cp-pg.js"); // ID02202024.n
 const { TblNames, PersistDao } = require("../utilities/persist-dao.js"); // ID03012024.n
@@ -138,6 +143,8 @@ class AzOaiProcessor {
         ],
         system_fingerprint: metadata.system_fingerprint
       };
+      if ( metadata.usage ) // ID02152025.n
+        completionObj.usage = metadata.usage;
     };
 
     return (completionObj);
@@ -279,8 +286,14 @@ class AzOaiProcessor {
           // console.log(`**** P-DATA ****: ${pdata}`);
           chkPart = null;
 
-          if (!jsonMsg.choices || jsonMsg.choices.length === 0)
+          if (!jsonMsg.choices || jsonMsg.choices.length === 0) {
             console.log("streamCompletion(): Skipping this line");
+
+            // ID02152025.sn
+            if ( jsonMsg.usage && call_data )
+              call_data.usage = jsonMsg.usage;
+            // ID02152025.en
+          }
           else {
             let content = jsonMsg.choices[0].delta.content;
             if (content)
@@ -590,6 +603,7 @@ class AzOaiProcessor {
     let embeddedPrompt = null;
     let cacheDao = null;
     let memoryDao = null;
+    let promptDao = null;
     let values = null;
     let err_msg = null;
     let uriIdx = 0;
@@ -788,7 +802,7 @@ class AzOaiProcessor {
             if (!prompt)
               prompt = JSON.stringify(req.body.messages);
 
-            let values = [
+            values = [
               req.id,
               instanceName, // ID11112024.n
               config.appId,
@@ -812,13 +826,21 @@ class AzOaiProcessor {
           // ID03012024.sn
           let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
           if (persistPrompts) { // Persist prompt and completion ?
-            let promptDao = new PersistDao(persistdb, TblNames.Prompts);
-            let values = [
+            // ----- ID02112025.sn
+            const allHeaders = {};
+            for (const [name, value] of response.headers.entries()) {
+              allHeaders[name] = value;
+            }
+            // console.log(`**** AOAI Headers ****:\n${JSON.stringify(allHeaders, null, 2)}`);
+            // ------ ID02112025.en
+            promptDao = new PersistDao(persistdb, TblNames.Prompts);
+            values = [
               req.id,
               instanceName, // ID11112024.n
               config.appId,
               req.body,
               data, // ID04112024.n
+              allHeaders, // ID02112025.n
               req.body.user, // ID04112024.n
               respTime / 1000 // ID11082024.n
             ];
@@ -863,13 +885,21 @@ class AzOaiProcessor {
           // ID03012024.sn
           let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
           if (persistPrompts) { // Persist prompts ?
-            let promptDao = new PersistDao(persistdb, TblNames.Prompts);
-            let values = [
+            // ----- ID02112025.sn
+            const allHeaders = {};
+            for (const [name, value] of response.headers.entries()) {
+              allHeaders[name] = value;
+            }
+            // console.log(`**** AOAI Headers ****:\n${JSON.stringify(allHeaders, null, 2)}`);
+            // ------ ID02112025.en
+            promptDao = new PersistDao(persistdb, TblNames.Prompts);
+            values = [
               req.id,
               instanceName, // ID11112024.n
               config.appId,
               req.body,
               data, // ID04112024.n
+              allHeaders, // ID02112025.n
               req.body.user, // ID04112024.n
               (Date.now() - stTime) / 1000 // ID11082024.n
             ];
@@ -1051,6 +1081,24 @@ class AzOaiProcessor {
         await memoryDao.storeEntity(req.id, 0, values);
 
       respMessage.threadId = threadId;
+
+      // ID02142025.sn  Update the threadid in the prompts table for each request
+      if ( process.env.API_GATEWAY_PERSIST_PROMPTS === 'true' ) {
+        promptDao = new PersistDao(persistdb, TblNames.Prompts);
+        values = [
+          req.id,
+          instanceName,
+          config.appId,
+          threadId
+        ];
+
+        await promptDao.storeEntity(
+          req.id,
+          1,
+          values
+        );
+      };
+      // ID02142025.en
     };
     // ID05062024.en
 

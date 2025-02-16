@@ -9,14 +9,15 @@
  * Version: v2.1.0
  *
  * Notes:
- *
+ * ID02092025: ganrad: v2.2.0:  Lazy load AI Apps into MD metrics container.
+ * ID02142025: ganrad: v2.2.0: (Enhancement) Updated 'apprequests' endpoint to 'requests'.
 */
 
 const path = require('path');
 const scriptName = path.basename(__filename);
 
 const express = require("express");
-const AiAppsContainer = require("../utilities/ai-apps-container.js");
+// const AiAppsContainer = require("../utilities/ai-apps-container.js");
 const { CustomRequestHeaders, AiWorkflowEngines } = require("../utilities/app-gtwy-constants.js");
 const AiProcessorFactory = require("../processors/ai-processor-factory.js");
 const { TblNames, PersistDao } = require("../utilities/persist-dao.js");
@@ -34,7 +35,7 @@ var instanceCalls = 0;
 var instanceFailedCalls = 0;
 
 // Init AI Applications container
-let aiApps = new AiAppsContainer();
+// let aiApps = new AiAppsContainer();
 
 // Init Ai App Metrics Container
 let metricsContainer = new AiAppMetricsContainer();
@@ -75,8 +76,8 @@ router.get("/metrics", (req, res) => { // Endpoint: /apirouter/metrics
   res.status(200).json(res_obj);
 });
 
-// Endpoint: /apirouter/apprequests
-router.get(["/apprequests/:app_id/:request_id"], async (req, res) => {
+// Endpoint: /apirouter/requests
+router.get(["/requests/:app_id/:request_id"], async (req, res) => { // ID02142025.n
   const appId = req.params.app_id; // AI Application ID
   const requestId = req.params.request_id; // AI App. Request ID
   logger.log({ level: "info", message: "[%s] md-apirouter():\n  Req ID: %s\n  AI Application ID: %s\n  Request ID: %s", splat: [scriptName, req.id, appId, requestId] });
@@ -130,6 +131,19 @@ router.get(["/apprequests/:app_id/:request_id"], async (req, res) => {
   res.status(respMessage.http_code).json(respMessage.data);
 });
 
+function getAiApplication(appName, ctx) { // ID02092025.n
+  let application = null;
+  
+  for ( const app of ctx.applications ) {
+    if ( app.appId === appName ) {
+      application = app;
+      break;
+    }
+  };
+  
+  return(application);
+}
+
 // API Router / Load Balancer endpoint
 // Endpoint: /apirouter/lb
 router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"], async (req, res) => {
@@ -137,34 +151,35 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
 
   let err_obj = null;
   let appId = req.params.app_id; // The AI Application ID
+  let application = (ctx.applications) ? getAiApplication(appId, ctx) : null; // ID02092025.n
 
-  if (!aiApps.loaded) {
-    for (const application of ctx.applications) {
-      logger.log({ level: "info", message: "[%s] md-apirouter():\n  AI Application: %s\n  Description: %s", splat: [scriptName, application.appId, application.description] });
-
-      aiApps.addApplication(application.appId, application);
-      metricsContainer.addAiApplication(application.appId);
-    };
-    logger.log({ level: "info", message: "[%s] md-apirouter():\n  Successfully loaded AI Apps", splat: [scriptName] });
-    aiApps.loaded = true;
-  };
-
-  let aiAppConfig = aiApps.getAllApplications().get(appId);
-  if (!aiAppConfig) {
+  // Check if AI Application loaded in app context
+  if ( !application ) {
     err_obj = {
-      error: {
-        target: req.originalUrl,
-        message: `AI Application ID [${appId}] not found in Ai App Configuration file. Unable to process request.`,
-        code: "invalidPayload"
+      http_code: 404, // Resource not found!
+      data: {
+        error: {
+          target: req.originalUrl,
+          message: `AI Application ID [${appId}] not found. Unable to process request.`,
+          code: "invalidPayload"
+        }
       }
     };
 
-    res.status(400).json(err_obj); // 400 = Bad request
+    res.status(err_obj.http_code).json(err_obj.data);
     return;
+  };
+  
+  // if ( !aiApps.getAllApplications().get(appId) ) {  // lazy load AI Application into in-memory container ID02092025.n
+  if ( !metricsContainer.getAiAppMetrics(appId) ) { // lazy load AI Application into in-memory container ID02092025.n
+    logger.log({ level: "info", message: "[%s] md-apirouter():\n  AI Application: %s\n  Description: %s\n  Message: Initialized metrics", splat: [scriptName, application.appId, application.description] });
+
+    // aiApps.addApplication(application.appId, application);
+    metricsContainer.addAiApplication(application.appId);
   };
 
   let engine = new AiProcessorFactory().getProcessor(AiWorkflowEngines.SeqAiEngine);
-  let response = await engine.processRequest(req, aiAppConfig, metricsContainer.getAiAppMetrics(appId));
+  let response = await engine.processRequest(req, application, metricsContainer.getAiAppMetrics(appId));
 
   let res_hdrs = CustomRequestHeaders.RequestId;
   res.set(CustomRequestHeaders.RequestId, req.id); // Set the request id header
@@ -185,6 +200,24 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
   res.status(response.http_code).json(response.data);
 });
 
+module.exports = { // ID02092025.n
+  mdapirouter: router,
+  reconfigAppMetrics: function (appName) {
+    // reset total and failed api calls
+    instanceCalls = 0;
+    instanceFailedCalls = 0;
+  
+    if ( !appName )
+      // Reset Ai App Metrics Container
+      metricsContainer = new AiAppMetricsContainer();
+    else // Reset metrics for Ai App
+      metricsContainer.deleteAiAppMetrics(appName);
+  
+    logger.log({ level: "info", message: "[%s] md-apirouter.reconfigAppMetrics(): AI Application metrics data has been successfully reset", splat: [scriptName] });
+  }
+}
+
+/** ID02092025.o
 module.exports.mdapirouter = router;
 module.exports.reconfigApps = function () {
   // reset total and failed api calls
@@ -192,10 +225,11 @@ module.exports.reconfigApps = function () {
   instanceFailedCalls = 0;
 
   // Reset AI Applications container
-  aiApps = new AiAppsContainer();
+  // aiApps = new AiAppsContainer();
 
   // Reset Ai App Metrics Container
   metricsContainer = new AiAppMetricsContainer();
 
   logger.log({ level: "info", message: "[%s] md-apirouter(): Active threads, AI Applications and associated metrics data have been successfully reset", splat: [scriptName] });
 }
+*/
