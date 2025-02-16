@@ -8,6 +8,7 @@
  * Version: v2.1.0
  *
  * Notes:
+ * ID01242025: ganrad: v2.2.0: 'jsonschema' validator is no longer used.  This file is kept for reference purposes only.
 */
 
 const path = require('path');
@@ -145,7 +146,7 @@ let singleDomainAgentSchema = {
 							"required": ["uri", "apikey"],
 							"additionalProperties": false
 						},
-						"minItems": 1,
+						"minItems": 1
 					}
 				},
 				"required": ["appId", "appType", "cacheSettings", "memorySettings", "endpoints"],
@@ -153,10 +154,10 @@ let singleDomainAgentSchema = {
 			},
 			"minItems": 1,
 			"uniqueItems": true
-		},
-		"required": ["serverId", "serverType", "applications"],
-		"additionalProperties": false
-	}
+		}
+	},
+	"required": ["serverId", "serverType", "applications"],
+	"additionalProperties": false
 };
 
 // Multi domain agent config. file JSON Schema
@@ -284,7 +285,7 @@ let multiDomainAgentSchema = {
 										"description": "An array of Tool ID's whose responses should be included in this Tool's input/prompt",
 										"type": "string"
 									}
-								},
+								}
 							},
 							"required": ["toolName", "toolType", "prompt"]
 						},

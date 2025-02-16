@@ -8,13 +8,14 @@
  * Notes:
  * ID04272024: ganrad: Centralized logging with winstonjs
  * ID09122024: ganrad: (Bugfix) Logging statement had undefined variable 'config'.
+ * ID01312025: ganrad: v2.1.1: (Bugfix) Standardize on nodejs fetch for outbound http calls.
  *
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('./logger');
 
-const fetch = require("node-fetch");
+// const fetch = require("node-fetch"); ID01312025.o
 
 async function callRestApi(requestid, uname, epinfo, endpoints, prompt) {
   let retryAfter = 0;

@@ -35,6 +35,10 @@
  * ID10232024: ganrad: v2.0.1: (Enhancement) For OYD calls, support system assigned managed identity for authenticating AOAI service with AI search service.
  * ID11042024: ganrad: v2.1.0: (Enhancement) Introduced 'apprequests' end-point.
  * ID11052024: ganrad: v2.1.0: (Enhancement) Added support for LLMs which use Azure AI Model Inference API (Chat completion).
+ * ID01292025: ganrad: v2.2.0: (Refactored code) + AI server and app context can now be persisted in a db table (aiappservers) in addition 
+ * to a config file.
+ * ID02142025: ganrad: v2.2.0: (Enhancement) Introduced 'sessions' end-point to query all requests created in a user session.  Updated
+ * 'apprequests' endpoint to 'requests'.
 */
 
 const path = require('path');
@@ -96,7 +100,7 @@ router.get("/metrics", (req, res) => {
   let res_obj = {
     hostName: process.env.API_GATEWAY_HOST,
     listenPort: process.env.API_GATEWAY_PORT,
-    // instanceName: process.env.API_GATEWAY_NAME, // ID09032024.o
+    // instanceName: process.env.API_GATEWAY_NAME, ID09032024.o
     serverName: req.targeturis.serverId, // ID09032024.n (+ To be consistent with server, changed 'instanceName' to 'serverName')
     serverType: req.targeturis.serverType, // ID09032024.n
     // ID09032024.sn
@@ -115,19 +119,19 @@ router.get("/metrics", (req, res) => {
     totalApiCalls: instanceCalls,
     endpointUri: req.originalUrl,
     currentDate: new Date().toLocaleString(),
-    status: "OK"
+    serverStatus: "OK"
   };
 
   res.status(200).json(res_obj);
 });
 
 // ID11042024.sn
-// Endpoint: /apirouter/apprequests
-router.get(["/apprequests/:app_id/:request_id"], async (req, res) => {
+// Endpoint: /apirouter/requests
+router.get(["/requests/:app_id/:request_id"], async (req, res) => { // ID02142025.n
   if ( ! (process.env.API_GATEWAY_PERSIST_PROMPTS === "true") ) {
     err_obj = {
       error: {
-        target: req.originalUrl,
+        endpointUri: req.originalUrl,
         message: `Prompt persistence is not enabled for this AI App Gateway instance! Unable to process request.`,
         code: "invalidPayload"
       }
@@ -144,7 +148,7 @@ router.get(["/apprequests/:app_id/:request_id"], async (req, res) => {
   if (!requestId || !appId) {
     err_obj = {
       error: {
-        target: req.originalUrl,
+        endpointUri: req.originalUrl,
         message: `AI Application ID [${appId}] and Request ID [${requestId}] are required parameters! Unable to process request.`,
         code: "invalidPayload"
       }
@@ -175,7 +179,7 @@ router.get(["/apprequests/:app_id/:request_id"], async (req, res) => {
   else {
     err_msg = {
       error: {
-        target: req.originalUrl,
+        endpointUri: req.originalUrl,
         message: `Request ID=[${requestId}] for AI Application ID=[${appId}] not found.  Please check the parameter values and try again!`,
         code: "invalidPayload"
       }
@@ -191,6 +195,76 @@ router.get(["/apprequests/:app_id/:request_id"], async (req, res) => {
 });
 // ID11042024.en
 
+// ID02142025.sn
+// Endpoint: /apirouter/sessions
+router.get(["/sessions/:app_id/:session_id"], async (req, res) => {
+  if ( ! (process.env.API_GATEWAY_PERSIST_PROMPTS === "true") ) {
+    err_obj = {
+      error: {
+        endpointUri: req.originalUrl,
+        message: `Prompt persistence is not enabled for this AI App Gateway instance! Unable to process request.`,
+        code: "invalidPayload"
+      }
+    };
+
+    res.status(400).json(err_obj); // 400 = Bad request
+    return;
+  };
+
+  const appId = req.params.app_id; // AI Application ID
+  const threadId = req.params.session_id; // User session (/Thread) ID
+  logger.log({ level: "info", message: "[%s] apirouter():\n  Req ID: %s\n  AI Application ID: %s\n  Thread ID: %s", splat: [scriptName, req.id, appId, threadId] });
+
+  if (!threadId || !appId) {
+    err_obj = {
+      error: {
+        endpointUri: req.originalUrl,
+        message: `AI Application ID [${appId}] and Session ID [${threadId}] are required parameters! Unable to process request.`,
+        code: "invalidPayload"
+      }
+    };
+
+    res.status(400).json(err_obj); // 400 = Bad request
+    return;
+  };
+
+  let respMessage;
+
+  let promptsDao = new PersistDao(persistdb, TblNames.Prompts);
+  let values = [
+    appId,
+    threadId
+  ];
+  const sessionTrace = await promptsDao.queryTable(req.id, 2, values)
+  if (sessionTrace.rCount >= 1) {
+    respMessage = {
+      http_code: 200, // OK
+      data: {
+        messageTrace: sessionTrace.data,
+        endpointUri: req.originalUrl,
+        currentDate: new Date().toLocaleString(),
+      }
+    };
+  }
+  else {
+    err_msg = {
+      error: {
+        endpointUri: req.originalUrl,
+        message: `Session [ID=${threadId}] not found for AI Application [ID=${appId}].  Please check the parameter values and try again!`,
+        code: "invalidPayload"
+      }
+    };
+
+    respMessage = {
+      http_code: 400, // Bad request
+      data: err_msg
+    };
+  };
+
+  res.status(respMessage.http_code).json(respMessage.data);
+});
+// ID02142025.en
+
 // ID06042024.sn
 function getAiSearchAppApikey(ctx, appName) {
   let appKey = null;
@@ -205,6 +279,19 @@ function getAiSearchAppApikey(ctx, appName) {
 }
 // ID06042024.sn
 
+function getAiApplication(appName, ctx) { // ID01292025.n
+  let application = null;
+  
+  for ( const app of ctx.applications ) {
+    if ( app.appId === appName ) {
+      application = app;
+      break;
+    }
+  };
+  
+  return(application);
+}
+
 // Intelligent API router / Load Balancer
 // Endpoint: /apirouter/lb
 // router.post("/lb/:app_id", async (req, res) => { // ID03192024.o
@@ -216,49 +303,54 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
 
   let err_obj = null;
   let appId = req.params.app_id; // The AI Application ID
+  let application = (eps.applications) ? getAiApplication(appId, eps) : null;
 
-  if (!appConnections.loaded) {
-    // console.log("apirouter(): Endpoint Metrics");
-    for (const application of eps.applications) {
-      // Target endpoint metrics cache -
-      // console.log(`*****\n  AI Application: ${application.appId}\n  Description: ${application.description}\n  App Type: ${application.appType}`);
-      logger.log({ level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName, application.appId, application.description, application.appType] });
+  // Check if AI Application loaded in app context
+  if ( !application ) {
+    err_obj = {
+      http_code: 404, // Resource not found!
+      data: {
+        error: {
+          target: req.originalUrl,
+          message: `AI Application ID [${appId}] not found. Unable to process request.`,
+          code: "invalidPayload"
+        }
+      }
+    };
+
+    res.status(err_obj.http_code).json(err_obj.data);
+    return;
+  };
+
+  // Check embedding app and load the endpoint info. (if not already loaded!)
+  if ( cdb.cacheResults && (! appConnections.getAllConnections().has(cdb.embeddApp)) ) {
+    const embeddApp = getAiApplication(cdb.embeddApp, eps);
+    if ( embeddApp ) {
+      logger.log({ level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName, embeddApp.appId, embeddApp.description, embeddApp.appType] });
       let epinfo = new Map();
       let epmetrics = null;
-      for (const element of application.endpoints) {
-        // epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType,element.uri); ID05282024.o
-        epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm); // ID05282024.n
+      for (const element of embeddApp.endpoints) {
+        epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm);
 
         epinfo.set(element.uri, epmetrics);
       };
-      appConnections.addConnection(application.appId, epinfo);
-      // if (cdb.cacheResults && (application.appId !== cdb.embeddApp) && (application.appType === AzAiServices.OAI)) ID11052024.o
-      if ( cdb.cacheResults && (application.appId !== cdb.embeddApp) && (appTypes.includes(application.appType)) ) // ID11052024.n
-        cacheMetrics.addAiApplication(application.appId); // ID02202024.n
+      appConnections.addConnection(embeddApp.appId, epinfo);
     };
-    appConnections.loaded = true;
   };
 
+  // For each AI App, initialize app connection/endpoint info. & associated metrics
   if (!appConnections.getAllConnections().has(appId)) {
-    /* ID06132024.so
-    err_obj = {
-      endpointUri: req.originalUrl,
-      currentDate: new Date().toLocaleString(),
-      errorMessage: `AI Application ID [${appId}] not found. Unable to process request.`
-    };
-    ID06132024.eo */
-    // ID06132024.sn
-    err_obj = {
-      error: {
-        target: req.originalUrl,
-        message: `AI Application ID [${appId}] not found. Unable to process request.`,
-        code: "invalidPayload"
-      }
-    };
-    // ID06132024.en
+    logger.log({ level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName, appId, application.description, application.appType] });
+    let epinfo = new Map();
+    let epmetrics = null;
+    for (const element of application.endpoints) {
+      epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm);
 
-    res.status(400).json(err_obj); // 400 = Bad request
-    return;
+      epinfo.set(element.uri, epmetrics);
+    };
+    appConnections.addConnection(application.appId, epinfo);
+    if ( cdb.cacheResults && (application.appId !== cdb.embeddApp) && (appTypes.includes(application.appType)) )
+      cacheMetrics.addAiApplication(application.appId);
   };
 
   let r_stream = req.body.stream;
@@ -287,43 +379,33 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
 
   let appConfig = null;
   let memoryConfig = null;
-  for (const application of eps.applications) {
-    if (application.appId === appId) {
-      // if (application.appType === AzAiServices.OAI) { ID11052024.o
-      if ( appTypes.includes(application.appType) ) { // ID11052024.n
-        // ID06042024.sn
-        // if ( req.body.data_sources ) ID10232024.o
-        if (req.body.data_sources && (req.body.data_sources[0].parameters.authentication.type === "api_key")) // ID10232024.n
-          if (application.searchAiApp === req.body.data_sources[0].parameters.authentication.key)
-            req.body.data_sources[0].parameters.authentication.key = getAiSearchAppApikey(eps, application.searchAiApp);
-        // ID06042024.en
-        appConfig = {
-          appId: application.appId,
-          appType: application.appType,
-          appEndpoints: application.endpoints,
-          useCache: application.cacheSettings.useCache,
-          srchType: application.cacheSettings.searchType,
-          srchDistance: application.cacheSettings.searchDistance,
-          srchContent: application.cacheSettings.searchContent
-        };
-
-        if (application?.memorySettings?.useMemory) // ID050620204.n
-          memoryConfig = {
-            useMemory: application.memorySettings.useMemory,
-            msgCount: application.memorySettings.msgCount
-          };
-      }
-      else
-        appConfig = {
-          appId: application.appId,
-          appType: application.appType,
-          appEndpoints: application.endpoints
-        };
-
-      // console.log(`************** appConfig = ${JSON.stringify(appConfig)}; memoryConfig = ${ application?.memorySettings?.useMemory ? JSON.stringify(memoryConfig) : null } *************`);
-      break;
+  if ( appTypes.includes(application.appType) ) {
+    if (req.body.data_sources && (req.body.data_sources[0].parameters.authentication.type === "api_key"))
+      if (application.searchAiApp === req.body.data_sources[0].parameters.authentication.key)
+        req.body.data_sources[0].parameters.authentication.key = getAiSearchAppApikey(eps, application.searchAiApp);
+    
+    appConfig = {
+      appId: application.appId,
+      appType: application.appType,
+      appEndpoints: application.endpoints,
+      useCache: application.cacheSettings.useCache,
+      srchType: application.cacheSettings.searchType,
+      srchDistance: application.cacheSettings.searchDistance,
+      srchContent: application.cacheSettings.searchContent
     };
-  };
+
+    if (application?.memorySettings?.useMemory) // ID050620204.n
+      memoryConfig = {
+        useMemory: application.memorySettings.useMemory,
+        msgCount: application.memorySettings.msgCount
+      };
+  }
+  else
+    appConfig = {
+      appId: application.appId,
+      appType: application.appType,
+      appEndpoints: application.endpoints
+    };
 
   let response;
   let processor = new AiProcessorFactory().getProcessor(appConfig.appType);
@@ -427,6 +509,26 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
   }; // ID06212024.en
 });
 
+module.exports = { // ID01292025.n
+  apirouter: router,
+  reconfigEndpoints: function () {
+    // reset total, cached and failed api calls
+    instanceCalls = 0;
+    cachedCalls = 0;
+    instanceFailedCalls = 0;
+  
+    appConnections = new AppConnections(); // reset the application connections cache;
+    cacheMetrics = new AppCacheMetrics(); // reset the application cache metrics
+    // console.log("apirouter(): Application connections and metrics cache has been successfully reset");
+    logger.log({ level: "info", message: "[%s] apirouter.reconfigEndpoints(): Application connections and metrics cache have been successfully reset", splat: [scriptName] });
+  },
+  reinitAppConnection: function (appId) { // ID01292025.n
+    if ( appConnections.hasConnection(appId) )
+      appConnections.removeConnection(appId);
+  }
+}
+
+/** ID01292025.o
 module.exports.apirouter = router;
 module.exports.reconfigEndpoints = function () {
   // reset total, cached and failed api calls
@@ -439,3 +541,4 @@ module.exports.reconfigEndpoints = function () {
   // console.log("apirouter(): Application connections and metrics cache has been successfully reset");
   logger.log({ level: "info", message: "[%s] apirouter(): Application connections and metrics cache have been successfully reset", splat: [scriptName] });
 }
+*/

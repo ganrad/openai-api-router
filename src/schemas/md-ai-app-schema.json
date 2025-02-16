@@ -1,0 +1,115 @@
+{
+    "$id": "https://github.com/ganrad/rapid/schemas/md-ai-app-schema.json",
+    "title": "MultiDomainAiApp",
+	"description": "A multi domain AI Application",
+    "type": "object",
+    "properties": {
+        "appId": {
+            "description": "Unique AI Application ID",
+            "type": "string",
+            "unique": true
+        },
+        "description": {
+            "description": "AI Application description",
+            "type": "string"
+        },
+        "enableToolTrace": {
+            "description": "Enable tool execution path tracing for this AI Application (true/false)",
+            "type": "boolean"
+        },
+        "appTools": {
+            "description": "List of Tools for an AI Application",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "toolName": {
+                        "description": "Unique tool name/ID",
+                        "type": "string",
+                        "unique": true
+                    },
+                    "description": {
+                        "description": "Description of tool",
+                        "type": "string"
+                    },
+                    "toolType": {
+                        "description": "Type of tool",
+                        "type": "string",
+                        "enum": ["aiapp_gateway", "webapi_app"]
+                    },
+                    "appName": {
+                        "description": "AI Application ID as defined in the target AI Application Gateway",
+                        "type": "string"
+                    },
+                    "prompt": {
+                        "description": "Payload object",
+                        "type": "object",
+                        "properties": {
+                            "messages": {
+                                "description": "List of messages",
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "role": {
+                                            "description": "Role can be user, system or assistant",
+                                            "type": "string",
+                                            "enum": ["user", "system", "assistant"]
+                                        },
+                                        "content": {
+                                            "description": "Message content",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": ["role", "content"]
+                                }
+                            }
+                        },
+                        "additionalProperties": true
+                    },
+                    "params": {
+                        "description": "An object containing name:value pairs to be passed to the Web/External API",
+                        "type": "object",
+                        "patternProperties": {
+                            "^.*$": {
+                                "description": "Param key",
+                                "type": ["string"]
+                            },
+                            "^.*$": {
+                                "description": "Param key value",
+                                "type": ["string", "number", "object", "boolean", "null"]
+                            }
+                        },
+                        "additionalProperties": true
+                    },
+                    "targetUri": {
+                        "description": "Endpoint URI of the AI App Gateway or Web API",
+                        "type": "string"
+                    },
+                    "condition": {
+                        "description": "Keyword for next action to be taken by AI App Gateway",
+                        "type": "string",
+                        "enum": ["branch", "stop"]
+                    },
+                    "stateful": {
+                        "description": "Is session tracking enabled for this AI Application?",
+                        "type": "boolean"
+                    },
+                    "payloadToolId": {
+                        "description": "Tool ID whose response should be in included/added to request payload of this tool",
+                        "type": "array",
+                        "items": {
+                            "description": "An array of Tool ID's whose responses should be included in this Tool's input/prompt",
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": ["toolName", "toolType", "prompt"]
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        }
+    },
+    "required": ["appId", "appTools"],
+    "additionalProperties": false
+}

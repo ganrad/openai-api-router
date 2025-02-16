@@ -15,6 +15,7 @@
  * ID11112024: ganrad: v2.1.0: (Enhancement) Added new field 'srv_name' to cache, memory, prompts and tools trace tables.  This field will allow
  * a) Each server instance to cleanly evict cache/memory entries independently of other instances within a replica set & b) Provide info. on which
  * server instance actually created a record in the respective DB table.
+ * ID01292025: ganrad: v2.2.0: (Bugfix) Gracefully skip caching when embedding application and endpoints are not configured.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -75,6 +76,15 @@ class CacheDao {
 
     let stTime = Date.now();
     try {
+      // 0) Check if embedd model endpoints are available. If not exit function.
+      if ( ! this.endpoints ) // ID01292025.n
+        return {
+          rowCount: rowno,
+          simScore: score,
+          completion: data,
+          embeddings: embedding
+        };
+
       // 1) Pre-process query before vectorization
       let queryContent = helper.prepareTextToEmbedd(
         rid,
@@ -117,9 +127,9 @@ class CacheDao {
           );
 
         rowno = rowCount,
-          score = simScore,
-          data = completion,
-          embedding = apiResp.embedding;
+        score = simScore,
+        data = completion,
+        embedding = apiResp.embedding;
       };
       // console.log(`${this.constructor.name}.queryVectorDB():\n  Application ID: ${appId}\n  Request ID: ${rid}\n  User: ${reqBody.user}\n  Execution Time: ${Date.now() - stTime}\n*****`);
       logger.log({ level: "info", message: "[%s] %s.queryVectorDB():\n  Application ID: %s\n  Request ID: %s\n  User: %s\n  Execution Time: %s", splat: [scriptName, this.constructor.name, appId, rid, reqBody.user, Date.now() - stTime] });
@@ -127,7 +137,7 @@ class CacheDao {
     catch (error) {
       let err_msg = { reqId: rid, appId: appId, body: reqBody, cause: error };
       // console.log({level: "error", message: "[%s] %s.queryVectorDB():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
-      logger.log({ level: "error", message: "[%s] %s.queryVectorDB():\n  Encountered exception:\n  %s}", splat: [scriptName, this.constructor.name, err_msg] });
+      logger.log({ level: "error", message: "[%s] %s.queryVectorDB():\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, err_msg] });
     };
 
     return {

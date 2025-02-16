@@ -15,6 +15,7 @@
  * ID12022024: ganrad: v2.1.0-v1.1.0: (Enhancement) Changed font of query + response. GitHub markup returned in OAI model response is converted into HTML 
  * prior to rendering.
  * ID12202024: ganrad: v2.1.0-v1.1.0: (Enhancement) Updated code to support 'o1' family of models.
+ * ID02142025: ganrad: v2.2.0-v1.1.0: (API consistency) Updated '/apirouter/apprequests' endpoint to '/apirouter/requests'.
 */
 // Adjust the system prompt as needed
 const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // Default prompt
@@ -853,7 +854,7 @@ function getAiAppGatewayAppReqsUri(appId, requestId) { // ID11122024.n
 
   const srv_endpoint = aiGatewayMap.get(srvName).uri;
 
-  return (`${srv_endpoint}/apprequests/${appId}/${requestId}`);
+  return (`${srv_endpoint}/requests/${appId}/${requestId}`); // ID02142025.n
 }
 
 function getAiAppGatewayLoadBalancerUri(appId) {

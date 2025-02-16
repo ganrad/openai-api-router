@@ -13,7 +13,24 @@
  * engines/servers, Retrieval tool types & Tool branching conditions.
  * ID11052024: ganrad: v2.1.0: Introduced support for non-oai LLM models.  Added constant for Az AI Model Inference API. 
  * ID11072024: ganrad: v2.1.0: Moved literal constants from 'cache-dao.js' into this file.
+ * ID01232025: ganrad: v2.2.0: Introduced new constants for AI Application server, application resource types and actions,
+ * DB resource actions, document processor types & statuses.
+ * ID01242025: ganrad: v2.2.0: Introduced constants for HTTP methods.
+ * ID02072025: ganrad: v2.2.0: Introduced constants for gateway config provider type.
+ * ID02102025: ganrad: v2.2.0: Introduced constant for default AI App Gateway (SD) Uri.
 */
+
+const DefaultAiGatewayUri = "http://localhost:8080/api/v1/dev/apirouter/lb"; // ID02102025.n
+
+const HttpMethods = { // ID01242025.n
+  GET: 'GET',
+  POST: 'POST',
+  PUT: 'PUT',
+  DELETE: 'DELETE',
+  PATCH: 'PATCH',
+  HEAD: 'HEAD',
+  OPTIONS: 'OPTIONS',
+};
 
 const ServerDefaults = {
   CacheEntryInvalidateSchedule: "*/45 * * * *",
@@ -83,7 +100,53 @@ const SearchAlgorithms = { // ID11072024.n
   InnerProduct: "InnerProduct"
 }
 
+const AppServerStatus = { // ID01232025.n
+  Started: "Started",
+  Running: "Running",
+  Stopped: "Stopped"
+}
+
+const AppResourceTypes = { // ID01232025.n
+  AiAppServer: "AiAppServer",
+  AiApplication: "AiApplication",
+  RagApplication: "RagApplication"
+}
+
+const AppResourceActions = { // API Level; ID01232025.n
+  Operation: "operations", // Get/Show all resource operations
+  Get: "get", // Retrieve resource + details
+  Deploy: "deploy", // Deploy resource - Add / Update
+  Delete: "delete", // Delete a resource
+  Status: "status" // Check resource status
+}
+
+const ResourceDBActions = { // ID01232025.n
+  Created: "Created",
+  Updated: "Updated",
+  Deleted: "Deleted"
+}
+
+const DocProcessorTypes = { // ID01232025.n
+  DefaultProcessor: "TextDocProcessor"
+}
+
+const DocProcessorStatus = { // ID01232025.n
+  Created: "CREATED",
+  Reprocess: "REPROCESS",
+  Inprocess: "IN_PROCESS",
+  Completed: "COMPLETED",
+  Failed: "FAILED",
+  Deployed: "DEPLOYED"
+}
+
+const ConfigProviderType = { // ID02072025.n
+  File: "File",
+  SqlDB: "SqlDB"
+}
+
 module.exports = {
+  DefaultAiGatewayUri, // ID02102025.n
+  HttpMethods, // ID01232025.n
   ServerDefaults,
   CustomRequestHeaders,
   SchedulerTypes, // ID05062024.n
@@ -95,5 +158,12 @@ module.exports = {
   ServerTypes, // ID09042024.n
   RetrievalToolTypes, // ID09042024.n
   ToolConditions, // ID09042024.n
-  SearchAlgorithms // ID11072024.n
+  SearchAlgorithms, // ID11072024.n
+  AppServerStatus, // ID01232025.n
+  AppResourceTypes, // ID01232025.n
+  ResourceDBActions, // ID01232025.n
+  AppResourceActions, // ID01232025.n
+  DocProcessorTypes, // ID01232025.n
+  DocProcessorStatus, // ID01232025.n
+  ConfigProviderType // ID02072025.n
 }

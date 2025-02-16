@@ -1,6 +1,11 @@
 /**
  * Name: SQL DB Script
- * Description: This script creates the DB Tables used by AI App Gateway
+ * Description: This script creates the DB Tables used by AI Application Gateway
+ * Usage:
+ * From the project root directory issue the following command. CAUTION: When 'drop-tables' option is
+ * used, all tables are dropped and then recreated.
+ * Command to run:
+ *   node ./db-scripts/pg-test.js [drop-tables]
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 03-01-2024
@@ -8,6 +13,8 @@
  *
  * Notes:
  * ID10262024: ganrad: v2.1.0: Introduced table aiapptoolstrace to capture tool execution details for multi-domain AI Apps.
+ * ID01232025: ganrad: v2.2.0: Introduced table aiappdeploy to store new AI Application deployment requests.
+ * ID01272025: ganrad: v2.2.0: Introduced table aiappservers to store AI app server and application definitions.
  */
 
 const pgvector = require('pgvector/pg');
@@ -65,7 +72,33 @@ async function createDBResources() {
   let toolsDao = new PersistDao(pdb,TblNames.ToolsTrace);
   await toolsDao.queryTable('001',0,null);
 
-  console.log("***** End of Tools Trace Table *****");
+  // ID01232025.sn
+  console.log("***** End of Tools Trace Table; *****\n\n***** Begin AI App Deploy Table; *****"); 
+
+  // Delete and create 'aiappdeploy' table
+  if ( deleteTables )
+    await pdb.dropTable(3);
+  await pdb.createTable(3);
+
+  // Query rows in 'ToolsTrace' table
+  let appdeployDao = new PersistDao(pdb,TblNames.AiAppDeploy);
+  await appdeployDao.queryTable('001',0,null);
+  // ID01232025.en
+
+  // ID01272025.sn
+  console.log("***** End of AI App Deploy Table; *****\n\n***** Begin AI App Servers Table; *****"); 
+
+  // Delete and create 'aiappdeploy' table
+  if ( deleteTables )
+    await pdb.dropTable(4);
+  await pdb.createTable(4);
+
+  // Query rows in 'ToolsTrace' table
+  let appsrvsDao = new PersistDao(pdb,TblNames.AiAppServers);
+  await appsrvsDao.queryTable('001',0,null);
+  // ID01272025.en
+
+  console.log("***** End of AI App Servers Table *****");
   // await new Promise(r => setTimeout(r, 2000));
 }
 

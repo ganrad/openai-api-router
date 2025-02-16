@@ -1,7 +1,8 @@
 /**
  * Name: PersistDao
  * Description: This class serves as a data access object (DAO) for all 
- * entities used by API Gateway - Cache, Prompts, Memory & Tool execution trace.
+ * entities used by AI Application Server/Gateway - App Servers, App Deployment requests, Cache, 
+ * Prompts, Memory & Tool execution trace.
  *
  * Contains methods to 
  *   1) Query and retrieve persisted entities and 
@@ -22,6 +23,11 @@
  * server instance actually created a record in the respective DB table.
  * ID11122024: ganrad: v2.1.0: (Enhancement) Added DML statements for 'memory' table.  These fields are required for integrating multi-domain with
  * single-domain gateway.
+ * ID01232025: ganrad: v2.2.0: Introduced table 'aiappdeploy' to store new AI Application deployment (RAG) requests.
+ * ID01272025: ganrad: v2.2.0: (Enhancement) Introduced table 'aiappservers' to store AI Gateway info. and application configurations.
+ * ID02092025: ganrad: v2.2.0: (Enhancement) Return db errors.
+ * ID02112025: ganrad: v2.2.0: (Enhancement) Store AOAI response headers in 'apigtwyprompts' table.
+ * ID02142025: ganrad: v2.2.0: (Enhancement) Store user session (thread id) in 'apigtwyprompts' table. 
 */
 
 // const pgvector = require('pgvector/pg');
@@ -30,7 +36,9 @@ const TblNames = {
     Cache: "Cache",
     Prompts: "Prompts",
     Memory: "Memory", // ID05062024.n
-    ToolsTrace: "ToolsTrace" // ID10262024.n
+    ToolsTrace: "ToolsTrace", // ID10262024.n
+    AiAppDeploy: "AiAppDeploy", // ID01232025.n
+    AiAppServers: "AiAppServers" // ID01272025.n
   };
 
 const cacheQueryStmts = [
@@ -40,13 +48,15 @@ const cacheQueryStmts = [
 
 const promptQueryStmts = [
   "SELECT * FROM apigtwyprompts ORDER BY timestamp_ DESC",
-  "SELECT * FROM apigtwyprompts WHERE requestid = $1 AND aiappname = $2" // ID11042024.n
+  "SELECT * FROM apigtwyprompts WHERE requestid = $1 AND aiappname = $2", // ID11042024.n
+  "SELECT * FROM apigtwyprompts WHERE aiappname = $1 AND threadid = $2 ORDER BY id" // ID02142025.n
 ];
 
 const promptInsertStmts = [
   // "INSERT INTO apigtwyprompts (requestid, aiappname, prompt) VALUES ($1,$2,$3) RETURNING id" ID04112024.o
   // "INSERT INTO apigtwyprompts (requestid, aiappname, prompt, completion, uname) VALUES ($1,$2,$3,$4,$5) RETURNING id" // ID04112024.n, ID11082024.o
-  "INSERT INTO apigtwyprompts (requestid, srv_name, aiappname, prompt, completion, uname, exec_time_secs) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id" // ID11082024.n, ID11112024.n
+  "INSERT INTO apigtwyprompts (requestid, srv_name, aiappname, prompt, completion, model_res_hdrs, uname, exec_time_secs) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id", // ID11082024.n, ID11112024.n, ID02112025.n
+  "UPDATE apigtwyprompts SET threadid = $4 WHERE requestid = $1 and srv_name = $2 and aiappname = $3 RETURNING id" // ID02142025.n
 ];
 
 const memoryQueryStmts = [ // ID05062024.n
@@ -71,6 +81,30 @@ const toolsTraceInsertStmts = [ // ID10262024.n
   "INSERT INTO aiapptoolstrace (requestid, srv_name, aiappname, uname, tool_trace) VALUES ($1,$2,$3,$4,$5) RETURNING id" // ID11112024.n
 ];
 
+const aiAppDeployQueryStmts = [ // ID01232025.n
+  "SELECT * FROM aiappdeploy ORDER BY create_date DESC",
+  "SELECT job_id FROM aiappdeploy WHERE id = $1",
+  "SELECT rapid_uri, srv_name, aiappname, doc_processor_type, status, failed_reason, no_of_runs, process_time, deploy_time, create_date, update_date FROM aiappdeploy WHERE job_id = $1"
+];
+
+const aiAppDeployInsertStmts = [ // ID01232025.n
+  "INSERT INTO aiappdeploy (job_id, rapid_uri, srv_name, aiappname, requestid, payload, doc_processor_type, status, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id"
+];
+
+const aiAppServersQueryStmts = [ // ID01272025.n
+  "SELECT * FROM aiappservers ORDER BY create_date DESC",
+  "SELECT * FROM aiappservers WHERE srv_name = $1"
+];
+
+const aiAppServersInsertStmts = [ // ID01272025.n
+  "INSERT INTO aiappservers (srv_name, srv_type, def_gateway_uri, app_conf, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING id", // 0
+  "UPDATE aiappservers SET def_gateway_uri = $2, app_conf = $3, update_date = NOW() WHERE srv_name = $1 RETURNING id", // 1
+  "UPDATE aiappservers SET status = $2, last_stop_time = NOW() WHERE srv_name = $1 RETURNING id", // 2
+  "UPDATE aiappservers SET status = $2, start_time = $3 WHERE srv_name = $1 RETURNING id", //3 
+  "DELETE FROM aiappservers WHERE srv_name = $1 RETURNING id", // 4
+  "UPDATE aiappservers SET app_conf = $2, update_date = NOW() WHERE srv_name = $1 RETURNING id" // 5
+];
+
 class PersistDao {
   constructor(dbh, tableName) {
     this.dbHandle = dbh;
@@ -91,9 +125,15 @@ class PersistDao {
     }
     else if ( this.entity === TblNames.ToolsTrace ) {
       query = toolsTraceQueryStmts[qidx];
+    }
+    else if ( this.entity === TblNames.AiAppDeploy ) { // ID01232025.n
+      query = aiAppDeployQueryStmts[qidx];
+    }
+    else if ( this.entity === TblNames.AiAppServers ) { // ID01272025.n
+      query = aiAppServersQueryStmts[qidx];
     };
 
-    const {rowCount, completion} = 
+    const {rowCount, completion, errors} = // ID02092025.n
       await this.dbHandle.executeQuery(
         this.entity,
         rid,
@@ -103,7 +143,8 @@ class PersistDao {
 
     return {
       rCount: rowCount,
-      data: completion
+      data: completion,
+      errors: errors // ID02092025.n
     };
   }
 
@@ -119,13 +160,21 @@ class PersistDao {
     if ( this.entity === TblNames.ToolsTrace ) // ID10262024.n
       query = toolsTraceInsertStmts[qidx];
 
+    if ( this.entity === TblNames.AiAppDeploy ) // ID01232025.n
+      query = aiAppDeployInsertStmts[qidx];
+
+      if ( this.entity === TblNames.AiAppServers ) // ID01272025.n
+      query = aiAppServersInsertStmts[qidx];
+
     // await this.dbHandle.insertData( // ID05062024.o
-    await this.dbHandle.updateData( // ID05062024.n
+    const result = await this.dbHandle.updateData( // ID05062024.n, ID01232025.n
       reqid, // ID11122024.n
       this.entity,
       query,
       values
     );
+
+    return(result); // ID01232025.n
   }
 }
 

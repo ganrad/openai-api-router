@@ -49,6 +49,10 @@ class AiAppMetricsContainer {
   getAiAppMetrics(aiapp) {
     return this.aiAppMetrics.get(aiapp);
   }
+
+  deleteAiAppMetrics(aiapp) {
+    this.aiAppMetrics.delete(aiapp);
+  }
 }
 
 module.exports = {

@@ -1,0 +1,26 @@
+{
+	"$id": "https://github.com/ganrad/rapid/schemas/single-domain-gtwy-schema.json",
+	"title": "SingleDomainAgent",
+	"description": "A single domain AI Agent",
+	"type": "object",
+	"properties": {
+		"serverId": {
+			"description": "Unique identity of the AI Application Agent/Gateway/Server/Platform",
+			"type": "string"
+		},
+		"serverType": {
+			"description": "AI Application agent type - single-domain or multi-domain",
+			"type": "string",
+			"enum": ["single-domain", "multi-domain"]
+		},
+		"applications": {
+			"description": "List of AI Applications",
+			"type": "array",
+			"items": { "$ref": "./sd-ai-app-schema.json" },
+			"minItems": 1,
+			"uniqueItems": true
+		}
+	},
+	"required": ["serverId", "serverType", "applications"],
+	"additionalProperties": false
+}
