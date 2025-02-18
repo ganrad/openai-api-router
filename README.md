@@ -552,7 +552,7 @@ In standalone mode (single instance), the AI Application Gateway configuration c
 
      **AI Application Gateway Control Plane API**
 
-     http:://{API_GATEWAY_HOST}:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/cp/{AI_RESOURCE_TYPE}/{AI_RESOURCE_NAME}/{ACTION}
+     http://{API_GATEWAY_HOST}:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/cp/{AI_RESOURCE_TYPE}/{AI_RESOURCE_NAME}/{ACTION}
 
      Gateway Resource Type | Action(s)/HTTP Method | Description |
      --------------------- | --------------------- | ----------- |
