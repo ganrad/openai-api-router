@@ -545,16 +545,17 @@ In standalone mode (single instance), the AI Application Gateway configuration c
      Open the AI Gateway configuration file (`api-router-config.json`) and update configurations for AI Applications as needed.  Save this file
    - Reload the AI Application Gateway configuration.
      Use **Curl** command in a terminal window or a web browser to access the gateway *reconfiguration* endpoint - `/reconfig`.  See URL below.The **private key** of the Gateway is required to reload the gateway configuration.
+
      http://{API_GATEWAY_HOST}:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/reconfig/{API_GATEWAY_KEY}
 2. Use the AI Application Gateway *control plane* (`/cp`) API endpoint.
    - Use `curl` or any other HTTP client to update AI Application Gateway resources.  The control plane API endpoint is listed below. Substitute correct values for AI resource types and names.  Refer to the table below.
 
      **AI Application Gateway Control Plane API**
 
-     http:://{API_GATEWAY_HOST}:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/cp/{AI_RESOURCE_TYPE}/{AI_RESOURCE_NAME}/{ACTION}
+     http:://{API_GATEWAY_HOST}:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/cp/{AI_RESOURCE_TYPE}/{AI_RESOURCE_NAME}/{ACTION}
 
      Gateway Resource Type | Action(s)/HTTP Method | Description |
-     --------------------- | ------ | ----------- |
+     --------------------- | --------------------- | ----------- |
      **AiAppServer** (AI Application Gateway/Server) | **operations/GET**<br>**get/GET**<br>**deploy/POST** | **operations**: Returns *Operations* supported by AI Application Gateway resource. This endpoint also returns the JSON schema of all gateway resource types.<br>**get**: Returns the AI Application Gateway resource configuration(s).<br>**deploy**: Deploys a new *AI Application Gateway* configuration.  CAUTION: This operation will result in deleting the existing gateway configuration & deploying a new set of AI Application resources.
      **AiApplication** (AI Application) | **operations/GET**<br>**get/GET**<br>**deploy/POST**<br>**delete/DELETE** | **operations**: Returns *Operations* supported by an AI Application resource. This endpoint also returns the JSON schema of an AI Application resource.<br>**get**: Returns the AI Application resource (definition).<br>**deploy**: Deploys a new or updates an existing *AI Application* resource.<br>**delete**: Deletes an existing AI Application resource.
 
