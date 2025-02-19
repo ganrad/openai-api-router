@@ -251,6 +251,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
 
    Table Name | Description
    ---------- | -----------
+   aiappservers | This table stores the AI Application Gateway resource configurations
    apigtwycache | This table stores vectorized prompts and completions
    apigtwyprompts | This table stores prompts and completions
    apigtwymemory | This table stores state for user sessions (threads)
