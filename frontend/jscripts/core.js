@@ -14,8 +14,12 @@
  * ID11262024: ganrad: v2.1.0-v1.1.0: (Bugfix) When user has signed in and is already authenticated, the 'Sign-in' label was not getting updated.
  * ID12022024: ganrad: v2.1.0-v1.1.0: (Enhancement) Changed font of query + response. GitHub markup returned in OAI model response is converted into HTML 
  * prior to rendering.
- * ID12202024: ganrad: v2.1.0-v1.1.0: (Enhancement) Updated code to support 'o1' family of models.
+ * ID12202024: ganrad: v2.1.0-v1.1.0: (Enhancement) Updated code to support 'o1' family of models. Updated by ID02272025.
  * ID02142025: ganrad: v2.2.0-v1.1.0: (API consistency) Updated '/apirouter/apprequests' endpoint to '/apirouter/requests'.
+ * ID02272025: ganrad: v2.3.0-v1.2.0: (Improvements) 1) Implemented multiple UI refinements 2) Introduced support for reasoning models (o1/o3) 3) Added
+ * support for requesting + receiving token counts for streamed API calls.
+ * ID03132025: ganrad: v2.3.0-v1.2.0: (Enhancements) Added buttons to allow users to save(to clipboard) and like responses.
+ * ID03202025: ganrad: v2.3.0-v1.2.0: (Enhancement) Added a button to hide / show (toggle) the model and search config panels (3rd column).
 */
 // Adjust the system prompt as needed
 const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // Default prompt
@@ -37,6 +41,7 @@ let aiGatewayMap = new Map(); // ID11132024.n
 let hdrs = new Map();
 const serverUriPrefix = "/ais-chatbot/ui/"; // Frontend / UI uri prefix
 
+let msgCounter = 0; // ID03132025.n
 /* function readAiAppConfig() {
   fetch(serverUriPrefix.concat("appconfig"))
     .then((response) => response.text())
@@ -202,6 +207,30 @@ function setAiApps() {
 }
 // ID11132024.en
 
+// ID02272025.sn
+function setModelInputVars() {  // Executes after 'setInferenceTarget()'
+  const msgTypeElem = document.getElementById('msgtypedropdown');
+  const msgType = msgTypeElem.options[msgTypeElem.selectedIndex].value;
+  const streamElem = document.getElementById('stream');
+
+  if ( msgType === "developer") { // Developer message; required by reasoning models
+    delete promptObject.temperature;
+    delete promptObject.top_p;
+    delete promptObject.presence_penalty;
+    delete promptObject.frequency_penalty;
+    promptObject.max_completion_tokens = promptObject.max_tokens;
+    delete promptObject.max_tokens;
+    promptObject.stream = false; // No streaming for o1; available for o3-mini
+
+    streamElem.checked = false;
+    streamElem.disabled = true;
+  }
+  else {
+    streamElem.disabled = false;
+  };
+}
+// ID02272025.en
+
 function setInferenceTarget() {
   const aiAppElem = document.getElementById('appdropdown');
   const aiApp = aiAppElem.options[aiAppElem.selectedIndex].text;
@@ -235,6 +264,7 @@ function setInferenceTarget() {
     max_tokens: aiAppObject.model_params.max_tokens,
     user: isAuthEnabled ? username : aiAppObject.user,
     stream: aiAppObject.model_params.stream,
+    // stream_options: aiAppObject.model_params.stream ? { include_usage: true } : null,
     temperature: aiAppObject.model_params.temperature,
     top_p: aiAppObject.model_params.top_p,
     stop: aiAppObject.model_params.stop,
@@ -322,6 +352,7 @@ function setInferenceTarget() {
 function clearContent(elementId) {
   if (elementId === "chatBox") {
     threadId = null;
+    msgCounter = 0; // ID03132025.n
 
     clearContent("msgBox"); // Recursive call!
   };
@@ -350,6 +381,7 @@ function saveContent(configName) {
 
   if (configName === "modelConfig") {
     promptObject.stream = document.getElementById("stream").checked;
+    // promptObject.stream_options = promptObject.stream ? { include_usage: true } : null,
     promptObject.max_tokens = Number(document.getElementById("mtokens").value);
     promptObject.temperature = Number(document.getElementById("temperature").value);
     promptObject.presence_penalty = Number(document.getElementById("presence").value);
@@ -380,7 +412,7 @@ function saveContent(configName) {
 function addJsonToAccordian_0(time, box, cls, accordian, req, res, reqId) { // ID11122024.so (Not used!)
   const element = document.createElement('div');
   element.className = "accordian-item";
-  element.innerHTML = '<h2 class="accordion-header" id="headingOne"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">' +
+  element.innerHTML = '<h2 class="accordion-header" id="headingOne"><button class="accordion-button fs-5" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">' +
     new Date().toLocaleString('en-US', { timeZoneName: 'short' }) + ' (' + (time / 1000) + ' seconds)' +
     '</button></h2><div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#msgAccordian"><div class="accordion-body">' +
     '<p><b>Request: </b>(ID = <a href="' + getAiAppGatewayAppReqsUri(aiAppObject.ai_app_name,reqId) + 
@@ -402,7 +434,7 @@ function addJsonToAccordian_0(time, box, cls, accordian, req, res, reqId) { // I
   // box.scrollTop = box.scrollHeight;
 } // ID11122024.eo
 
-async function callAppRequestsApi(uri) { // ID11122024.sn
+async function callAiAppGatewayUri(uri) { // ID11122024.sn
   const headers = new Headers();
   headers.set("Content-Type", "application/json");
   if (isAuthEnabled) {
@@ -420,7 +452,7 @@ async function callAppRequestsApi(uri) { // ID11122024.sn
     data = await response.json();
   }
   catch (e) {
-    console.warn(`callAppRequestsApi(): Status: ${status}, URI: ${uri},\nException: ${e}`);
+    console.warn(`callAiAppGatewayUri(): Status: ${status}, URI: ${uri},\nException: ${e}`);
   };
   if ( status === 200 ) {
     // Open a new tab
@@ -433,17 +465,17 @@ async function callAppRequestsApi(uri) { // ID11122024.sn
     newTab.document.close();
   }
   else
-    console.warn(`callAppRequestsApi(): Status: ${status}, URI: ${uri}`);
+    console.warn(`callAiAppGatewayUri(): Status: ${status}, URI: ${uri}`);
 } // ID11122024.en
 
 function addJsonToAccordian(time, box, cls, accordian, req, res, reqId) { // ID11122024.sn
   const element = document.createElement('div');
   element.className = "accordian-item";
-  let ct = '<h2 class="accordion-header" id="headingOne"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">' +
+  let ct = '<h2 class="accordion-header" id="headingOne"><button style="font-size: 14px;" class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">' +
     new Date().toLocaleString('en-US', { timeZoneName: 'short' }) + ' (' + (time / 1000) + ' seconds)' +
     '</button></h2><div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#msgAccordian"><div class="accordion-body">';
   if ( isAuthEnabled )
-    ct += '<p><b>Request: </b>(ID = <a href="#" onclick="callAppRequestsApi(\'' + getAiAppGatewayAppReqsUri(aiAppObject.ai_app_name,reqId) + '\'); return false;"' +
+    ct += '<p><b>Request: </b>(ID = <a href="#" onclick="callAiAppGatewayUri(\'' + getAiAppGatewayAppReqsUri(aiAppObject.ai_app_name,reqId) + '\'); return false;"' +
     ' class="link-info link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover">' + reqId + '</a>)</p>';
   else
     ct += '<p><b>Request: </b>(ID = <a href="' + getAiAppGatewayAppReqsUri(aiAppObject.ai_app_name,reqId) + 
@@ -464,6 +496,69 @@ function addJsonToAccordian(time, box, cls, accordian, req, res, reqId) { // ID1
   else
     accordian.appendChild(element);
 } // ID11122024.en
+
+// ID02272025.sn
+function addJsonToThreadsTable(box,jsonData) {
+  let tableBody = document.getElementById('threadsTableBody');
+
+  if ( !tableBody ) {
+    // Create the thread table
+    const element = document.createElement('div');
+    element.className = "container mt-3";
+    const tableStr =
+      '<div class="row"> \
+        <div class="col"> \
+          <table class="table table-striped table-bordered"> \
+            <thead> \
+              <tr id="threadsTableHeaders"></tr> \
+            </thead> \
+            <tbody id="threadsTableBody"></tbody> \
+          </table> \
+        </div> \
+      </div>';
+    element.innerHTML = tableStr;
+    box.appendChild(element);
+
+    const tableHeaders = document.getElementById('threadsTableHeaders');
+    // Create table headers
+    for (const key in jsonData) {
+      if (jsonData.hasOwnProperty(key)) {
+        const th = document.createElement('th');
+        th.textContent = key.charAt(0).toUpperCase() + key.slice(1); // Capitalize the first letter
+        tableHeaders.appendChild(th);
+      }
+    };
+  };
+
+  tableBody = document.getElementById('threadsTableBody');
+  // Create a single row with the values
+  let appId = "";
+  const row = document.createElement('tr');
+  for (const key in jsonData) {
+    if (jsonData.hasOwnProperty(key)) {
+      if ( key === 'application_id' )
+        appId = jsonData[key];
+
+      const td = document.createElement('td');
+      if ( key === 'thread_id' ) {
+        let threadLink;
+        if ( isAuthEnabled ) 
+          threadLink = '<a href="#" onclick="callAiAppGatewayUri(\'' + getAiAppGatewaySessionsUri(appId,jsonData[key]) + '\'); return false;"' +
+          ' class="link-info link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover">' + jsonData[key] + '</a>'
+        else
+          threadLink = '<a href="' + getAiAppGatewaySessionsUri(appId,jsonData[key]) + 
+          '" class="link-info link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover" target="_blank">' + jsonData[key] + '</a>';
+        
+        td.innerHTML = threadLink;
+      }
+      else
+        td.textContent = jsonData[key];
+      row.appendChild(td);
+    }
+  }
+  tableBody.insertBefore(row, tableBody.firstChild);
+}
+// ID02252025.en
 
 function addJsonToBox(box, cls, msg) {
   const element = document.createElement('pre');
@@ -562,9 +657,72 @@ function addMessageToChatBox_0(box, cls, msg, ctx) { // ID12022024.so (Not used!
   box.scrollTop = box.scrollHeight;
 } // ID12022024.eo
 
-function addMessageToChatBox(box, cls, msg, ctx) { // ID12022024.sn
+function addRespMsgTitleButtons(element) { // ID03132025.n
+  let outerDivElement = document.createElement('div');
+
+  const paraElem = document.createElement('p');
+  paraElem.className = "w-100 position-relative";
+
+  const copyBtn = document.createElement('button'); // Copy
+  copyBtn.id = "copy-btn-" + msgCounter;
+  copyBtn.title = "Copy";
+  copyBtn.onclick = async function() {
+    try {
+      const divElem = document.getElementById(element.id); // document.querySelector(".user-select-all");
+      await navigator.clipboard.writeText(divElem.textContent);
+      // console.log("Text copied to clipboard!");
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+      // Optional: Display an error message to the user
+    };
+  };
+  copyBtn.className = 'btn btn-light btn-sm mt-1 me-1';
+  copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>';
+
+  const thumbsupBtn = document.createElement('button'); // Thumbs up / Like
+  thumbsupBtn.id = "tup-btn-" + msgCounter;
+  thumbsupBtn.title = "Like";
+  thumbsupBtn.className = 'btn btn-light btn-sm mt-1 me-1';
+  thumbsupBtn.innerHTML = '<i class="bi bi-hand-thumbs-up"></i>';
+
+  const thumbsDownBtn = document.createElement('button'); // Thumbs down / Dislike
+  thumbsDownBtn.id = "tdown-btn-" + msgCounter;
+  thumbsDownBtn.title = "Dislike";
+  thumbsDownBtn.className = 'btn btn-light btn-sm mt-1 me-1';
+  thumbsDownBtn.innerHTML = '<i class="bi bi-hand-thumbs-down"></i>';
+
+  const saveBtn = document.createElement('button'); // Save to a file
+  saveBtn.id = "save-msg-btn-" + msgCounter;
+  saveBtn.title = "Save";
+  saveBtn.onclick = function() {
+    const content = document.getElementById(element.id).innerText;
+    const blob = new Blob([content], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "content.txt";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+  saveBtn.className = 'btn btn-light btn-sm mt-1 me-1';
+  saveBtn.innerHTML = '<i class="bi bi-save"></i>';
+  
+  paraElem.appendChild(copyBtn);
+  paraElem.appendChild(saveBtn);
+  paraElem.appendChild(thumbsupBtn);
+  paraElem.appendChild(thumbsDownBtn);
+  msgCounter++;
+  outerDivElement.appendChild(paraElem);
+
+  return(outerDivElement);
+}
+
+function addMessageToChatBox(box, cls, msg, ctx) { // ID12022024.sn, ID03132025.n
   const element = document.createElement('div');
-  element.className = cls;
+  element.className = cls + "user-select-all";
+  element.id = "chat-msg-" + msgCounter;
+
+  let outerDivElement = addRespMsgTitleButtons(element);
+  outerDivElement.appendChild(element);
 
   // console.log(`Message before: ${msg}`);
   let content = msg;
@@ -608,12 +766,27 @@ function addMessageToChatBox(box, cls, msg, ctx) { // ID12022024.sn
     element.appendChild(citElement);
   };
 
-  box.appendChild(element);
+  // box.appendChild(element);
+  box.appendChild(outerDivElement);
   box.scrollTop = box.scrollHeight;
   renderMarkdown();
 } // ID12022024.en
 
-function isMessageComplete(message) {
+function toggleConfigColumn() { // ID03202025.n
+  let column3 = document.getElementById('configColumn');
+  let icon = document.querySelector('.position-absolute i');
+  if (column3.style.display === 'none') {
+      column3.style.display = 'block';
+      icon.classList.remove('bi-eye-slash');
+      icon.classList.add('bi-eye');
+  } else {
+      column3.style.display = 'none';
+      icon.classList.remove('bi-eye');
+      icon.classList.add('bi-eye-slash');
+  }
+}
+
+function isMessageComplete(message) { // Not used anymore!
   let braces = 0;
   for (var i = 0, len = message.length; i < len; ++i) {
     switch (message[i]) {
@@ -633,7 +806,9 @@ function isMessageComplete(message) {
 * @param{string} prompt
 * @param{any} parameters
 */
-async function streamCompletion(uri, appId, hdrs, box) {
+async function streamCompletion(serverId, uri, appId, hdrs, box) { // ID02272025.n
+  let usageInfo = null; // ID02272025.n
+
   try {
     const ds = promptObject.data_sources;
     if (threadId) // No OYD call when user session is alive
@@ -652,15 +827,21 @@ async function streamCompletion(uri, appId, hdrs, box) {
       if (threadId === null) {
         threadId = response.headers.get("x-thread-id");
         const values = {
+          ai_app_gateway: serverId,
           application_id: appId,
-          user: aiAppObject.user,
           thread_id: threadId,
+          user: aiAppObject.user,
+          endpoint_uri: uri,
           start_time: new Date().toLocaleString('en-US', { timeZoneName: 'short' })
         };
+        /** ID02272025.o
         addJsonToBox(
           document.getElementById('infoBox'),
           'json-container',
           values);
+        */
+        if ( threadId ) // Add the thread only when enabled in server! ID02272025.n
+          addJsonToThreadsTable(document.getElementById('infoBox'),values); // ID02272025.n
       };
 
       const divelem = document.createElement('div');
@@ -680,7 +861,13 @@ async function streamCompletion(uri, appId, hdrs, box) {
       const reader = response.body?.pipeThrough(new TextDecoderStream()).getReader();
       if (!reader) return;
       // console.log("step-2");
-      box.appendChild(divelem);
+      element.className = "user-select-all"; // ID03132025.sn
+      element.id = "chat-msg-" + msgCounter;
+
+      let outerDivElement = addRespMsgTitleButtons(element);
+      outerDivElement.appendChild(divelem);
+      box.appendChild(outerDivElement); // ID03132025.en 
+      // box.appendChild(divelem); ID03132025.o
       // eslint-disable-next-line no-constant-condition
       let chkPart = '';
       let calltime = 0;
@@ -724,8 +911,12 @@ async function streamCompletion(uri, appId, hdrs, box) {
             // console.log(`**** P-DATA ****: ${pdata}`);
             chkPart = '';
 
-            if (!json.choices || json.choices.length === 0)
+            if (!json.choices || json.choices.length === 0) {
               console.log("streamCompletion(): Skipping this line");
+
+              if ( json.usage )
+                usageInfo = json.usage;
+            }
             else {
               const msg = json.choices[0].delta.content;
               if (msg) {
@@ -808,7 +999,8 @@ async function streamCompletion(uri, appId, hdrs, box) {
         code: 200,
         message: "OK",
         time_to_first_token: (ttToken - sttime) / 1000,
-        total_call_time: calltime / 1000
+        total_call_time: calltime / 1000,
+        usage: usageInfo // ID02272025.n
       };
       addJsonToAccordian(
         calltime,
@@ -847,6 +1039,18 @@ async function streamCompletion(uri, appId, hdrs, box) {
   }
 }
 
+// ID02272025.sn
+function getAiAppGatewaySessionsUri(appId, threadId) {
+  const srvElem = document.getElementById('srvdropdown');
+  const selectedIndex = srvElem.selectedIndex;
+  const srvName = srvElem.options[selectedIndex].text;
+
+  const srv_endpoint = aiGatewayMap.get(srvName).uri;
+
+  return (`${srv_endpoint}/sessions/${appId}/${threadId}`);
+}
+// ID02272025.en
+
 function getAiAppGatewayAppReqsUri(appId, requestId) { // ID11122024.n
   const srvElem = document.getElementById('srvdropdown');
   const selectedIndex = srvElem.selectedIndex;
@@ -873,6 +1077,30 @@ function getAiAppGatewayLoadBalancerUri(appId) {
   return (endpointUri);
 }
 
+function checkIfAuthEnabled() { // ID02272025.n
+  if ( isAuthEnabled ) {
+    if ( !username ) { // ID11262024.n
+      const loginBtn = document.getElementById('auth-anchor');
+
+      let popover = new bootstrap.Popover(loginBtn, {
+        animation: true,
+        placement: "top",
+        // title: "Alert",
+        content: "Sign in to the AI App Gateway",
+        trigger: "manual"
+      });
+      popover.show();
+      setTimeout(function () { popover.dispose(); }, 2000);
+
+      return(false);
+    }
+    else // ID11262024.n
+      updateHeader("Sign-in"); // In case user is already logged in, change the header!  In case token has expired, user will be asked to re-auth again.
+  };
+
+  return(true);
+}
+
 async function sendMessage() {
   const aiSrvElem = document.getElementById('srvdropdown'); // ID11132024.n
   const aiSrv = aiSrvElem.options[aiSrvElem.selectedIndex].text;
@@ -887,26 +1115,11 @@ async function sendMessage() {
     });
     popover.show();
     setTimeout(function () { popover.dispose(); }, 2000);
+    
     return;
   };
-  if ( isAuthEnabled ) {
-    if ( !username ) { // ID11262024.n
-      const loginBtn = document.getElementById('auth-anchor');
-
-      let popover = new bootstrap.Popover(loginBtn, {
-        animation: true,
-        placement: "top",
-        // title: "Alert",
-        content: "Sign in to the AI App Gateway",
-        trigger: "manual"
-      });
-      popover.show();
-      setTimeout(function () { popover.dispose(); }, 2000);
-      return;
-    }
-    else // ID11262024.n
-      updateHeader("Sign-in"); // In case user is already logged in, change the header!  In case token has expired, user will be asked to re-auth again.
-  };
+  if ( ! checkIfAuthEnabled() )
+    return;
 
   const userInput = document.getElementById('userInput');
   const message = userInput.value;
@@ -920,7 +1133,11 @@ async function sendMessage() {
     document.getElementById('msgClearBtn').disabled = true;
     document.getElementById('infoClearBtn').disabled = true;
     document.getElementById('errorClearBtn').disabled = true;
-    document.getElementById('spinnerBtn').style.display = "block";
+    // document.getElementById('spinnerBtn').style.display = "block"; ID02272025.o
+
+    // ID02272025.n; Show spinner and change button text to 'Loading'
+    document.getElementById('buttonText').textContent = 'Loading';
+    document.getElementById('buttonSpinner').classList.remove('d-none');
 
     addMessageToBox(
       // document.getElementById('chatBox'),
@@ -950,11 +1167,25 @@ async function sendMessage() {
       hdrs.set("Content-Type", "application/json");
       requestHeaders = new Headers(hdrs);
 
-      if (sysPrompt) // ID11012024.n
+      if (sysPrompt) { // ID11012024.n
+        /** ID02272025.so
         if ( aiAppObject.model_family ) // ID12202024.n; 'o1' model family doesn't support 'system' roles!
           promptObject.messages.push({ role: "developer", content: sysPrompt });
         else
           promptObject.messages.push({ role: "system", content: sysPrompt });
+        */
+
+        // ID02272025.sn
+        const msgTypeElem = document.getElementById('msgtypedropdown');
+        const msgType = msgTypeElem.options[msgTypeElem.selectedIndex].value;
+      
+        if ( msgType === "developer") // Developer message; required by reasoning models
+          promptObject.messages.push({ role: "developer", content: sysPrompt });
+        else
+          promptObject.messages.push({ role: "system", content: sysPrompt });
+        // ID02272025.en
+      };
+      
       promptObject.messages.push({ role: "user", content: message });
     };
 
@@ -967,6 +1198,7 @@ async function sendMessage() {
       requestHeaders.append('Authorization', bearer);
     };
 
+    /** ID02272025.so
     // ID12202024.sn
     if ( aiAppObject.model_family ) { // 'o1' model family doesn't support these params!
       delete promptObject.temperature;
@@ -979,10 +1211,15 @@ async function sendMessage() {
       promptObject.stream = false; // No streaming!
     }
     // ID12202024.en
+    */
 
-    if (promptObject.stream) // Stream response
-      await streamCompletion(uri, appId, requestHeaders, chatBox);
+    if (promptObject.stream) { // Stream response ID02272025.n
+      promptObject.stream_options = { include_usage: true }; // ID02272025.n
+      await streamCompletion(aiSrv, uri, appId, requestHeaders, chatBox); // ID02272025.n
+    }
     else {
+      delete promptObject.stream_options; // ID02272025.n
+
       let status;
       try {
         const ds = promptObject.data_sources;
@@ -1002,15 +1239,21 @@ async function sendMessage() {
           if (threadId === null) {
             threadId = response.headers.get("x-thread-id");
             const values = {
+              ai_app_gateway: aiSrv,
               application_id: appId,
-              user: aiAppObject.user,
               thread_id: threadId,
+              user: aiAppObject.user,
+              endpoint_uri: uri,
               start_time: new Date().toLocaleString('en-US', { timeZoneName: 'short' })
             };
+            /** ID02272025.o
             addJsonToBox(
               document.getElementById('infoBox'),
               'json-container',
               values);
+            */
+            if ( threadId ) // Add the thread only when enabled in server! ID02272025.n
+              addJsonToThreadsTable(document.getElementById('infoBox'),values); // ID02272025.n
           };
 
           addJsonToAccordian(
@@ -1055,7 +1298,11 @@ async function sendMessage() {
           errorDetails);
       };
     };
-    document.getElementById('spinnerBtn').style.display = "none";
+    // ID02272025.n; Hide spinner and change button text back to 'Send'
+    document.getElementById('buttonText').textContent = 'Send';
+    document.getElementById('buttonSpinner').classList.add('d-none');
+
+    // document.getElementById('spinnerBtn').style.display = "none"; ID02272025.o
     document.getElementById('callApiBtn').disabled = false;
     document.getElementById('chatClearBtn').disabled = false;
     document.getElementById('msgClearBtn').disabled = false;

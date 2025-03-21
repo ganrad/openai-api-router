@@ -18,9 +18,15 @@
  * ID01242025: ganrad: v2.2.0: Introduced constants for HTTP methods.
  * ID02072025: ganrad: v2.2.0: Introduced constants for gateway config provider type.
  * ID02102025: ganrad: v2.2.0: Introduced constant for default AI App Gateway (SD) Uri.
+ * ID02202025: ganrad: v2.3.0: (Bugfix) Added new constant for default max character limit for body-parser. 
+ * Default is 100KB for JSON and URL-encoded data.
+ * Updated body-parser to accept up to 600Kb ~ 150K TPMs for JSON data (request payload).
+ * ID02212025: ganrad: v2.3.0: Added new constant for embedding model max. input token limit.
 */
 
 const DefaultAiGatewayUri = "http://localhost:8080/api/v1/dev/apirouter/lb"; // ID02102025.n
+const DefaultJsonParserCharLimit = "600kb"; // ID02202025.n
+const DefEmbeddingModelTokenLimit = 8192; // ID02212025.n
 
 const HttpMethods = { // ID01242025.n
   GET: 'GET',
@@ -146,6 +152,8 @@ const ConfigProviderType = { // ID02072025.n
 
 module.exports = {
   DefaultAiGatewayUri, // ID02102025.n
+  DefaultJsonParserCharLimit, // ID02202025.n
+  DefEmbeddingModelTokenLimit, // ID02212025.n
   HttpMethods, // ID01232025.n
   ServerDefaults,
   CustomRequestHeaders,

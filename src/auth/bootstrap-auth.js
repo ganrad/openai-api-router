@@ -10,6 +10,7 @@
  * ID09272024: ganrad: (Bugfix) Bearer strategy object should only be instantiated when auth=true.
  * ID11192024: ganrad: (Enhancement) a) Support User + Client App OR Client App only authentication. b) Bypass Auth check for 
  * 'healthz' endpoint.
+ * ID03052025: ganrad: v2.3.0: (Enhancement) Introduced support for using RAPID host's system MID for authenticating against Azure AI Service(s).
  */
 
 const passport = require('passport');
@@ -94,7 +95,7 @@ function initAuth(app, endpoint) {
 
   app.use(endpoint, (req, res, next) => {
     logger.log({
-      level: "info", message: "[%s] initAuth(): Auth check ...\n  Request ID: %s\n  URL: %s\n  Base URL: %s\n  Path: %s",
+      level: "info", message: "[%s] initAuth(): Auth check - Begin\n  Request ID: %s\n  URL: %s\n  Base URL: %s\n  Path: %s",
       splat: [scriptName, req.id, req.originalUrl, req.baseUrl, req.path]
     });
 
@@ -135,11 +136,49 @@ function initAuth(app, endpoint) {
       };
       // ID11192024.en
 
-      logger.log({ level: "info", message: "[%s] initAuth():\n  Request ID: [%s]\n  Auth. Info: [%s]\n  User Info: [%s]", splat: [scriptName, req.id, req.authInfo, req.user] });
+      logger.log({ level: "info", message: "[%s] initAuth(): Auth Check - End\n  Request ID: [%s]\n  Auth. Info: [%s]\n  User Info: [%s]", splat: [scriptName, req.id, req.authInfo, req.user] });
       return next();
     })(req, res, next);
   }); // end of middleware
   logger.log({ level: "info", message: "[%s] initAuth(): Initialized passport for authenticating users/apps using Azure Entra ID (OP)", splat: [scriptName] });
 }
 
-module.exports = initAuth;
+async function getAccessToken(req) { // ID03052025.n
+  let bToken = null;
+  
+  // Make a fetch call to Azure instance metadata service (IMDS)
+  try {
+      const endpoint = 'http://169.254.169.254/metadata/identity/oauth2/token';
+      const resource = 'https://cognitiveservices.azure.com'; // set the right audience!
+      const apiVersion = '2019-08-01';
+      const response = await fetch(`${endpoint}?resource=${resource}&api-version=${apiVersion}`, {
+        method: 'GET',
+        headers: {
+            'Metadata': 'true'
+        }
+      });
+
+      if (!response.ok)
+        logger.log({ level: "warn", message: "[%s] getAccessToken(): Error retrieving access token\nMessage:\n  [%s]", splat: [scriptName, response.statusText] });
+        // throw new Error(`Error fetching access token: ${response.statusText}`);
+      else {
+        const data = await response.json();
+        const accessToken = data.access_token;
+        logger.log({ level: "info", message: "[%s] getAccessToken(): Fetched MID access token\n  Request ID: [%s]", splat: [scriptName, req.id] });
+        bToken =  "Bearer " + accessToken;
+        // console.log(`Access Token: ${accessToken}`);
+      };
+  } 
+  catch (err) {
+    logger.log({ level: "warn", message: "[%s] getAccessToken(): Error retrieving access token.  Will resort to using API Key.  \nError:\n  [%s]", splat: [scriptName, err] });
+    // console.error('Error retrieving access token:', err);
+  };
+
+  return(bToken);
+}
+
+// module.exports = initAuth; ID03052025.o
+module.exports = {
+  initAuth,
+  getAccessToken
+}

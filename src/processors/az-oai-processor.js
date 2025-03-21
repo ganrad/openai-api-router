@@ -29,6 +29,11 @@
  * ID02142025: ganrad: v2.2.0: (Enhancement) Store user session (thread ID) in 'apigtwyprompts' table.
  * ID02152025: ganrad: v2.2.0: (Enhancement) For streamed API calls, include token usage info. before persisting the request in 
  * 'apigtwyprompts' table.
+ * ID02212025: ganrad: v2.2.1: (Experimental: To do) Count tokens in request body and skip caching the request + response if token size is greater than 8192.
+ * This is the max input token limit for AOAI embedding model(s).
+ * ID03052025: ganrad: v2.3.0: (Enhancement) Introduced support for using RAPID host's system MID for authenticating against Azure AI Service(s).
+ * Restructured code.
+ * ID03142025: ganrad: v2.3.0: (Error-proofing ~ poka-yoke) Disable caching for AOAI Chat Completion API function calls.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -41,12 +46,40 @@ const cachedb = require("../services/cp-pg.js"); // ID02202024.n
 const { TblNames, PersistDao } = require("../utilities/persist-dao.js"); // ID03012024.n
 const persistdb = require("../services/pp-pg.js"); // ID03012024.n
 const pgvector = require("pgvector/pg"); // ID02202024.n
-const { CustomRequestHeaders, AzAiServices } = require("../utilities/app-gtwy-constants.js"); // ID05062024.n
+const { DefEmbeddingModelTokenLimit, CustomRequestHeaders, AzAiServices } = require("../utilities/app-gtwy-constants.js"); // ID05062024.n
 const { randomUUID } = require('node:crypto'); // ID05062024.n
+
+const { encode } = require('gpt-tokenizer'); // ID02212025.n
+const { getAccessToken } = require("../auth/bootstrap-auth"); // ID03052025.n
 
 class AzOaiProcessor {
 
   constructor() {
+  }
+
+  #tokensWithinLimit(req) { // ID02212025.n
+    const msgs = req.body.messages;
+
+    const nameTokens = 1;
+    const msgTokens = 3;
+
+    let tokens = 5;
+    let elemTokens = 0;
+    for (const element of msgs) {
+      tokens += msgTokens;
+      elemTokens = encode(element.content).length;
+      // console.log(`*** role: ${element.role}, content: ${element.content}, tokens: ${elemTokens} ***`);
+
+      // Encode the text to get the tokens
+      tokens += elemTokens;
+      if ( element.name )
+        tokens += nameTokens;
+    };
+
+    const retVal = (tokens > DefEmbeddingModelTokenLimit) ? false : true;
+    logger.log({ level: "info", message: "[%s] %s.#tokensWithinLimit():\n  Request ID: %s\n  Token Count: %s", splat: [scriptName, this.constructor.name, req.id, tokens]});
+
+    return(retVal);
   }
 
   #checkAndPruneCtxMsgs(count, msgs) {
@@ -567,6 +600,19 @@ class AzOaiProcessor {
   }
   // ID06052024.en
 
+  #toolsMessagesNotPresent(msgs) { // ID03142025.n
+    let retval = true;
+    msgs.forEach(element => {
+      if ( element.tool_calls ) {
+        retval = false;
+
+        return;
+      }
+    });
+
+    return(retval);
+  }
+
   async processRequest(
     req, // 0
     res, // 1 ID06052024.n
@@ -609,7 +655,8 @@ class AzOaiProcessor {
     let uriIdx = 0;
 
     if (!threadId) {
-      if (cacheConfig.cacheResults && useCache) { // Is caching enabled?
+      // if ( cacheConfig.cacheResults && useCache ) { // Is caching enabled?; ID03142025.o
+      if ( cacheConfig.cacheResults && useCache && ( (! req.body.tools) && this.#toolsMessagesNotPresent(req.body.messages) ) ) { // Is caching enabled?; ID03142025.n;
         for (const application of apps.applications) {
           if (application.appId == cacheConfig.embeddApp) {
             vecEndpoints = application.endpoints;
@@ -628,9 +675,10 @@ class AzOaiProcessor {
 
         const { rowCount, simScore, completion, embeddings } =
           await cacheDao.queryVectorDB(
-            req.id,
+            // req.id, ID03052025.o
+            req, // ID03052025.n
             config.appId,
-            req.body,
+            // req.body, ID03052025.o
             cachedb
           );
 
@@ -754,12 +802,26 @@ class AzOaiProcessor {
       try {
         const meta = new Map();
         meta.set('Content-Type', 'application/json');
-        const bearerToken = req.get("Authorization"); // case-insensitive header match ID10302024.sn
+        // const bearerToken = req.get("Authorization"); // case-insensitive header match ID10302024.sn, ID03052025.o
+        let bearerToken = req.headers['Authorization']; // ID03052025.n
         if ( config.appType === AzAiServices.OAI ) { // ID11052024.n
-          if ( bearerToken && !req.authInfo ) // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
+          if ( bearerToken && !req.authInfo ) { // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
+            if ( process.env.AZURE_AI_SERVICE_MID_AUTH === "true" ) // ID03052025.n
+              bearerToken = await getAccessToken(req);
             meta.set('Authorization', bearerToken);
-          else // Use API Key Auth ID10302024.en
-            meta.set('api-key', element.apikey);
+            logger.log({ level: "debug", message: "[%s] %s.processRequest(): Using bearer token for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+          }
+          else { // Use API Key Auth ID10302024.en
+            if ( process.env.AZURE_AI_SERVICE_MID_AUTH === "true" ) { // ID03052025.n
+              bearerToken = await getAccessToken(req);
+              meta.set('Authorization', bearerToken);
+              logger.log({ level: "debug", message: "[%s] %s.processRequest(): Using bearer token for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+            }
+            else {
+              meta.set('api-key', element.apikey);
+              logger.log({ level: "debug", message: "[%s] %s.processRequest(): Using API Key for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+            };
+          };
         }
         else { // ID11052024.n (Az Ai Model Inference API models)
           if ( bearerToken && !req.authInfo ) // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
@@ -822,7 +884,6 @@ class AzOaiProcessor {
           if (th_id && req.body.stream) // ID06052024.n
             threadId = th_id;
 
-          
           // ID03012024.sn
           let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
           if (persistPrompts) { // Persist prompt and completion ?

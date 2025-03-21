@@ -157,8 +157,8 @@ async function deleteData(query, params) {
   };
 }
 
-// Execute query
-async function executeQuery(requestid,query, params) {
+// Execute semantic search query
+async function executeQuery(requestid, query, params) {
   let result;
   let rows = 0;
   let data = null;
@@ -204,5 +204,5 @@ module.exports = {
   createTable,
   insertData,
   deleteData,
-  executeQuery,
+  executeQuery
 }

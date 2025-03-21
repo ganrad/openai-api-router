@@ -16,7 +16,7 @@ Feature/Capability | Azure AI Service | Description
 ------------------ | ---------------- | -----------
 **Shared Infrastructure Model** | All | The AI Application Gateway simplifies and streamlines the deployment of multiple AI Solutions (Chatbots) by utilizing a shared infrastructure backbone. This approach allows for deploying the infrastructure once and subsequently scaling it to build and deploy numerous AI Chatbots.
 **Enhanced AI Application Deployments** | All | The gateway is designed to be AI Application *Aware*, allowing Azure AI Service deployments to be configured individually for each AI Application. This approach not only simplifies the sharing of AI Service deployments across different AI Applications but also improves metrics collection and request routing tailored to each specific use case.
-**Model Agnostic Endpoints** | Azure OpenAI Service<br> Azure AI Foundry | The gateway exposes each AI Application through a unique endpoint, hiding the underlying AI Service deployments from client applications. Model deployments can be updated without changes to client applications. It supports routing LLM models from Azure OpenAI Service and AI Foundry, enabling quick testing and onboarding of new OpenAI model versions and open-source LLMs.
+**Model Agnostic Endpoints** | Azure OpenAI Service<br> Azure AI Foundry | The gateway exposes each AI Application through a unified endpoint, hiding the underlying AI Service model deployment endpoints from client applications. As a result, model deployment endpoints can be quickly updated without requiring any changes to client applications. The gateway routes inference requests for LLM's deployed in Azure OpenAI Service and AI Foundry, enabling quick testing and onboarding of new OpenAI model versions and open-source LLMs.
 **Intelligent Traffic Routing** | Azure OpenAI Service<br> Azure AI Foundry | **Circuit Breaker**: For each AI Application, multiple Azure AI Service deployment URI's (a.k.a backend endpoints) can be configured. When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.<br> **Rate Limiting**: Users can set up a *RPM Limit* for each OpenAI backend endpoint for any AI Application. When multiple AI Applications use the same endpoint, the gateway will enforce rate limiting and throttle excessive requests by returning http 429 status codes. This is especially useful for distributing model processing capacity (PTU deployment) evenly across different AI Applications.<br> **Traffic Splitting**: The Gateway can split AI application traffic across multiple Azure AI Service model deployment endpoints, including various LLM model deployments for GenAI hosted in Azure AI Foundry.
 **Streaming API Responses** | Azure Open AI Service (Chat Completions API only) | The AI Application Gateway fully supports the response *streaming* feature provided by Azure OpenAI Chat Completions API.  This function is seamlessly integrated with semantic caching, state management and traffic routing features.
 **Semantic Caching** | Azure OpenAI Service | This feature, integrated into the AI Application Gateway, caches OpenAI Service prompts and responses based on semantic similarity. It can improve runtime performance of LLM/AI applications by up to 40%, leveraging *PostgreSQL's* vectorization and semantic search capabilities.
@@ -329,13 +329,14 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    API_GATEWAY_ID | Unique ID of the AI Application Gateway | Yes | None.  Set this to a unique string value.
    API_GATEWAY_TYPE | Type of the AI Application Gateway<br>- single-domain<br>- multi-domain (Experimental) | Yes | single-domain
    API_GATEWAY_KEY | AI Application Gateway private key (secret) required to reconfigure backend (Azure OpenAI) endpoints | Yes | Set this value to an alphanumeric string
-   API_GATEWAY_CONFIG_FILE | The AI Application Gateway configuration file location. If this variable is not set, gateway resource definitions will be saved in a SQL table (*'aiappservers'*). | Yes | Set the full or relative path to the *AI Application Gateway Configuration file* from the project root directory.
+   API_GATEWAY_CONFIG_FILE | The AI Application Gateway configuration file location. If this variable is not set, gateway resource definitions will be saved in a SQL table (*aiappservers*). | No | Set the full or relative path to the *AI Application Gateway Configuration file* from the project root directory.
    API_GATEWAY_PORT | Gateway server listen port | No | 8000
    API_GATEWAY_ENV | Gateway environment | Yes | Set a value such as 'dev', 'test', 'pre-prod', 'prod' ...
    API_GATEWAY_LOG_LEVEL | Gateway logging level | No | Default=info.  Possible values are debug, info, warn, error, fatal.
    API_GATEWAY_AUTH | Use this env variable to secure AI Application gateway endpoints using Microsoft Entra ID | No | true
    AZURE_TENANT_ID | When security is turned on for the gateway, this value is required. Specify the correct Azure **Tenant ID**. | No | None
    API_GATEWAY_CLIENT_ID | When security is turned on for the gateway, this value is required. Specify the correct **Client ID** for the AI Application Gateway as defined in Application Registrations on Azure.  | No | None
+   AZURE_AI_SERVICE_MID_AUTH | AI App Gateway can use the system managed identity of it's underlying host to authenticate against Azure OAI/Foundry API.  To enable this feature, set this env variable to "true". | No | false
    API_GATEWAY_METRICS_CINTERVAL | Backend API metrics collection and aggregation interval (in minutes) | Yes | Set it to a numeric value eg., 60 (1 hour)
    API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numeric value (<= 600)  
    APPLICATION_INSIGHTS_CONNECTION_STRING | Azure Monitor connection string | No | Assign the value of the Azure Application Insights resource *connection string* (from Azure Portal)
@@ -363,38 +364,46 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    You will see the API Gateway server start up message in the terminal window as shown in the snippet below.
 
    ```bash
-   > openai-api-router@2.2.0 start
+   > openai-api-router@2.3.0 start
    > node ./src/server.js
 
-   16-Feb-2025 04:23:32 [info] [server.js] Starting initialization of AI Application Gateway ...
-   16-Feb-2025 04:23:33 [info] [server.js] Azure Application Monitor OpenTelemetry configured.
-   16-Feb-2025 04:23:33 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
-   16-Feb-2025 04:23:33 [info] [server.js] Completions will be cached
-   16-Feb-2025 04:23:33 [info] [server.js] Prompts will be persisted
-   16-Feb-2025 04:23:33 [info] [server.js] Conversational state will be managed
-   16-Feb-2025 04:23:33 [info] [validate-json-config.js] validateAiServerSchema():
+   21-Mar-2025 17:35:20 [info] [server.js] Starting initialization of AI Application Gateway ...
+   21-Mar-2025 17:35:20 [info] [server.js] Azure Application Monitor OpenTelemetry configured.
+   21-Mar-2025 17:35:21 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
+   21-Mar-2025 17:35:21 [info] [server.js] Completions will be cached
+   21-Mar-2025 17:35:21 [info] [server.js] Prompts will be persisted
+   21-Mar-2025 17:35:21 [info] [server.js] Conversational state will be managed
+   21-Mar-2025 17:35:21 [info] [validate-json-config.js] validateAiServerSchema():
    Result:
    {
    "schema_compliant": true,
    "errors": "None"
    }
-   16-Feb-2025 04:23:33 [info] [server.js] Listing AI Application backend (Azure AI Service) endpoints:
+   21-Mar-2025 17:35:21 [info] [server.js] Listing AI Application backend (Azure AI Service) endpoints:
+   Application ID: ai-reason-o1-2024-12-17; Type: azure_oai; useCache=true; useMemory=true
+   Priority: 0   Uri: https://gbb-ea-aoai-swedencentral-shared-reasoning.openai.azure.com/openai/deployments/o1/chat/completions?api-version=2024-12-01-preview
+   Application ID: ai-reason-o3-mini-2025-01-31; Type: azure_oai; useCache=true; useMemory=true
+   Priority: 0   Uri: https://gbb-ea-aoai-swedencentral-shared-reasoning.openai.azure.com/openai/deployments/o3-mini/chat/completions?api-version=2024-12-01-preview
    Application ID: ai-chatbot-gpt4o; Type: azure_oai; useCache=true; useMemory=true
-   Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-10-21
+   Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01
    Application ID: vectorizedata; Type: azure_oai; useCache=false; useMemory=false
    Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15
-   16-Feb-2025 04:23:33 [info] [server.js] Cache entry invalidate run schedule (Cron) - */2 * * * *
-   16-Feb-2025 04:23:33 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */4 * * * *
-   16-Feb-2025 04:23:33 [warn] [server.js] AI Application Gateway endpoints are not secured by Microsoft Entra ID!
-   16-Feb-2025 04:23:33 [info] [server.js] Server(): Azure AI Application Gateway started successfully.
+   Application ID: Deepseek-R1-chatbot; Type: azure_aimodel_inf; useCache=true; useMemory=true
+   Priority: 0   Uri: https://DeepSeek-R1-021025.eastus2.models.ai.azure.com/chat/completions
+   21-Mar-2025 17:35:21 [info] [server.js] Cache entry invalidate run schedule (Cron) - */2 * * * *
+   21-Mar-2025 17:35:21 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */4 * * * *
+   21-Mar-2025 17:35:21 [info] [bootstrap-auth.js] initAuth(): Protected endpoint: [/api/v1/dev/apirouter]
+   {"name":"AzureAD: Bearer Strategy","hostname":"ubuntu-lts22-jump-box","pid":13964,"level":30,"msg":"In BearerStrategy constructor: strategy created","time":"2025-03-21T17:35:21.313Z","v":0}
+   21-Mar-2025 17:35:21 [info] [bootstrap-auth.js] initAuth(): Initialized passport for authenticating users/apps using Azure Entra ID (OP)
+   21-Mar-2025 17:35:21 [info] [server.js] Server(): Azure AI Application Gateway started successfully.
    -----
    Details:
    Server Name: Ai-App-Gateway-Local
    Server Type: single-domain
-   Version: 2.2.0
+   Version: 2.3.0
    Config. Provider Type: File
    Endpoint URI: http://localhost:8080/api/v1/dev/apirouter
-   Start Date: 2/16/2025, 4:23:33 AM
+   Start Date: 3/21/2025, 5:35:21 PM
    -----
    ```
 

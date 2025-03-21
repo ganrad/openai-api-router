@@ -22,7 +22,7 @@
 #
 FROM public.ecr.aws/docker/library/node:20.11.0-alpine3.19
 LABEL name="Azure AI Application Gateway server"
-LABEL version="2.2.0"
+LABEL version="2.3.0"
 LABEL description="This container image exposes endpoints to 1) Track API usage for capacity planning (Azure OAI Service) 2) Load balancing AI Application requests across multiple Azure AI Services deployments/endpoints + many more value add features"
 LABEL author="Ganesh Radhakrishnan" email="ganrad01@gmail.com" dated="01-28-2024" license="MIT"
 
@@ -63,22 +63,22 @@ ARG metrics_history=5
 ENV API_GATEWAY_METRICS_CHISTORY=$metrics_history
 
 # (Required) Use Semantic Cache feature? // ID03152024.n
-ARG use_cache="false"
+ARG use_cache="true"
 ENV API_GATEWAY_USE_CACHE=$use_cache
 
 # (Required) Use Conversational State Management? // ID05062024.n
-ARG use_memory="false"
+ARG use_memory="true"
 ENV API_GATEWAY_STATE_MGMT=$use_memory
 
 # (Optional) Persist prompts and completions? // ID11142024.n
-ARG persist_prompts="false"
+ARG persist_prompts="true"
 ENV API_GATEWAY_PERSIST_PROMPTS=$persist_prompts
 
-# (Required) Secure the AI App Gateway with Microsoft Entra ID? // ID07292024.n
-# IMPORTTANT: When running the container, make sure to set values for the following env vars.
+# (Required) Secure the AI App Gateway with Microsoft Entra ID ("true" == yes; "false" == no)? // ID07292024.n
+# IMPORTANT: When running the container with use_auth="true", make sure to set values for the following env vars.
 # 1. AZURE_TENANT_ID  (Azure tenant ID)
 # 2. API_GATEWAY_CLIENT_ID (This is the client/application ID of AI App Gateway registered in MSFT Entra)
-ARG use_auth="true"
+ARG use_auth="false"
 ENV API_GATEWAY_AUTH=$use_auth
 
 RUN mkdir -p /home/node/app/node_modules && chown -R node:node /home/node/app

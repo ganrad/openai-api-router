@@ -11,9 +11,30 @@
 
 const { useAzureMonitor } = require("@azure/monitor-opentelemetry");
 const { Resource } = require("@opentelemetry/resources");
-const { SemanticResourceAttributes } = require("@opentelemetry/semantic-conventions");
+// const { ReadableSpan, Span, SpanProcessor } = require("@opentelemetry/sdk-trace-base");
+const { SemanticAttributes } = require("@opentelemetry/semantic-conventions");
 
-function initializeTelemetry() {
+// Create a new SpanEnrichingProcessor class.
+class SpanEnrichingProcessor {
+    forceFlush() {
+        return Promise.resolve();
+    }
+
+    shutdown() {
+        return Promise.resolve();
+    }
+
+    onStart(_span) {}
+
+    onEnd(span) {
+        // Add custom dimensions to the span.
+        span.attributes["CustomDimension1"] = "value1";
+        span.attributes["CustomDimension2"] = "value2";
+    }
+}
+  
+
+function initializeTelemetry(srvVersion) {
 
     // Filter using HTTP instrumentation configuration
     const httpInstrumentationConfig = {
@@ -42,16 +63,19 @@ function initializeTelemetry() {
     // * service_namespace: my-namespace
     // * service_instance_id: my-instance
     const customResource = new Resource({
-        [SemanticResourceAttributes.SERVICE_NAME]: "AI-Gateway",
-        [SemanticResourceAttributes.SERVICE_NAMESPACE]: "AI-Gateway-NS",
-        [SemanticResourceAttributes.SERVICE_INSTANCE_ID]: process.env.API_GATEWAY_ID
+        [SemanticAttributes.SERVICE_NAME]: "AI-Gateway",
+        [SemanticAttributes.SERVICE_NAMESPACE]: "AI-Gateway-NS",
+        [SemanticAttributes.SERVICE_INSTANCE_ID]: process.env.API_GATEWAY_ID,
+        [SemanticAttributes.SERVICE_VERSION]: srvVersion
     });
 
+    // Enable Azure Monitor integration.
     const options = {
         // Sampling could be configured here
         // samplingRatio: 1,
         // Use custom Resource
         resource: customResource,
+        spanProcessors: [new SpanEnrichingProcessor()],
         instrumentationOptions: {
             // Custom HTTP Instrumentation Configuration
             // http: httpInstrumentationConfig,
