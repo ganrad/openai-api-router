@@ -13,8 +13,7 @@
  * exception if any one of them is not set!
  * ID02272025: ganrad: v2.3.0-v1.2.0: (Improvements) Implemented multiple UI refinements.
  * ID03102025: ganrad: v2.3.0-v1.2.0: (Enhancement) a) Restructured server initialization code. b) Added body parser to 
- * handle requests containing JSON payload & c) Added new API endpoint
- * to save new AI App definition.
+ * handle requests containing JSON payload & c) Added new API endpoint to save new AI App definition.
  */
 
 require('console-stamp')(console, {

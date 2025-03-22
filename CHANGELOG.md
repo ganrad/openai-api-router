@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## [v2.3.0](https://github.com/ganrad/openai-api-router/compare/v2.2.0...v2.3.0)
+### Functionality changes
+**Azure AI Application Gateway (Server)**
+* Bugfix: The JSON body-parser character limit has been increased from the default 100kb to 600kb. This change ensures that large request payloads sent to advanced reasoning models (thru the AI App Gateway) do not fail and throw an exception.
+* Enhancement: The request ID (x-request-id) is now included in the span created for each AI App Gateway API call and sent to Azure Application Insights. This feature enables end-to-end tracking of a gateway API request from the frontend/client to the AI App Gateway and the Azure AI Service backend.
+* Enhancement: The AI App Gateway control plane API *Operations* endpoint has been updated to return the HTTP method for each supported endpoint.
+* Enhancement: Added support for using the AI App Gateway host's system-managed Azure Entra ID for authenticating against Azure AI Services.
+* Enhancement: Added new *sessions* API.  This API can be used to retrieve all requests & corresponding messages associated with a given thread (/user session).
+* Poka-yoke: When Azure OAI Chat Completion Function Call APIs are proxied through the AI Application Gateway, caching will be automatically disabled.
+
+**AI Application Gateway Console (UI/SPA)**
+* Introduced release v1.2.0.  This new release includes several user interface refinements to improve the overall user experience.
+* Introduced support for initiating conversational chats with advanced reasoning models such as o1, o1-mini, and o3.
+* Implemented functionality to request and receive token counts for streaming Azure OAI API calls.
+* Implemented functionality (new buttons) for copying and saving chat responses.
+* Added new dialogs to allow users to define and deploy AI Applications on the target AI Application Gateway instance.
+
+### Documentation changes
+* Updated the documentation to reflect changes introduced in this release. Included descriptions for new environment variables added in this release.
+
 ## [v2.2.0](https://github.com/ganrad/openai-api-router/compare/v2.1.0...v2.2.0)
 ### Functionality changes
 * (Bugfix) Resolved the telemetry ingestion issue for AI App Gateway in Azure Application Insights, allowing detailed telemetry and metrics information for AI App Gateway APIs, Azure AI Service APIs, and Azure Database for PostgreSQL DB calls. Metrics can now be logged and viewed in AppInsights. This enhancement facilitates distributed tracing and helps identify connectivity and performance related issues. 
