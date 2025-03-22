@@ -11,6 +11,9 @@
  * ID11132024: ganrad: v2.1.0-v1.1.0: AI App Gateway URI(s) are now contained within the configuration file.
  * ID11192024: ganrad: v2.1.0-v1.1.0: (Bugfix) When auth is enabled, check all required variables and throw an 
  * exception if any one of them is not set!
+ * ID02272025: ganrad: v2.3.0-v1.2.0: (Improvements) Implemented multiple UI refinements.
+ * ID03102025: ganrad: v2.3.0-v1.2.0: (Enhancement) a) Restructured server initialization code. b) Added body parser to 
+ * handle requests containing JSON payload & c) Added new API endpoint to save new AI App definition.
  */
 
 require('console-stamp')(console, {
@@ -19,11 +22,12 @@ require('console-stamp')(console, {
 const express = require('express');
 const fs = require('fs');
 
-const srvVersion = "1.1.0";
+const srvVersion = "1.2.0"; // ID02272025.n
 const srvUriPrefix = "/ais-chatbot/ui/";
 const srvStartTime = new Date().toLocaleString();
 
 const app = express();
+let bodyParser = require('body-parser'); // ID03102025.n
 
 let host; // AOAI frontend server host
 let port; // AOAI frontend server listen port
@@ -73,7 +77,8 @@ function readFrontendEnvVars() {
   console.log(`Server(): Azure AI Application Gateway API security: [${aisGtwyAuth}]`);
 }
 
-async function readConfigFile() {
+// async function readConfigFile() { ID03102025.o
+function readConfigFile() { // ID03102025.n
   const content = fs.readFileSync(configFile, { encoding: 'utf8', flag: 'r' });
 
   configObject = JSON.parse(content);
@@ -99,11 +104,38 @@ async function readConfigFile() {
   };
 }
 
+// ID03102025.sn
+function addAiAppToConfigFile(def) {
+  let retVal = true;
+  const gatewayList = configObject.ai_app_gateways;
+  for ( const gateway of gatewayList ) {
+    if ( gateway.name === def.aiGateway ) {
+      gateway.ai_apps.push(def.aiAppDef); // Append the new ai app definition to the end
+      break;
+    };
+  };
+  try {
+    // write the Ai App Gateway config file to disk -
+    fs.writeFileSync(configFile, JSON.stringify(configObject, null, 2), { encoding: 'utf8', flag: 'w' });
+    console.log('addAiAppToConfigFile(): Server config file updated successfully');
+  } 
+  catch (err) {
+    console.error('addAiAppToConfigFile(): Encountered error while writing server config file:\n', err);
+    retVal = false;
+  };
+
+  return(retVal);
+}
+// ID03102025.en
+
 async function init_server() {
   readFrontendEnvVars(); // Read the env vars
-  await readConfigFile(); // Read the frontend configuration file
+  // await readConfigFile(); // Read the frontend configuration file; ID03102025.o
+  readConfigFile(); // ID03102025.n
 }
 init_server(); // Initialize the server
+
+app.use(bodyParser.json()); // ID03102025.n
 
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
@@ -127,6 +159,19 @@ app.get(srvUriPrefix.concat("healthz"), (req, res) => {
 
 app.get(srvUriPrefix.concat('appconfig'), (req, res) => {
   res.json(configObject);
+});
+
+app.post(srvUriPrefix.concat("registerapp"),  (req,res) => { // ID03102025.n
+  let resp_obj = {
+    endpointUri: req.url,
+    currentDate: new Date().toLocaleString(),
+  };
+  console.log(`Payload received:\n  ${JSON.stringify(req.body, null ,2 )}`);
+
+  const status = addAiAppToConfigFile(req.body);
+  resp_obj.status = status ? 200 : 500;
+
+  res.status(resp_obj.status).json(resp_obj);
 });
 
 // app.listen(port,() => console.log(`Server(): AI Services API Gateway frontend server is listening on ${host}:${port}.`));

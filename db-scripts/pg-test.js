@@ -17,7 +17,7 @@
  * ID01272025: ganrad: v2.2.0: Introduced table aiappservers to store AI app server and application definitions.
  */
 
-const pgvector = require('pgvector/pg');
+// const pgvector = require('pgvector/pg');
 
 const db = require("../src/services/cp-pg");
 const pdb = require("../src/services/pp-pg");

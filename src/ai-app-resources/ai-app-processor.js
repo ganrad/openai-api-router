@@ -7,6 +7,7 @@
  * Version: 2.2.0
  *
  * Notes:
+ * ID03102025: ganrad: v2.3.0: (Enhancement) Added http method to 'operations' API
 */
 
 const path = require('path');
@@ -60,7 +61,7 @@ class AiAppProcessor {
     return(respMessage);
   }
 
-  #getResourceOperations(req) {
+  #getResourceOperations(req) {  // => /cp/AiApplication/operations
     let serverDef = req.srvconf;
     const serverName = serverDef.serverId;
     const serverType = serverDef.serverType;
@@ -87,18 +88,22 @@ class AiAppProcessor {
         resourceType: AppResourceTypes.AiApplication,
         operations: {
           operations: {
+            method: HttpMethods.GET, // ID03102025
             uri: "/cp/AiApplication/operations",
             description: "Get operations supported by this AI resource"
           },
           get: {
+            method: HttpMethods.GET, // ID03102025
             uri: "/cp/AiApplication/{ai-application-id}/get",
             description: "Get details of an AI Application by ID"
           },
           deploy: {
+            method: HttpMethods.POST, // ID03102025
             uri: "/cp/AiApplication/{ai-application-id}/deploy",
             description: "Create / Update and deploy an AI Application"
           },
           delete: {
+            method: HttpMethods.DELETE, // ID03102025
             uri: "/cp/AiApplication/{ai-application-id}/delete",
             description: "Delete an AI Application by ID"
           }
@@ -176,6 +181,8 @@ class AiAppProcessor {
     const serverName = serverDef.serverId;
     const serverType = serverDef.serverType;
     const providerType = serverDef.serverConfigType;
+
+    logger.log({ level: "debug", message: "[%s] AiAppProcessor.deployAiApp():\n  Request ID: [%s]\n  Payload: [%s]", splat: [scriptName, req.id,JSON.stringify(req.body, null, 2)] });
 
     if ( req.method !== HttpMethods.POST )
       return {

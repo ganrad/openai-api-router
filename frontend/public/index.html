@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Information Assistant</title>
+    <title>AI Application Gateway Console</title>
     <!-- msal.min.js can be used in the place of msal.js; included msal.js to make debug easy -->
     <script
       type="text/javascript"
@@ -16,6 +16,7 @@
       integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
       crossorigin="anonymous"
     />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <link rel=stylesheet
     href=https://cdn.jsdelivr.net/npm/pretty-print-json@3.0/dist/css/pretty-print-json.css>
   </head>
@@ -25,13 +26,14 @@
     <header class="bg-light py-3 mb-4">
       <div class="container">
         <div class="d-flex justify-content-between align-items-center">
-          <h1 class="h3">AI Information Assistant</h1>
+          <h1 class="h3">AI App Gateway Console</h1>
           <div class="btn-group-sm" role="group" aria-label="First group">
             <a href="/ais-chatbot/ui" class="btn btn-primary active" aria-current="page">Home</a>
             <button id="btnGroupDrop1" type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">Deploy AI Apps</button>
             <ul class="dropdown-menu" aria-labelledby="btnGroupDrop1">
-              <li><a class="dropdown-item" href="#">AI Application</a></li>
-              <li><a class="dropdown-item" href="#">AI RAG Application</a></li>
+              <!-- <li><a class="dropdown-item form-control-sm" href="#" data-bs-toggle="modal" data-bs-target="#aiAppModal">AI Application</a></li> -->
+              <li><a class="dropdown-item form-control-sm" href="#" id="aiAppDeployLink">AI Application</a></li> 
+              <li><a class="dropdown-item form-control-sm" style="pointer-events: none; color: gray;" href="#">AI RAG Application</a></li>
             </ul>
             <a href="#" class="btn btn-primary" id="auth-anchor" onclick="authenticateUser()" aria-current="page">Sign-in</a>
           </div>
@@ -57,12 +59,12 @@
         <!-- First Column -->
         <div class="col-md-2">
           <div class="mb-2">
-            <label for="srvdropdown" class="form-label"
+            <label for="srvdropdown" class="form-label small"
               ><b>AI Application Gateway</b></label
             >
             <select
               id="srvdropdown"
-              class="form-select"
+              class="form-select form-select-sm"
               onchange="setAiApps()"
               data-bs-toggle="tooltip" data-bs-placement="right"
             >
@@ -70,46 +72,59 @@
             </select>
           </div>
           <div class="mb-2">
-            <label for="srvtype" class="form-label"
+            <label for="srvtype" class="form-label small"
               ><b>Gateway Type</b></label
             >
-            <input class="form-control" id="srvtype" input="text" placeholder="AI Gateway Type" readonly />
+            <input class="form-control form-control-sm" id="srvtype" input="text" placeholder="AI Gateway Type" readonly />
           </div>
           <div class="mb-2">
-            <label for="appdropdown" class="form-label"
+            <label for="appdropdown" class="form-label small"
               ><b>AI Application</b></label
             >
             <select
               id="appdropdown"
-              class="form-select"
+              class="form-select form-select-sm"
               onchange="setInferenceTarget()"
             >
               <option selected="selected">Choose from</option>
             </select>
           </div>
           <div class="mb-2">
-            <label class="form-label"><b>Description</b></label>
+            <label class="form-label small"><b>Description</b></label>
             <div
-              class="border rounded p-3 mb-2"
-              style="height: 150px; overflow-y: auto"
+              class="border rounded p-3 mb-2 small"
+              style="height: 110px; overflow-y: auto"
               id="descField"
             ></div>
           </div>
           <div class="mb-2">
-            <label class="form-label"><b>System Prompt</b></label>
+            <label for="msgtypedropdown" class="form-label small"
+              ><b>Message Type</b></label
+            >
+            <select
+              id="msgtypedropdown"
+              class="form-select form-select-sm"
+              onchange="setModelInputVars()"              
+            >
+              <option selected="selected" value="system">System</option>
+              <option value="developer">Developer</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <!-- <label class="form-label"><b>System Prompt</b></label> -->
             <textarea
               id="sysPromptField"
               style="resize: none"
-              class="form-control"
-              rows="8"
+              class="form-control form-control-sm"
+              rows="12"
             ></textarea>
           </div>
         </div>
 
         <!-- Middle Column -->
-        <div class="col-md-6">
+        <div class="col-md-7 position-relative">
           <nav>
-            <div class="nav nav-tabs" id="nav-tab" role="tablist">
+            <div class="nav nav-tabs small" id="nav-tab" role="tablist">
               <button
                 class="nav-link active"
                 id="nav-chat-tab"
@@ -132,7 +147,7 @@
                 aria-controls="nav-info"
                 aria-selected="false"
               >
-                Info
+                Threads
               </button>
               <button
                 class="nav-link"
@@ -160,6 +175,9 @@
               </button>
             </div>
           </nav>
+          <button class="btn btn-link position-absolute top-0 end-0 text-primary" onclick="toggleConfigColumn()">
+            <i class="bi bi-eye"></i>
+          </button>
           <div class="tab-content" id="nav-tabContent">
             <div
               class="tab-pane fade show active"
@@ -197,7 +215,7 @@
               </div>
               <!-- <label for="chatBox" class="form-label"><b>Chat Box</b></label> -->
               <div
-                class="border rounded p-3 mb-3"
+                class="border rounded p-3 mb-3 small"
                 style="height: 465px; overflow-y: auto"
                 id="chatBox"
               >
@@ -207,19 +225,21 @@
                 <!-- <input type="text" id="userInput" class="form-control" placeholder="Enter your query here"> -->
                 <textarea
                   id="userInput"
-                  class="form-control"
-                  rows="3"
+                  class="form-control form-control-sm"
+                  rows="5"
                   placeholder="Enter your query here"
                 ></textarea>
                 <button
                   id="callApiBtn"
-                  class="btn btn-primary btn-sm"
+                  class="btn btn-primary btn-sm align-self-start ms-2"
+                  style="width: 100px;"
                   type="button"
                   onclick="sendMessage()"
                   data-bs-toggle="tooltip"
                   data-bs-placement="right"
                   title="Send prompt to server"
                 >
+                  <!--
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="16"
@@ -233,8 +253,12 @@
                     />
                   </svg>
                   Send
+                  -->
+                  <span id="buttonSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                  <span id="buttonText">Send</span>
                 </button>
               </div>
+              <!--
               <div class="bg-light">
                 <button
                   id="spinnerBtn"
@@ -251,6 +275,7 @@
                   Loading...
                 </button>
               </div>
+              -->
             </div>
             <div
               class="tab-pane fade"
@@ -288,8 +313,8 @@
               </div>
               <!-- <label for="msgBox" class="form-label"><b>Message Box</b></label> -->
               <div
-                class="border rounded p-3 mb-3"
-                style="height: 570px; overflow-y: auto"
+                class="border rounded p-3 mb-3 small"
+                style="height: 600px; overflow-y: auto"
                 id="msgBox"
               >
                 <!-- Raw messages will be displayed here -->
@@ -332,8 +357,8 @@
               </div>
               <!-- <label for="infoBox" class="form-label"><b>Info Box</b></label> -->
               <div
-                class="border rounded p-3 mb-3"
-                style="height: 570px; overflow-y: auto"
+                class="border rounded p-3 mb-3 small"
+                style="height: 600px; overflow-y: auto"
                 id="infoBox"
               >
                 <!-- Info. messages will be displayed here -->
@@ -375,8 +400,8 @@
               </div>
               <!-- <label for="errorBox" class="form-label"><b>Error Box</b></label> -->
               <div
-                class="border rounded p-3 mb-3"
-                style="height: 570px; overflow-y: auto"
+                class="border rounded p-3 mb-3 small"
+                style="height: 600px; overflow-y: auto"
                 id="errorBox"
               >
                 <!-- Exception messages will be displayed here -->
@@ -385,9 +410,9 @@
           </div>
         </div>
         <!-- Third Column -->
-        <div class="col-md-4">
+        <div class="col-md-3" id="configColumn">
           <nav>
-            <div class="nav nav-tabs" id="nav-tab-config" role="tablist">
+            <div class="nav nav-tabs small" id="nav-tab-config" role="tablist">
               <button
                 class="nav-link active"
                 id="nav-model-cfg-tab"
@@ -472,7 +497,7 @@
               </div>
               <div
                 class="border rounded p-3 mb-3"
-                style="height: 570px; overflow-y: auto"
+                style="height: 600px; overflow-y: auto"
                 id="modelCfgBox"
               >
                 <!-- Model configuration will be displayed here -->
@@ -493,7 +518,7 @@
                     value=""
                     id="cache"
                   />
-                  <label class="form-check-label" for="cache">
+                  <label class="form-check-label small" for="cache">
                     Disable Cache
                   </label>
                 </div>
@@ -504,15 +529,15 @@
                     value=""
                     id="stream"
                   />
-                  <label class="form-check-label" for="stream"> Stream </label>
+                  <label class="form-check-label small" for="stream"> Stream </label>
                 </div>
                 <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">Stop Sequence</span>
+                  <span class="input-group-text small">Stop Sequence</span>
                   <input
                     id="stopSequence"
                     type="text"
                     aria-label="Stop Sequence"
-                    class="form-control"
+                    class="form-control form-control-sm"
                   />
                 </div>
                 <div class="input-group input-group-sm mb-2">
@@ -755,13 +780,260 @@
       </div>
     </div>
 
+    <!-- AI App Toasts; ID02272025.n -->
+    <div class="toast-container" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1050;">
+      <div id="aiAppDeployToast" class="toast w-100 hide" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+        <div class="toast-header">
+          <strong class="me-auto">AI App Deployment</strong>
+          <small id="toastStatus"></small>
+          <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="aiAppDeployTMsg">
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody id="jsonTableBody">
+              <!-- Table rows will be inserted here by JavaScript -->
+            </tbody>
+          </table>  
+        </div>
+      </div>
+    </div>
+    <!-- AI App Modal Dialog; ID02272025.n -->
+    <div aria-hidden="true" aria-labelledby="aiAppModalLabel" class="modal fade small" id="aiAppDeployModal" tabindex="-1">
+      <div style="max-width: 55%;"  class="modal-dialog">
+        <div class="modal-content rounded">
+          <div class="modal-header bg-light">
+            <h5 class="modal-title text-primary" id="aiAppModalLabel">Single Domain AI Application</h5>
+            <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col">
+                <div class="form-floating mb-1">
+                  <input class="form-control form-control-sm" id="gatewayId" name="gatewayId" type="text" disabled placeholder="AI Application Gateway"/>
+                  <label class="form-label" for="gatewayId">AI Application Gateway</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-floating mb-1">
+                  <input class="form-control form-control-sm" id="gatewayType" name="gatewayType" type="text" disabled placeholder="Type"/>
+                  <label class="form-label" for="gatewayType">Type</label>
+                </div>
+              </div>
+            </div>
+            <form id="aiAppForm" class="needs-validation" novalidate>
+              <fieldset class="border p-3 mb-1">
+                <div class="row">
+                  <div class="col">
+                    <div class="form-floating mb-1">
+                      <input class="form-control form-control-sm" id="appId" name="appId" required type="text" placeholder="AI Application ID"/>
+                      <label class="form-label" for="appId">Unique AI Application ID</label>
+                      <div class="invalid-feedback">A unique AI App name is required!</div>
+                    </div>
+                  </div>
+                  <div class="col">
+                    <div class="form-floating mb-1">
+                      <select class="form-select form-select-sm" id="appType" name="appType" required>
+                        <option value="azure_language">Azure Language</option>
+                        <option value="azure_translator">Azure Translator</option>
+                        <option value="azure_content_safety">Azure Content Safety</option>
+                        <option value="azure_search">Azure Search</option>
+                        <option value="azure_oai" selected>Azure OAI</option>
+                        <option value="azure_aimodel_inf">Azure AI Model Inf</option>
+                      </select>
+                      <label class="form-label" for="appType">Type of AI Application</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col">
+                    <div class="form-floating mb-1">
+                      <textarea style="resize: none" class="form-control form-control-sm" rows="3" required placeholder="AI Application Description" id="description"></textarea>
+                      <label class="form-label" for="description">AI Application Description</label>
+                      <div class="invalid-feedback">A meaningful description is required!</div>
+                    </div>
+                  </div>
+                  <div class="col">
+                    <div style="width: 250px;" class="form-floating mb-1">
+                      <input class="form-control form-control-sm" id="searchAiApp" name="searchAiApp" type="text" placeholder="AI Search Application"/>
+                      <label class="form-label" for="searchAiApp">Name of the AI Search Application</label>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+              <fieldset class="border p-3 mb-1">
+                <legend class="w-auto px-2 fs-6 fw-bold">Semantic Cache</legend>
+                <div class="row">
+                  <div class="col">
+                    <!--
+                    <div class="form-floating mb-2">
+                      <select class="form-select form-select-sm" id="useCache" name="useCache" required>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                      <label class="form-label" for="useCache">Enable Cache for AI Application?</label>
+                    </div>
+                    -->
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="" id="useCache" checked>
+                      <label class="form-check-label" for="useCache">
+                        Enable Cache for AI Application?
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col">
+                    <div class="form-floating mb-1">
+                      <select class="form-select form-select-sm" id="searchType" name="searchType">
+                        <option value="CosineSimilarity">Cosine Similarity</option>
+                        <option value="EuclideanDistance">Euclidean Distance</option>
+                      </select>
+                      <label class="form-label" for="searchType">Algorithm Used to Search Vectors</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col">
+                    <div class="form-floating mb-1">
+                      <input class="form-control form-control-sm" id="searchDistance" name="searchDistance" type="number" value="90" placeholder="Search Algorithm Match Rate (1.0 to 100.0%)"/>
+                      <label class="form-label" for="searchDistance">Search Algorithm Match Rate (1.0 to 100.0%)</label>
+                    </div>
+                  </div>
+                  <div class="col">
+                    <div class="form-floating mb-1">
+                      <select class="form-select form-select-sm" id="term" name="term" required="">
+                        <option value="messages" selected>Messages</option>
+                        <option value="prompt">Prompt</option>
+                      </select>
+                      <label class="form-label" for="term">Search Terms - Prompt or Messages</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col">
+                    <div class="form-floating mb-1">
+                      <input class="form-control form-control-sm" id="includeRoles" name="includeRoles" type="text" value="user" placeholder="Role Values to Extract and Include in Search"/>
+                      <label class="form-label" for="includeRoles">Role Values to Extract and Include in Search</label>
+                      <div id="roleHelp" class="form-text">Roles (user/system/assistant) separted by comma</div>
+                    </div>
+                  </div>
+                  <div class="col">
+                    <div class="form-floating mb-1">
+                      <input class="form-control form-control-sm" id="entryExpiryCache" name="entryExpiryCache" type="text" value="10 minutes" placeholder="Cache Entry Expiry Time Interval"/>
+                      <label class="form-label" for="entryExpiryCache">Cache Entry Expiry Time Interval</label>
+                      <div id="cacheExpiryHelp" class="form-text"><a href="https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT" class="link-info" target="_blank">PostgreSQL Interval format</a></div>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+              <fieldset class="border p-3 mb-1">
+                <legend class="w-auto px-2 fs-6 fw-bold">Memory</legend>
+                <div class="row">
+                  <div class="col">
+                    <!--
+                    <div class="form-floating mb-2">
+                      <select class="form-select form-select-sm" id="useMemory" name="useMemory" required="">
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                      <label class="form-label" for="useMemory">Enable Memory for AI Application?</label>
+                    </div>
+                    -->
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="useMemory" checked>
+                      <label class="form-check-label" for="useMemory">
+                        Enable Memory for AI Application?
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col">
+                    <div class="form-floating mb-1">
+                      <input class="form-control form-control-sm" id="msgCount" name="msgCount" type="number" value="5" min="1"  placeholder="Number of Messages to Save in Memory"/>
+                      <label class="form-label" for="msgCount">Messages Count to Save in Memory</label>
+                    </div>
+                  </div>
+                  <div class="col">
+                    <div class="form-floating mb-1">
+                      <input class="form-control form-control-sm" id="entryExpiryMemory" name="entryExpiryMemory" type="text" value="30 minutes" placeholder="Memory Entry Expiry Time Interval"/>
+                      <label class="form-label" for="entryExpiryMemory">Memory Entry Expiry Time Interval</label>
+                      <div id="memoryExpiryHelp" class="form-text"><a href="https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT" class="link-info" target="_blank">PostgreSQL Interval format</a></div>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+            </form>
+            <fieldset class="border p-3 mb-1">
+              <legend class="w-auto px-2 fs-6 fw-bold">Traffic Routing</legend>
+              <div class="row">
+                <div class="col">
+                  <div class="form-floating mb-1">
+                    <input class="form-control form-control-sm" id="uri" name="uri" type="url" placeholder="Azure AI Service URI"/>
+                    <label class="form-label" for="uri">Azure AI Service URI</label>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="form-floating mb-1">
+                    <input class="form-control form-control-sm" id="apikey" name="apikey" type="text" placeholder="API Key"/>
+                    <label class="form-label" for="apikey">API Key</label>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col">
+                  <div class="form-floating mb-1">
+                    <input class="form-control form-control-sm" id="rpm" name="rpm" type="number" placeholder="API Rate Limit (RPM)"/>
+                    <label class="form-label" for="rpm">API Rate Limit (RPM)</label>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="form-floating mb-1">
+                    <button class="btn btn-secondary btn-sm" id="addEndpoint" type="button">Add Endpoint</button>
+                  </div>
+                </div>
+              </div>
+              <table class="table table-bordered" id="endpointsTable">
+                <thead>
+                  <tr>
+                    <th>Priority</th>
+                    <th>Rate Limit (RPM)</th>
+                    <th>Endpoint URI</th>
+                    <th>API Key</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Rows will be added here ... -->
+                </tbody>
+              </table>
+              <div id="noRowsMessage" class="alert alert-warning" style="display: none;">
+                At least one AI Service endpoint URI is required.
+              </div>
+            </fieldset>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal" type="button">Close</button>
+            <button class="btn btn-primary btn-sm" 
+              type="button" 
+              onclick="deployAiApplication()"
+              data-bs-toggle="tooltip"
+              data-bs-placement="right"
+              title="Deploy AI Application">Deploy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Footer -->
     <footer class="bg-light py-3 mt-4">
       <div class="container text-center">
         <span>&copy; 2024 Your Company</span>
       </div>
     </footer>
-
+    
     <!-- Bootstrap JS and dependencies -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
@@ -774,6 +1046,8 @@
 
     <!-- JavaScript for chat box functionality -->
     <script type="text/javascript" src="core.js"></script>
+    <!-- Custom script to handle events for endpoints table -->
+    <script type="text/javascript" src="aiAppForm.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/MarketingPipeline/Markdown-Tag/markdown-tag.js"></script> 
   </body>
 </html>

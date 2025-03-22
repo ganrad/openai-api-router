@@ -7,6 +7,8 @@
  * Version: 2.1.1
  *
  * Notes:
+ * ID03122025: ganrad: v2.3.0: (Enhancement) Ai App Gateway API request ID will be saved within the span in AppInsights. This should
+ * help with troubleshooting performance issues.
 */
 
 const { AzureMonitorTraceExporter } = require('@azure/monitor-opentelemetry-exporter');
@@ -17,8 +19,11 @@ const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventi
 const { registerInstrumentations } = require('@opentelemetry/instrumentation');
 const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
 const { PgInstrumentation } = require('@opentelemetry/instrumentation-pg');
+const { trace, context } = require('@opentelemetry/api'); // ID03122025.n
+const { AsyncHooksContextManager } = require('@opentelemetry/context-async-hooks'); // ID03122025.n
 
 function initializeTelemetry(srvVersion) {
+  try {
     // Create a new Resource object with the following custom resource attributes:
     //
     // * service_name: my-service
@@ -35,6 +40,11 @@ function initializeTelemetry(srvVersion) {
     const tracerProvider = new NodeTracerProvider({
         resource: customResource
     });
+
+    // Initialize and set the context manager; ID03122025.n
+    const contextManager = new AsyncHooksContextManager();
+    contextManager.enable();
+    context.setGlobalContextManager(contextManager);
 
     // Register the Tracer Provider as the global tracer
     tracerProvider.register();
@@ -59,6 +69,22 @@ function initializeTelemetry(srvVersion) {
         ],
         enableLiveMetrics: true
     });
+  }
+  catch (error) {
+    console.error("Error initializing telemetry:", error);
+  }
 }
 
-module.exports = { initializeTelemetry };
+function addCustomPropertiesToSpan(propertiesMap) { // ID03122025.n
+  const span = trace.getSpan(context.active());
+  if (span) {
+    propertiesMap.forEach((value, key) => {
+      span.setAttribute(key, value);
+    });
+  };
+}
+
+module.exports = { 
+  initializeTelemetry,
+  addCustomPropertiesToSpan // ID03122025.n
+};

@@ -1,5 +1,5 @@
 {
-  "serverId": "Local-Gateway",
+  "serverId": "Test-Gateway",
   "serverType": "single-domain",
   "applications": [
     {

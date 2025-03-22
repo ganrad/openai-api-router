@@ -1,1 +1,1 @@
-docker run -e API_GATEWAY_KEY='abcxyz' -e API_GATEWAY_CLIENT_ID='[Enter Client ID of AI App Gateway registered in MSFT Entra]' -e AZURE_TENANT_ID='[Enter Azure Tenant ID]' --name az-ais-gateway -p 8000:8000 -d az-ais-api-gateway
+docker run -e API_GATEWAY_KEY='abcxyz' -e API_GATEWAY_CLIENT_ID='[Enter Client ID of AI App Gateway registered in MSFT Entra]' -e AZURE_TENANT_ID='[Enter Azure Tenant ID]' --name az-ais-gateway -p 8000:8000 -d ai-application-gateway

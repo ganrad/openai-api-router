@@ -16,6 +16,7 @@
  * a) Each server instance to cleanly evict cache/memory entries independently of other instances within a replica set & b) Provide info. on which
  * server instance actually created a record in the respective DB table.
  * ID01292025: ganrad: v2.2.0: (Bugfix) Gracefully skip caching when embedding application and endpoints are not configured.
+ * ID03052025: ganrad: v2.3.0: (Bugfix) Use MID auth for Azure AI Service(s) when it is enabled & configured for the runtime.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -68,7 +69,8 @@ class CacheDao {
     this.srchTermRoles = (this.srchTerm === "messages") ? (sContent.includeRoles ? sContent.includeRoles : "system,user,assistant") : null;
   }
 
-  async queryVectorDB(rid, appId, reqBody, dbHandle) {
+  // async queryVectorDB(rid, appId, reqBody, dbHandle) { ID03052025.o
+  async queryVectorDB(req, appId, dbHandle) { // ID03052025.n
     let embedding = null;
     let rowno = 0;
     let score = 0.0;
@@ -87,15 +89,19 @@ class CacheDao {
 
       // 1) Pre-process query before vectorization
       let queryContent = helper.prepareTextToEmbedd(
-        rid,
+        // rid, // ID03052025.o
+        req.id, // ID03052025.n
         this.srchTerm,
         this.srchTermRoles,
-        reqBody);
+        // reqBody); ID03052025.o
+        req.body); // ID03052025.n
 
       // 2) Convert query to embedded vector using Azure OpenAI ADA model
-      let apiResp = await helper.callRestApi(
-        rid,
-        reqBody.user,
+      // let apiResp = await helper.callRestApi( ID03052025.o
+      let apiResp = await helper.vectorizeQuery( // ID03052025.n
+        // rid, ID03052025.n
+        req, // ID0305205.n
+        // reqBody.user, ID03052025.o
         this.endPointInfo,
         this.endpoints,
         queryContent);
@@ -116,7 +122,8 @@ class CacheDao {
         // 3) Execute vector query on DB
         const { rowCount, simScore, completion } =
           await dbHandle.executeQuery(
-            rid,
+            // rid, ID03052025.o
+            req.id, // ID03052025.n
             query,
             [
               pgvector.toSql(apiResp.embedding),
@@ -132,10 +139,10 @@ class CacheDao {
         embedding = apiResp.embedding;
       };
       // console.log(`${this.constructor.name}.queryVectorDB():\n  Application ID: ${appId}\n  Request ID: ${rid}\n  User: ${reqBody.user}\n  Execution Time: ${Date.now() - stTime}\n*****`);
-      logger.log({ level: "info", message: "[%s] %s.queryVectorDB():\n  Application ID: %s\n  Request ID: %s\n  User: %s\n  Execution Time: %s", splat: [scriptName, this.constructor.name, appId, rid, reqBody.user, Date.now() - stTime] });
+      logger.log({ level: "info", message: "[%s] %s.queryVectorDB():\n  Application ID: %s\n  Request ID: %s\n  User: %s\n  Execution Time: %s", splat: [scriptName, this.constructor.name, appId, req.id, req.body.user, Date.now() - stTime] }); // ID03052025.n
     }
     catch (error) {
-      let err_msg = { reqId: rid, appId: appId, body: reqBody, cause: error };
+      let err_msg = { reqId: req.id, appId: appId, body: req.body, cause: error }; // ID03052025.n
       // console.log({level: "error", message: "[%s] %s.queryVectorDB():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
       logger.log({ level: "error", message: "[%s] %s.queryVectorDB():\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, err_msg] });
     };

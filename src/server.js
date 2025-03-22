@@ -35,14 +35,18 @@
  * ID12192024: ganrad: v2.1.0: Introduced function to capture termination signal(s).  Use this function to perform cleanup tasks prior to
  * exiting the server (Terminate gracefully).
  * ID01212025: ganrad: v2.1.0: AI Gateway can only be reconfigured when run in single process/instance standalone mode.
- * ID01302025: ganrad: v2.2.0: Re-factored code.
- * ID01312025: ganrad: v2.1.1: (Bugfix) Rolled back update introduced in ID11052024. This env variable (name) is defined by Azure Monitor 
+ * ID01312025: ganrad: v2.1.1-v2.2.0: (Bugfix) Rolled back update introduced in ID11052024. This env variable (name) is defined by Azure Monitor 
  * OpenTelemetry library. Also, Azure Monitor is initialized manually and the init code has been moved to global space.  This fixes 
  * the telemetry ingestion issue.
- * ID01232025: ganrad: v2.2.0: Introduced control plane API to support AI Application server, Single and multi domain AI Apps & RAG Apps. 
- * ID01242025: ganrad: v2.2.0: Modularized Json Schema files for single and multi domain AI Gateways.  Switched to 'ajv' json schema 
+ * ID01232025: ganrad: v2.2.0: (Enhancement) Introduced control plane API to support AI Application server, Single and multi domain AI Apps & RAG Apps. 
+ * ID01242025: ganrad: v2.2.0: (Enhancement) Modularized Json Schema files for single and multi domain AI Gateways.  Switched to 'ajv' json schema 
  * parser (from 'jsonschema').
- * ID01292025: ganrad: v2.2.0: AI server and app context can now be persisted in a db table (aiappservers) in addition to a config file.
+ * ID01292025: ganrad: v2.2.0: (Enhancement) AI server and app context can now be persisted in a db table (aiappservers) in addition to a config file.
+ * ID01302025: ganrad: v2.2.0: Re-factored code.
+ * ID02202025: ganrad: v2.3.0: (Bugfix) By default body-parser sets a limit of approx. 100KB for JSON and URL-encoded data.
+ * Updated body-parser to accept up to 600Kb ~ 150K TPMs for JSON data (request payload).
+ * ID03122025: ganrad: v2.3.0: (Enhancement) When AppInsights logging is enabled, the unique request ID will be stored within the span. This should
+ * help with troubleshooting performance issues.
 */
 
 // ID04272024.sn
@@ -52,12 +56,12 @@ const wlogger = require('./utilities/logger.js');
 wlogger.log({ level: "info", message: "[%s] Starting initialization of AI Application Gateway ...", splat: [scriptName] });
 // ID04272024.en
 
-// Server version v2.2.0 ~ ID01232025.n
-const srvVersion = "2.2.0";
+// Server version v2.3.0 ~ ID02202025.n
+const srvVersion = "2.3.0";
 
 // ID02082024.sn: Configure Azure Monitor OpenTelemetry for instrumenting API gateway requests.
 // const { useAzureMonitor } = require("@azure/monitor-opentelemetry"); ID01312025.o
-const { initializeTelemetry } = require("./config/monitor/azureMonitorManualInstru.js"); // ID01312025.n
+const { initializeTelemetry, addCustomPropertiesToSpan } = require("./config/monitor/azureMonitorManualInstru.js"); // ID01312025.n, ID03122025.n
 const azAppInsightsConString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING; // ID01312025.n
 // let azAppInsightsConString = process.env.APPLICATION_INSIGHTS_CONNECTION_STRING; // ID11052024.n, ID01312025.o
 if (azAppInsightsConString) {
@@ -79,7 +83,8 @@ const {
   AzAiServices, 
   ServerTypes, 
   AppServerStatus, 
-  ConfigProviderType } = require("./utilities/app-gtwy-constants");
+  ConfigProviderType,
+  DefaultJsonParserCharLimit } = require("./utilities/app-gtwy-constants"); // ID02202025.n
 const { apirouter, reconfigEndpoints } = require("./routes/apirouter"); // Single domain AI App Gateway
 const { mdapirouter, reconfigAppMetrics } = require("./routes/md-apirouter"); // ID09042024.n; Multi domain distributed AI App Engine
 const cprouter = require("./routes/control-plane.js"); // ID01232025.n; AI App Gateway control plane route
@@ -89,11 +94,11 @@ const CacheConfig = require("./utilities/cache-config");
 const SchedulerFactory = require("./utilities/scheduler-factory"); // ID05062024.n
 const sFactory = new SchedulerFactory(); // ID05062024.n
 
-const initAuth = require("./auth/bootstrap-auth"); // ID07292024.n
+const { initAuth } = require("./auth/bootstrap-auth"); // ID07292024.n
 const { validateAiServerSchema } = require("./schemas/validate-json-config"); // ID01242025.n, ID09202024.n
 
 const app = express();
-var bodyParser = require('body-parser');
+let bodyParser = require('body-parser');
 
 // AI Application Gateway API version - ID11152024.n
 const apiVersion = "/api/v1/";
@@ -143,10 +148,10 @@ async function checkDbConnectionStatus() {
 }
 // ID06282024.en
 
-var host; // App Gateway host
-var port; // App Gateway listen port
-var endpoint; // AI App Gateway base URI - /api/v1/{env}/apirouter ID11152024.n
-var pkey; // App Gateway private key (used only for reconfiguring endpoints)
+let host; // App Gateway host
+let port; // App Gateway listen port
+let endpoint; // AI App Gateway base URI - /api/v1/{env}/apirouter ID11152024.n
+let pkey; // App Gateway private key (used only for reconfiguring endpoints)
 // ID02202024.sn
 async function readAiAppGatewayEnvVars() {
   if (process.env.API_GATEWAY_HOST)
@@ -305,7 +310,7 @@ async function populateServerContext(initialize) { // ID01312025.n
   return(null);
 }
 
-var cacheConfig;
+let cacheConfig;
 let cacheInvalidator = null; // ID11112024.n ~ Cache entry invalidator instance
 let memoryInvalidator = null; // ID11112024.n ~ Memory entry evictor instance
 async function readAiAppGatewayConfig() { // ID01292025.n
@@ -654,7 +659,9 @@ function initializeAuth() {
 initServer().then(() => { // ID01302025.n
   app.use(cors()); // ID05222024.n
 
-  app.use(bodyParser.json());
+  // app.use(bodyParser.json()); // ID02202025.o
+  app.use(bodyParser.json({limit: DefaultJsonParserCharLimit})); // ID02202025.n
+  app.use(bodyParser.urlencoded({limit: DefaultJsonParserCharLimit, extended: true})); // ID02202025.n
 
   // ID07292024.sn
   // Generate request id prior to invoking router middleware (endpoints)
@@ -662,6 +669,12 @@ initServer().then(() => { // ID01302025.n
   app.use(endpoint, (req, res, next) => { // ID11152024.n
     logger(req, res);
 
+    if ( azAppInsightsConString ) { // Is AppInsights logging is enabled; ID03122025.n
+      // Add the request ID to the context span
+      let spanProperties = new Map();
+      spanProperties.set('x-request-id', req.id);
+      addCustomPropertiesToSpan(spanProperties);
+    };
     next();
   });
 

@@ -1,1 +1,1 @@
-docker build --progress=plain -t az-ais-api-gateway .
+docker build --progress=plain -t ai-application-gateway .

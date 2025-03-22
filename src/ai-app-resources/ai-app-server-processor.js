@@ -7,6 +7,7 @@
  * Version: 2.2.0
  *
  * Notes:
+ * ID03102025: ganrad: v2.3.0: (Enhancement) Added http method to 'operations' API
 */
 
 const fs = require("fs");
@@ -63,7 +64,7 @@ class AiAppServerProcessor {
     return(respMessage);
   }
 
-  #getResourceOperations(req) {
+  #getResourceOperations(req) { // => /cp/AiAppServer/operations
     let serverDef = req.srvconf;
     const serverName = serverDef.serverId;
     const serverType = serverDef.serverType;
@@ -90,14 +91,17 @@ class AiAppServerProcessor {
         resourceType: AppResourceTypes.AiAppServer,
         operations: {
           operations: {
+            method: HttpMethods.GET, // ID03102025
             uri: "/cp/AiAppServer/operations",
             description: "Get operations supported by this AI resource"
           },
           get: {
+            method: HttpMethods.GET, // ID03102025
             uri: "/cp/AiAppServer/{ai-app-server-id}/get",
             description: "Get details of an AI Application Server by ID"
           },
           deploy: {
+            method: HttpMethods.POST, // ID03102025
             uri: "/cp/AiAppServer/{ai-app-server-id}/deploy",
             description: "Initialize AI Application Server and deploy AI Apps"
           }
