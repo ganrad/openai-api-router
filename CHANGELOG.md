@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [v2.3.0](https://github.com/ganrad/openai-api-router/compare/v2.2.0...v2.3.0)
+## [v2.3.1](https://github.com/ganrad/openai-api-router/compare/v2.2.0...v2.3.1)
 ### Functionality changes
 **Azure AI Application Gateway (Server)**
 * Bugfix: The JSON body-parser character limit has been increased from the default 100kb to 600kb. This change ensures that large request payloads sent to advanced reasoning models (thru the AI App Gateway) do not fail and throw an exception.
@@ -9,6 +9,8 @@
 * Enhancement: Added support for using the AI App Gateway host's system-managed Azure Entra ID for authenticating against Azure AI Services.
 * Enhancement: Added new *sessions* API.  This API can be used to retrieve all requests & corresponding messages associated with a given thread (/user session).
 * Poka-yoke: When Azure OAI Chat Completion Function Call APIs are proxied through the AI Application Gateway, caching will be automatically disabled.
+* Bugfix: When Azure Entra ID is used for authenticating against Azure OAI API, a case insensitive match will be performed to retrieve the 'Authorization' HTTP header (auth token).
+* Bugfix: The URI index of the backend endpoint will be returned for both completed and failed API calls.
 
 **AI Application Gateway Console (UI/SPA)**
 * Introduced release v1.2.0.  This new release includes several user interface refinements to improve the overall user experience.
