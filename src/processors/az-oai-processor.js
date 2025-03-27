@@ -34,6 +34,8 @@
  * ID03052025: ganrad: v2.3.0: (Enhancement) Introduced support for using RAPID host's system MID for authenticating against Azure AI Service(s).
  * Restructured code.
  * ID03142025: ganrad: v2.3.0: (Error-proofing ~ poka-yoke) Disable caching for AOAI Chat Completion API function calls.
+ * ID03262025: ganrad: v2.3.1: (Bugfix) a) Do a case insensitive match for authorization http header. b) Log the backend uri index when
+ * an exception is encountered.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -803,7 +805,8 @@ class AzOaiProcessor {
         const meta = new Map();
         meta.set('Content-Type', 'application/json');
         // const bearerToken = req.get("Authorization"); // case-insensitive header match ID10302024.sn, ID03052025.o
-        let bearerToken = req.headers['Authorization']; // ID03052025.n
+        // let bearerToken = req.headers['Authorization']; // ID03052025.n, ID03262025.o
+        let bearerToken = req.headers['Authorization'] || req.headers['authorization']; // ID03262025.n
         if ( config.appType === AzAiServices.OAI ) { // ID11052024.n
           if ( bearerToken && !req.authInfo ) { // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
             if ( process.env.AZURE_AI_SERVICE_MID_AUTH === "true" ) // ID03052025.n
@@ -979,6 +982,7 @@ class AzOaiProcessor {
           metricsObj.updateFailedCalls(status, 0);
           respMessage = {
             http_code: status,
+            uri_idx: (uriIdx - 1), // ID03262025.n
             status_text: response.statusText,
             data: data
           };
@@ -1016,6 +1020,7 @@ class AzOaiProcessor {
 
           respMessage = {
             http_code: status,
+            uri_idx: (uriIdx - 1), // ID03262025.n
             data: err_msg
           };
 
@@ -1045,6 +1050,7 @@ class AzOaiProcessor {
 
         respMessage = {
           http_code: 500,
+          uri_idx: (uriIdx - 1), // ID03262025.n
           data: err_msg
         };
 

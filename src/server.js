@@ -47,6 +47,7 @@
  * Updated body-parser to accept up to 600Kb ~ 150K TPMs for JSON data (request payload).
  * ID03122025: ganrad: v2.3.0: (Enhancement) When AppInsights logging is enabled, the unique request ID will be stored within the span. This should
  * help with troubleshooting performance issues.
+ * ID03262025: ganrad: v2.3.1: (Bugfix) Patch release.
 */
 
 // ID04272024.sn
@@ -56,8 +57,8 @@ const wlogger = require('./utilities/logger.js');
 wlogger.log({ level: "info", message: "[%s] Starting initialization of AI Application Gateway ...", splat: [scriptName] });
 // ID04272024.en
 
-// Server version v2.3.0 ~ ID02202025.n
-const srvVersion = "2.3.0";
+// Server version v2.3.1 ~ ID03262025.n
+const srvVersion = "2.3.1";
 
 // ID02082024.sn: Configure Azure Monitor OpenTelemetry for instrumenting API gateway requests.
 // const { useAzureMonitor } = require("@azure/monitor-opentelemetry"); ID01312025.o
