@@ -5,7 +5,7 @@
  * From the project root directory issue the following command. CAUTION: When 'drop-tables' option is
  * used, all tables are dropped and then recreated.
  * Command to run:
- *   node ./db-scripts/pg-test.js [drop-tables]
+ *   node ./db-scripts/pg-create-db-resources.js [drop-tables]
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 03-01-2024
@@ -15,6 +15,9 @@
  * ID10262024: ganrad: v2.1.0: Introduced table aiapptoolstrace to capture tool execution details for multi-domain AI Apps.
  * ID01232025: ganrad: v2.2.0: Introduced table aiappdeploy to store new AI Application deployment requests.
  * ID01272025: ganrad: v2.2.0: Introduced table aiappservers to store AI app server and application definitions.
+ * ID05142025: ganrad: v2.3.8: Introduced table userfacts to store facts related to a user of an AI Application.  User facts can be used
+ * by the model to provided more personalized responses.
+ * ID06132025: ganrad: v2.3.8: Renamed this script from 'pg-test.js' to 'pg-create-db-resources.js'.
  */
 
 // const pgvector = require('pgvector/pg');
@@ -80,7 +83,7 @@ async function createDBResources() {
     await pdb.dropTable(3);
   await pdb.createTable(3);
 
-  // Query rows in 'ToolsTrace' table
+  // Query rows in 'AiAppDeploy' table
   let appdeployDao = new PersistDao(pdb,TblNames.AiAppDeploy);
   await appdeployDao.queryTable('001',0,null);
   // ID01232025.en
@@ -88,17 +91,29 @@ async function createDBResources() {
   // ID01272025.sn
   console.log("***** End of AI App Deploy Table; *****\n\n***** Begin AI App Servers Table; *****"); 
 
-  // Delete and create 'aiappdeploy' table
+  // Delete and create 'aiappservers' table
   if ( deleteTables )
     await pdb.dropTable(4);
   await pdb.createTable(4);
 
-  // Query rows in 'ToolsTrace' table
+  // Query rows in 'AiAppServers' table
   let appsrvsDao = new PersistDao(pdb,TblNames.AiAppServers);
   await appsrvsDao.queryTable('001',0,null);
   // ID01272025.en
 
-  console.log("***** End of AI App Servers Table *****");
+  // ID05142025.sn
+  console.log("***** End of AI App Servers Table; *****\n\n***** Begin User Facts Table; *****");
+
+  // Delete and create 'userfacts' table
+  if ( deleteTables )
+    await pdb.dropTable(5);
+  await pdb.createTable(5);
+
+  // Query rows in 'UserFacts' table
+  let ufDao = new PersistDao(pdb,TblNames.UserFacts);
+  await ufDao.queryTable('001',0,null);
+  console.log("***** End of User Facts Table *****");
+  // ID05142025.en
   // await new Promise(r => setTimeout(r, 2000));
 }
 

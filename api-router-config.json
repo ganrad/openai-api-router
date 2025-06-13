@@ -155,54 +155,83 @@
       ]
     },
     {
-      "appId": "chatbot-gpt4o",
-      "description": "An AI Assistant / Chatbot application which uses gpt-4o (Omni) model for inferencing",
+      "appId": "ai-chatbot-gpt4o",
+      "description": "An AI Assistant / Chatbot application which uses gpt-4o (/ Omni) mini model for answering GK questions.",
       "appType": "azure_oai",
-      "searchAiApp": "search-garmin-docs",
       "cacheSettings": {
         "useCache": true,
         "searchType": "CosineSimilarity",
-        "searchDistance": 0.98,
+        "searchDistance": 0.92,
         "searchContent": {
           "term": "messages",
           "includeRoles": "user"
         },
-        "entryExpiry": "2 minutes"
+        "entryExpiry": "5 minutes"
       },
       "memorySettings": {
+        "affinity": true,
         "useMemory": true,
-        "msgCount": 1,
+        "msgCount": 5,
         "entryExpiry": "5 minutes"
       },
       "endpoints": [
         {
+          "rpm": 5,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+          "apikey": "9ecabe6d",
+          "healthPolicy": {
+            "latencyThresholdSeconds": 20,
+            "retryAfterMinutes": 5
+          }
+        },
+        {
           "rpm": 10,
-          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt-4o/chat/completions?api-version=2024-02-01",
-          "apikey": "ed9a4c4c"
+          "uri": "https://oai-gr-dev-wus3.openai.azure.com/openai/deployments/gpt-4o-wus3/chat/completions?api-version=2025-01-01-preview",
+          "apikey": "c44a8e19"
         }
       ]
     },
     {
-      "appId": "aidocusearchapp",
-      "description": "An AI text generation application which uses gpt-35-turbo instruct model",
+      "appId": "ai-chatbot-v2.3.8-gpt4o-mini",
+      "description": "An AI Application that uses personalization feature introduced in RAPID v2.3.8.",
       "appType": "azure_oai",
+      "searchAiApp": "",
       "cacheSettings": {
         "useCache": true,
         "searchType": "CosineSimilarity",
-        "searchDistance": 0.95,
+        "searchDistance": 90,
         "searchContent": {
-          "term": "prompt"
+          "term": "messages",
+          "includeRoles": "user"
         },
-        "entryExpiry": "1 day"
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": true,
+        "generateFollowupMsgs": true,
+        "userFactsAppName": "",
+        "extractRoleValues": "User",
+        "extractionPrompt": "",
+        "followupPrompt": ""
       },
       "endpoints": [
         {
-          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt35-turbo-instruct/completions?api-version=2023-05-15",
-          "apikey": "ed9a4c4c"
+          "id": "gpt-4o-mini-eastus",
+          "rpm": 10,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+          "apikey": "9ecabe6d"
         },
         {
-          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-35-t-inst-01/completions?api-version=2023-05-15",
-          "apikey": "ed9a4c4c"
+          "id": "gpt-4o-westus3",
+          "rpm": 10,
+          "uri": "https://oai-gr-dev-wus3.openai.azure.com/openai/deployments/gpt-4o-wus3/chat/completions?api-version=2025-01-01-preview",
+          "apikey": "c44a8e19"
         }
       ]
     }

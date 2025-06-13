@@ -13,7 +13,9 @@
  * exception if any one of them is not set!
  * ID02272025: ganrad: v2.3.0-v1.2.0: (Improvements) Implemented multiple UI refinements.
  * ID03102025: ganrad: v2.3.0-v1.2.0: (Enhancement) a) Restructured server initialization code. b) Added body parser to 
- * handle requests containing JSON payload & c) Added new API endpoint to save new AI App definition.
+ * handle requests containing JSON payload & c) Added new API endpoint
+ * to save new AI App definition.
+ * ID04172025: ganrad: v2.3.2-v1.3.0: (Enhancement) Implemented AI App Metrics dialog.
  */
 
 require('console-stamp')(console, {
@@ -22,7 +24,7 @@ require('console-stamp')(console, {
 const express = require('express');
 const fs = require('fs');
 
-const srvVersion = "1.2.0"; // ID02272025.n
+const srvVersion = "1.3.0"; // ID04172025.n
 const srvUriPrefix = "/ais-chatbot/ui/";
 const srvStartTime = new Date().toLocaleString();
 

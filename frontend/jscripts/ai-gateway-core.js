@@ -20,9 +20,16 @@
  * support for requesting + receiving token counts for streamed API calls.
  * ID03132025: ganrad: v2.3.0-v1.2.0: (Enhancements) Added buttons to allow users to save(to clipboard) and like responses.
  * ID03202025: ganrad: v2.3.0-v1.2.0: (Enhancement) Added a button to hide / show (toggle) the model and search config panels (3rd column).
+ * ID05142025: ganrad: v2.3.8-v1.3.0: (Bugfix) Replaced GFM library to fix html rendering issues in the console 'chat' box.
+ * ID06052025: ganrad: v2.3.8-v1.3.0: (Bugfix) 'max_tokens' parameter is now deprecated in Azure AI Model Inference API. Updated code to use
+ * 'max_completion_tokens'.
+ * ID06062025: ganrad: v2.3.8-v1.3.0: Renamed this script to 'ai-gateway-core.js'.
+ * ID06062025: ganrad: v2.3.8-v1.3.0: (Enhancement) When auth is turned off - To allow different users to test RAPID server, the 
+ * username will be auto-generated each time this SPA is refreshed within the browser.
 */
 // Adjust the system prompt as needed
 const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // Default prompt
+const uiUserName = "user-" + Date.now().toString(36) + Math.random().toString(36).substring(2, 8); // ID06062025.n
 
 let threadId = null;
 let aiAppObject = null; // AI Application Object selected by the user
@@ -218,8 +225,8 @@ function setModelInputVars() {  // Executes after 'setInferenceTarget()'
     delete promptObject.top_p;
     delete promptObject.presence_penalty;
     delete promptObject.frequency_penalty;
-    promptObject.max_completion_tokens = promptObject.max_tokens;
-    delete promptObject.max_tokens;
+    // promptObject.max_completion_tokens = promptObject.max_tokens; // ID06052025.o
+    // delete promptObject.max_tokens;
     promptObject.stream = false; // No streaming for o1; available for o3-mini
 
     streamElem.checked = false;
@@ -243,7 +250,8 @@ function setInferenceTarget() {
 
   // Set the model config form fields
   document.getElementById("descField").innerHTML = aiAppObject.description;
-  document.getElementById("uid").value = isAuthEnabled ? username : aiAppObject.user;
+  // document.getElementById("uid").value = isAuthEnabled ? username : aiAppObject.user; ID06062025.o
+  document.getElementById("uid").value = isAuthEnabled ? username : uiUserName; // ID06062025.n
   document.getElementById("stream").checked = aiAppObject.model_params.stream;
   document.getElementById("stopSequence").value = aiAppObject.model_params.stop;
   document.getElementById("temperature").value = aiAppObject.model_params.temperature;
@@ -261,8 +269,10 @@ function setInferenceTarget() {
   // Construct & populate a new prompt object
   promptObject = {
     messages: [],
-    max_tokens: aiAppObject.model_params.max_tokens,
-    user: isAuthEnabled ? username : aiAppObject.user,
+    // max_tokens: aiAppObject.model_params.max_tokens,  // ID06052025.n
+    max_completion_tokens:  aiAppObject.model_params.max_tokens,
+    // user: isAuthEnabled ? username : aiAppObject.user, ID06062025.o
+    user: isAuthEnabled ? username : uiUserName, // ID06062025.n
     stream: aiAppObject.model_params.stream,
     // stream_options: aiAppObject.model_params.stream ? { include_usage: true } : null,
     temperature: aiAppObject.model_params.temperature,
@@ -382,7 +392,8 @@ function saveContent(configName) {
   if (configName === "modelConfig") {
     promptObject.stream = document.getElementById("stream").checked;
     // promptObject.stream_options = promptObject.stream ? { include_usage: true } : null,
-    promptObject.max_tokens = Number(document.getElementById("mtokens").value);
+    // promptObject.max_tokens = Number(document.getElementById("mtokens").value); // ID06052025.o
+    promptObject.max_completion_tokens = Number(document.getElementById("mtokens").value); // ID06052025.n
     promptObject.temperature = Number(document.getElementById("temperature").value);
     promptObject.presence_penalty = Number(document.getElementById("presence").value);
     promptObject.frequency_penalty = Number(document.getElementById("frequency").value);
@@ -524,7 +535,13 @@ function addJsonToThreadsTable(box,jsonData) {
     for (const key in jsonData) {
       if (jsonData.hasOwnProperty(key)) {
         const th = document.createElement('th');
-        th.textContent = key.charAt(0).toUpperCase() + key.slice(1); // Capitalize the first letter
+        // th.textContent = key.charAt(0).toUpperCase() + key.slice(1); // Capitalize the first letter; ID05142025.o
+        th.textContent = key // ID05142025.n
+          .replace(/_/g, ' ') // Replace underscores with spaces
+          .split(' ') // Split into words
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // Capitalize each word
+          .join(' '); // Join back into a single string
+
         tableHeaders.appendChild(th);
       }
     };
@@ -718,7 +735,7 @@ function addRespMsgTitleButtons(element) { // ID03132025.n
 
 function addMessageToChatBox(box, cls, msg, ctx) { // ID12022024.sn, ID03132025.n
   const element = document.createElement('div');
-  element.className = cls + "user-select-all";
+  element.className = cls + " user-select-all";
   element.id = "chat-msg-" + msgCounter;
 
   let outerDivElement = addRespMsgTitleButtons(element);
@@ -742,16 +759,26 @@ function addMessageToChatBox(box, cls, msg, ctx) { // ID12022024.sn, ID03132025.
     refList += '</ul>';
   };
 
+  /** ID05142025.so
   const contentElem = document.createElement('pre');
   // Add styles for wrapping words
   contentElem.style.whiteSpace = 'pre-wrap';
   contentElem.style.overflowWrap = 'break-word';
+  // contentElem.innerHTML = marked.parse(content);
 
-  const mdElem = document.createElement('md');
-  mdElem.innerHTML = content;
-  contentElem.appendChild(mdElem);
+  // const mdElem = document.createElement('md'); ID05142025.o
+  // mdElem.innerHTML = content;
+  // contentElem.appendChild(mdElem);
 
-  element.appendChild(contentElem);
+  // element.appendChild(contentElem);
+  ID05142025.eo */
+
+  // ID05142025.sn
+  element.innerHTML = marked.parse(content);
+  element.querySelectorAll('pre code').forEach(block => {
+    hljs.highlightElement(block);
+  });
+  // ID05142025.en
 
   if ( ctx ) {
     const citElement = document.createElement('span');
@@ -769,7 +796,7 @@ function addMessageToChatBox(box, cls, msg, ctx) { // ID12022024.sn, ID03132025.
   // box.appendChild(element);
   box.appendChild(outerDivElement);
   box.scrollTop = box.scrollHeight;
-  renderMarkdown();
+  // renderMarkdown(); ID05142025.o
 } // ID12022024.en
 
 function toggleConfigColumn() { // ID03202025.n
@@ -802,7 +829,7 @@ function isMessageComplete(message) { // Not used anymore!
 }
 
 /**
-* Stream OpenAI completion
+* Stream LLM completion
 * @param{string} prompt
 * @param{any} parameters
 */
@@ -811,9 +838,14 @@ async function streamCompletion(serverId, uri, appId, hdrs, box) { // ID02272025
 
   try {
     const ds = promptObject.data_sources;
+    if ( ds ) { // ID05142025.n; OYD call doesn't support 'max_completion_tokens' & 'stream_options' yet!
+      delete promptObject.stream_options;
+      promptObject.max_tokens = promptObject.max_completion_tokens;
+      delete promptObject.max_completion_tokens;
+    };
+
     if (threadId) // No OYD call when user session is alive
       delete promptObject.data_sources;
-
     const sttime = Date.now();
     let response = await fetch(uri, {
       method: "POST", headers: hdrs, body: JSON.stringify(promptObject)
@@ -830,7 +862,8 @@ async function streamCompletion(serverId, uri, appId, hdrs, box) { // ID02272025
           ai_app_gateway: serverId,
           application_id: appId,
           thread_id: threadId,
-          user: aiAppObject.user,
+          // user: aiAppObject.user, ID06062025.o
+          user: isAuthEnabled ? username : uiUserName, // ID06062025.n
           endpoint_uri: uri,
           start_time: new Date().toLocaleString('en-US', { timeZoneName: 'short' })
         };
@@ -845,26 +878,16 @@ async function streamCompletion(serverId, uri, appId, hdrs, box) { // ID02272025
       };
 
       const divelem = document.createElement('div');
-      // const element = document.createElement('p'); ID12022024.o
-      const preElim = document.createElement('pre'); // ID12022024.sn
-      // Add styles for wrapping words
-      preElim.style.whiteSpace = 'pre-wrap';
-      preElim.style.overflowWrap = 'break-word';
-
-      const element = document.createElement('md');
-      preElim.appendChild(element); // ID12022024.en
-
-      divelem.className = 'mb-2 rounded bg-light text-dark';
-      // divelem.appendChild(element); ID12022024.o
-      divelem.appendChild(preElim); // ID12022024.n
+      divelem.className = 'mb-2 rounded bg-light text-dark user-select-all'; // ID05142025.n
+      divelem.id = "chat-msg-" + msgCounter; // ID05142025.n
 
       const reader = response.body?.pipeThrough(new TextDecoderStream()).getReader();
       if (!reader) return;
       // console.log("step-2");
-      element.className = "user-select-all"; // ID03132025.sn
-      element.id = "chat-msg-" + msgCounter;
+      // element.className = "user-select-all"; // ID03132025.sn; ID05142025.o
+      // element.id = "chat-msg-" + msgCounter; ID05142025.o
 
-      let outerDivElement = addRespMsgTitleButtons(element);
+      let outerDivElement = addRespMsgTitleButtons(divelem); // ID05142025.n
       outerDivElement.appendChild(divelem);
       box.appendChild(outerDivElement); // ID03132025.en 
       // box.appendChild(divelem); ID03132025.o
@@ -874,6 +897,7 @@ async function streamCompletion(serverId, uri, appId, hdrs, box) { // ID02272025
       let ttToken = 0;
       let citations = null;
       let citLen = 0;
+      let currentBuffer = ""; // ID05142025.n
       while (true) {
         // eslint-disable-next-line no-await-in-loop
         const { value, done } = await reader.read();
@@ -920,14 +944,24 @@ async function streamCompletion(serverId, uri, appId, hdrs, box) { // ID02272025
             else {
               const msg = json.choices[0].delta.content;
               if (msg) {
-                const citLen = citations ? citations.length : 0;
+                citLen = citations ? citations.length : 0;
                 // let content = msg.replace(/(?:\r\n|\r|\n)/g, '<br>'); // Get rid of all the newlines ID12022024.o
                 let content = msg; // ID12022024.n
                 if (citLen > 0) {
                   for (let i = 1; i <= citLen; i++)
                     content = content.replaceAll("[doc" + i + "]", "<sup>[" + i + "]</sup>");
-                }
-                element.innerHTML += content;
+                };
+                // ID05142025.sn
+                currentBuffer += content;
+                const contentHtml = marked.parse(currentBuffer);
+                divelem.innerHTML = contentHtml;
+
+                // Re-highlight new content blocks
+                divelem.querySelectorAll('pre code').forEach(block => {
+                  hljs.highlightElement(block);
+                });
+                // ID05142025.en
+
                 box.scrollTop = box.scrollHeight;
               };
 
@@ -990,7 +1024,7 @@ async function streamCompletion(serverId, uri, appId, hdrs, box) { // ID02272025
       if (citLen > 0)
         divelem.innerHTML += insertCitationLinks(citations);
 
-      renderMarkdown(); // ID12022024.n
+      // renderMarkdown(); // ID12022024.n; ID05142025.o
 
       if (calltime === 0) // If response was served from cache!
         calltime = Date.now() - sttime;
@@ -1223,6 +1257,10 @@ async function sendMessage() {
       let status;
       try {
         const ds = promptObject.data_sources;
+        if ( ds ) { // ID05142025.n; OYD call doesn't support 'max_completion_tokens' yet!
+          promptObject.max_tokens = promptObject.max_completion_tokens;
+          delete promptObject.max_completion_tokens;
+        };
 
         if (threadId)
           delete promptObject.data_sources;
@@ -1242,7 +1280,8 @@ async function sendMessage() {
               ai_app_gateway: aiSrv,
               application_id: appId,
               thread_id: threadId,
-              user: aiAppObject.user,
+              // user: aiAppObject.user, ID06062025.o
+              user: isAuthEnabled ? username : uiUserName, // ID06062025.n
               endpoint_uri: uri,
               start_time: new Date().toLocaleString('en-US', { timeZoneName: 'short' })
             };

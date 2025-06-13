@@ -36,6 +36,11 @@
  * ID03142025: ganrad: v2.3.0: (Error-proofing ~ poka-yoke) Disable caching for AOAI Chat Completion API function calls.
  * ID03262025: ganrad: v2.3.1: (Bugfix) a) Do a case insensitive match for authorization http header. b) Log the backend uri index when
  * an exception is encountered.
+ * ID04302025: ganrad: v2.3.2: (Enhancement) When state mgmt is enabled for an AI App, track no. of user sessions/threads in metrics 
+ * collection interval.
+ * ID05082025: ganrad: v2.3.5: (Enhancement) When memory is turned on for an AI App, session affinity to backend URI can be enabled using a boolean
+ * flag ~ memorySettings.affinity.
+ * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced user personalization feature ~ Long term memory.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -47,12 +52,15 @@ const CacheDao = require("../utilities/cache-dao.js"); // ID02202024.n
 const cachedb = require("../services/cp-pg.js"); // ID02202024.n
 const { TblNames, PersistDao } = require("../utilities/persist-dao.js"); // ID03012024.n
 const persistdb = require("../services/pp-pg.js"); // ID03012024.n
+const UserMemDao = require("../utilities/user-mem-dao.js"); // ID05142025.n
 const pgvector = require("pgvector/pg"); // ID02202024.n
 const { DefEmbeddingModelTokenLimit, CustomRequestHeaders, AzAiServices } = require("../utilities/app-gtwy-constants.js"); // ID05062024.n
 const { randomUUID } = require('node:crypto'); // ID05062024.n
 
 const { encode } = require('gpt-tokenizer'); // ID02212025.n
 const { getAccessToken } = require("../auth/bootstrap-auth"); // ID03052025.n
+const { getExtractionPrompt, updateSystemMessage, storeUserFacts } = require("../utilities/lt-mem-manager.js"); // ID05142025.n
+const { callAiAppEndpoint } = require("../utilities/helper-funcs.js"); // ID05142025.n
 
 class AzOaiProcessor {
 
@@ -625,6 +633,7 @@ class AzOaiProcessor {
     let memoryConfig = arguments[3]; // AI application state management config ID05062024.n
     let appConnections = arguments[4]; // EP metrics obj for all apps
     let cacheMetrics = arguments[5]; // Cache hit metrics obj for all apps
+    const userMemConfig = arguments[6]; // ID05142025.n; AI App specific long term memory config
     let manageState = (process.env.API_GATEWAY_STATE_MGMT === 'true') ? true : false
     let instanceName = (process.env.POD_NAME) ? apps.serverId + '-' + process.env.POD_NAME : apps.serverId; // Server instance name ID11112024.n
 
@@ -632,15 +641,20 @@ class AzOaiProcessor {
     if (memoryConfig && (!req.body.messages)) // If the request is not of type == chat completion
       memoryConfig = null;
 
+    // Long term memory management is only supported for chat completion API!; ID05142025.n
+    if ( userMemConfig && (!req.body.messages) ) // If the request is not of type == chat completion
+      userMemConfig = null;
+
     // 1. Get thread ID in request header
     let threadId = req.get(CustomRequestHeaders.ThreadId);
+    let threadStarted = false; // ID04302025.n
 
     // console.log(`*****\nAzOaiProcessor.processRequest():\n  URI: ${req.originalUrl}\n  Request ID: ${req.id}\n  Application ID: ${config.appId}\n  Type: ${config.appType}`);
     logger.log({ level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n  Request Payload:\n  %s", splat: [scriptName, this.constructor.name, req.id, req.originalUrl, req.user?.name, threadId, config.appId, config.appType, JSON.stringify(req.body, null, 2)] }); // ID07292024.n
 
-    let respMessage = null; // Populate this var before returning!
+    let respMessage = null; // IMPORTANT: Populate this var before returning!
 
-    // 2. Check prompt present in cache
+    // 2. Check prompt present in cache?
     // Has caching been disabled on the request using query param ~
     // 'use_cache=false' ?
     let useCache = config.useCache;
@@ -655,7 +669,11 @@ class AzOaiProcessor {
     let values = null;
     let err_msg = null;
     let uriIdx = 0;
+    let endpointId = 0; // ID05082025.n
+    let userMessage = req.body.messages.find(msg => msg.role === "user")?.content;// ID05142025.n
 
+    let epdata = appConnections.getConnection(config.appId); // ID04302025.n
+    
     if (!threadId) {
       // if ( cacheConfig.cacheResults && useCache ) { // Is caching enabled?; ID03142025.o
       if ( cacheConfig.cacheResults && useCache && ( (! req.body.tools) && this.#toolsMessagesNotPresent(req.body.messages) ) ) { // Is caching enabled?; ID03142025.n;
@@ -666,6 +684,20 @@ class AzOaiProcessor {
             break;
           };
         };
+
+        /**
+         * ID05142025.sn
+         * When state management is enabled, is this the first/initial request?
+         * Is long term memory enabled for this AI App? &
+         * Is user value present in the request payload?
+        if ( userMemConfig && req.body.user )
+          await updateSystemMessage(
+            req,
+            config.appId,
+            userMemConfig,
+            new UserMemDao(appConnections.getConnection(cacheConfig.embeddApp), vecEndpoints));  // This method updates the request payload (req.body)!
+          // console.log(`***** Updated request body *****\n${JSON.stringify(req.body,null,2)}\n************`);
+        // ID05142025.en */
 
         // Perform semantic search using input prompt
         cacheDao = new CacheDao(
@@ -687,8 +719,17 @@ class AzOaiProcessor {
         if (rowCount === 1) { // Cache hit!
           cacheMetrics.updateCacheMetrics(config.appId, simScore);
 
-          if (req.body.messages && manageState && memoryConfig && memoryConfig.useMemory) // Generate thread id if manage state == true
+          if (req.body.messages && manageState && memoryConfig && memoryConfig.useMemory) { // Generate thread id if manage state == true
             threadId = randomUUID();
+
+            // When response is served from the cache and state mgmt is turned on, update the thread count of the first end-point
+            for (const element of config.appEndpoints) { // ID04302025.n
+              let metricsObj = epdata.get(element.uri);
+              metricsObj.updateUserThreads();
+
+              break;
+            };
+          };
 
           respMessage = (req.body.stream) ?
             this.#streamCachedChatCompletion(req.id, threadId, config.appId, res, completion) :
@@ -720,7 +761,8 @@ class AzOaiProcessor {
               {
                 content: req.body.messages
               },
-              req.body.user // ID04112024.n
+              req.body.user, // ID04112024.n
+              0 // ID05082025.n
             ];
 
             await memoryDao.storeEntity(req.id, 0, values);
@@ -740,7 +782,7 @@ class AzOaiProcessor {
       ];
 
       // retrieve the thread context
-      const userContext = await memoryDao.queryTable(req.id, 1, values)
+      const userContext = await memoryDao.queryTable(req.id, 1, values);
       if (userContext.rCount === 1) {
         let ctxContent = userContext.data[0].context.content;
         let ctxMsgs = ctxContent.concat(req.body.messages);
@@ -749,6 +791,7 @@ class AzOaiProcessor {
           this.#checkAndPruneCtxMsgs(memoryConfig.msgCount, ctxMsgs);
 
         req.body.messages = ctxMsgs;
+        endpointId = userContext.data[0].endpoint_id; // ID05082025.n
 
         logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Retrieved Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, JSON.stringify(req.body.messages, null, 2)] });
       }
@@ -780,17 +823,40 @@ class AzOaiProcessor {
     }; // end of user session if
 
     // 3. Call Azure OAI endpoint(s)
-    let epdata = appConnections.getConnection(config.appId);
+    // let epdata = appConnections.getConnection(config.appId); ID04302025.o
     let stTime = Date.now();
 
     let response;
     let retryAfter = 0;
     let data;
+    /**
+     * ID05142025.sn
+     * When state management is enabled, is this the first/initial request?
+     * Is long term memory enabled for this AI App? &
+     * Is user value present in the request payload?
+     */
+    if ( !threadId && userMemConfig && req.body.user )
+      await updateSystemMessage(
+        req,
+        config.appId,
+        userMemConfig,
+        new UserMemDao(appConnections.getConnection(cacheConfig.embeddApp), vecEndpoints));  // This method updates the request payload (req.body)!
+      // console.log(`***** Updated request body *****\n${JSON.stringify(req.body,null,2)}\n************`);
+    // ID05142025.en
+    let endpointIdMatched = (manageState && memoryConfig && memoryConfig.useMemory && memoryConfig.affinity) ? false : true; // ID05082025.n
     for (const element of config.appEndpoints) { // start of endpoint loop
+      if ( ! endpointIdMatched && (uriIdx != endpointId) ) { // ID05082025.n
+        uriIdx++;
+
+        continue;
+      }
+      else
+        endpointIdMatched = true;
+
       uriIdx++;
 
       let metricsObj = epdata.get(element.uri);
-      let healthArr = metricsObj.isEndpointHealthy();
+      let healthArr = metricsObj.isEndpointHealthy(req.id); // ID05082025.n
       // console.log(`******isAvailable=${healthArr[0]}; retryAfter=${healthArr[1]}`);
       if (!healthArr[0]) {
         if (retryAfter > 0)
@@ -847,7 +913,8 @@ class AzOaiProcessor {
         if (status === 200) { // All Ok
           // data = await response.json(); ID06052024.o
           // ID06052024.sn
-          let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? randomUUID() : threadId;
+          // let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? randomUUID() : threadId; // ID04302025.o
+          let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? (function () { threadStarted = true; return(randomUUID()); })() : threadId; // ID04302025.n
           if (req.body.stream) // Streaming request?
             data = (req.body.data_sources) ?
               await this.#streamChatCompletionOyd(req.id, th_id, config.appId, res, response) :  // OYD call
@@ -859,7 +926,9 @@ class AzOaiProcessor {
           let respTime = Date.now() - stTime;
           metricsObj.updateApiCallsAndTokens(
             data.usage?.total_tokens,
-            respTime);
+            respTime,
+            threadStarted // ID04302025.n
+          );
 
           // ID02202024.sn
           if ((!threadId) && cacheDao && embeddedPrompt) { // Cache results ?
@@ -906,7 +975,8 @@ class AzOaiProcessor {
               data, // ID04112024.n
               allHeaders, // ID02112025.n
               req.body.user, // ID04112024.n
-              respTime / 1000 // ID11082024.n
+              respTime / 1000, // ID11082024.n
+              (element.id) ? element.id : "index-" + (uriIdx - 1) // ID05082025.n
             ];
 
             await promptDao.storeEntity(
@@ -925,7 +995,7 @@ class AzOaiProcessor {
           };
 
           retryAfter = 0;  // ID05282024.n (Bugfix; Set the retry after var to zero!!)
-          break; // break out from the endpoint loop!
+          break; // break out from the endpoint for loop!
         }
         else if (status === 429) { // endpoint is busy so try next one
           data = await response.json();
@@ -965,7 +1035,8 @@ class AzOaiProcessor {
               data, // ID04112024.n
               allHeaders, // ID02112025.n
               req.body.user, // ID04112024.n
-              (Date.now() - stTime) / 1000 // ID11082024.n
+              (Date.now() - stTime) / 1000, // ID11082024.n
+              (element.id) ? element.id : "index-" + (uriIdx - 1) // ID05082025.n
             ];
 
             await promptDao.storeEntity(
@@ -1046,7 +1117,7 @@ class AzOaiProcessor {
         };
         // ID06132024.en
         // console.log(`*****\nAzOaiProcessor.processRequest():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
-        logger.log({ level: "error", message: "[%s] %s.processRequest():\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, JSON.stringify(err_msg, null, 2)] });
+        logger.log({ level: "error", message: "[%s] %s.processRequest():\n  ID: %s\n  Priority: %d\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, element.id, (uriIdx - 1), JSON.stringify(err_msg, null, 2)] });
 
         respMessage = {
           http_code: 500,
@@ -1056,7 +1127,7 @@ class AzOaiProcessor {
 
         break; // ID04172024.n
       };
-    }; // end of endpoint loop
+    }; // end of endpoint for loop
 
     // instanceFailedCalls++;
 
@@ -1081,6 +1152,7 @@ class AzOaiProcessor {
       // res.set('retry-after', retryAfter); // Set the retry-after response header
       respMessage = {
         http_code: 429, // Server is busy, retry later!
+        uri_idx: (uriIdx - 1), // ID05082025.n
         data: err_msg,
         retry_after: retryAfter
       };
@@ -1108,6 +1180,8 @@ class AzOaiProcessor {
           http_code: 500, // Internal API Gateway server error!
           data: err_msg
         };
+
+        logger.log({ level: "error", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Exception:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, JSON.stringify(respMessage, null, 2)] }); // ID05082025.n
       };
     };
 
@@ -1139,7 +1213,8 @@ class AzOaiProcessor {
         {
           content: req.body.messages
         },
-        req.body.user // ID04112024.n
+        req.body.user, // ID04112024.n
+        (uriIdx - 1) //ID05082025.n
       ];
 
       if (req.get(CustomRequestHeaders.ThreadId)) // Update
@@ -1168,6 +1243,69 @@ class AzOaiProcessor {
       // ID02142025.en
     };
     // ID05062024.en
+
+    /**
+     * ID05142025.sn
+     * Was response generated OK? &
+     * Is long term memory enabled for this AI App? &
+     * Is user value present in the request payload?
+     */
+    if ( (respMessage.http_code === 200) &&
+         userMemConfig && 
+         req.body.user ) {
+      // 1) Construct the input message
+      const extractionPrompt = 
+        getExtractionPrompt(
+          req.body.user,
+          userMessage,
+          data.choices[0].message.content,
+          userMemConfig);
+
+      let epMetricsObject = null;
+      let aiAppEndpoints = null;
+      if ( userMemConfig.aiAppName ) {
+        for (const application of apps.applications) {
+          if (application.appId == userMemConfig.aiAppName) {
+            aiAppEndpoints = application.endpoints;
+            epMetricsObject = appConnections.getConnection(application.appId);
+
+            break;
+          };
+        };
+      }
+      if ( ! aiAppEndpoints || ! epMetricsObject ) { // Fallback to using current model's metrics obj. and backend endpoints?
+        aiAppEndpoints = config.appEndpoints;
+        epMetricsObject = epdata;
+      };
+
+      // 2) Extract user facts from input query and assistant reply
+      const extraction = await callAiAppEndpoint(req, epMetricsObject, aiAppEndpoints, extractionPrompt);
+      if ( extraction ) {
+        const factMsg = extraction.choices[0].message.content;
+        logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Facts: %s", splat: [scriptName, this.constructor.name, req.id, threadId, factMsg] });
+        if ( ! factMsg.startsWith("No extractable facts") ) {
+          const facts = extraction.choices[0].message.content.split('\n').filter(Boolean);
+
+          if ( facts.length > 0 ) {
+            // 3.1) Check to see if embedd model AI App endpoints are populated
+            if ( !vecEndpoints ) {
+              for (const application of apps.applications) {
+                if (application.appId == cacheConfig.embeddApp) {
+                  vecEndpoints = application.endpoints;
+
+                  break;
+                };
+              };
+            };
+
+            // 3.2) Vectorize & store facts in user facts table
+            const userMemDao = new UserMemDao(appConnections.getConnection(cacheConfig.embeddApp), vecEndpoints);
+            await storeUserFacts(req, config.appId, facts, userMemDao);  // This method stores each fact in user facts table.
+          };
+        };
+      };
+    };
+    // ID05142025.en
 
     return (respMessage);
   } // end of processRequest()

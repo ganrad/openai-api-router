@@ -22,11 +22,18 @@
  * Default is 100KB for JSON and URL-encoded data.
  * Updated body-parser to accept up to 600Kb ~ 150K TPMs for JSON data (request payload).
  * ID02212025: ganrad: v2.3.0: Added new constant for embedding model max. input token limit.
+ * ID03282025: ganrad: v2.4.0: Added new constant for AI Agent Service Annotation types
+ * ID05142025: ganrad: v2.3.8: Added new constant for AOAI Message role types
+ * ID03242025: ganrad: v2.4.0: Added new constants 1) To support AI Agent Service 2) Agent API version
 */
 
 const DefaultAiGatewayUri = "http://localhost:8080/api/v1/dev/apirouter/lb"; // ID02102025.n
 const DefaultJsonParserCharLimit = "600kb"; // ID02202025.n
 const DefEmbeddingModelTokenLimit = 8192; // ID02212025.n
+
+const AzureApiVersions = { // ID03242025.n
+  AiAgentService: '2024-12-01-preview'
+};
 
 const HttpMethods = { // ID01242025.n
   GET: 'GET',
@@ -63,7 +70,8 @@ const AzAiServices = {
   Language: "azure_language",
   Translator: "azure_translator",
   ContentSafety: "azure_content_safety",
-  AzAiModelInfApi: "azure_aimodel_inf" // ID11052024.n
+  AzAiModelInfApi: "azure_aimodel_inf", // ID11052024.n
+  AzAiAgent: "azure_ai_agent" // ID03242025.n
 };
 
 const EndpointMetricsConstants = {
@@ -150,6 +158,25 @@ const ConfigProviderType = { // ID02072025.n
   SqlDB: "SqlDB"
 }
 
+const MessageRoleTypes = { // ID05142025.n
+  User: "User",
+  Assistant: "Assistant",
+  UserAssistant: "UserAssistant"
+}
+
+const AzAiAgentRunStatus = { // ID03252025.n
+  Queued: "queued",
+  InProgress: "in_progress",
+  Failed: "failed",
+  Completed: "completed"
+}
+
+const AzAiAgentAnnotationTypes = { // ID03282025.n
+  UrlCitation: "url_citation",
+  FileCitation: "file_citation",
+  SearchCitation: "search_citation"
+}
+
 module.exports = {
   DefaultAiGatewayUri, // ID02102025.n
   DefaultJsonParserCharLimit, // ID02202025.n
@@ -173,5 +200,9 @@ module.exports = {
   AppResourceActions, // ID01232025.n
   DocProcessorTypes, // ID01232025.n
   DocProcessorStatus, // ID01232025.n
-  ConfigProviderType // ID02072025.n
+  ConfigProviderType, // ID02072025.n
+  AzureApiVersions, // ID03242025.n
+  MessageRoleTypes, // ID05142025.n
+  AzAiAgentRunStatus, // ID03252025.n
+  AzAiAgentAnnotationTypes // ID03282025.n
 }

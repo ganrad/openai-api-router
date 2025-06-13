@@ -1,5 +1,6 @@
 {
     "$id": "https://github.com/ganrad/rapid/schemas/sd-ai-app-schema.json",
+    "$comment": "ID03242025: ganrad: v2.4.0: Added new enum to AI App Type and 'id' attribute to endpoints array. ID04302025: ganrad: v2.3.5: Added new 'affinity' attribute to memorySettings. ID05092025: ganrad: v2.3.6: Added endpoint 'healthPolicy' attributes. ID05142025: ganrad: v2.3.8: Added attributes to support personalization feature.",
     "title": "SingleDomainAiApp",
 	"description": "A single domain AI Application",
     "type": "object",
@@ -16,7 +17,7 @@
         "appType": {
             "description": "Type of AI Application",
             "type": "string",
-            "enum": ["azure_language", "azure_translator", "azure_content_safety", "azure_search", "azure_oai", "azure_aimodel_inf"]
+            "enum": ["azure_language", "azure_translator", "azure_content_safety", "azure_search", "azure_oai", "azure_aimodel_inf", "azure_ai_agent"]
         },
         "searchAiApp": {
             "description": "Name of the AI Search Application",
@@ -80,9 +81,46 @@
                 "entryExpiry": {
                     "description": "Time interval used to invalidate/evict memory entries",
                     "type": "string"
+                },
+                "affinity": {
+                    "description": "Enable thread affinity for backend API calls?",
+                    "type": "boolean"
                 }
             },
             "required": ["useMemory"],
+            "additionalProperties": false
+        },
+        "personalizationSettings": {
+            "description": "Long term memory settings for an AI Application",
+            "type": "object",
+            "properties": {
+                "userMemory": {
+                    "description": "Flag to enable or disable long term user memory",
+                    "type": "boolean"
+                },
+                "generateFollowupMsgs": {
+                    "description": "Generate followup messages?",
+                    "type": "boolean"
+                },
+                "userFactsAppName": {
+                    "description": "AI App Name used to identify and extract user facts",
+                    "type": "string"
+                },
+                "extractRoleValues": {
+                    "description": "Message role values to be used for extracting user facts",
+                    "type": "string",
+                    "enum": ["UserAssistant", "User", "Assistant"]
+                },
+                "extractionPrompt": {
+                    "description": "Prompt used to extract personal attributes",
+                    "type": "string"
+                },
+                "followupPrompt": {
+                    "description": "Prompt used for asking followup questions based on model response",
+                    "type": "string"
+                }
+            },
+            "required": ["userMemory"],
             "additionalProperties": false
         },
         "endpoints": {
@@ -103,6 +141,28 @@
                     "apikey": {
                         "description": "AI Service API Key",
                         "type": "string"
+                    },
+                    "id": {
+                        "description": "Endpoint / Assistant ID",
+                        "type": "string"
+                    },
+                    "healthPolicy": {
+                        "description": "Describes the health policy to apply when endpoint response time exceeds a set threshold",
+                        "type": "object",
+                        "properties": {
+                            "latencyThresholdSeconds": {
+                                "description": "Endpoint response time threshold in seconds",
+                                "type": "number",
+                                "exclusiveMinimum": 19
+                            },
+                            "retryAfterMinutes": {
+                                "description": "Time in minutes when this endpoint will remain marked as unhealthy",
+                                "type": "number",
+                                "exclusiveMinimum": 4
+                            }
+                        },
+                        "required": ["latencyThresholdSeconds", "retryAfterMinutes"],
+                        "additionalProperties": false
                     }
                 },
                 "required": ["uri", "apikey"],

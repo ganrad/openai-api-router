@@ -236,14 +236,14 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    VECTOR_DB_UPWD | Password of the database user (Saved in step above)
    VECTOR_DB_NAME | Name of the database (Saved in step above)
 
-   Create the database tables using the script `./db-scripts/pg-test.js`. See command snippet below.
+   Create the database tables using the script `./db-scripts/pg-create-db-resources.js`. See command snippet below.
 
    ```bash
    # Make sure you are in the project's root directory.
    # Use 'drop-tables' option if you want to delete and recreate the tables.
-   # Usage: node ./db-scripts/pg-test.js [drop-tables]
+   # Usage: node ./db-scripts/pg-create-db-resources.js [drop-tables]
    #
-   $ node ./db-scripts/pg-test.js
+   $ node ./db-scripts/pg-create-db-resources.js
    #
    ```
 

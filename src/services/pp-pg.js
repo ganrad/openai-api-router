@@ -23,6 +23,10 @@
  * ID01272025: ganrad: v2.2.0: (Enhancement) Introduced table 'aiappservers' to store AI Gateway info. and application configurations. 
  * ID02092025: ganrad: v2.2.0: (Enhancement) Return db errors.
  * ID02112025: ganrad: v2.2.0: (Enhancement) Introduced new fields 'threadid' and 'model_res_headers' in 'apigtwyprompts' table.
+ * ID05082025: ganrad: v3.2.5: (Enhancement) Introduced new field 'endpoint_id' in tables 'apigtwyprompts' and 'apigtwymemory'.  This field
+ * will contain the backend endpoint idx or id which served a specific request.  When sessions are tracked (affinity = true) for an AI
+ * Application, the value of this field will be used to redirect all calls for a given session/thread to the same backend URI.
+ * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced table 'userfacts' for long term memory support ~ personalization feature.  
 */
 
 const path = require('path');
@@ -36,8 +40,8 @@ const pgConfig = require('./pg-config');
 const createTblStmts = [
   // "CREATE TABLE apigtwyprompts (id serial PRIMARY KEY, requestid VARCHAR(100), aiappname VARCHAR(100), prompt JSON, timestamp_ TIMESTAMPTZ default current_timestamp)" // ID04112024.o
   // "CREATE TABLE IF NOT EXISTS apigtwyprompts (id serial PRIMARY KEY, requestid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID04112024.n, ID11082024.o
-  "CREATE TABLE IF NOT EXISTS apigtwyprompts (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, model_res_hdrs JSON, exec_time_secs real, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID11082024.n, ID11112024.n, ID02112025.n
-  "CREATE TABLE IF NOT EXISTS apigtwymemory (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), context JSON, tool_name VARCHAR(75), md_aiappname VARCHAR(100), md_srv_name VARCHAR(100), timestamp_ TIMESTAMPTZ default current_timestamp)", // ID05062024.n, ID11112024.n, ID11122024.n
+  "CREATE TABLE IF NOT EXISTS apigtwyprompts (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, model_res_hdrs JSON, exec_time_secs real, endpoint_id VARCHAR(50), timestamp_ TIMESTAMPTZ default current_timestamp)", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.n
+  "CREATE TABLE IF NOT EXISTS apigtwymemory (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), context JSON, tool_name VARCHAR(75), md_aiappname VARCHAR(100), md_srv_name VARCHAR(100), endpoint_id SMALLINT default 0, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID05062024.n, ID11112024.n, ID11122024.n, ID05082025.n
   "CREATE TABLE IF NOT EXISTS aiapptoolstrace (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), tool_trace JSON, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID10262024.n, ID11112024.n
   "CREATE TABLE IF NOT EXISTS aiappdeploy (" +
     "id serial PRIMARY KEY, " +
@@ -67,7 +71,15 @@ const createTblStmts = [
     "last_stop_time TIMESTAMPTZ, " +
     "create_date TIMESTAMPTZ default current_timestamp, " +
     "update_date TIMESTAMPTZ default current_timestamp, " +
-    "created_by VARCHAR(50) )" // ID01272025.n
+    "created_by VARCHAR(50) )", // ID01272025.n
+  "CREATE TABLE userfacts (" +
+    "id SERIAL PRIMARY KEY, " +
+    "srv_name VARCHAR(100) NOT NULL, " +
+    "aiappname VARCHAR(100) NOT NULL, " +
+    "user_id TEXT NOT NULL, " +
+    "content TEXT NOT NULL, " +
+    "embedding VECTOR(1536), " +
+    "create_date TIMESTAMP DEFAULT NOW() )" // ID05122025.n
 ];
 
 const dropTblStmts = [
@@ -75,7 +87,8 @@ const dropTblStmts = [
   "DROP TABLE IF EXISTS apigtwymemory;", // ID05062024.n
   "DROP TABLE IF EXISTS aiapptoolstrace;", // ID10262024.n
   "DROP TABLE IF EXISTS aiappdeploy;", // ID01232025.n
-  "DROP TABLE IF EXISTS aiappservers;" // ID01272025.n
+  "DROP TABLE IF EXISTS aiappservers;", // ID01272025.n
+  "DROP TABLE IF EXISTS userfacts;" // ID05142025.n
 ];
 
 // Initialize the DB connection pool

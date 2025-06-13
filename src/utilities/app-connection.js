@@ -46,4 +46,5 @@ class AppConnections {
   }
   // ID02062025.en
 }
+
 module.exports = AppConnections;
