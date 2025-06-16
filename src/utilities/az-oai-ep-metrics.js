@@ -31,8 +31,14 @@ class AzOaiEpMetrics {
     if ( id ) // ID04302025.n
       this.id = id; // Unique ID assistant to this endpoint
 
-    if ( healthPolicy ) // ID05122025.n
+    if ( healthPolicy ) { // ID05122025.n
       this.healthPolicy = healthPolicy;
+      if ( healthPolicy.maxCallsBeforeUnhealthy )
+        this.maxCallAttempts = healthPolicy.maxCallsBeforeUnhealthy
+      else
+        this.maxCallAttempts = 1;  // Default max. call attempts
+      this.callAttempts = 0;
+    };
 
     this.threads = 0; // No. of threads spawned ID04302025.n
     this.endpoint = endpoint; // The target endpoint
@@ -119,9 +125,14 @@ class AzOaiEpMetrics {
 
     // ID05122025.sn
     if ( this.healthPolicy ) { // Has health policy been configured for this endpoint?
-      if ( latency > (this.healthPolicy.latencyThresholdSeconds * 1000) )
-        // The current call should succeed, but mark this endpoint as unhealthy
-        this.timeMarker = Date.now() + (this.healthPolicy.retryAfterMinutes * 60 * 1000)
+      if ( latency > (this.healthPolicy.latencyThresholdSeconds * 1000) ) {
+        this.callAttempts++;
+        if ( this.callAttempts >= this.maxCallAttempts )
+          // The current call should succeed, but mark this endpoint as unhealthy
+          this.timeMarker = Date.now() + (this.healthPolicy.retryAfterMinutes * 60 * 1000);
+      }
+      else
+        this.callAttempts = 0;
     };
     // ID05122025.en
   }

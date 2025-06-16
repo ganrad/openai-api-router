@@ -150,6 +150,11 @@
                         "description": "Describes the health policy to apply when endpoint response time exceeds a set threshold",
                         "type": "object",
                         "properties": {
+                            "maxCallsBeforeUnhealthy": {
+                                "description": "Max. API calls with delayed response",
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
                             "latencyThresholdSeconds": {
                                 "description": "Endpoint response time threshold in seconds",
                                 "type": "number",

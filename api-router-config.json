@@ -180,6 +180,7 @@
           "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
           "apikey": "9ecabe6d",
           "healthPolicy": {
+            "maxCallsBeforeUnhealthy": 1,
             "latencyThresholdSeconds": 20,
             "retryAfterMinutes": 5
           }
