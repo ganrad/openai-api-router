@@ -22,14 +22,17 @@
  * Default is 100KB for JSON and URL-encoded data.
  * Updated body-parser to accept up to 600Kb ~ 150K TPMs for JSON data (request payload).
  * ID02212025: ganrad: v2.3.0: Added new constant for embedding model max. input token limit.
- * ID03282025: ganrad: v2.4.0: Added new constant for AI Agent Service Annotation types
  * ID05142025: ganrad: v2.3.8: Added new constant for AOAI Message role types
+ * ID03282025: ganrad: v2.4.0: Added new constant for AI Agent Service Annotation types
  * ID03242025: ganrad: v2.4.0: Added new constants 1) To support AI Agent Service 2) Agent API version
+ * ID06162025: ganrad: v2.3.9: Added new constant for 1) Backend endpoint router types 2) OpenAI Base URI
 */
 
 const DefaultAiGatewayUri = "http://localhost:8080/api/v1/dev/apirouter/lb"; // ID02102025.n
 const DefaultJsonParserCharLimit = "600kb"; // ID02202025.n
 const DefEmbeddingModelTokenLimit = 8192; // ID02212025.n
+const OpenAIBaseUri = "api.openai.com"; // ID06162025.n
+const DefaultEndpointLatency = 5000; // ID06162025.n; 5 seconds
 
 const AzureApiVersions = { // ID03242025.n
   AiAgentService: '2024-12-01-preview'
@@ -76,7 +79,7 @@ const AzAiServices = {
 
 const EndpointMetricsConstants = {
   DEF_METRICS_C_INTERVAL: 60, // Default metrics collection interval
-  DEF_METRICS_H_COUNT: 5 // Default metrics history count
+  DEF_METRICS_H_COUNT: 24 // Default metrics history count
 };
 
 const ContentSafetyAPIKind = {
@@ -164,6 +167,12 @@ const MessageRoleTypes = { // ID05142025.n
   UserAssistant: "UserAssistant"
 }
 
+const EndpointRouterTypes = { // ID06162025.n
+  PriorityRouter: "Priority",  // Default
+  WeightedRandomRouter: "RandomWeighted",
+  WeightedDynamicRouter: "LatencyWeighted"
+}
+
 const AzAiAgentRunStatus = { // ID03252025.n
   Queued: "queued",
   InProgress: "in_progress",
@@ -181,6 +190,8 @@ module.exports = {
   DefaultAiGatewayUri, // ID02102025.n
   DefaultJsonParserCharLimit, // ID02202025.n
   DefEmbeddingModelTokenLimit, // ID02212025.n
+  DefaultEndpointLatency, // ID06162025.n
+  OpenAIBaseUri, // ID06162025.n
   HttpMethods, // ID01232025.n
   ServerDefaults,
   CustomRequestHeaders,
@@ -203,6 +214,7 @@ module.exports = {
   ConfigProviderType, // ID02072025.n
   AzureApiVersions, // ID03242025.n
   MessageRoleTypes, // ID05142025.n
+  EndpointRouterTypes, // ID06162025.n
   AzAiAgentRunStatus, // ID03252025.n
   AzAiAgentAnnotationTypes // ID03282025.n
 }

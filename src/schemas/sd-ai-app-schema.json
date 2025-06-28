@@ -75,7 +75,7 @@
                 },
                 "msgCount": {
                     "description": "No. of messages to save in memory for a given user session",
-                    "type": "number",
+                    "type": "integer",
                     "exclusiveMinimum": 0
                 },
                 "entryExpiry": {
@@ -123,6 +123,11 @@
             "required": ["userMemory"],
             "additionalProperties": false
         },
+        "endpointRouterType": {
+            "description": "Type of backend endpoint router",
+            "type": "string",
+            "enum": ["Priority", "RandomWeighted", "LatencyWeighted"]
+        },
         "endpoints": {
             "description": "Endpoint settings for an AI Application",
             "type": "array",
@@ -131,7 +136,7 @@
                 "properties": {
                     "rpm": {
                         "description": "Rate limit in requests per minute (RPM) for this endpoint",
-                        "type": "number",
+                        "type": "integer",
                         "exclusiveMinimum": 0
                     },
                     "uri": {
@@ -146,23 +151,29 @@
                         "description": "Endpoint / Assistant ID",
                         "type": "string"
                     },
+                    "weight": {
+                        "description": "Weight assigned to this endpoint. Used when weighted routing of endpoints is configured for this AI App.",
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100
+                    },
                     "healthPolicy": {
                         "description": "Describes the health policy to apply when endpoint response time exceeds a set threshold",
                         "type": "object",
                         "properties": {
                             "maxCallsBeforeUnhealthy": {
                                 "description": "Max. API calls with delayed response",
-                                "type": "number",
+                                "type": "integer",
                                 "exclusiveMinimum": 0
                             },
                             "latencyThresholdSeconds": {
                                 "description": "Endpoint response time threshold in seconds",
-                                "type": "number",
+                                "type": "integer",
                                 "exclusiveMinimum": 19
                             },
                             "retryAfterMinutes": {
                                 "description": "Time in minutes when this endpoint will remain marked as unhealthy",
-                                "type": "number",
+                                "type": "integer",
                                 "exclusiveMinimum": 4
                             }
                         },

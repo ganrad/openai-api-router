@@ -45,6 +45,7 @@
  * result in all requests tied to a given thread/session to be routed to the same backend uri.
  * ID05122025: ganrad: v2.3.6: (Enhancement) Introduced endpoint health policy feature for AOAI and AI Model Inf. API calls. 
  * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced user personalization feature ~ Long term memory.
+ * ID06162025: ganrad: v2.3.9: (Enhancement) Introduced endpoint routing types - Priority (default), Random weighted and Latency weighted.
 */
 
 const path = require('path');
@@ -56,6 +57,7 @@ const AppConnections = require("../utilities/app-connection.js");
 const AppCacheMetrics = require("../utilities/cache-metrics.js"); // ID02202024.n
 const { AzAiServices, CustomRequestHeaders } = require("../utilities/app-gtwy-constants.js");
 const AiProcessorFactory = require("../processors/ai-processor-factory.js"); // ID04222024.n
+const EndpointRouterFactory = require("../utilities/ep-router-factory.js"); // ID06162025.n
 const logger = require("../utilities/logger.js"); // ID04272024.n
 const router = express.Router();
 
@@ -73,11 +75,14 @@ var instanceFailedCalls = 0;
 // API calls served from cache (vector db)
 var cachedCalls = 0; // ID02202024.n
 
-// ID02132024.n - Init the AppConnections instance 
+// ID02132024.n - Init the AppConnection instance (Endpoint objects)
 let appConnections = new AppConnections();
 
 // ID02202024.n - Init the AppCacheMetrics instance
 let cacheMetrics = new AppCacheMetrics();
+
+// ID06162025.n - Init container for app specific endpoint router
+let appRouters = new Map();
 
 function retrieveSrvInstanceMetrics(req) { // ID04172025.n
   let conList = [];
@@ -475,6 +480,7 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
   let appConfig = null;
   let memoryConfig = null;
   let userMemConfig = null; // ID05142025.n
+  let routerInstance = null; // ID06162025.n
   if ( appTypes.includes(application.appType) ) {
     if (req.body.data_sources && (req.body.data_sources[0].parameters.authentication.type === "api_key"))
       if (application.searchAiApp === req.body.data_sources[0].parameters.authentication.key)
@@ -509,6 +515,20 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
         followupPrompt: application.personalizationSettings.followupPrompt
       };
     // ID05142025.en
+
+    /**
+     * ID06162025.sn - Populate the endpoint router instance
+     */
+    if ( ! appRouters.has(appId) ) {
+      routerInstance = application.endpointRouterType ?
+        new EndpointRouterFactory().getEndpointRouter(application.appId, application.endpointRouterType, application.endpoints) : null;
+
+      if ( routerInstance )
+        appRouters.set(appId, routerInstance);  // A single router instance per AI App!
+    }
+    else
+      routerInstance = appRouters.get(appId);
+    // ID06162025.en
   }
   else
     appConfig = {
@@ -530,7 +550,8 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
           memoryConfig, // ID05062024.n
           appConnections,
           cacheMetrics,
-          userMemConfig // ID05142025.n
+          userMemConfig, // ID05142025.n
+          routerInstance // ID06162025.n
         );
         break;
       case AzAiServices.AzAiAgent: // ID03242025.n
@@ -640,6 +661,7 @@ module.exports = { // ID01292025.n
   
     appConnections = new AppConnections(); // reset the application connections cache;
     cacheMetrics = new AppCacheMetrics(); // reset the application cache metrics
+    appRouters = new Map(); // ID06162025.n; reset the endpoint router instances for all Ai Apps
     // console.log("apirouter(): Application connections and metrics cache has been successfully reset");
     logger.log({ level: "info", message: "[%s] apirouter.reconfigEndpoints(): Application connections and metrics cache have been successfully reset", splat: [scriptName] });
   },

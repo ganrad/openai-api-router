@@ -26,6 +26,7 @@
  * ID06062025: ganrad: v2.3.8-v1.3.0: Renamed this script to 'ai-gateway-core.js'.
  * ID06062025: ganrad: v2.3.8-v1.3.0: (Enhancement) When auth is turned off - To allow different users to test RAPID server, the 
  * username will be auto-generated each time this SPA is refreshed within the browser.
+ * ID06162025: ganrad: v2.3.9-v1.3.0: (Enhancement) Introduced support for OpenAI models and endpoints.
 */
 // Adjust the system prompt as needed
 const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // Default prompt
@@ -268,6 +269,7 @@ function setInferenceTarget() {
 
   // Construct & populate a new prompt object
   promptObject = {
+    model: aiAppObject.model, // ID06162025.n
     messages: [],
     // max_tokens: aiAppObject.model_params.max_tokens,  // ID06052025.n
     max_completion_tokens:  aiAppObject.model_params.max_tokens,

@@ -41,10 +41,15 @@
  * ID05082025: ganrad: v2.3.5: (Enhancement) When memory is turned on for an AI App, session affinity to backend URI can be enabled using a boolean
  * flag ~ memorySettings.affinity.
  * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced user personalization feature ~ Long term memory.
+ * ID06162025: ganrad: v2.3.9: (Enhancements) Listed below.
+ *   1) When session affinity or weighted routing is enabled, retry all endpoints before returning.
+ *   2) Introduced weighted random routing based on pre-defined endpoint weights.
+ *   3) Extension of #2: Dynamically adjust the endpoint weights based on latency/response times of backend endpoints.
+ *   4) Update auth header to support OAI API calls.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
-const logger = require('../utilities/logger');
+const logger = require('../utilities/logger.js');
 
 // const fetch = require("node-fetch"); // ID06052024.o
 
@@ -54,11 +59,17 @@ const { TblNames, PersistDao } = require("../utilities/persist-dao.js"); // ID03
 const persistdb = require("../services/pp-pg.js"); // ID03012024.n
 const UserMemDao = require("../utilities/user-mem-dao.js"); // ID05142025.n
 const pgvector = require("pgvector/pg"); // ID02202024.n
-const { DefEmbeddingModelTokenLimit, CustomRequestHeaders, AzAiServices } = require("../utilities/app-gtwy-constants.js"); // ID05062024.n
+const { 
+  DefEmbeddingModelTokenLimit, 
+  CustomRequestHeaders, 
+  AzAiServices, 
+  EndpointRouterTypes, // ID06162025.n
+  OpenAIBaseUri // ID06162025.n
+} = require("../utilities/app-gtwy-constants.js"); // ID05062024.n; ID06162025.n
 const { randomUUID } = require('node:crypto'); // ID05062024.n
 
 const { encode } = require('gpt-tokenizer'); // ID02212025.n
-const { getAccessToken } = require("../auth/bootstrap-auth"); // ID03052025.n
+const { getAccessToken } = require("../auth/bootstrap-auth.js"); // ID03052025.n
 const { getExtractionPrompt, updateSystemMessage, storeUserFacts } = require("../utilities/lt-mem-manager.js"); // ID05142025.n
 const { callAiAppEndpoint } = require("../utilities/helper-funcs.js"); // ID05142025.n
 
@@ -82,14 +93,14 @@ class AzOaiProcessor {
 
       // Encode the text to get the tokens
       tokens += elemTokens;
-      if ( element.name )
+      if (element.name)
         tokens += nameTokens;
     };
 
     const retVal = (tokens > DefEmbeddingModelTokenLimit) ? false : true;
-    logger.log({ level: "info", message: "[%s] %s.#tokensWithinLimit():\n  Request ID: %s\n  Token Count: %s", splat: [scriptName, this.constructor.name, req.id, tokens]});
+    logger.log({ level: "info", message: "[%s] %s.#tokensWithinLimit():\n  Request ID: %s\n  Token Count: %s", splat: [scriptName, this.constructor.name, req.id, tokens] });
 
-    return(retVal);
+    return (retVal);
   }
 
   #checkAndPruneCtxMsgs(count, msgs) {
@@ -186,7 +197,7 @@ class AzOaiProcessor {
         ],
         system_fingerprint: metadata.system_fingerprint
       };
-      if ( metadata.usage ) // ID02152025.n
+      if (metadata.usage) // ID02152025.n
         completionObj.usage = metadata.usage;
     };
 
@@ -333,7 +344,7 @@ class AzOaiProcessor {
             console.log("streamCompletion(): Skipping this line");
 
             // ID02152025.sn
-            if ( jsonMsg.usage && call_data )
+            if (jsonMsg.usage && call_data)
               call_data.usage = jsonMsg.usage;
             // ID02152025.en
           }
@@ -613,14 +624,14 @@ class AzOaiProcessor {
   #toolsMessagesNotPresent(msgs) { // ID03142025.n
     let retval = true;
     msgs.forEach(element => {
-      if ( element.tool_calls ) {
+      if (element.tool_calls) {
         retval = false;
 
         return;
       }
     });
 
-    return(retval);
+    return (retval);
   }
 
   async processRequest(
@@ -634,6 +645,7 @@ class AzOaiProcessor {
     let appConnections = arguments[4]; // EP metrics obj for all apps
     let cacheMetrics = arguments[5]; // Cache hit metrics obj for all apps
     const userMemConfig = arguments[6]; // ID05142025.n; AI App specific long term memory config
+    const routerInstance = arguments[7]; // ID06162025.n; AI App specific endpoint router instance
     let manageState = (process.env.API_GATEWAY_STATE_MGMT === 'true') ? true : false
     let instanceName = (process.env.POD_NAME) ? apps.serverId + '-' + process.env.POD_NAME : apps.serverId; // Server instance name ID11112024.n
 
@@ -642,7 +654,7 @@ class AzOaiProcessor {
       memoryConfig = null;
 
     // Long term memory management is only supported for chat completion API!; ID05142025.n
-    if ( userMemConfig && (!req.body.messages) ) // If the request is not of type == chat completion
+    if (userMemConfig && (!req.body.messages)) // If the request is not of type == chat completion
       userMemConfig = null;
 
     // 1. Get thread ID in request header
@@ -670,13 +682,17 @@ class AzOaiProcessor {
     let err_msg = null;
     let uriIdx = 0;
     let endpointId = 0; // ID05082025.n
+    let weightedEndpointId; // ID06162025.n
+    let weightedIdTried = false; // ID06162025.n
     let userMessage = req.body.messages.find(msg => msg.role === "user")?.content;// ID05142025.n
 
     let epdata = appConnections.getConnection(config.appId); // ID04302025.n
-    
+    if ( routerInstance ) // ID06162025.n
+        weightedEndpointId = routerInstance.getEndpointId(req.id);
+
     if (!threadId) {
       // if ( cacheConfig.cacheResults && useCache ) { // Is caching enabled?; ID03142025.o
-      if ( cacheConfig.cacheResults && useCache && ( (! req.body.tools) && this.#toolsMessagesNotPresent(req.body.messages) ) ) { // Is caching enabled?; ID03142025.n;
+      if (cacheConfig.cacheResults && useCache && ((!req.body.tools) && this.#toolsMessagesNotPresent(req.body.messages))) { // Is caching enabled?; ID03142025.n;
         for (const application of apps.applications) {
           if (application.appId == cacheConfig.embeddApp) {
             vecEndpoints = application.endpoints;
@@ -772,7 +788,7 @@ class AzOaiProcessor {
         }
         else
           embeddedPrompt = embeddings;
-      } // No caching configured
+      }; // No caching configured
     }
     else { // Start of user session if
       memoryDao = new PersistDao(persistdb, TblNames.Memory);
@@ -820,314 +836,360 @@ class AzOaiProcessor {
 
         return (respMessage);
       };
+
+      if ( memoryConfig.affinity ) // ID06162025.n
+        weightedIdTried = true;
     }; // end of user session if
 
-    // 3. Call Azure OAI endpoint(s)
-    // let epdata = appConnections.getConnection(config.appId); ID04302025.o
-    let stTime = Date.now();
-
-    let response;
-    let retryAfter = 0;
-    let data;
     /**
      * ID05142025.sn
      * When state management is enabled, is this the first/initial request?
      * Is long term memory enabled for this AI App? &
      * Is user value present in the request payload?
      */
-    if ( !threadId && userMemConfig && req.body.user )
+    if (!threadId && userMemConfig && req.body.user)
       await updateSystemMessage(
         req,
         config.appId,
         userMemConfig,
         new UserMemDao(appConnections.getConnection(cacheConfig.embeddApp), vecEndpoints));  // This method updates the request payload (req.body)!
-      // console.log(`***** Updated request body *****\n${JSON.stringify(req.body,null,2)}\n************`);
+    // console.log(`***** Updated request body *****\n${JSON.stringify(req.body,null,2)}\n************`);
     // ID05142025.en
+
     let endpointIdMatched = (manageState && memoryConfig && memoryConfig.useMemory && memoryConfig.affinity) ? false : true; // ID05082025.n
-    for (const element of config.appEndpoints) { // start of endpoint loop
-      if ( ! endpointIdMatched && (uriIdx != endpointId) ) { // ID05082025.n
+
+    /**
+     * ID06162025.sn
+     * Populate an array to track which endpoints have been tried
+     */
+    let triedEps = new Array(config.appEndpoints.length).fill(false);
+    // ID06162025.en
+
+    // 3. Call Azure OAI endpoint(s)
+    // let epdata = appConnections.getConnection(config.appId); ID04302025.o
+    let response;
+    let retryAfter = 0;
+    let data;
+    let stTime;
+    do { // ID06162025.n
+
+      uriIdx = 0;  // Initialize the endpoint index!
+      for (const element of config.appEndpoints) { // start of endpoint loop
+        if (!endpointIdMatched && (uriIdx !== endpointId)) { // ID05082025.n
+          uriIdx++;
+
+          continue;
+        }
+        else
+          endpointIdMatched = true;
+
+        if ( (!weightedIdTried) && (weightedEndpointId !== null) && (weightedEndpointId >= 0) ) { // ID06162025.n
+          if ( uriIdx !== weightedEndpointId ) {
+            uriIdx++
+
+            continue;
+          }
+          else
+            weightedIdTried = true;
+        };
+
+        if (triedEps[uriIdx]) { // ID06162025.n; This endpoint has been called/invoked so skip and go to next!
+          uriIdx++;
+
+          continue;
+        }
+        else
+          triedEps[uriIdx] = true;
+
         uriIdx++;
 
-        continue;
-      }
-      else
-        endpointIdMatched = true;
+        let metricsObj = epdata.get(element.uri);
+        let healthArr = metricsObj.isEndpointHealthy(req.id); // ID05082025.n
+        // console.log(`******isAvailable=${healthArr[0]}; retryAfter=${healthArr[1]}`);
+        if (!healthArr[0]) {
+          if (retryAfter > 0)
+            retryAfter = (healthArr[1] < retryAfter) ? healthArr[1] : retryAfter;
+          else
+            retryAfter = healthArr[1];
 
-      uriIdx++;
+          continue;
+        };
 
-      let metricsObj = epdata.get(element.uri);
-      let healthArr = metricsObj.isEndpointHealthy(req.id); // ID05082025.n
-      // console.log(`******isAvailable=${healthArr[0]}; retryAfter=${healthArr[1]}`);
-      if (!healthArr[0]) {
-        if (retryAfter > 0)
-          retryAfter = (healthArr[1] < retryAfter) ? healthArr[1] : retryAfter;
-        else
-          retryAfter = healthArr[1];
-
-        continue;
-      };
-
-      try {
-        const meta = new Map();
-        meta.set('Content-Type', 'application/json');
-        // const bearerToken = req.get("Authorization"); // case-insensitive header match ID10302024.sn, ID03052025.o
-        // let bearerToken = req.headers['Authorization']; // ID03052025.n, ID03262025.o
-        let bearerToken = req.headers['Authorization'] || req.headers['authorization']; // ID03262025.n
-        if ( config.appType === AzAiServices.OAI ) { // ID11052024.n
-          if ( bearerToken && !req.authInfo ) { // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
-            if ( process.env.AZURE_AI_SERVICE_MID_AUTH === "true" ) // ID03052025.n
-              bearerToken = await getAccessToken(req);
-            meta.set('Authorization', bearerToken);
-            logger.log({ level: "debug", message: "[%s] %s.processRequest(): Using bearer token for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
-          }
-          else { // Use API Key Auth ID10302024.en
-            if ( process.env.AZURE_AI_SERVICE_MID_AUTH === "true" ) { // ID03052025.n
-              bearerToken = await getAccessToken(req);
+        try {
+          const meta = new Map();
+          meta.set('Content-Type', 'application/json');
+          // const bearerToken = req.get("Authorization"); // case-insensitive header match ID10302024.sn, ID03052025.o
+          // let bearerToken = req.headers['Authorization']; // ID03052025.n, ID03262025.o
+          let bearerToken = req.headers['Authorization'] || req.headers['authorization']; // ID03262025.n
+          if (config.appType === AzAiServices.OAI) { // ID11052024.n
+            if (bearerToken && !req.authInfo) { // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
+              if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") // ID03052025.n
+                bearerToken = await getAccessToken(req);
               meta.set('Authorization', bearerToken);
               logger.log({ level: "debug", message: "[%s] %s.processRequest(): Using bearer token for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
             }
-            else {
-              meta.set('api-key', element.apikey);
-              logger.log({ level: "debug", message: "[%s] %s.processRequest(): Using API Key for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+            else { // Use API Key Auth ID10302024.en
+              if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") { // ID03052025.n
+                bearerToken = await getAccessToken(req);
+                meta.set('Authorization', bearerToken);
+                logger.log({ level: "debug", message: "[%s] %s.processRequest(): Using bearer token for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+              }
+              else {
+                const authHdrKey = element.uri.includes(OpenAIBaseUri) ? 'Authorization' : 'api-key';
+                const authHdrVal = element.uri.includes(OpenAIBaseUri) ? "Bearer " + element.apikey : element.apikey;
+                // meta.set('api-key', element.apikey); ID06162025.o
+                meta.set(authHdrKey,authHdrVal); // ID06162025.n
+                logger.log({ level: "debug", message: "[%s] %s.processRequest(): Using API Key for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+              };
             };
+          }
+          else { // ID11052024.n (Az Ai Model Inference API models)
+            if (bearerToken && !req.authInfo) // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
+              meta.set('Authorization', bearerToken);
+            else // Use API Key Auth ID10302024.en
+              meta.set('Authorization', "Bearer " + element.apikey);
+            /*
+            delete req.body.presence_penalty;
+            delete req.body.frequency_penalty; */
+            meta.set('extra-parameters', 'drop'); // Drop any parameters the model doesn't understand; Don't return an error!
           };
-        }
-        else { // ID11052024.n (Az Ai Model Inference API models)
-          if ( bearerToken && !req.authInfo ) // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
-            meta.set('Authorization', bearerToken);
-          else // Use API Key Auth ID10302024.en
-            meta.set('Authorization', "Bearer " + element.apikey);
-          /*
-          delete req.body.presence_penalty;
-          delete req.body.frequency_penalty; */
-          meta.set('extra-parameters', 'drop'); // Drop any parameters the model doesn't understand; Don't return an error!
-        };
 
-        response = await fetch(element.uri, {
-          method: req.method,
-          headers: meta,
-          body: JSON.stringify(req.body)
-        });
+          stTime = Date.now();
+          response = await fetch(element.uri, {
+            method: req.method,
+            headers: meta,
+            body: JSON.stringify(req.body)
+          });
 
-        let status = response.status;
-        if (status === 200) { // All Ok
-          // data = await response.json(); ID06052024.o
-          // ID06052024.sn
-          // let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? randomUUID() : threadId; // ID04302025.o
-          let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? (function () { threadStarted = true; return(randomUUID()); })() : threadId; // ID04302025.n
-          if (req.body.stream) // Streaming request?
-            data = (req.body.data_sources) ?
-              await this.#streamChatCompletionOyd(req.id, th_id, config.appId, res, response) :  // OYD call
-              await this.#streamChatCompletion(req.id, th_id, config.appId, res, response); // Chat completion call
-          else
+          let status = response.status;
+          if (status === 200) { // All Ok
+            // data = await response.json(); ID06052024.o
+            // ID06052024.sn
+            // let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? randomUUID() : threadId; // ID04302025.o
+            let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? (function () { threadStarted = true; return (randomUUID()); })() : threadId; // ID04302025.n
+            if (req.body.stream) // Streaming request?
+              data = (req.body.data_sources) ?
+                await this.#streamChatCompletionOyd(req.id, th_id, config.appId, res, response) :  // OYD call
+                await this.#streamChatCompletion(req.id, th_id, config.appId, res, response); // Chat completion call
+            else
+              data = await response.json();
+            // ID06052024.en
+
+            let respTime = Date.now() - stTime;
+            metricsObj.updateApiCallsAndTokens(
+              data.usage?.total_tokens,
+              respTime,
+              threadStarted // ID04302025.n
+            );
+
+            // ID02202024.sn
+            if ((!threadId) && cacheDao && embeddedPrompt) { // Cache results ?
+              let prompt = req.body.prompt;
+              if (!prompt)
+                prompt = JSON.stringify(req.body.messages);
+
+              values = [
+                req.id,
+                instanceName, // ID11112024.n
+                config.appId,
+                prompt,
+                pgvector.toSql(embeddedPrompt),
+                data
+              ];
+
+              await cacheDao.storeEntity(
+                0,
+                values,
+                cachedb
+              );
+            };
+            // ID02202024.en
+
+            if (th_id && req.body.stream) // ID06052024.n
+              threadId = th_id;
+
+            // ID03012024.sn
+            let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
+            if (persistPrompts) { // Persist prompt and completion ?
+              // ----- ID02112025.sn
+              const allHeaders = {};
+              for (const [name, value] of response.headers.entries()) {
+                allHeaders[name] = value;
+              }
+              // console.log(`**** AOAI Headers ****:\n${JSON.stringify(allHeaders, null, 2)}`);
+              // ------ ID02112025.en
+              promptDao = new PersistDao(persistdb, TblNames.Prompts);
+              values = [
+                req.id,
+                instanceName, // ID11112024.n
+                config.appId,
+                req.body,
+                data, // ID04112024.n
+                allHeaders, // ID02112025.n
+                req.body.user, // ID04112024.n
+                respTime / 1000, // ID11082024.n
+                (element.id) ? element.id : "index-" + (uriIdx - 1) // ID05082025.n
+              ];
+
+              await promptDao.storeEntity(
+                req.id,
+                0,
+                values
+              );
+            };
+            // ID03012024.en
+
+            // ID06162025.sn
+            if ( routerInstance && (routerInstance.routerType === EndpointRouterTypes.WeightedDynamicRouter) )
+              routerInstance.updateWeightsBasedOnLatency(uriIdx - 1, respTime); 
+            // ID06162025.en
+
+            respMessage = {
+              http_code: status,
+              uri_idx: (uriIdx - 1),
+              cached: false,
+              data: data
+            };
+
+            retryAfter = 0;  // ID05282024.n (Bugfix; Set the retry after var to zero!!)
+            break; // break out from the endpoint for loop!
+          }
+          else if (status === 429) { // endpoint is busy so try next one
             data = await response.json();
-          // ID06052024.en
 
-          let respTime = Date.now() - stTime;
-          metricsObj.updateApiCallsAndTokens(
-            data.usage?.total_tokens,
-            respTime,
-            threadStarted // ID04302025.n
-          );
+            let retryAfterSecs = response.headers.get('retry-after');
+            // let retryAfterMs = headers.get('retry-after-ms');
 
-          // ID02202024.sn
-          if ((!threadId) && cacheDao && embeddedPrompt) { // Cache results ?
-            let prompt = req.body.prompt;
-            if (!prompt)
-              prompt = JSON.stringify(req.body.messages);
+            if (retryAfter > 0)
+              retryAfter = (retryAfterSecs < retryAfter) ? retryAfterSecs : retryAfter;
+            else
+              retryAfter = retryAfterSecs;
 
-            values = [
-              req.id,
-              instanceName, // ID11112024.n
-              config.appId,
-              prompt,
-              pgvector.toSql(embeddedPrompt),
-              data
-            ];
+            metricsObj.updateFailedCalls(status, retryAfterSecs);
 
-            await cacheDao.storeEntity(
-              0,
-              values,
-              cachedb
-            );
+            // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n  Retry seconds: ${retryAfterSecs}\n*****`);
+            logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s\n  Retry seconds: %d", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, status, response.statusText, JSON.stringify(data, null, 2), retryAfterSecs] });
+          }
+          else if (status === 400 || status === 422) { // Invalid prompt ~ content filtered; ID11062024.n
+            data = await response.json();
+
+            // ID03012024.sn
+            let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
+            if (persistPrompts) { // Persist prompts ?
+              // ----- ID02112025.sn
+              const allHeaders = {};
+              for (const [name, value] of response.headers.entries()) {
+                allHeaders[name] = value;
+              }
+              // console.log(`**** AOAI Headers ****:\n${JSON.stringify(allHeaders, null, 2)}`);
+              // ------ ID02112025.en
+              promptDao = new PersistDao(persistdb, TblNames.Prompts);
+              values = [
+                req.id,
+                instanceName, // ID11112024.n
+                config.appId,
+                req.body,
+                data, // ID04112024.n
+                allHeaders, // ID02112025.n
+                req.body.user, // ID04112024.n
+                (Date.now() - stTime) / 1000, // ID11082024.n
+                (element.id) ? element.id : "index-" + (uriIdx - 1) // ID05082025.n
+              ];
+
+              await promptDao.storeEntity(
+                req.id,
+                0,
+                values
+              );
+            };
+            // ID03012024.en
+
+            // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n*****`);
+            logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, status, response.statusText, JSON.stringify(data, null, 2)] });
+
+            metricsObj.updateFailedCalls(status, 0);
+            respMessage = {
+              http_code: status,
+              uri_idx: (uriIdx - 1), // ID03262025.n
+              status_text: response.statusText,
+              data: data
+            };
+
+            break;
+          }
+          else { // Authz failed
+            data = await response.text();
+
+            // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n*****`);
+            logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, status, response.statusText, JSON.stringify(data, null, 2)] });
+
+            metricsObj.updateFailedCalls(status, 0);
+
+            /* ID06132024.so
+            err_msg = {
+                    appId: config.appId,
+                    reqId: req.id,
+                    targetUri: element.uri,
+                    http_code: status,
+              status_text: response.statusText,
+              data: data,
+                    cause: `AI Service endpoint returned exception message [${response.statusText}]`
+                  };
+            ID06132024.eo */
+            // ID06132024.sn
+            err_msg = {
+              error: {
+                target: element.uri,
+                message: `AI Service endpoint returned exception: [${data}].`,
+                code: "unauthorized"
+              }
+            };
+            // ID06132024.en
+
+            respMessage = {
+              http_code: status,
+              uri_idx: (uriIdx - 1), // ID03262025.n
+              data: err_msg
+            };
+
+            retryAfter = 1; // ID06162025.n; Log the failed call in the endpoint metrics object, try other available endpoints (if any)
+            // break; // ID06162025.o
           };
-          // ID02202024.en
-
-          if (th_id && req.body.stream) // ID06052024.n
-            threadId = th_id;
-
-          // ID03012024.sn
-          let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
-          if (persistPrompts) { // Persist prompt and completion ?
-            // ----- ID02112025.sn
-            const allHeaders = {};
-            for (const [name, value] of response.headers.entries()) {
-              allHeaders[name] = value;
-            }
-            // console.log(`**** AOAI Headers ****:\n${JSON.stringify(allHeaders, null, 2)}`);
-            // ------ ID02112025.en
-            promptDao = new PersistDao(persistdb, TblNames.Prompts);
-            values = [
-              req.id,
-              instanceName, // ID11112024.n
-              config.appId,
-              req.body,
-              data, // ID04112024.n
-              allHeaders, // ID02112025.n
-              req.body.user, // ID04112024.n
-              respTime / 1000, // ID11082024.n
-              (element.id) ? element.id : "index-" + (uriIdx - 1) // ID05082025.n
-            ];
-
-            await promptDao.storeEntity(
-              req.id,
-              0,
-              values
-            );
-          };
-          // ID03012024.en
-
-          respMessage = {
-            http_code: status,
-            uri_idx: (uriIdx - 1),
-            cached: false,
-            data: data
-          };
-
-          retryAfter = 0;  // ID05282024.n (Bugfix; Set the retry after var to zero!!)
-          break; // break out from the endpoint for loop!
         }
-        else if (status === 429) { // endpoint is busy so try next one
-          data = await response.json();
-
-          let retryAfterSecs = response.headers.get('retry-after');
-          // let retryAfterMs = headers.get('retry-after-ms');
-
-          if (retryAfter > 0)
-            retryAfter = (retryAfterSecs < retryAfter) ? retryAfterSecs : retryAfter;
-          else
-            retryAfter = retryAfterSecs;
-
-          metricsObj.updateFailedCalls(status, retryAfterSecs);
-
-          // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n  Retry seconds: ${retryAfterSecs}\n*****`);
-          logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s\n  Retry seconds: %d", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, status, response.statusText, JSON.stringify(data, null, 2), retryAfterSecs] });
-        }
-        else if (status === 400 || status === 422) { // Invalid prompt ~ content filtered; ID11062024.n
-          data = await response.json();
-
-          // ID03012024.sn
-          let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
-          if (persistPrompts) { // Persist prompts ?
-            // ----- ID02112025.sn
-            const allHeaders = {};
-            for (const [name, value] of response.headers.entries()) {
-              allHeaders[name] = value;
-            }
-            // console.log(`**** AOAI Headers ****:\n${JSON.stringify(allHeaders, null, 2)}`);
-            // ------ ID02112025.en
-            promptDao = new PersistDao(persistdb, TblNames.Prompts);
-            values = [
-              req.id,
-              instanceName, // ID11112024.n
-              config.appId,
-              req.body,
-              data, // ID04112024.n
-              allHeaders, // ID02112025.n
-              req.body.user, // ID04112024.n
-              (Date.now() - stTime) / 1000, // ID11082024.n
-              (element.id) ? element.id : "index-" + (uriIdx - 1) // ID05082025.n
-            ];
-
-            await promptDao.storeEntity(
-              req.id,
-              0,
-              values
-            );
-          };
-          // ID03012024.en
-
-          // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n*****`);
-          logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, status, response.statusText, JSON.stringify(data, null, 2)] });
-
-          metricsObj.updateFailedCalls(status, 0);
-          respMessage = {
-            http_code: status,
-            uri_idx: (uriIdx - 1), // ID03262025.n
-            status_text: response.statusText,
-            data: data
-          };
-
-          break;
-        }
-        else { // Authz failed
-          data = await response.text();
-
-          // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n*****`);
-          logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, status, response.statusText, JSON.stringify(data, null, 2)] });
-
-          metricsObj.updateFailedCalls(status, 0);
-
+        catch (error) {
           /* ID06132024.so
-          err_msg = {
-                  appId: config.appId,
-                  reqId: req.id,
-                  targetUri: element.uri,
-                  http_code: status,
-            status_text: response.statusText,
-            data: data,
-                  cause: `AI Service endpoint returned exception message [${response.statusText}]`
-                };
+                err_msg = {
+            appId: config.appId,
+            reqId: req.id,
+            targetUri: element.uri,
+            cause: error
+          };
           ID06132024.eo */
           // ID06132024.sn
           err_msg = {
             error: {
               target: element.uri,
-              message: `AI Service endpoint returned exception: [${data}].`,
-              code: "unauthorized"
+              message: `AI Services Gateway encountered exception: [${error}].`,
+              code: "internalFailure"
             }
           };
           // ID06132024.en
+          // console.log(`*****\nAzOaiProcessor.processRequest():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
+          logger.log({ level: "error", message: "[%s] %s.processRequest():\n  ID: %s\n  Priority: %d\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, element.id, (uriIdx - 1), JSON.stringify(err_msg, null, 2)] });
 
           respMessage = {
-            http_code: status,
+            http_code: 500,
             uri_idx: (uriIdx - 1), // ID03262025.n
             data: err_msg
           };
 
-          break;
+          // break; // ID04172024.n; ID06162025.o
+          retryAfter = 1; // ID06162025.n; Try remaining endpoints if any!
         };
-      }
-      catch (error) {
-        /* ID06132024.so
-              err_msg = {
-          appId: config.appId,
-          reqId: req.id,
-          targetUri: element.uri,
-          cause: error
-        };
-        ID06132024.eo */
-        // ID06132024.sn
-        err_msg = {
-          error: {
-            target: element.uri,
-            message: `AI Services Gateway encountered exception: [${error}].`,
-            code: "internalFailure"
-          }
-        };
-        // ID06132024.en
-        // console.log(`*****\nAzOaiProcessor.processRequest():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
-        logger.log({ level: "error", message: "[%s] %s.processRequest():\n  ID: %s\n  Priority: %d\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, element.id, (uriIdx - 1), JSON.stringify(err_msg, null, 2)] });
+      }; // end of endpoint for loop
 
-        respMessage = {
-          http_code: 500,
-          uri_idx: (uriIdx - 1), // ID03262025.n
-          data: err_msg
-        };
-
-        break; // ID04172024.n
-      };
-    }; // end of endpoint for loop
+    }
+    while ((retryAfter > 0) && triedEps.some(val => val === false)); // ID06162025.n
 
     // instanceFailedCalls++;
 
@@ -1139,23 +1201,25 @@ class AzOaiProcessor {
         errorMessage: `All backend OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`
       };
       ID06132024.eo */
-      // ID06132024.sn
-      err_msg = {
-        error: {
-          target: req.originalUrl,
-          message: `All backend Azure OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`,
-          code: "tooManyRequests"
-        }
-      };
-      // ID06132024.en
+      if (respMessage == null) { // ID06162025.n
+        // ID06132024.sn
+        err_msg = {
+          error: {
+            target: req.originalUrl,
+            message: `All backend Azure OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`,
+            code: "tooManyRequests"
+          }
+        };
+        // ID06132024.en
 
-      // res.set('retry-after', retryAfter); // Set the retry-after response header
-      respMessage = {
-        http_code: 429, // Server is busy, retry later!
-        uri_idx: (uriIdx - 1), // ID05082025.n
-        data: err_msg,
-        retry_after: retryAfter
-      };
+        // res.set('retry-after', retryAfter); // Set the retry-after response header
+        respMessage = {
+          http_code: 429, // Server is busy, retry later!
+          uri_idx: (uriIdx - 1), // ID05082025.n
+          data: err_msg,
+          retry_after: retryAfter
+        };
+      };  // ID06162025.n
     }
     else {
       if (respMessage == null) {
@@ -1225,7 +1289,7 @@ class AzOaiProcessor {
       respMessage.threadId = threadId;
 
       // ID02142025.sn  Update the threadid in the prompts table for each request
-      if ( process.env.API_GATEWAY_PERSIST_PROMPTS === 'true' ) {
+      if (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') {
         promptDao = new PersistDao(persistdb, TblNames.Prompts);
         values = [
           req.id,
@@ -1250,11 +1314,11 @@ class AzOaiProcessor {
      * Is long term memory enabled for this AI App? &
      * Is user value present in the request payload?
      */
-    if ( (respMessage.http_code === 200) &&
-         userMemConfig && 
-         req.body.user ) {
+    if ((respMessage.http_code === 200) &&
+      userMemConfig &&
+      req.body.user) {
       // 1) Construct the input message
-      const extractionPrompt = 
+      const extractionPrompt =
         getExtractionPrompt(
           req.body.user,
           userMessage,
@@ -1263,7 +1327,7 @@ class AzOaiProcessor {
 
       let epMetricsObject = null;
       let aiAppEndpoints = null;
-      if ( userMemConfig.aiAppName ) {
+      if (userMemConfig.aiAppName) {
         for (const application of apps.applications) {
           if (application.appId == userMemConfig.aiAppName) {
             aiAppEndpoints = application.endpoints;
@@ -1273,22 +1337,22 @@ class AzOaiProcessor {
           };
         };
       }
-      if ( ! aiAppEndpoints || ! epMetricsObject ) { // Fallback to using current model's metrics obj. and backend endpoints?
+      if (!aiAppEndpoints || !epMetricsObject) { // Fallback to using current model's metrics obj. and backend endpoints?
         aiAppEndpoints = config.appEndpoints;
         epMetricsObject = epdata;
       };
 
       // 2) Extract user facts from input query and assistant reply
       const extraction = await callAiAppEndpoint(req, epMetricsObject, aiAppEndpoints, extractionPrompt);
-      if ( extraction ) {
+      if (extraction) {
         const factMsg = extraction.choices[0].message.content;
         logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Facts: %s", splat: [scriptName, this.constructor.name, req.id, threadId, factMsg] });
-        if ( ! factMsg.startsWith("No extractable facts") ) {
+        if (!factMsg.startsWith("No extractable facts")) {
           const facts = extraction.choices[0].message.content.split('\n').filter(Boolean);
 
-          if ( facts.length > 0 ) {
+          if (facts.length > 0) {
             // 3.1) Check to see if embedd model AI App endpoints are populated
-            if ( !vecEndpoints ) {
+            if (!vecEndpoints) {
               for (const application of apps.applications) {
                 if (application.appId == cacheConfig.embeddApp) {
                   vecEndpoints = application.endpoints;

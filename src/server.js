@@ -52,6 +52,7 @@
  * ID05082025: ganrad: v2.3.5: (Enhancement) Introduced memory affinity feature.
  * ID05122025: ganrad: v2.3.6: (Enhancement) Introduced endpoint health policy feature for AOAI and AI Model Inf. API calls.
  * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced long term user memory ~ personalization feature.
+ * ID06162025: ganrad: v2.3.9: (Enhancement) Introduced endpoint routing types - Priority (default), Random weighted and Latency weighted.
 */
 
 // ID04272024.sn
@@ -61,8 +62,8 @@ const wlogger = require('./utilities/logger.js');
 wlogger.log({ level: "info", message: "[%s] Starting initialization of AI Application Gateway ...", splat: [scriptName] });
 // ID04272024.en
 
-// Server version v2.3.8 ~ ID05142025.n
-const srvVersion = "2.3.8";
+// Server version v2.3.9 ~ ID06162025.n
+const srvVersion = "2.3.9";
 
 // ID02082024.sn: Configure Azure Monitor OpenTelemetry for instrumenting API gateway requests.
 // const { useAzureMonitor } = require("@azure/monitor-opentelemetry"); ID01312025.o
