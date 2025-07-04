@@ -126,7 +126,7 @@
         "endpointRouterType": {
             "description": "Type of backend endpoint router",
             "type": "string",
-            "enum": ["Priority", "RandomWeighted", "LatencyWeighted"]
+            "enum": ["Priority", "LeastActiveConnections", "LeastRecentlyUsed", "RandomWeighted", "LatencyWeighted"]
         },
         "endpoints": {
             "description": "Endpoint settings for an AI Application",

@@ -90,7 +90,8 @@ const {
   ServerTypes, 
   AppServerStatus, 
   ConfigProviderType,
-  DefaultJsonParserCharLimit } = require("./utilities/app-gtwy-constants"); // ID02202025.n
+  DefaultJsonParserCharLimit,
+  EndpointRouterTypes } = require("./utilities/app-gtwy-constants"); // ID02202025.n, ID06162025.n
 const { apirouter, reconfigEndpoints } = require("./routes/apirouter"); // Single domain AI App Gateway
 const { mdapirouter, reconfigAppMetrics } = require("./routes/md-apirouter"); // ID09042024.n; Multi domain distributed AI App Engine
 const cprouter = require("./routes/control-plane.js"); // ID01232025.n; AI App Gateway control plane route
@@ -520,6 +521,8 @@ function getSingleDomainAgentMetadata(req) {
       let eps = new Map();
       aiapp.endpoints.forEach((element) => {
         let ep = {
+          id: element.id ?? epIdx, // ID06162025.n
+          weight: element.weight ?? 0, // ID06162025.n
           rpm: element.rpm,
           uri: element.uri,
           healthPolicy: element.healthPolicy // ID05122025.n
@@ -560,6 +563,7 @@ function getSingleDomainAgentMetadata(req) {
           followupPrompt: aiapp.personalizationSettings.followupPrompt
         });
       // ID05142025.en
+      appeps.set("endpointRouterType",aiapp.endpointRouterType ?? EndpointRouterTypes.PriorityRouter); // ID06162025.n
       appeps.set("endpoints", Object.fromEntries(eps));
       appcons.push(Object.fromEntries(appeps));
     });

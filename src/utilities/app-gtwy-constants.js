@@ -169,6 +169,8 @@ const MessageRoleTypes = { // ID05142025.n
 
 const EndpointRouterTypes = { // ID06162025.n
   PriorityRouter: "Priority",  // Default
+  LRURouter: "LeastRecentlyUsed",
+  LeastConnectionsRouter: "LeastActiveConnections",
   WeightedRandomRouter: "RandomWeighted",
   WeightedDynamicRouter: "LatencyWeighted"
 }

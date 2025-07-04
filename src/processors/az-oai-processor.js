@@ -45,7 +45,8 @@
  *   1) When session affinity or weighted routing is enabled, retry all endpoints before returning.
  *   2) Introduced weighted random routing based on pre-defined endpoint weights.
  *   3) Extension of #2: Dynamically adjust the endpoint weights based on latency/response times of backend endpoints.
- *   4) Update auth header to support OAI API calls.
+ *   4) Introduced Least Recently Used (LRU) and Least Connections Used (LCU) endpoint routers.
+ *   5) Updated auth header to support OpenAI API calls.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -682,13 +683,11 @@ class AzOaiProcessor {
     let err_msg = null;
     let uriIdx = 0;
     let endpointId = 0; // ID05082025.n
-    let weightedEndpointId; // ID06162025.n
-    let weightedIdTried = false; // ID06162025.n
+    let routerEndpointId; // ID06162025.n
+    let routerIdTried = false; // ID06162025.n
     let userMessage = req.body.messages.find(msg => msg.role === "user")?.content;// ID05142025.n
 
     let epdata = appConnections.getConnection(config.appId); // ID04302025.n
-    if ( routerInstance ) // ID06162025.n
-        weightedEndpointId = routerInstance.getEndpointId(req.id);
 
     if (!threadId) {
       // if ( cacheConfig.cacheResults && useCache ) { // Is caching enabled?; ID03142025.o
@@ -838,7 +837,7 @@ class AzOaiProcessor {
       };
 
       if ( memoryConfig.affinity ) // ID06162025.n
-        weightedIdTried = true;
+        routerIdTried = true;
     }; // end of user session if
 
     /**
@@ -865,6 +864,9 @@ class AzOaiProcessor {
     let triedEps = new Array(config.appEndpoints.length).fill(false);
     // ID06162025.en
 
+    if ( routerInstance ) // ID06162025.n
+      routerEndpointId = routerInstance.getEndpointId(req.id);
+
     // 3. Call Azure OAI endpoint(s)
     // let epdata = appConnections.getConnection(config.appId); ID04302025.o
     let response;
@@ -883,14 +885,14 @@ class AzOaiProcessor {
         else
           endpointIdMatched = true;
 
-        if ( (!weightedIdTried) && (weightedEndpointId !== null) && (weightedEndpointId >= 0) ) { // ID06162025.n
-          if ( uriIdx !== weightedEndpointId ) {
+        if ( (!routerIdTried) && (routerEndpointId !== null) && (routerEndpointId >= 0) ) { // ID06162025.n
+          if ( uriIdx !== routerEndpointId ) {
             uriIdx++
 
             continue;
           }
           else
-            weightedIdTried = true;
+            routerIdTried = true;
         };
 
         if (triedEps[uriIdx]) { // ID06162025.n; This endpoint has been called/invoked so skip and go to next!
@@ -953,6 +955,11 @@ class AzOaiProcessor {
             delete req.body.frequency_penalty; */
             meta.set('extra-parameters', 'drop'); // Drop any parameters the model doesn't understand; Don't return an error!
           };
+
+          // ID06162025.sn
+          if ( routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter) )
+            routerInstance.updateUriConnections(req.id, true, uriIdx - 1); 
+          // ID06162025.en
 
           stTime = Date.now();
           response = await fetch(element.uri, {
@@ -1054,7 +1061,7 @@ class AzOaiProcessor {
             retryAfter = 0;  // ID05282024.n (Bugfix; Set the retry after var to zero!!)
             break; // break out from the endpoint for loop!
           }
-          else if (status === 429) { // endpoint is busy so try next one
+          else if (status === 429) { // Endpoint is busy so try next one
             data = await response.json();
 
             let retryAfterSecs = response.headers.get('retry-after');
@@ -1185,7 +1192,11 @@ class AzOaiProcessor {
 
           // break; // ID04172024.n; ID06162025.o
           retryAfter = 1; // ID06162025.n; Try remaining endpoints if any!
-        };
+        }
+        finally { // ID06162025.sn
+          if ( routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter) )
+            routerInstance.updateUriConnections(req.id, false, uriIdx - 1); 
+        }; // ID06162025.en
       }; // end of endpoint for loop
 
     }
