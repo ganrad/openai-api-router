@@ -52,7 +52,7 @@
  * ID05082025: ganrad: v2.3.5: (Enhancement) Introduced memory affinity feature.
  * ID05122025: ganrad: v2.3.6: (Enhancement) Introduced endpoint health policy feature for AOAI and AI Model Inf. API calls.
  * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced long term user memory ~ personalization feature.
- * ID06162025: ganrad: v2.3.9: (Enhancement) Introduced endpoint routing types - Priority (default), Random weighted and Latency weighted.
+ * ID06162025: ganrad: v2.3.9: (Enhancement) Introduced multiple endpoint routing types - Priority (default), LRU, Least Active Connections, Random Weighted and Latency weighted.
 */
 
 // ID04272024.sn
