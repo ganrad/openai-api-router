@@ -1,6 +1,6 @@
 {
   "name": "openai-api-router",
-  "version": "2.3.1",
+  "version": "2.3.9",
   "description": "An Azure AI Application Gateway/Platform that accelerates the deployment of intelligent AI Solutions/Applications such as AI Chatbots on Azure.",
   "main": "src/server.js",
   "scripts": {

@@ -11,7 +11,10 @@
  * ID05042024: ganrad: Added additional endpoint metrics - throttledApiCalls, filteredApiCalls, tokensPerMinute and requestsPerMinute
  * ID05282024: ganrad: Implemented aggregated rate limiting for model deployment endpoint
  * ID06052024: ganrad: (Enhancement) Added streaming support for Azure OpenAI Chat Completion API call
- *
+ * ID04302025: ganrad: v2.3.2: (Enhancement) Each endpoint can (optional) have a unique id ~ assistant id
+ * ID04302025: ganrad: v2.3.2: (Enhancement) Track no. of user sessions/threads in each metrics collection interval
+ * ID05082025: ganrad: v2.3.5: (Enhancement) Log the request id when an backend endpoint is marked as unhealthy
+ * ID05122025: ganrad: v2.3.6: (Enhancement) Introduced endpoint health policy feature for AOAI and AI Model Inf. API calls
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -22,7 +25,22 @@ const { EndpointMetricsConstants } = require('./app-gtwy-constants');
 
 class AzOaiEpMetrics {
   // constructor(endpoint,interval,count) { ID05282024.o
-  constructor(endpoint, interval, count, rpm) { // ID05282024.n
+  // constructor(endpoint, interval, count, rpm) { // ID05282024.n, ID04302025.o
+  // constructor(endpoint, interval, count, rpm, id) { // ID04302025.n
+  constructor(endpoint, interval, count, rpm, id, healthPolicy) { // ID04302025.n, ID05122025.n
+    if ( id ) // ID04302025.n
+      this.id = id; // Unique ID assistant to this endpoint
+
+    if ( healthPolicy ) { // ID05122025.n
+      this.healthPolicy = healthPolicy;
+      if ( healthPolicy.maxCallsBeforeUnhealthy )
+        this.maxCallAttempts = healthPolicy.maxCallsBeforeUnhealthy
+      else
+        this.maxCallAttempts = 1;  // Default max. call attempts
+      this.callAttempts = 0;
+    };
+
+    this.threads = 0; // No. of threads spawned ID04302025.n
     this.endpoint = endpoint; // The target endpoint
     this.apiCalls = 0; // No. of successful calls
     this.failedCalls = 0; // No. of failed calls ~ 429's
@@ -50,7 +68,7 @@ class AzOaiEpMetrics {
     this.rpmTimeMarker = Date.now();
     // ID05282024.en
     // console.log(`\n  Endpoint:  ${this.endpoint}\n  Cache Interval (minutes): ${this.cInterval}\n  History Count: ${this.hStack}`);
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  Endpoint:  %s\n  Cache Interval (minutes): %d\n  History Count: %d\n  RPM Limit: %d", splat: [scriptName, this.constructor.name, this.endpoint, this.cInterval, this.hStack, this.rpmLimit] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  ID: %s\n  Endpoint:  %s\n  Cache Interval (minutes): %d\n  History Count: %d\n  RPM Limit: %d", splat: [scriptName, this.constructor.name, (this.id ? this.id : "NA"), this.endpoint, this.cInterval, this.hStack, this.rpmLimit] }); // ID04302025.n
 
     this.startTime = Date.now();
     this.endTime = this.startTime + (this.cInterval * 60 * 1000);
@@ -59,7 +77,7 @@ class AzOaiEpMetrics {
     this.historyQueue = new Queue(count); // Metrics history cache (fifo queue)
   }
 
-  isEndpointHealthy() {
+  isEndpointHealthy(reqid) { // ID05082025.n
     let currentTime = Date.now();
 
     let isAvailable = currentTime >= this.timeMarker;
@@ -73,11 +91,11 @@ class AzOaiEpMetrics {
         this.rpmTimeMarker = currentTime;
         this.rpm = 0;
       }
-      else if (this.rpm === this.rpmLimit) { // proxy rate limit hit
+      else if (this.rpm >= this.rpmLimit) { // proxy rate limit hit ID05082025.n (=== to >=)
         isAvailable = false;
         retrySecs = (60000 - elapsedTime) / 1000;
 
-        logger.log({ level: "debug", message: "[%s] %s.isEndpointHealthy():\n  Endpoint: %s\n  RPM: %d\n  Retry After: %d\n  Message: %s", splat: [scriptName, this.constructor.name, this.endpoint, this.rpmLimit, retrySecs, "Hit max. configured RPM for this endpoint."] });
+        logger.log({ level: "warn", message: "[%s] %s.isEndpointHealthy():\n  Request ID: %s\n  Endpoint: %s\n  RPM: %d\n  Retry After: %d\n  Message: %s", splat: [scriptName, this.constructor.name, reqid, this.endpoint, this.rpmLimit, retrySecs, "Hit max. configured RPM for this endpoint."] }); // ID05082025.n
       };
     };
     // ID05282024.en
@@ -85,16 +103,38 @@ class AzOaiEpMetrics {
     return [isAvailable, retrySecs];
   }
 
-  updateApiCallsAndTokens(tokens, latency) {
+  updateUserThreads() { // ID04302025.n
+    this.threads++;
+  }
+
+  // updateApiCallsAndTokens(tokens, latency) { ID04302025.o
+  updateApiCallsAndTokens(tokens, latency, threadStarted) { // ID04302025.n
     this.updateMetrics();
+
+    if ( threadStarted ) // ID04302025.n
+      this.threads++;
 
     if (tokens) // ID06052024.n
       this.totalTokens += tokens;
+      
     this.respTime += latency;
     this.apiCalls++;
     this.totalCalls++;
 
     this.rpm++; // ID05282024.n
+
+    // ID05122025.sn
+    if ( this.healthPolicy ) { // Has health policy been configured for this endpoint?
+      if ( latency > (this.healthPolicy.latencyThresholdSeconds * 1000) ) {
+        this.callAttempts++;
+        if ( this.callAttempts >= this.maxCallAttempts )
+          // The current call should succeed, but mark this endpoint as unhealthy
+          this.timeMarker = Date.now() + (this.healthPolicy.retryAfterMinutes * 60 * 1000);
+      }
+      else
+        this.callAttempts = 0;
+    };
+    // ID05122025.en
   }
 
   // updateFailedCalls(retrySeconds) { // ID05042024.o
@@ -124,6 +164,7 @@ class AzOaiEpMetrics {
       let his_obj = {
         collectionTime: sdate,
         collectedMetrics: {
+          threadCount: this.threads, // ID04302025.n
           apiCalls: this.apiCalls,
           failedApiCalls: this.failedCalls,
           throttledApiCalls: this.throttledCalls, // ID05042024.n
@@ -144,6 +185,7 @@ class AzOaiEpMetrics {
       };
       this.historyQueue.enqueue(his_obj);
 
+      this.threads = 0; // ID04302025.n
       this.apiCalls = 0;
       this.failedCalls = 0;
       this.throttledCalls = 0; // ID05042024.n
@@ -157,10 +199,15 @@ class AzOaiEpMetrics {
     };
   }
 
+  getUniqueId() { // ID04302025.n
+    return(this.id);
+  }
+
   toJSON() {
     let kTokens = (this.totalTokens > 1000) ? (this.totalTokens / 1000) : this.totalTokens;
 
     return {
+      threadCount: this.threads, // ID04302025.n
       apiCalls: this.apiCalls,
       failedApiCalls: this.failedCalls,
       throttledApiCalls: this.throttledCalls, // ID05042024.n

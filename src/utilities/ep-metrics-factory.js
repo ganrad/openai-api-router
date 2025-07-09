@@ -9,6 +9,8 @@
  * ID05032024: ganrad: Added traffic routing support for Azure AI Content Safety service APIs
  * ID05282024: ganrad: Updated getMetricsObject() signature to accept variable number of args ~ rest parameter
  * ID11052024: ganrad: v2.1.0: Added support for LLMs that support Azure AI Model Inference API (Chat completion).
+ * ID04302025: ganrad: v2.3.2: (Enhancement) Each endpoint can (optional) have a unique id ~ assistant id
+ * ID05122025: ganrad: v2.3.6: (Enhancement) Introduced endpoint health policy feature for AOAI and AI Model Inf. API calls. 
 */
 
 const AzOaiEpMetrics = require("./az-oai-ep-metrics.js"); // Open AI Metrics
@@ -39,7 +41,9 @@ class EndpointMetricsFactory {
           process.env.API_GATEWAY_METRICS_CINTERVAL,
           // process.env.API_GATEWAY_METRICS_CHISTORY); ID05282024.o
           process.env.API_GATEWAY_METRICS_CHISTORY,
-          epConfig[0]); // ID05282024.n
+          epConfig[0], // (RPM) ID05282024.n
+          epConfig[1], // (ID) ID04302025.n
+          epConfig[2]); // (Health Policy) ID05122025.n
         break;
       case AzAiServices.AiSearch:
         metricsObj = new AzAiSearchEpMetrics(

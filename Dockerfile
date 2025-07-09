@@ -22,7 +22,7 @@
 #
 FROM public.ecr.aws/docker/library/node:20.11.0-alpine3.19
 LABEL name="Azure AI Application Gateway server"
-LABEL version="2.3.1"
+LABEL version="2.3.9"
 LABEL description="This container image exposes endpoints to 1) Track API usage for capacity planning (Azure OAI Service) 2) Load balancing AI Application requests across multiple Azure AI Services deployments/endpoints + many more value add features"
 LABEL author="Ganesh Radhakrishnan" email="ganrad01@gmail.com" dated="01-28-2024" license="MIT"
 
@@ -35,7 +35,7 @@ ENV API_GATEWAY_CONFIG_FILE=$config_file
 ENV API_GATEWAY_KEY="abcxyz"
 
 # (Required) API Gateway ID
-ARG gateway_name=Test-Gateway
+ARG gateway_name=local-ai-gateway-2.3.8
 ENV API_GATEWAY_ID=$gateway_name
 
 # (Required) API Gateway type - single-domain / multi-domain ID09042024.n
@@ -55,11 +55,11 @@ ARG gateway_log_level=info
 ENV API_GATEWAY_LOG_LEVEL=$gateway_log_level
 
 # (Required) API Gateway metrics collection interval (in minutes)
-ARG metrics_interval=5
+ARG metrics_interval=60
 ENV API_GATEWAY_METRICS_CINTERVAL=$metrics_interval
 
 # (Required) API Gateway metrics history cache count
-ARG metrics_history=5
+ARG metrics_history=168
 ENV API_GATEWAY_METRICS_CHISTORY=$metrics_history
 
 # (Required) Use Semantic Cache feature? // ID03152024.n
@@ -78,7 +78,7 @@ ENV API_GATEWAY_PERSIST_PROMPTS=$persist_prompts
 # IMPORTANT: When running the container with use_auth="true", make sure to set values for the following env vars.
 # 1. AZURE_TENANT_ID  (Azure tenant ID)
 # 2. API_GATEWAY_CLIENT_ID (This is the client/application ID of AI App Gateway registered in MSFT Entra)
-ARG use_auth="false"
+ARG use_auth="true"
 ENV API_GATEWAY_AUTH=$use_auth
 
 RUN mkdir -p /home/node/app/node_modules && chown -R node:node /home/node/app

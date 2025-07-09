@@ -1,5 +1,56 @@
 # CHANGELOG
 
+## [v2.3.9](https://github.com/ganrad/openai-api-router/compare/v2.3.1...v2.3.9)
+### Functionality changes
+**Azure AI Application Gateway (Server)**
+* Enhancement: **Unique Backend Endpoint IDs**
+
+  Each AI Application (Type=oai/ai_inf/ai_agent) backend endpoint can now be optionally assigned a unique identifier for improved traceability and configuration flexibility.
+
+* Enhancement: **Endpoint Affinity for Stateful Sessions**
+
+  For AI Applications with state management enabled, the AI Gateway now supports endpoint affinity. API calls within the same user session are routed to the same backend endpoint that handled the initial request. If that endpoint is unavailable (e.g., throttled or down), the request is seamlessly redirected to an alternative configured endpoint.
+
+* Enhancement: **Backend Endpoint Health Policy**
+
+  A new health policy feature is available for Azure OpenAI and AI Model Inference endpoints. When enabled, the AI Gateway monitors endpoint latency and automatically disables any endpoint that exceeds a pre-configured response time threshold (in minutes).
+
+* Enhancement: **Long-Term User Memory (Personalization)**
+
+  The AI Gateway now supports long-term user memory, enabling personalized interactions. When enabled, the system extracts relevant facts from user prompts to tailor responses and generates follow-up questions based on user history.
+
+* Enhancement: **Advanced API Traffic Routing**
+
+  Multiple built-in traffic routers are now available to intelligently distribute API calls across backend endpoints. Supported routing strategies include:
+
+  - Priority-based (default)
+  - Least Recently Used (LRU)
+  - Least Active Connections
+  - Random Weighted
+  - Latency Weighted
+
+  Each AI Application can be configured with one of these routing strategies.
+
+* Enhancement: **New API for Call Metrics**
+
+  A dedicated API has been introduced to retrieve detailed metrics on AI Application API calls, supporting better observability and performance analysis.
+
+* Enhancement: **User Session Tracking for Stateful AI Apps**
+
+  When state management is enabled, the AI Gateway now tracks the number of active user sessions/threads during each metrics collection interval.
+
+* Enhancement: **OpenAI Model Endpoints**
+
+  Introduced support for OpenAI model endpoints.  With this feature, an AI Application hosted in the gateway can be configured with both OpenAI and Azure AI Foundry Model endpoints.
+
+**AI Application Gateway Console (UI/SPA)**
+* Introduced release **v1.3.0**
+
+  This new release includes several user interface refinements to improve the overall user experience.
+
+### Documentation changes
+* Updated the documentation to reflect changes introduced in this release. Included descriptions for new environment variables added in this release.
+
 ## [v2.3.1](https://github.com/ganrad/openai-api-router/compare/v2.2.0...v2.3.1)
 ### Functionality changes
 **Azure AI Application Gateway (Server)**

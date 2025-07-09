@@ -1,44 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Application Gateway Console</title>
-    <!-- msal.min.js can be used in the place of msal.js; included msal.js to make debug easy -->
-    <script
-      type="text/javascript"
-      src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"
-    ></script>
-    <!-- Bootstrap CSS -->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
-      crossorigin="anonymous"
-    />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel=stylesheet
-    href=https://cdn.jsdelivr.net/npm/pretty-print-json@3.0/dist/css/pretty-print-json.css>
-  </head>
 
-  <body>
-    <!-- Header -->
-    <header class="bg-light py-3 mb-4">
-      <div class="container">
-        <div class="d-flex justify-content-between align-items-center">
-          <h1 class="h3">AI App Gateway Console</h1>
-          <div class="btn-group-sm" role="group" aria-label="First group">
-            <a href="/ais-chatbot/ui" class="btn btn-primary active" aria-current="page">Home</a>
-            <button id="btnGroupDrop1" type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">Deploy AI Apps</button>
-            <ul class="dropdown-menu" aria-labelledby="btnGroupDrop1">
-              <!-- <li><a class="dropdown-item form-control-sm" href="#" data-bs-toggle="modal" data-bs-target="#aiAppModal">AI Application</a></li> -->
-              <li><a class="dropdown-item form-control-sm" href="#" id="aiAppDeployLink">AI Application</a></li> 
-              <li><a class="dropdown-item form-control-sm" style="pointer-events: none; color: gray;" href="#">AI RAG Application</a></li>
-            </ul>
-            <a href="#" class="btn btn-primary" id="auth-anchor" onclick="authenticateUser()" aria-current="page">Sign-in</a>
-          </div>
-          <div id="uname-div"></div>
-          <!-- <nav>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Application Gateway Console</title>
+  <!-- msal.min.js can be used in the place of msal.js; included msal.js to make debug easy -->
+  <script type="text/javascript" src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretty-print-json@3.0/dist/css/pretty-print-json.css">
+  <!-- ID05142025.n: Highlight.js CSS theme -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="bg-light py-3 mb-4">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center">
+        <h1 class="h3">AI App Gateway Console</h1>
+        <div class="btn-group-sm" role="group" aria-label="First group">
+          <a href="/ais-chatbot/ui" class="btn btn-primary active" aria-current="page">Home</a>
+          <button id="btnGroupDrop1" type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown"
+            aria-expanded="false">Deploy AI Apps</button>
+          <ul class="dropdown-menu" aria-labelledby="btnGroupDrop1">
+            <!-- <li><a class="dropdown-item form-control-sm" href="#" data-bs-toggle="modal" data-bs-target="#aiAppModal">AI Application</a></li> -->
+            <li><a class="dropdown-item form-control-sm" href="#" id="aiAppDeployLink">AI Application</a></li>
+            <li><a class="dropdown-item form-control-sm" style="pointer-events: none; color: gray;" href="#">AI RAG
+                Application</a></li>
+          </ul>
+          <a href="#" class="btn btn-primary" id="auth-anchor" onclick="authenticateUser()"
+            aria-current="page">Sign-in</a>
+        </div>
+        <div id="uname-div"></div>
+        <!-- <nav>
             <a href="/ais-chatbot/ui" class="me-3">Home</a>
             <a
               href="#"
@@ -49,38 +47,39 @@
             >
             <div id="uname-div"></div>
           </nav> -->
-        </div>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <!-- Body Content -->
-    <div class="container">
-      <div class="row">
-        <!-- First Column -->
-        <div class="col-md-2">
-          <div class="mb-2">
-            <label for="srvdropdown" class="form-label small"
-              ><b>AI Application Gateway</b></label
-            >
-            <select
-              id="srvdropdown"
-              class="form-select form-select-sm"
-              onchange="setAiApps()"
-              data-bs-toggle="tooltip" data-bs-placement="right"
-            >
+  <!-- Body Content -->
+  <div class="container">
+    <div class="row">
+      <!-- First Column -->
+      <div class="col-md-2">
+        <div class="mb-2">
+          <label for="srvdropdown" class="form-label small"><b>AI Application Gateway</b></label>
+          <select id="srvdropdown" class="form-select form-select-sm" onchange="setAiApps()" data-bs-toggle="tooltip"
+            data-bs-placement="right">
+            <option selected="selected">Choose from</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label for="srvtype" class="form-label small"><b>Gateway Type</b></label>
+          <input class="form-control form-control-sm" id="srvtype" input="text" placeholder="AI Gateway Type"
+            readonly />
+        </div>
+        <div class="mb-2">
+          <label for="appdropdown" class="form-label small"><b>AI Application</b></label>
+          <div class="input-group">
+            <select id="appdropdown" class="form-select form-select-sm" onchange="setInferenceTarget()">
               <option selected="selected">Choose from</option>
             </select>
+            <button class="btn btn-outline-secondary btn-sm" id="aiAppMetrics" data-bs-toggle="tooltip"
+              data-bs-placement="right" onclick="retrieveAiAppMetrics()" title="View call metrics">
+              <i class="bi bi-bar-chart"></i>
+            </button>
           </div>
-          <div class="mb-2">
-            <label for="srvtype" class="form-label small"
-              ><b>Gateway Type</b></label
-            >
-            <input class="form-control form-control-sm" id="srvtype" input="text" placeholder="AI Gateway Type" readonly />
-          </div>
-          <div class="mb-2">
-            <label for="appdropdown" class="form-label small"
-              ><b>AI Application</b></label
-            >
+          <!--
             <select
               id="appdropdown"
               class="form-select form-select-sm"
@@ -88,158 +87,77 @@
             >
               <option selected="selected">Choose from</option>
             </select>
-          </div>
-          <div class="mb-2">
-            <label class="form-label small"><b>Description</b></label>
-            <div
-              class="border rounded p-3 mb-2 small"
-              style="height: 110px; overflow-y: auto"
-              id="descField"
-            ></div>
-          </div>
-          <div class="mb-2">
-            <label for="msgtypedropdown" class="form-label small"
-              ><b>Message Type</b></label
-            >
-            <select
-              id="msgtypedropdown"
-              class="form-select form-select-sm"
-              onchange="setModelInputVars()"              
-            >
-              <option selected="selected" value="system">System</option>
-              <option value="developer">Developer</option>
-            </select>
-          </div>
-          <div class="mb-2">
-            <!-- <label class="form-label"><b>System Prompt</b></label> -->
-            <textarea
-              id="sysPromptField"
-              style="resize: none"
-              class="form-control form-control-sm"
-              rows="12"
-            ></textarea>
-          </div>
+          -->
         </div>
+        <div class="mb-2">
+          <label class="form-label small"><b>Description</b></label>
+          <div class="border rounded p-3 mb-2 small" style="height: 110px; overflow-y: auto" id="descField"></div>
+        </div>
+        <div class="mb-2">
+          <label for="msgtypedropdown" class="form-label small"><b>Message Type</b></label>
+          <select id="msgtypedropdown" class="form-select form-select-sm" onchange="setModelInputVars()">
+            <option selected="selected" value="system">System</option>
+            <option value="developer">Developer</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <!-- <label class="form-label"><b>System Prompt</b></label> -->
+          <textarea id="sysPromptField" style="resize: none" class="form-control form-control-sm" rows="12"></textarea>
+        </div>
+      </div>
 
-        <!-- Middle Column -->
-        <div class="col-md-7 position-relative">
-          <nav>
-            <div class="nav nav-tabs small" id="nav-tab" role="tablist">
-              <button
-                class="nav-link active"
-                id="nav-chat-tab"
-                data-bs-toggle="tab"
-                data-bs-target="#nav-chat"
-                type="button"
-                role="tab"
-                aria-controls="nav-chat"
-                aria-selected="true"
-              >
-                Chat
-              </button>
-              <button
-                class="nav-link"
-                id="nav-info-tab"
-                data-bs-toggle="tab"
-                data-bs-target="#nav-info"
-                type="button"
-                role="tab"
-                aria-controls="nav-info"
-                aria-selected="false"
-              >
-                Threads
-              </button>
-              <button
-                class="nav-link"
-                id="nav-msg-tab"
-                data-bs-toggle="tab"
-                data-bs-target="#nav-msg"
-                type="button"
-                role="tab"
-                aria-controls="nav-msg"
-                aria-selected="false"
-              >
-                Messages (Raw)
-              </button>
-              <button
-                class="nav-link"
-                id="nav-error-tab"
-                data-bs-toggle="tab"
-                data-bs-target="#nav-error"
-                type="button"
-                role="tab"
-                aria-controls="nav-error"
-                aria-selected="false"
-              >
-                Exceptions
+      <!-- Middle Column -->
+      <div class="col-md-7 position-relative">
+        <nav>
+          <div class="nav nav-tabs small" id="nav-tab" role="tablist">
+            <button class="nav-link active" id="nav-chat-tab" data-bs-toggle="tab" data-bs-target="#nav-chat"
+              type="button" role="tab" aria-controls="nav-chat" aria-selected="true">
+              Chat
+            </button>
+            <button class="nav-link" id="nav-info-tab" data-bs-toggle="tab" data-bs-target="#nav-info" type="button"
+              role="tab" aria-controls="nav-info" aria-selected="false">
+              Threads
+            </button>
+            <button class="nav-link" id="nav-msg-tab" data-bs-toggle="tab" data-bs-target="#nav-msg" type="button"
+              role="tab" aria-controls="nav-msg" aria-selected="false">
+              Messages (Raw)
+            </button>
+            <button class="nav-link" id="nav-error-tab" data-bs-toggle="tab" data-bs-target="#nav-error" type="button"
+              role="tab" aria-controls="nav-error" aria-selected="false">
+              Exceptions
+            </button>
+          </div>
+        </nav>
+        <button class="btn btn-link position-absolute top-0 end-0 text-primary" onclick="toggleConfigColumn()">
+          <i class="bi bi-eye"></i>
+        </button>
+        <div class="tab-content" id="nav-tabContent">
+          <div class="tab-pane fade show active" id="nav-chat" role="tabpanel" aria-labelledby="nav-chat-tab">
+            <div class="p-2 border bg-light">
+              <button id="chatClearBtn" class="btn btn-primary btn-sm" type="button" onclick="clearContent('chatBox')"
+                data-bs-toggle="tooltip" data-bs-placement="right" title="Clear chat">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                  class="bi bi-x-square" viewBox="0 0 16 16">
+                  <path
+                    d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z" />
+                  <path
+                    d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                </svg>
+                Clear chat
               </button>
             </div>
-          </nav>
-          <button class="btn btn-link position-absolute top-0 end-0 text-primary" onclick="toggleConfigColumn()">
-            <i class="bi bi-eye"></i>
-          </button>
-          <div class="tab-content" id="nav-tabContent">
-            <div
-              class="tab-pane fade show active"
-              id="nav-chat"
-              role="tabpanel"
-              aria-labelledby="nav-chat-tab"
-            >
-              <div class="p-2 border bg-light">
-                <button
-                  id="chatClearBtn"
-                  class="btn btn-primary btn-sm"
-                  type="button"
-                  onclick="clearContent('chatBox')"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="right"
-                  title="Clear chat"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    class="bi bi-x-square"
-                    viewBox="0 0 16 16"
-                  >
-                    <path
-                      d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"
-                    />
-                    <path
-                      d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"
-                    />
-                  </svg>
-                  Clear chat
-                </button>
-              </div>
-              <!-- <label for="chatBox" class="form-label"><b>Chat Box</b></label> -->
-              <div
-                class="border rounded p-3 mb-3 small"
-                style="height: 465px; overflow-y: auto"
-                id="chatBox"
-              >
-                <!-- Chat messages will be displayed here -->
-              </div>
-              <div class="input-group">
-                <!-- <input type="text" id="userInput" class="form-control" placeholder="Enter your query here"> -->
-                <textarea
-                  id="userInput"
-                  class="form-control form-control-sm"
-                  rows="5"
-                  placeholder="Enter your query here"
-                ></textarea>
-                <button
-                  id="callApiBtn"
-                  class="btn btn-primary btn-sm align-self-start ms-2"
-                  style="width: 100px;"
-                  type="button"
-                  onclick="sendMessage()"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="right"
-                  title="Send prompt to server"
-                >
-                  <!--
+            <!-- <label for="chatBox" class="form-label"><b>Chat Box</b></label> -->
+            <div class="border rounded p-3 mb-3 small" style="height: 465px; overflow-y: auto" id="chatBox">
+              <!-- Chat messages will be displayed here -->
+            </div>
+            <div class="input-group">
+              <!-- <input type="text" id="userInput" class="form-control" placeholder="Enter your query here"> -->
+              <textarea id="userInput" class="form-control form-control-sm" rows="5"
+                placeholder="Enter your query here"></textarea>
+              <button id="callApiBtn" class="btn btn-primary btn-sm align-self-start ms-2" style="width: 100px;"
+                type="button" onclick="sendMessage()" data-bs-toggle="tooltip" data-bs-placement="right"
+                title="Send prompt to server">
+                <!--
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="16"
@@ -254,11 +172,12 @@
                   </svg>
                   Send
                   -->
-                  <span id="buttonSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                  <span id="buttonText">Send</span>
-                </button>
-              </div>
-              <!--
+                <span id="buttonSpinner" class="spinner-border spinner-border-sm d-none" role="status"
+                  aria-hidden="true"></span>
+                <span id="buttonText">Send</span>
+              </button>
+            </div>
+            <!--
               <div class="bg-light">
                 <button
                   id="spinnerBtn"
@@ -276,778 +195,688 @@
                 </button>
               </div>
               -->
+          </div>
+          <div class="tab-pane fade" id="nav-msg" role="tabpanel" aria-labelledby="nav-msg-tab">
+            <div class="p-2 border bg-light">
+              <button id="msgClearBtn" class="btn btn-primary btn-sm" type="button" onclick="clearContent('msgBox')"
+                data-bs-toggle="tooltip" data-bs-placement="right" title="Clear messages">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                  class="bi bi-x-square" viewBox="0 0 16 16">
+                  <path
+                    d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z" />
+                  <path
+                    d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                </svg>
+                Clear messages
+              </button>
             </div>
-            <div
-              class="tab-pane fade"
-              id="nav-msg"
-              role="tabpanel"
-              aria-labelledby="nav-msg-tab"
-            >
-              <div class="p-2 border bg-light">
-                <button
-                  id="msgClearBtn"
-                  class="btn btn-primary btn-sm"
-                  type="button"
-                  onclick="clearContent('msgBox')"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="right"
-                  title="Clear messages"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    class="bi bi-x-square"
-                    viewBox="0 0 16 16"
-                  >
-                    <path
-                      d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"
-                    />
-                    <path
-                      d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"
-                    />
-                  </svg>
-                  Clear messages
-                </button>
-              </div>
-              <!-- <label for="msgBox" class="form-label"><b>Message Box</b></label> -->
-              <div
-                class="border rounded p-3 mb-3 small"
-                style="height: 600px; overflow-y: auto"
-                id="msgBox"
-              >
-                <!-- Raw messages will be displayed here -->
-                <div class="accordion" id="msgAccordian"></div>
-              </div>
+            <!-- <label for="msgBox" class="form-label"><b>Message Box</b></label> -->
+            <div class="border rounded p-3 mb-3 small" style="height: 600px; overflow-y: auto" id="msgBox">
+              <!-- Raw messages will be displayed here -->
+              <div class="accordion" id="msgAccordian"></div>
             </div>
-            <div
-              class="tab-pane fade"
-              id="nav-info"
-              role="tabpanel"
-              aria-labelledby="nav-info-tab"
-            >
-              <div class="p-2 border bg-light">
-                <button
-                  id="infoClearBtn"
-                  class="btn btn-primary btn-sm"
-                  type="button"
-                  onclick="clearContent('infoBox')"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="right"
-                  title="Clear content"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    class="bi bi-x-square"
-                    viewBox="0 0 16 16"
-                  >
-                    <path
-                      d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"
-                    />
-                    <path
-                      d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"
-                    />
-                  </svg>
-                  Clear info
-                </button>
-              </div>
-              <!-- <label for="infoBox" class="form-label"><b>Info Box</b></label> -->
-              <div
-                class="border rounded p-3 mb-3 small"
-                style="height: 600px; overflow-y: auto"
-                id="infoBox"
-              >
-                <!-- Info. messages will be displayed here -->
-              </div>
+          </div>
+          <div class="tab-pane fade" id="nav-info" role="tabpanel" aria-labelledby="nav-info-tab">
+            <div class="p-2 border bg-light">
+              <button id="infoClearBtn" class="btn btn-primary btn-sm" type="button" onclick="clearContent('infoBox')"
+                data-bs-toggle="tooltip" data-bs-placement="right" title="Clear content">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                  class="bi bi-x-square" viewBox="0 0 16 16">
+                  <path
+                    d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z" />
+                  <path
+                    d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                </svg>
+                Clear info
+              </button>
             </div>
-            <div
-              class="tab-pane fade"
-              id="nav-error"
-              role="tabpanel"
-              aria-labelledby="nav-error-tab"
-            >
-              <div class="p-2 border bg-light">
-                <button
-                  id="errorClearBtn"
-                  class="btn btn-primary btn-sm"
-                  type="button"
-                  onclick="clearContent('errorBox')"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="right"
-                  title="Clear error panel"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    class="bi bi-x-square"
-                    viewBox="0 0 16 16"
-                  >
-                    <path
-                      d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"
-                    />
-                    <path
-                      d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"
-                    />
-                  </svg>
-                  Clear errors
-                </button>
-              </div>
-              <!-- <label for="errorBox" class="form-label"><b>Error Box</b></label> -->
-              <div
-                class="border rounded p-3 mb-3 small"
-                style="height: 600px; overflow-y: auto"
-                id="errorBox"
-              >
-                <!-- Exception messages will be displayed here -->
-              </div>
+            <!-- <label for="infoBox" class="form-label"><b>Info Box</b></label> -->
+            <div class="border rounded p-3 mb-3 small" style="height: 600px; overflow-y: auto" id="infoBox">
+              <!-- Info. messages will be displayed here -->
+            </div>
+          </div>
+          <div class="tab-pane fade" id="nav-error" role="tabpanel" aria-labelledby="nav-error-tab">
+            <div class="p-2 border bg-light">
+              <button id="errorClearBtn" class="btn btn-primary btn-sm" type="button" onclick="clearContent('errorBox')"
+                data-bs-toggle="tooltip" data-bs-placement="right" title="Clear error panel">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                  class="bi bi-x-square" viewBox="0 0 16 16">
+                  <path
+                    d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z" />
+                  <path
+                    d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                </svg>
+                Clear errors
+              </button>
+            </div>
+            <!-- <label for="errorBox" class="form-label"><b>Error Box</b></label> -->
+            <div class="border rounded p-3 mb-3 small" style="height: 600px; overflow-y: auto" id="errorBox">
+              <!-- Exception messages will be displayed here -->
             </div>
           </div>
         </div>
-        <!-- Third Column -->
-        <div class="col-md-3" id="configColumn">
-          <nav>
-            <div class="nav nav-tabs small" id="nav-tab-config" role="tablist">
-              <button
-                class="nav-link active"
-                id="nav-model-cfg-tab"
-                data-bs-toggle="tab"
-                data-bs-target="#nav-model-cfg"
-                type="button"
-                role="tab"
-                aria-controls="nav-model-cfg"
-                aria-selected="true"
-              >
-                Model Config
+      </div>
+      <!-- Third Column -->
+      <div class="col-md-3" id="configColumn">
+        <nav>
+          <div class="nav nav-tabs small" id="nav-tab-config" role="tablist">
+            <button class="nav-link active" id="nav-model-cfg-tab" data-bs-toggle="tab" data-bs-target="#nav-model-cfg"
+              type="button" role="tab" aria-controls="nav-model-cfg" aria-selected="true">
+              Model Config
+            </button>
+            <button class="nav-link" id="nav-search-cfg-tab" data-bs-toggle="tab" data-bs-target="#nav-search-cfg"
+              type="button" role="tab" aria-controls="nav-search-cfg">
+              Search Config
+            </button>
+          </div>
+        </nav>
+        <div class="tab-content" id="nav-tabContent-cfg">
+          <div class="tab-pane fade show active" id="nav-model-cfg" role="tabpanel" aria-labelledby="nav-model-cfg-tab">
+            <div class="p-2 border bg-light">
+              <button id="modelCfgSaveBtn" class="btn btn-primary btn-sm" type="button"
+                onclick="saveContent('modelConfig')" data-bs-toggle="tooltip" data-bs-placement="right"
+                title="Save model configuration">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-save"
+                  viewBox="0 0 16 16">
+                  <path
+                    d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 9.293V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h2.5a.5.5 0 0 1 0 1z" />
+                </svg>
+                Save
               </button>
-              <button
-                class="nav-link"
-                id="nav-search-cfg-tab"
-                data-bs-toggle="tab"
-                data-bs-target="#nav-search-cfg"
-                type="button"
-                role="tab"
-                aria-controls="nav-search-cfg"
-              >
-                Search Config
-              </button>
-            </div>
-          </nav>
-          <div class="tab-content" id="nav-tabContent-cfg">
-            <div
-              class="tab-pane fade show active"
-              id="nav-model-cfg"
-              role="tabpanel"
-              aria-labelledby="nav-model-cfg-tab"
-            >
-              <div class="p-2 border bg-light">
-                <button
-                  id="modelCfgSaveBtn"
-                  class="btn btn-primary btn-sm"
-                  type="button"
-                  onclick="saveContent('modelConfig')"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="right"
-                  title="Save model configuration"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    class="bi bi-save"
-                    viewBox="0 0 16 16"
-                  >
-                    <path
-                      d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 9.293V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h2.5a.5.5 0 0 1 0 1z"
-                    />
-                  </svg>
-                  Save
-                </button>
 
-                <div
-                  class="position-fixed bottom-0 end-0 p-3"
-                  style="z-index: 11"
-                >
-                  <div
-                    id="modelConfigToast"
-                    class="toast hide"
-                    role="alert"
-                    aria-live="assertive"
-                    aria-atomic="true"
-                  >
-                    <div class="toast-header">
-                      <strong class="me-auto">Status Message</strong>
-                      <small>Configuration</small>
-                      <button
-                        type="button"
-                        class="btn-close"
-                        data-bs-dismiss="toast"
-                        aria-label="Close"
-                      ></button>
-                    </div>
-                    <div class="toast-body">Model configuration saved!</div>
+              <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                <div id="modelConfigToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true">
+                  <div class="toast-header">
+                    <strong class="me-auto">Status Message</strong>
+                    <small>Configuration</small>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
                   </div>
-                </div>
-              </div>
-              <div
-                class="border rounded p-3 mb-3"
-                style="height: 600px; overflow-y: auto"
-                id="modelCfgBox"
-              >
-                <!-- Model configuration will be displayed here -->
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">User</span>
-                  <input
-                    id="uid"
-                    type="text"
-                    aria-label="User"
-                    disabled
-                    class="form-control"
-                  />
-                </div>
-                <div class="form-check">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    value=""
-                    id="cache"
-                  />
-                  <label class="form-check-label small" for="cache">
-                    Disable Cache
-                  </label>
-                </div>
-                <div class="form-check">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    value=""
-                    id="stream"
-                  />
-                  <label class="form-check-label small" for="stream"> Stream </label>
-                </div>
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text small">Stop Sequence</span>
-                  <input
-                    id="stopSequence"
-                    type="text"
-                    aria-label="Stop Sequence"
-                    class="form-control form-control-sm"
-                  />
-                </div>
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">Temperature</span>
-                  <input
-                    id="temperature"
-                    type="range"
-                    aria-label="Temperature"
-                    class="form-range"
-                    value="1.0"
-                    step="0.1"
-                    min="0.0"
-                    max="2"
-                    oninput="this.nextElementSibling.value = this.value"
-                  /><output id="temp_o"></output>
-                </div>
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">Max Tokens</span>
-                  <input
-                    id="mtokens"
-                    type="range"
-                    aria-label="Max Tokens"
-                    class="form-range"
-                    value="400"
-                    step="100"
-                    min="200"
-                    max="8192"
-                    oninput="this.nextElementSibling.value = this.value"
-                  /><output id="mtokens_o"></output>
-                </div>
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">Top P</span>
-                  <input
-                    id="topp"
-                    type="range"
-                    aria-label="Top P"
-                    class="form-range"
-                    value="1.0"
-                    step="0.1"
-                    min="0.0"
-                    max="1"
-                    oninput="this.nextElementSibling.value = this.value"
-                  /><output id="topp_o"></output>
-                </div>
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">Frequency Penalty</span>
-                  <input
-                    id="frequency"
-                    type="range"
-                    aria-label="Frequency Penalty"
-                    class="form-range"
-                    value="0"
-                    step="0.1"
-                    min="0"
-                    max="2"
-                    oninput="this.nextElementSibling.value = this.value"
-                  /><output id="freq_o"></output>
-                </div>
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">Presence Penalty</span>
-                  <input
-                    id="presence"
-                    type="range"
-                    aria-label="Presence Penalty"
-                    class="form-range"
-                    value="0"
-                    step="0.1"
-                    min="0"
-                    max="2"
-                    oninput="this.nextElementSibling.value = this.value"
-                  /><output id="perf_o"></output>
+                  <div class="toast-body">Model configuration saved!</div>
                 </div>
               </div>
             </div>
-            <div
-              class="tab-pane fade"
-              id="nav-search-cfg"
-              role="tabpanel"
-              aria-labelledby="nav-search-cfg-tab"
-            >
-              <div class="p-2 border bg-light">
-                <button
-                  id="searchCfgSaveBtn"
-                  class="btn btn-primary btn-sm"
-                  type="button"
-                  onclick="saveContent('searchConfig')"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="right"
-                  title="Save search configuration"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    class="bi bi-save"
-                    viewBox="0 0 16 16"
-                  >
-                    <path
-                      d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 9.293V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h2.5a.5.5 0 0 1 0 1z"
-                    />
-                  </svg>
-                  Save
-                </button>
-                <div
-                  class="position-fixed bottom-0 end-0 p-3"
-                  style="z-index: 11"
-                >
-                  <div
-                    id="srchConfigToast"
-                    class="toast hide"
-                    role="alert"
-                    aria-live="assertive"
-                    aria-atomic="true"
-                  >
-                    <div class="toast-header">
-                      <strong class="me-auto">Status Message</strong>
-                      <small>Configuration</small>
-                      <button
-                        type="button"
-                        class="btn-close"
-                        data-bs-dismiss="toast"
-                        aria-label="Close"
-                      ></button>
-                    </div>
-                    <div class="toast-body">Search configuration saved!</div>
+            <div class="border rounded p-3 mb-3" style="height: 600px; overflow-y: auto" id="modelCfgBox">
+              <!-- Model configuration will be displayed here -->
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">User</span>
+                <input id="uid" type="text" aria-label="User" disabled class="form-control" />
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="cache" />
+                <label class="form-check-label small" for="cache">
+                  Disable Cache
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="stream" />
+                <label class="form-check-label small" for="stream"> Stream </label>
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text small">Stop Sequence</span>
+                <input id="stopSequence" type="text" aria-label="Stop Sequence" class="form-control form-control-sm" />
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Temperature</span>
+                <input id="temperature" type="range" aria-label="Temperature" class="form-range" value="1.0" step="0.1"
+                  min="0.0" max="2" oninput="this.nextElementSibling.value = this.value" /><output id="temp_o"></output>
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Max Tokens</span>
+                <input id="mtokens" type="range" aria-label="Max Tokens" class="form-range" value="400" step="100"
+                  min="200" max="8192" oninput="this.nextElementSibling.value = this.value" /><output
+                  id="mtokens_o"></output>
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Top P</span>
+                <input id="topp" type="range" aria-label="Top P" class="form-range" value="1.0" step="0.1" min="0.0"
+                  max="1" oninput="this.nextElementSibling.value = this.value" /><output id="topp_o"></output>
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Frequency Penalty</span>
+                <input id="frequency" type="range" aria-label="Frequency Penalty" class="form-range" value="0"
+                  step="0.1" min="0" max="2" oninput="this.nextElementSibling.value = this.value" /><output
+                  id="freq_o"></output>
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Presence Penalty</span>
+                <input id="presence" type="range" aria-label="Presence Penalty" class="form-range" value="0" step="0.1"
+                  min="0" max="2" oninput="this.nextElementSibling.value = this.value" /><output id="perf_o"></output>
+              </div>
+            </div>
+          </div>
+          <div class="tab-pane fade" id="nav-search-cfg" role="tabpanel" aria-labelledby="nav-search-cfg-tab">
+            <div class="p-2 border bg-light">
+              <button id="searchCfgSaveBtn" class="btn btn-primary btn-sm" type="button"
+                onclick="saveContent('searchConfig')" data-bs-toggle="tooltip" data-bs-placement="right"
+                title="Save search configuration">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-save"
+                  viewBox="0 0 16 16">
+                  <path
+                    d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 9.293V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h2.5a.5.5 0 0 1 0 1z" />
+                </svg>
+                Save
+              </button>
+              <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                <div id="srchConfigToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true">
+                  <div class="toast-header">
+                    <strong class="me-auto">Status Message</strong>
+                    <small>Configuration</small>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
                   </div>
+                  <div class="toast-body">Search configuration saved!</div>
                 </div>
               </div>
-              <div
-                class="border rounded p-3 mb-3"
-                style="height: 570px; overflow-y: auto"
-                id="searchCfgBox"
-              >
-                <!-- Search configuration will be displayed here -->
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">AI Search App Name</span>
-                  <input
-                    id="searchAppName"
-                    type="text"
-                    aria-label="AI Search App Name"
-                    disabled
-                    class="form-control"
-                  />
-                </div>
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">Endpoint</span>
-                  <input
-                    id="endpoint"
-                    type="text"
-                    aria-label="AI Search App Name"
-                    disabled
-                    class="form-control"
-                  />
-                </div>
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">Index Name</span>
-                  <input
-                    id="indexName"
-                    type="text"
-                    aria-label="AI Search App Name"
-                    disabled
-                    class="form-control"
-                  />
-                </div>
-                <div class="form-check">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    value=""
-                    id="scope"
-                  />
-                  <label class="form-check-label" for="scope"> Scope </label>
-                </div>
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">Query Type</span>
-                  <select id="queryType" class="form-select">
-                    <option value="simple">simple</option>
-                    <option value="semantic">semantic</option>
-                    <option value="vector">vector</option>
-                    <option value="vector_simple_hybrid">
-                      vector_simple_hybrid
-                    </option>
-                    <option value="vector_semantic_hybrid">
-                      vector_semantic_hybrid
-                    </option>
-                  </select>
-                </div>
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">Embedding Model</span>
-                  <input
-                    id="embeddModel"
-                    type="text"
-                    aria-label="Embedding Model"
-                    disabled
-                    class="form-control"
-                  />
-                </div>
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">Semantic Config</span>
-                  <input
-                    id="semConfig"
-                    type="text"
-                    aria-label="Semantic Config"
-                    class="form-control"
-                  />
-                </div>
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">Strictness</span>
-                  <input
-                    id="strictness"
-                    type="range"
-                    aria-label="Strictness"
-                    class="form-range"
-                    value="3"
-                    step="1"
-                    min="1"
-                    max="5"
-                    oninput="this.nextElementSibling.value = this.value"
-                  /><output id="strict_o">3</output>
-                </div>
-                <div class="input-group input-group-sm mb-2">
-                  <span class="input-group-text">Documents</span>
-                  <input
-                    id="docs"
-                    type="range"
-                    aria-label="Documents"
-                    class="form-range"
-                    value="5"
-                    step="1"
-                    min="1"
-                    max="20"
-                    oninput="this.nextElementSibling.value = this.value"
-                  /><output id="docs_o">5</output>
-                </div>
+            </div>
+            <div class="border rounded p-3 mb-3" style="height: 570px; overflow-y: auto" id="searchCfgBox">
+              <!-- Search configuration will be displayed here -->
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">AI Search App Name</span>
+                <input id="searchAppName" type="text" aria-label="AI Search App Name" disabled class="form-control" />
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Endpoint</span>
+                <input id="endpoint" type="text" aria-label="AI Search App Name" disabled class="form-control" />
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Index Name</span>
+                <input id="indexName" type="text" aria-label="AI Search App Name" disabled class="form-control" />
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="scope" />
+                <label class="form-check-label" for="scope"> Scope </label>
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Query Type</span>
+                <select id="queryType" class="form-select">
+                  <option value="simple">simple</option>
+                  <option value="semantic">semantic</option>
+                  <option value="vector">vector</option>
+                  <option value="vector_simple_hybrid">
+                    vector_simple_hybrid
+                  </option>
+                  <option value="vector_semantic_hybrid">
+                    vector_semantic_hybrid
+                  </option>
+                </select>
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Embedding Model</span>
+                <input id="embeddModel" type="text" aria-label="Embedding Model" disabled class="form-control" />
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Semantic Config</span>
+                <input id="semConfig" type="text" aria-label="Semantic Config" class="form-control" />
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Strictness</span>
+                <input id="strictness" type="range" aria-label="Strictness" class="form-range" value="3" step="1"
+                  min="1" max="5" oninput="this.nextElementSibling.value = this.value" /><output
+                  id="strict_o">3</output>
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Documents</span>
+                <input id="docs" type="range" aria-label="Documents" class="form-range" value="5" step="1" min="1"
+                  max="20" oninput="this.nextElementSibling.value = this.value" /><output id="docs_o">5</output>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- AI App Toasts; ID02272025.n -->
-    <div class="toast-container" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1050;">
-      <div id="aiAppDeployToast" class="toast w-100 hide" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
-        <div class="toast-header">
-          <strong class="me-auto">AI App Deployment</strong>
-          <small id="toastStatus"></small>
-          <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body" id="aiAppDeployTMsg">
-          <table class="table table-bordered">
-            <thead>
-              <tr>
-                <th>Key</th>
-                <th>Value</th>
-              </tr>
-            </thead>
-            <tbody id="jsonTableBody">
-              <!-- Table rows will be inserted here by JavaScript -->
-            </tbody>
-          </table>  
-        </div>
+  <!-- AI App Toasts; ID02272025.n -->
+  <div class="toast-container"
+    style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1050;">
+    <div id="aiAppDeployToast" class="toast w-100 hide" role="alert" aria-live="assertive" aria-atomic="true"
+      data-bs-autohide="false">
+      <div class="toast-header">
+        <strong class="me-auto">AI App Deployment</strong>
+        <small id="toastStatus"></small>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+      <div class="toast-body" id="aiAppDeployTMsg">
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody id="jsonTableBody">
+            <!-- Table rows will be inserted here by JavaScript -->
+          </tbody>
+        </table>
       </div>
     </div>
-    <!-- AI App Modal Dialog; ID02272025.n -->
-    <div aria-hidden="true" aria-labelledby="aiAppModalLabel" class="modal fade small" id="aiAppDeployModal" tabindex="-1">
-      <div style="max-width: 55%;"  class="modal-dialog">
-        <div class="modal-content rounded">
-          <div class="modal-header bg-light">
-            <h5 class="modal-title text-primary" id="aiAppModalLabel">Single Domain AI Application</h5>
-            <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+  </div>
+
+
+  <!-- Fullscreen Spinner Overlay.  Used when user deploys a new AI App; ID05142025,n -->
+  <div id="spinnerOverlay"
+    class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex justify-content-center align-items-center"
+    style="z-index: 1050;">
+    <div class="spinner-border text-light" role="status">
+      <span class="visually-hidden">Deploying ...</span>
+    </div>
+  </div>
+
+  <!-- AI App Modal Dialog; ID02272025.n -->
+  <div aria-hidden="true" aria-labelledby="aiAppModalLabel" class="modal fade small" id="aiAppDeployModal"
+    tabindex="-1">
+    <div style="max-width: 55%;" class="modal-dialog">
+      <div class="modal-content rounded">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title text-primary" id="aiAppModalLabel">Single Domain AI Application</h5>
+          <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col">
+              <div class="form-floating mb-1">
+                <input class="form-control form-control-sm" id="gatewayId" name="gatewayId" type="text" disabled
+                  placeholder="AI Application Gateway" />
+                <label class="form-label" for="gatewayId">AI Application Gateway</label>
+              </div>
+            </div>
+            <div class="col">
+              <div class="form-floating mb-1">
+                <input class="form-control form-control-sm" id="gatewayType" name="gatewayType" type="text" disabled
+                  placeholder="Type" />
+                <label class="form-label" for="gatewayType">Type</label>
+              </div>
+            </div>
           </div>
-          <div class="modal-body">
+          <form id="aiAppForm" class="needs-validation" novalidate>
+            <fieldset class="border p-3 mb-1">
+              <div class="row">
+                <div class="col">
+                  <div class="form-floating mb-1">
+                    <input class="form-control form-control-sm" id="appId" name="appId" required type="text"
+                      placeholder="AI Application ID" />
+                    <label class="form-label" for="appId">Unique AI Application ID</label>
+                    <div class="invalid-feedback">A unique AI App name is required!</div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="form-floating mb-1">
+                    <select class="form-select form-select-sm" id="appType" name="appType" required>
+                      <option value="azure_language">Azure Language</option>
+                      <option value="azure_translator">Azure Translator</option>
+                      <option value="azure_content_safety">Azure Content Safety</option>
+                      <option value="azure_search">Azure Search</option>
+                      <option value="azure_oai" selected>Azure OAI</option>
+                      <option value="azure_aimodel_inf">Azure AI Model Inf</option>
+                    </select>
+                    <label class="form-label" for="appType">Type of AI Application</label>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col">
+                  <div class="form-floating mb-1">
+                    <textarea style="resize: none" class="form-control form-control-sm" rows="3" required
+                      placeholder="AI Application Description" id="description"></textarea>
+                    <label class="form-label" for="description">AI Application Description</label>
+                    <div class="invalid-feedback">A meaningful description is required!</div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div style="width: 250px;" class="form-floating mb-1">
+                    <input class="form-control form-control-sm" id="searchAiApp" name="searchAiApp" type="text"
+                      placeholder="AI Search Application" />
+                    <label class="form-label" for="searchAiApp">Name of the AI Search Application</label>
+                  </div>
+                </div>
+              </div>
+            </fieldset>
+            <ul class="nav nav-tabs" id="myTab" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="semantic-cache-tab" data-bs-toggle="tab"
+                  data-bs-target="#semantic-cache" type="button" role="tab" aria-controls="semantic-cache"
+                  aria-selected="true">Semantic Cache</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="memory-tab" data-bs-toggle="tab" data-bs-target="#memory" type="button"
+                  role="tab" aria-controls="memory" aria-selected="false">Memory</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="personization-tab" data-bs-toggle="tab" data-bs-target="#personization"
+                  type="button" role="tab" aria-controls="personization" aria-selected="false">Personalization</button>
+              </li>
+            </ul>
+            <div class="tab-content" id="myTabContent">
+              <div class="tab-pane fade show active" id="semantic-cache" role="tabpanel"
+                aria-labelledby="semantic-cache-tab">
+                <fieldset class="border p-3 mb-1">
+                  <legend class="w-auto px-2 fs-6 fw-bold">Semantic Cache</legend>
+                  <div class="row">
+                    <div class="col">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="useCache" checked>
+                        <label class="form-check-label" for="useCache">
+                          Enable Cache for AI Application?
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="form-floating mb-1">
+                        <select class="form-select form-select-sm" id="searchType" name="searchType">
+                          <option value="CosineSimilarity">Cosine Similarity</option>
+                          <option value="EuclideanDistance">Euclidean Distance</option>
+                        </select>
+                        <label class="form-label" for="searchType">Algorithm Used to Search Vectors</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col">
+                      <div class="form-floating mb-1">
+                        <input class="form-control form-control-sm" id="searchDistance" name="searchDistance"
+                          type="number" value="90" placeholder="Search Algorithm Match Rate (1.0 to 100.0%)" />
+                        <label class="form-label" for="searchDistance">Search Algorithm Match Rate (1.0 to
+                          100.0%)</label>
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="form-floating mb-1">
+                        <select class="form-select form-select-sm" id="term" name="term" required="true">
+                          <option value="messages" selected>Messages</option>
+                          <option value="prompt">Prompt</option>
+                        </select>
+                        <label class="form-label" for="term">Search Terms - Prompt or Messages</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col">
+                      <div class="form-floating mb-1">
+                        <input class="form-control form-control-sm" id="includeRoles" name="includeRoles" type="text"
+                          value="user" placeholder="Role Values to Extract and Include in Search" />
+                        <label class="form-label" for="includeRoles">Role Values to Extract and Include in
+                          Search</label>
+                        <div id="roleHelp" class="form-text">Roles (user/system/assistant) separated by comma</div>
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="form-floating mb-1">
+                        <input class="form-control form-control-sm" id="entryExpiryCache" name="entryExpiryCache"
+                          type="text" value="10 minutes" placeholder="Cache Entry Expiry Time Interval" />
+                        <label class="form-label" for="entryExpiryCache">Cache Entry Expiry Time Interval</label>
+                        <div id="cacheExpiryHelp" class="form-text"><a
+                            href="https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT"
+                            class="link-info" target="_blank">PostgreSQL Interval format</a></div>
+                      </div>
+                    </div>
+                  </div>
+                </fieldset>
+              </div>
+              <div class="tab-pane fade" id="memory" role="tabpanel" aria-labelledby="memory-tab">
+                <fieldset class="border p-3 mb-1">
+                  <legend class="w-auto px-2 fs-6 fw-bold">Memory</legend>
+                  <div class="row">
+                    <div class="col">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="useMemory" checked>
+                        <label class="form-check-label" for="useMemory">
+                          Enable Memory for AI Application?
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="applyAffinity" checked>
+                        <label class="form-check-label" for="applyAffinity">
+                          Enable Thread Affinity?
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col">
+                      <div class="form-floating mb-1">
+                        <input class="form-control form-control-sm" id="msgCount" name="msgCount" type="number"
+                          value="5" min="1" placeholder="Number of Messages to Save in Memory" />
+                        <label class="form-label" for="msgCount">Messages Count to Save in Memory</label>
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="form-floating mb-1">
+                        <input class="form-control form-control-sm" id="entryExpiryMemory" name="entryExpiryMemory"
+                          type="text" value="30 minutes" placeholder="Memory Entry Expiry Time Interval" />
+                        <label class="form-label" for="entryExpiryMemory">Memory Entry Expiry Time Interval</label>
+                        <div id="memoryExpiryHelp" class="form-text"><a
+                            href="https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT"
+                            class="link-info" target="_blank">PostgreSQL Interval format</a></div>
+                      </div>
+                    </div>
+                  </div>
+                </fieldset>
+              </div>
+              <div class="tab-pane fade" id="personization" role="tabpanel" aria-labelledby="personization-tab">
+                <fieldset class="border p-3 mb-1">
+                  <legend class="w-auto px-2 fs-6 fw-bold">Personalization</legend>
+                  <div class="row">
+                    <div class="col">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="enableLongTermMemory">
+                        <label class="form-check-label" for="enableLongTermMemory">
+                          Enable Long Term User Memory?
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="generateFollowups">
+                        <label class="form-check-label" for="generateFollowups">
+                          Generate Follow up Messages?
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col">
+                      <div class="form-floating mb-1">
+                        <input class="form-control form-control-sm" id="factsAppName" name="factsAppName" type="text"
+                          placeholder="AI App used to Extract Facts" />
+                        <label class="form-label" for="includeRoles">AI App (Name) used to Extract Facts</label>
+                        <!-- <div class="invalid-feedback">An AI App name is required in order to extract facts about the user!</div> -->
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="form-floating mb-1">
+                        <select class="form-select form-select-sm" id="extractRoles" name="extractRoles"
+                          required="true">
+                          <option value="UserAssistant" selected>User and Assistant</option>
+                          <option value="User">User</option>
+                          <option value="Assistant">Assistant</option>
+                        </select>
+                        <label class="form-label" for="extractRoles">Role values to Extract Facts</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col">
+                      <div class="form-floating mb-1">
+                        <textarea class="form-control form-control-sm" id="extractionPrompt" name="extractionPrompt"
+                          rows="3" placeholder="Extraction Prompt" disabled></textarea>
+                        <label class="form-label" for="extractionPrompt">Extraction Prompt</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col">
+                      <div class="form-floating mb-1">
+                        <textarea class="form-control form-control-sm" id="followUpPrompt" name="followUpPrompt"
+                          rows="3" placeholder="Follow-up Prompt" disabled></textarea>
+                        <label class="form-label" for="followUpPrompt">Follow-up Prompt</label>
+                      </div>
+                    </div>
+                  </div>
+                </fieldset>
+              </div>
+            </div>
+          </form>
+          <fieldset class="border p-3 mb-1">
+            <legend class="w-auto px-2 fs-6 fw-bold">Traffic Routing</legend>
             <div class="row">
               <div class="col">
                 <div class="form-floating mb-1">
-                  <input class="form-control form-control-sm" id="gatewayId" name="gatewayId" type="text" disabled placeholder="AI Application Gateway"/>
-                  <label class="form-label" for="gatewayId">AI Application Gateway</label>
+                  <input class="form-control form-control-sm" id="epId" name="epId" type="text"
+                    placeholder="Unique Endpoint ID" />
+                  <label class="form-label" for="uri">Unique Endpoint ID</label>
                 </div>
               </div>
               <div class="col">
                 <div class="form-floating mb-1">
-                  <input class="form-control form-control-sm" id="gatewayType" name="gatewayType" type="text" disabled placeholder="Type"/>
-                  <label class="form-label" for="gatewayType">Type</label>
+                  <input class="form-control form-control-sm" id="uri" name="uri" type="url"
+                    placeholder="Azure AI Service URI" />
+                  <label class="form-label" for="uri">Azure AI Service URI</label>
                 </div>
               </div>
             </div>
-            <form id="aiAppForm" class="needs-validation" novalidate>
-              <fieldset class="border p-3 mb-1">
-                <div class="row">
-                  <div class="col">
-                    <div class="form-floating mb-1">
-                      <input class="form-control form-control-sm" id="appId" name="appId" required type="text" placeholder="AI Application ID"/>
-                      <label class="form-label" for="appId">Unique AI Application ID</label>
-                      <div class="invalid-feedback">A unique AI App name is required!</div>
-                    </div>
-                  </div>
-                  <div class="col">
-                    <div class="form-floating mb-1">
-                      <select class="form-select form-select-sm" id="appType" name="appType" required>
-                        <option value="azure_language">Azure Language</option>
-                        <option value="azure_translator">Azure Translator</option>
-                        <option value="azure_content_safety">Azure Content Safety</option>
-                        <option value="azure_search">Azure Search</option>
-                        <option value="azure_oai" selected>Azure OAI</option>
-                        <option value="azure_aimodel_inf">Azure AI Model Inf</option>
-                      </select>
-                      <label class="form-label" for="appType">Type of AI Application</label>
-                    </div>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="col">
-                    <div class="form-floating mb-1">
-                      <textarea style="resize: none" class="form-control form-control-sm" rows="3" required placeholder="AI Application Description" id="description"></textarea>
-                      <label class="form-label" for="description">AI Application Description</label>
-                      <div class="invalid-feedback">A meaningful description is required!</div>
-                    </div>
-                  </div>
-                  <div class="col">
-                    <div style="width: 250px;" class="form-floating mb-1">
-                      <input class="form-control form-control-sm" id="searchAiApp" name="searchAiApp" type="text" placeholder="AI Search Application"/>
-                      <label class="form-label" for="searchAiApp">Name of the AI Search Application</label>
-                    </div>
-                  </div>
-                </div>
-              </fieldset>
-              <fieldset class="border p-3 mb-1">
-                <legend class="w-auto px-2 fs-6 fw-bold">Semantic Cache</legend>
-                <div class="row">
-                  <div class="col">
-                    <!--
-                    <div class="form-floating mb-2">
-                      <select class="form-select form-select-sm" id="useCache" name="useCache" required>
-                        <option value="true">Yes</option>
-                        <option value="false">No</option>
-                      </select>
-                      <label class="form-label" for="useCache">Enable Cache for AI Application?</label>
-                    </div>
-                    -->
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" value="" id="useCache" checked>
-                      <label class="form-check-label" for="useCache">
-                        Enable Cache for AI Application?
-                      </label>
-                    </div>
-                  </div>
-                  <div class="col">
-                    <div class="form-floating mb-1">
-                      <select class="form-select form-select-sm" id="searchType" name="searchType">
-                        <option value="CosineSimilarity">Cosine Similarity</option>
-                        <option value="EuclideanDistance">Euclidean Distance</option>
-                      </select>
-                      <label class="form-label" for="searchType">Algorithm Used to Search Vectors</label>
-                    </div>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="col">
-                    <div class="form-floating mb-1">
-                      <input class="form-control form-control-sm" id="searchDistance" name="searchDistance" type="number" value="90" placeholder="Search Algorithm Match Rate (1.0 to 100.0%)"/>
-                      <label class="form-label" for="searchDistance">Search Algorithm Match Rate (1.0 to 100.0%)</label>
-                    </div>
-                  </div>
-                  <div class="col">
-                    <div class="form-floating mb-1">
-                      <select class="form-select form-select-sm" id="term" name="term" required="">
-                        <option value="messages" selected>Messages</option>
-                        <option value="prompt">Prompt</option>
-                      </select>
-                      <label class="form-label" for="term">Search Terms - Prompt or Messages</label>
-                    </div>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="col">
-                    <div class="form-floating mb-1">
-                      <input class="form-control form-control-sm" id="includeRoles" name="includeRoles" type="text" value="user" placeholder="Role Values to Extract and Include in Search"/>
-                      <label class="form-label" for="includeRoles">Role Values to Extract and Include in Search</label>
-                      <div id="roleHelp" class="form-text">Roles (user/system/assistant) separted by comma</div>
-                    </div>
-                  </div>
-                  <div class="col">
-                    <div class="form-floating mb-1">
-                      <input class="form-control form-control-sm" id="entryExpiryCache" name="entryExpiryCache" type="text" value="10 minutes" placeholder="Cache Entry Expiry Time Interval"/>
-                      <label class="form-label" for="entryExpiryCache">Cache Entry Expiry Time Interval</label>
-                      <div id="cacheExpiryHelp" class="form-text"><a href="https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT" class="link-info" target="_blank">PostgreSQL Interval format</a></div>
-                    </div>
-                  </div>
-                </div>
-              </fieldset>
-              <fieldset class="border p-3 mb-1">
-                <legend class="w-auto px-2 fs-6 fw-bold">Memory</legend>
-                <div class="row">
-                  <div class="col">
-                    <!--
-                    <div class="form-floating mb-2">
-                      <select class="form-select form-select-sm" id="useMemory" name="useMemory" required="">
-                        <option value="true">Yes</option>
-                        <option value="false">No</option>
-                      </select>
-                      <label class="form-label" for="useMemory">Enable Memory for AI Application?</label>
-                    </div>
-                    -->
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" id="useMemory" checked>
-                      <label class="form-check-label" for="useMemory">
-                        Enable Memory for AI Application?
-                      </label>
-                    </div>
-                  </div>
-                  <div class="col">
-                    <div class="form-floating mb-1">
-                      <input class="form-control form-control-sm" id="msgCount" name="msgCount" type="number" value="5" min="1"  placeholder="Number of Messages to Save in Memory"/>
-                      <label class="form-label" for="msgCount">Messages Count to Save in Memory</label>
-                    </div>
-                  </div>
-                  <div class="col">
-                    <div class="form-floating mb-1">
-                      <input class="form-control form-control-sm" id="entryExpiryMemory" name="entryExpiryMemory" type="text" value="30 minutes" placeholder="Memory Entry Expiry Time Interval"/>
-                      <label class="form-label" for="entryExpiryMemory">Memory Entry Expiry Time Interval</label>
-                      <div id="memoryExpiryHelp" class="form-text"><a href="https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT" class="link-info" target="_blank">PostgreSQL Interval format</a></div>
-                    </div>
-                  </div>
-                </div>
-              </fieldset>
-            </form>
-            <fieldset class="border p-3 mb-1">
-              <legend class="w-auto px-2 fs-6 fw-bold">Traffic Routing</legend>
-              <div class="row">
-                <div class="col">
-                  <div class="form-floating mb-1">
-                    <input class="form-control form-control-sm" id="uri" name="uri" type="url" placeholder="Azure AI Service URI"/>
-                    <label class="form-label" for="uri">Azure AI Service URI</label>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="form-floating mb-1">
-                    <input class="form-control form-control-sm" id="apikey" name="apikey" type="text" placeholder="API Key"/>
-                    <label class="form-label" for="apikey">API Key</label>
-                  </div>
+            <div class="row">
+              <div class="col">
+                <div class="form-floating mb-1">
+                  <input class="form-control form-control-sm" id="apikey" name="apikey" type="password"
+                    placeholder="API Key" />
+                  <label class="form-label" for="apikey">API Key</label>
                 </div>
               </div>
-              <div class="row">
-                <div class="col">
-                  <div class="form-floating mb-1">
-                    <input class="form-control form-control-sm" id="rpm" name="rpm" type="number" placeholder="API Rate Limit (RPM)"/>
-                    <label class="form-label" for="rpm">API Rate Limit (RPM)</label>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="form-floating mb-1">
-                    <button class="btn btn-secondary btn-sm" id="addEndpoint" type="button">Add Endpoint</button>
-                  </div>
+              <div class="col">
+                <div class="form-floating mb-1">
+                  <input class="form-control form-control-sm" id="rpm" name="rpm" type="number"
+                    placeholder="API Rate Limit (RPM)" />
+                  <label class="form-label" for="rpm">API Rate Limit (RPM)</label>
                 </div>
               </div>
-              <table class="table table-bordered" id="endpointsTable">
-                <thead>
-                  <tr>
-                    <th>Priority</th>
-                    <th>Rate Limit (RPM)</th>
-                    <th>Endpoint URI</th>
-                    <th>API Key</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <!-- Rows will be added here ... -->
-                </tbody>
-              </table>
-              <div id="noRowsMessage" class="alert alert-warning" style="display: none;">
-                At least one AI Service endpoint URI is required.
+              <div class="col">
+                <div class="form-floating mb-1">
+                  <button class="btn btn-secondary btn-sm" id="addEndpoint" type="button">Add Endpoint</button>
+                </div>
               </div>
-            </fieldset>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal" type="button">Close</button>
-            <button class="btn btn-primary btn-sm" 
-              type="button" 
-              onclick="deployAiApplication()"
-              data-bs-toggle="tooltip"
-              data-bs-placement="right"
-              title="Deploy AI Application">Deploy</button>
-          </div>
+            </div>
+            <table class="table table-bordered" id="endpointsTable">
+              <thead>
+                <tr>
+                  <th>Priority</th>
+                  <th>ID</th>
+                  <th>Rate Limit (RPM)</th>
+                  <th>Endpoint URI</th>
+                  <th style="display: none;">API Key</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Rows will be added here ... -->
+              </tbody>
+            </table>
+            <div id="noRowsMessage" class="alert alert-warning" style="display: none;">
+              At least one AI Service endpoint URI is required.
+            </div>
+          </fieldset>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal" type="button">Close</button>
+          <button class="btn btn-primary btn-sm" type="button" onclick="deployAiApplication()" data-bs-toggle="tooltip"
+            data-bs-placement="right" title="Deploy AI Application">Deploy</button>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Footer -->
-    <footer class="bg-light py-3 mt-4">
-      <div class="container text-center">
-        <span>&copy; 2024 Your Company</span>
+  <!-- AI App Metrics Dialog; ID04042025.n -->
+  <div class="modal fade small" id="metricsModalDialog" tabindex="-1" aria-labelledby="metricsModalDialogLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content rounded">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title text-primary" id="metricsModalDialogLabel">AI Application Metrics</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="container mt-4">
+            <fieldset class="border border-primary p-3 rounded mb-4">
+              <legend class="fw-bold text-primary small">AI Application</legend>
+              <div class="row mb-2">
+                <div class="col-md-6">
+                  <strong>Application ID:</strong> <span id="m_applicationId"></span>
+                </div>
+                <div class="col-md-6">
+                  <strong>App Type:</strong> <span id="m_appType"></span>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-12">
+                  <strong>Description:</strong> <span id="m_description"></span>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="border border-primary p-3 rounded mb-4">
+              <legend class="fw-bold text-primary small">Cache Metrics</legend>
+              <div class="row">
+                <div class="col-md-6">
+                  <strong>Cache Hit Count:</strong> <span id="m_cachehc"></span>
+                </div>
+                <div class="col-md-6">
+                  <strong>Avg. Hit Score:</strong> <span id="m_cacheavgscore"></span>
+                </div>
+              </div>
+            </fieldset>
+
+            <ul class="nav nav-tabs mb-3" id="m_endpointMetricsTabs" role="tablist">
+              <!-- Tabs will be dynamically generated here -->
+            </ul>
+            <div class="tab-content" id="m_endpointMetricsContent" style="height: 300px; overflow-y: auto;">
+              <!-- Tab content will be dynamically generated here -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        </div>
       </div>
-    </footer>
-    
-    <!-- Bootstrap JS and dependencies -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"
-      integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
-      crossorigin="anonymous"
-    ></script>
-    <script src="https://cdn.jsdelivr.net/npm/pretty-print-json@3.0/dist/pretty-print-json.min.js"></script>
+    </div>
+  </div>
 
-    <!-- JavaScript for chat box functionality -->
-    <script type="text/javascript" src="core.js"></script>
-    <!-- Custom script to handle events for endpoints table -->
-    <script type="text/javascript" src="aiAppForm.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/MarketingPipeline/Markdown-Tag/markdown-tag.js"></script> 
-  </body>
+  <!-- Footer -->
+  <footer class="bg-light py-3 mt-4">
+    <div class="container text-center">
+      <span>&copy; 2025 Your Company</span>
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS and dependencies -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"
+    integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pretty-print-json@3.0/dist/pretty-print-json.min.js"></script>
+
+  <!-- ID05142025.n: Script to handle GFM to html -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- ID05142025.n: Load Highlight.js for code highlighting. Use Full Browser Build -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script type="text/javascript">
+    // ID05142025.n: Configure Marked to use Highlight.js
+    marked.setOptions({
+      gfm: true,
+      breaks: true,
+      highlight: function (code, lang) {
+        const validLang = hljs.getLanguage(lang) ? lang : 'plaintext';
+        return hljs.highlight(code, { language: validLang }).value;
+      }
+    });
+  </script>
+
+  <!-- JavaScript for chat box functionality -->
+  <script type="text/javascript" src="ai-gateway-core.js" defer></script>
+  <!-- Custom script to handle events for AI App Deploy - ID02272025.n -->
+  <script type="text/javascript" src="aiAppForm.js"></script>
+  <!-- Custom script to handle events for AI App Metrics - ID04042025.n -->
+  <script type="text/javascript" src="aiAppMetricsDialog.js"></script>
+</body>
+
 </html>

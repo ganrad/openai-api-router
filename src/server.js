@@ -48,6 +48,11 @@
  * ID03122025: ganrad: v2.3.0: (Enhancement) When AppInsights logging is enabled, the unique request ID will be stored within the span. This should
  * help with troubleshooting performance issues.
  * ID03262025: ganrad: v2.3.1: (Bugfix) Patch release.
+ * ID03282025: ganrad: v2.3.2: (Optimization) Added server status to the startup log message.
+ * ID05082025: ganrad: v2.3.5: (Enhancement) Introduced memory affinity feature.
+ * ID05122025: ganrad: v2.3.6: (Enhancement) Introduced endpoint health policy feature for AOAI and AI Model Inf. API calls.
+ * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced long term user memory ~ personalization feature.
+ * ID06162025: ganrad: v2.3.9: (Enhancement) Introduced multiple endpoint routing types - Priority (default), LRU, Least Active Connections, Random Weighted and Latency weighted.
 */
 
 // ID04272024.sn
@@ -57,8 +62,8 @@ const wlogger = require('./utilities/logger.js');
 wlogger.log({ level: "info", message: "[%s] Starting initialization of AI Application Gateway ...", splat: [scriptName] });
 // ID04272024.en
 
-// Server version v2.3.1 ~ ID03262025.n
-const srvVersion = "2.3.1";
+// Server version v2.3.9 ~ ID06162025.n
+const srvVersion = "2.3.9";
 
 // ID02082024.sn: Configure Azure Monitor OpenTelemetry for instrumenting API gateway requests.
 // const { useAzureMonitor } = require("@azure/monitor-opentelemetry"); ID01312025.o
@@ -85,7 +90,8 @@ const {
   ServerTypes, 
   AppServerStatus, 
   ConfigProviderType,
-  DefaultJsonParserCharLimit } = require("./utilities/app-gtwy-constants"); // ID02202025.n
+  DefaultJsonParserCharLimit,
+  EndpointRouterTypes } = require("./utilities/app-gtwy-constants"); // ID02202025.n, ID06162025.n
 const { apirouter, reconfigEndpoints } = require("./routes/apirouter"); // Single domain AI App Gateway
 const { mdapirouter, reconfigAppMetrics } = require("./routes/md-apirouter"); // ID09042024.n; Multi domain distributed AI App Engine
 const cprouter = require("./routes/control-plane.js"); // ID01232025.n; AI App Gateway control plane route
@@ -98,6 +104,7 @@ const sFactory = new SchedulerFactory(); // ID05062024.n
 const { initAuth } = require("./auth/bootstrap-auth"); // ID07292024.n
 const { validateAiServerSchema } = require("./schemas/validate-json-config"); // ID01242025.n, ID09202024.n
 
+// const https = require("https"); // IDTest
 const app = express();
 let bodyParser = require('body-parser');
 
@@ -375,7 +382,7 @@ async function readAiAppGatewayConfig() { // ID01292025.n
       context.applications?.forEach((app) => {
         let pidx = 0;
         if ((app.appType === AzAiServices.OAI) || (app.appType === AzAiServices.AzAiModelInfApi))
-          console.log(`Application ID: ${app.appId}; Type: ${app.appType}; useCache=${app?.cacheSettings?.useCache ?? false}; useMemory=${app?.memorySettings?.useMemory ?? false}`);
+          console.log(`Application ID: ${app.appId}; Type: ${app.appType}; useCache=${app?.cacheSettings?.useCache ?? false}; useMemory=${app?.memorySettings?.useMemory ?? false}; personalization=${app?.personalizationSettings?.userMemory ?? false}`); // ID05142025.n
         else
           console.log(`Application ID: ${app.appId}; Type: ${app.appType}`);
 
@@ -514,8 +521,11 @@ function getSingleDomainAgentMetadata(req) {
       let eps = new Map();
       aiapp.endpoints.forEach((element) => {
         let ep = {
+          id: element.id ?? epIdx, // ID06162025.n
+          weight: element.weight ?? 0, // ID06162025.n
           rpm: element.rpm,
-          uri: element.uri
+          uri: element.uri,
+          healthPolicy: element.healthPolicy // ID05122025.n
         };
         eps.set(epIdx, ep);
         epIdx++;
@@ -537,11 +547,23 @@ function getSingleDomainAgentMetadata(req) {
       // ID05062024.sn
       if (aiapp.memorySettings)
         appeps.set("memorySettings", {
+          affinity: aiapp.memorySettings.affinity, // ID05082025.n
           useMemory: aiapp.memorySettings.useMemory,
           msgCount: aiapp.memorySettings.msgCount,
           entryExpiry: aiapp.memorySettings.entryExpiry
         });
       // ID05062024.en
+      // ID05142025.sn
+      if (aiapp.personalizationSettings)
+        appeps.set("personalizationSettings", {
+          userMemory: aiapp.personalizationSettings.userMemory,
+          generateFollowupMsgs: aiapp.personalizationSettings.generateFollowupMsgs,
+          userFactsAppName: aiapp.personalizationSettings.userFactsAppName,
+          extractionPrompt: aiapp.personalizationSettings.extractionPrompt,
+          followupPrompt: aiapp.personalizationSettings.followupPrompt
+        });
+      // ID05142025.en
+      appeps.set("endpointRouterType",aiapp.endpointRouterType ?? EndpointRouterTypes.PriorityRouter); // ID06162025.n
       appeps.set("endpoints", Object.fromEntries(eps));
       appcons.push(Object.fromEntries(appeps));
     });
@@ -784,7 +806,7 @@ initServer().then(() => { // ID01302025.n
     next();
   }, cprouter);
 
-  // API Gateway 'root' endpoint
+  // API Gateway 'load balancer' endpoint
   // Endpoint: /apirouter
   // app.use(endpoint + "/apirouter", function (req, res, next) { ID11152024.o
   app.use(endpoint, function (req, res, next) { // ID11152024.n
@@ -801,12 +823,27 @@ initServer().then(() => { // ID01302025.n
     next();
   }, (context.serverType === ServerTypes.SingleDomain) ? apirouter : mdapirouter);
 
+  
   app.listen(port, () => {
     wlogger.log({
       level: "info", 
-      message: "[%s] Server(): Azure AI Application Gateway started successfully.\n-----\nDetails:\n  Server Name: %s\n  Server Type: %s\n  Version: %s\n  Config. Provider Type: %s\n  Endpoint URI: http://%s:%s%s\n  Start Date: %s\n-----\n",
-      splat: [scriptName,context.serverId,context.serverType,srvVersion,configType,host,port,endpoint,srvStartDate]
-    });
+      message: "[%s] Server(): Azure AI Application Gateway started successfully.\n-----\nDetails:\n  Server Name: %s\n  Server Type: %s\n  Version: %s\n  Config. Provider Type: %s\n  Endpoint URI: http://%s:%s%s\n  Status: %s\n  Start Date: %s\n-----\n",
+      splat: [scriptName,context.serverId,context.serverType,srvVersion,configType,host,port,endpoint,AppServerStatus.Running,srvStartDate]
+    }); // ID03282024.n
     // console.log(`Server(): Azure AI Application Gateway started successfully.\n-----\nDetails:\n  Server Name: ${context.serverId}\n  Server Type: ${context.serverType}\n  Config. Provider Type: ${configType}\n  Endpoint URI: http://${host}:${port}${endpoint}\n-----\n`);
   });
+  
+  /** IDTest
+  https.createServer(
+    {
+      key: fs.readFileSync("server.key"),
+      cert: fs.readFileSync("server.cert"),
+    },
+    app
+  )
+  .listen(port, function () {
+    console.log(
+      "Server(): Azure AI Application Gateway started successfully."
+    );
+  }); */
 });

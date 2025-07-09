@@ -39,6 +39,13 @@
  * to a config file.
  * ID02142025: ganrad: v2.2.0: (Enhancement) Introduced 'sessions' end-point to query all requests created in a user session.  Updated
  * 'apprequests' endpoint to 'requests'.
+ * ID04172025: ganrad: v2.3.2: (Enhancement) Retrieve metrics for an AI Application.
+ * ID04302025: ganrad: v2.3.2: (Enhancement) Each AI App (Type=oai/ai_inf/ai_agent) endpoint can (optional) have a unique id ~ assistant id
+ * ID05082025: ganrad: v2.3.5: (Enhancement) Introduced memory affinity feature.  Enabling this feature ('affinity') in the memory setting for an AI App will
+ * result in all requests tied to a given thread/session to be routed to the same backend uri.
+ * ID05122025: ganrad: v2.3.6: (Enhancement) Introduced endpoint health policy feature for AOAI and AI Model Inf. API calls. 
+ * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced user personalization feature ~ Long term memory.
+ * ID06162025: ganrad: v2.3.9: (Enhancement) Introduced endpoint routing types - Priority (default), Random weighted and Latency weighted.
 */
 
 const path = require('path');
@@ -50,6 +57,7 @@ const AppConnections = require("../utilities/app-connection.js");
 const AppCacheMetrics = require("../utilities/cache-metrics.js"); // ID02202024.n
 const { AzAiServices, CustomRequestHeaders } = require("../utilities/app-gtwy-constants.js");
 const AiProcessorFactory = require("../processors/ai-processor-factory.js"); // ID04222024.n
+const EndpointRouterFactory = require("../utilities/ep-router-factory.js"); // ID06162025.n
 const logger = require("../utilities/logger.js"); // ID04272024.n
 const router = express.Router();
 
@@ -67,20 +75,23 @@ var instanceFailedCalls = 0;
 // API calls served from cache (vector db)
 var cachedCalls = 0; // ID02202024.n
 
-// ID02132024.n - Init the AppConnections instance 
+// ID02132024.n - Init the AppConnection instance (Endpoint objects)
 let appConnections = new AppConnections();
 
 // ID02202024.n - Init the AppCacheMetrics instance
 let cacheMetrics = new AppCacheMetrics();
 
-// Endpoint: /apirouter/metrics
-router.get("/metrics", (req, res) => {
+// ID06162025.n - Init container for app specific endpoint router
+let appRouters = new Map();
+
+function retrieveSrvInstanceMetrics(req) { // ID04172025.n
   let conList = [];
   appConnections.getAllConnections().forEach(function (epdata, ky) {
     let priorityIdx = 0;
     let epDict = [];
     epdata.forEach(function (value, key) {
       let dict = {
+        id: value.getUniqueId(), // ID04172025.n
         endpoint: key,
         priority: priorityIdx,
         metrics: value.toJSON()
@@ -97,7 +108,7 @@ router.get("/metrics", (req, res) => {
     conList.push(conObject);
   });
 
-  let res_obj = {
+  let srv_data = {
     hostName: process.env.API_GATEWAY_HOST,
     listenPort: process.env.API_GATEWAY_PORT,
     // instanceName: process.env.API_GATEWAY_NAME, ID09032024.o
@@ -122,7 +133,85 @@ router.get("/metrics", (req, res) => {
     serverStatus: "OK"
   };
 
-  res.status(200).json(res_obj);
+  return( {
+    http_code: 200,
+    data: srv_data
+  });
+}
+
+function retrieveAiAppMetrics(req, appId) { // ID04172025.n
+  const appsConfig = req.targeturis; // AI application configurations
+  let application = getAiApplication(appId, appsConfig); 
+
+  if ( ! application ) {
+    return(
+      {
+        http_code: 404, // Resource not found!
+        data: {
+          error: {
+            target: req.originalUrl,
+            message: `AI Application ID [${appId}] not found. Unable to process request.`,
+            code: "invalidPayload"
+          }
+        }
+      }
+    );
+  };
+
+  let payload = null;
+  let appConnection = appConnections.getConnection(appId);
+  if ( appConnection ) { // A map keyed by endpoint uri's containing metrics data
+    let priorityIdx = 0;
+    let epDict = [];
+
+    appConnection.forEach(function (value, key) {
+      let dict = {
+        id: value.getUniqueId(),
+        endpoint: key,
+        priority: priorityIdx,
+        metrics: value.toJSON()
+      };
+      epDict.push(dict);
+      priorityIdx++;
+    });
+
+    payload = {
+      applicationId: appId,
+      appType: application.appType,
+      description: application.description,
+      cacheMetrics: cacheMetrics.getCacheMetrics(appId),
+      endpointMetrics: epDict
+    };
+  }
+  else { // AI Application has not been invoked yet. Hence connection metrics have not been lazy loaded.
+    payload = {
+      applicationId: appId,
+      appType: application.appType,
+      description: application.description,
+      cacheMetrics: {
+        hitCount: 0,
+        avgScore: 0.0
+      },
+      endpointMetrics: []
+    };
+  }
+
+  return(
+    {
+      http_code: 200,
+      data: payload
+    }
+  );
+}
+
+// Endpoint: /apirouter/metrics
+// router.get("/metrics", (req, res) => { // ID04172025.o
+router.get(["/metrics","/metrics/:app_id"], (req, res) => { // ID04172025.n
+  const appId = req.params.app_id; // AI Application ID
+
+  const response = appId ? retrieveAiAppMetrics(req, appId) : retrieveSrvInstanceMetrics(req);
+
+  res.status(response.http_code).json(response.data);
 });
 
 // ID11042024.sn
@@ -229,17 +318,24 @@ router.get(["/sessions/:app_id/:session_id"], async (req, res) => {
   };
 
   let respMessage;
+  let values = [
+    threadId,
+    appId
+  ];
+
+  let memoryDao = new PersistDao(persistdb, TblNames.Memory); // ID05082025.n
+  let endpointId = "NA";
+  const sessionInfo = await memoryDao.queryTable(req.id, 1, values);
+  if (sessionInfo.rCount == 1) // ID05082025.n
+    endpointId = sessionInfo.data[0].endpoint_id;
 
   let promptsDao = new PersistDao(persistdb, TblNames.Prompts);
-  let values = [
-    appId,
-    threadId
-  ];
-  const sessionTrace = await promptsDao.queryTable(req.id, 2, values)
+  const sessionTrace = await promptsDao.queryTable(req.id, 2, values);
   if (sessionTrace.rCount >= 1) {
     respMessage = {
       http_code: 200, // OK
       data: {
+        backendUriIndex: endpointId, // ID05082025.n
         messageTrace: sessionTrace.data,
         endpointUri: req.originalUrl,
         currentDate: new Date().toLocaleString(),
@@ -299,7 +395,7 @@ function getAiApplication(appName, ctx) { // ID01292025.n
 router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"], async (req, res) => { // ID04102024.n
   const eps = req.targeturis; // AI application configuration
   const cdb = req.cacheconfig; // Global cache configuration
-  const appTypes = [ AzAiServices.OAI, AzAiServices.AzAiModelInfApi ]; // ID11052024.n
+  const appTypes = [ AzAiServices.OAI, AzAiServices.AzAiModelInfApi, AzAiServices.AzAiAgent ]; // ID11052024.n; ID03242025.n
 
   let err_obj = null;
   let appId = req.params.app_id; // The AI Application ID
@@ -322,39 +418,9 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
     return;
   };
 
-  // Check embedding app and load the endpoint info. (if not already loaded!)
-  if ( cdb.cacheResults && (! appConnections.getAllConnections().has(cdb.embeddApp)) ) {
-    const embeddApp = getAiApplication(cdb.embeddApp, eps);
-    if ( embeddApp ) {
-      logger.log({ level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName, embeddApp.appId, embeddApp.description, embeddApp.appType] });
-      let epinfo = new Map();
-      let epmetrics = null;
-      for (const element of embeddApp.endpoints) {
-        epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm);
-
-        epinfo.set(element.uri, epmetrics);
-      };
-      appConnections.addConnection(embeddApp.appId, epinfo);
-    };
-  };
-
-  // For each AI App, initialize app connection/endpoint info. & associated metrics
-  if (!appConnections.getAllConnections().has(appId)) {
-    logger.log({ level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName, appId, application.description, application.appType] });
-    let epinfo = new Map();
-    let epmetrics = null;
-    for (const element of application.endpoints) {
-      epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm);
-
-      epinfo.set(element.uri, epmetrics);
-    };
-    appConnections.addConnection(application.appId, epinfo);
-    if ( cdb.cacheResults && (application.appId !== cdb.embeddApp) && (appTypes.includes(application.appType)) )
-      cacheMetrics.addAiApplication(application.appId);
-  };
-
-  let r_stream = req.body.stream;
-  if (r_stream && req.body.prompt) { // no streaming support for Completions API!
+  // let r_stream = req.body.stream; ID03242025.o
+  // if (r_stream && req.body.prompt) { // no streaming support for Completions API!
+  if (req.body.stream && req.body.prompt) { // no streaming support for Completions API!; ID03242025.n
     /* ID06132024.so
       err_obj = {
       endpointUri: req.originalUrl,
@@ -375,10 +441,46 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
     return;
   };
 
+  // Check embedding app and load the endpoint info. (if not already loaded!)
+  if ( cdb.cacheResults && (! appConnections.getAllConnections().has(cdb.embeddApp)) ) {
+    const embeddApp = getAiApplication(cdb.embeddApp, eps);
+    if ( embeddApp ) {
+      logger.log({ level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName, embeddApp.appId, embeddApp.description, embeddApp.appType] });
+      let epinfo = new Map();
+      let epmetrics = null;
+      for (const element of embeddApp.endpoints) {
+        // epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm); ID04302025.o
+        // epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm, element.id); // ID04302025.n
+        epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm, element.id, element.healthPolicy); // ID04302025.n, ID05122025.n
+
+        epinfo.set(element.uri, epmetrics);
+      };
+      appConnections.addConnection(embeddApp.appId, epinfo);
+    };
+  };
+
+  // For each AI App, initialize app connection/endpoint info. & associated cache metrics the FIRST time it is accessed (Lazy loading)
+  if (!appConnections.getAllConnections().has(appId)) {
+    logger.log({ level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName, appId, application.description, application.appType] });
+    let epinfo = new Map();
+    let epmetrics = null;
+    for (const element of application.endpoints) {
+      // epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm); ID04302025.o
+      epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm, element.id); // ID04302025.n
+
+      epinfo.set(element.uri, epmetrics);
+    };
+    appConnections.addConnection(application.appId, epinfo);
+    if ( cdb.cacheResults && (application.appId !== cdb.embeddApp) && (appTypes.includes(application.appType)) )
+      cacheMetrics.addAiApplication(application.appId);
+  };
+
   instanceCalls++;
 
   let appConfig = null;
   let memoryConfig = null;
+  let userMemConfig = null; // ID05142025.n
+  let routerInstance = null; // ID06162025.n
   if ( appTypes.includes(application.appType) ) {
     if (req.body.data_sources && (req.body.data_sources[0].parameters.authentication.type === "api_key"))
       if (application.searchAiApp === req.body.data_sources[0].parameters.authentication.key)
@@ -394,11 +496,39 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
       srchContent: application.cacheSettings.searchContent
     };
 
-    if (application?.memorySettings?.useMemory) // ID050620204.n
+    if (application?.memorySettings?.useMemory) // ID05062024.n
       memoryConfig = {
+        affinity: application.memorySettings.affinity, // ID05082025.n
         useMemory: application.memorySettings.useMemory,
         msgCount: application.memorySettings.msgCount
       };
+
+    /**
+     * ID05142025.sn - Check if long term memory obj. has to be populated.
+     */
+    if ( application.personalizationSettings?.userMemory )
+      userMemConfig = {
+        genFollowupMsgs: application.personalizationSettings.generateFollowupMsgs,
+        aiAppName: application.personalizationSettings.userFactsAppName,
+        extractRoles: application.personalizationSettings.extractRoleValues,
+        extractionPrompt: application.personalizationSettings.extractionPrompt,
+        followupPrompt: application.personalizationSettings.followupPrompt
+      };
+    // ID05142025.en
+
+    /**
+     * ID06162025.sn - Populate the endpoint router instance
+     */
+    if ( ! appRouters.has(appId) ) {
+      routerInstance = application.endpointRouterType ?
+        new EndpointRouterFactory().getEndpointRouter(application.appId, application.endpointRouterType, application.endpoints) : null;
+
+      if ( routerInstance )
+        appRouters.set(appId, routerInstance);  // A single router instance per AI App!
+    }
+    else
+      routerInstance = appRouters.get(appId);
+    // ID06162025.en
   }
   else
     appConfig = {
@@ -419,7 +549,19 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
           appConfig,
           memoryConfig, // ID05062024.n
           appConnections,
-          cacheMetrics);
+          cacheMetrics,
+          userMemConfig, // ID05142025.n
+          routerInstance // ID06162025.n
+        );
+        break;
+      case AzAiServices.AzAiAgent: // ID03242025.n
+        response = await processor.processRequest(
+          req,
+          res,
+          appConfig,
+          appConnections,
+          cacheMetrics
+        );
         break;
       case AzAiServices.AiSearch:
       case AzAiServices.Language:
@@ -519,6 +661,7 @@ module.exports = { // ID01292025.n
   
     appConnections = new AppConnections(); // reset the application connections cache;
     cacheMetrics = new AppCacheMetrics(); // reset the application cache metrics
+    appRouters = new Map(); // ID06162025.n; reset the endpoint router instances for all Ai Apps
     // console.log("apirouter(): Application connections and metrics cache has been successfully reset");
     logger.log({ level: "info", message: "[%s] apirouter.reconfigEndpoints(): Application connections and metrics cache have been successfully reset", splat: [scriptName] });
   },

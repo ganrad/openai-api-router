@@ -14,19 +14,20 @@ Recipe | Components | Functional Architecture (**)
 
 Feature/Capability | Azure AI Service | Description
 ------------------ | ---------------- | -----------
-**Shared Infrastructure Model** | All | The AI Application Gateway simplifies and streamlines the deployment of multiple AI Solutions (Chatbots) by utilizing a shared infrastructure backbone. This approach allows for deploying the infrastructure once and subsequently scaling it to build and deploy numerous AI Chatbots.
-**Enhanced AI Application Deployments** | All | The gateway is designed to be AI Application *Aware*, allowing Azure AI Service deployments to be configured individually for each AI Application. This approach not only simplifies the sharing of AI Service deployments across different AI Applications but also improves metrics collection and request routing tailored to each specific use case.
-**Model Agnostic Endpoints** | Azure OpenAI Service<br> Azure AI Foundry | The gateway exposes each AI Application through a unified endpoint, hiding the underlying AI Service model deployment endpoints from client applications. As a result, model deployment endpoints can be quickly updated without requiring any changes to client applications. The gateway routes inference requests for LLM's deployed in Azure OpenAI Service and AI Foundry, enabling quick testing and onboarding of new OpenAI model versions and open-source LLMs.
-**Intelligent Traffic Routing** | Azure OpenAI Service<br> Azure AI Foundry | **Circuit Breaker**: For each AI Application, multiple Azure AI Service deployment URI's (a.k.a backend endpoints) can be configured. When a backend endpoint is busy/throttled (returns http status code 429), the gateway will function as a *circuit-breaker* and automatically switch to the next configured endpoint in its backend priority list.  In addition, the gateway will also keep track of throttled endpoints and will not direct any traffic to them until they are available again.<br> **Rate Limiting**: Users can set up a *RPM Limit* for each OpenAI backend endpoint for any AI Application. When multiple AI Applications use the same endpoint, the gateway will enforce rate limiting and throttle excessive requests by returning http 429 status codes. This is especially useful for distributing model processing capacity (PTU deployment) evenly across different AI Applications.<br> **Traffic Splitting**: The Gateway can split AI application traffic across multiple Azure AI Service model deployment endpoints, including various LLM model deployments for GenAI hosted in Azure AI Foundry.
-**Streaming API Responses** | Azure Open AI Service (Chat Completions API only) | The AI Application Gateway fully supports the response *streaming* feature provided by Azure OpenAI Chat Completions API.  This function is seamlessly integrated with semantic caching, state management and traffic routing features.
-**Semantic Caching** | Azure OpenAI Service | This feature, integrated into the AI Application Gateway, caches OpenAI Service prompts and responses based on semantic similarity. It can improve runtime performance of LLM/AI applications by up to 40%, leveraging *PostgreSQL's* vectorization and semantic search capabilities.
-**Conversational State Management** | Azure OpenAI Service (Chat Completion API only) | AI Chatbots must maintain context during end user sessions so they can reference previous user inputs, ensuring coherent and contextually relevant conversations.  This feature manages conversational state, scaling to support 10 to hundreds of concurrent user sessions for multiple AI applications. It can operate independently or with *Semantic Caching* to enhance performance.
-**Message Persistence (Chat History)** | Azure OpenAI Service | This feature allows persisting Azure OpenAI Service *Prompts* and *Completions* in a PostgreSQL database for introspection and quick troubleshooting of API requests.
+**Shared Infrastructure Model** | All | The AI Application Gateway simplifies and streamlines the deployment of multiple AI Solutions by utilizing a shared infrastructure backbone. This approach allows for deploying the infrastructure once and subsequently scaling it to build and deploy numerous AI Chatbots/Applications.
+**Enhanced AI Application Deployments** | All | The gateway is designed to be AI Application *Aware*, allowing Azure AI Service deployments to be configured individually for each AI Application. This approach simplifies the sharing of AI Service deployments across different AI Applications.
+**Model Agnostic Endpoints** | - Azure AI Foundry Models<br>- Azure AI Agent Service | The gateway exposes each AI Application through a unified endpoint, hiding the underlying AI Service model deployment endpoints from client applications. As a result, model/agent deployment endpoints can be quickly updated without requiring any changes to client applications.
+**Intelligent Traffic Routing** | - Azure AI Foundry Models<br>- Azure AI Agent Service | The gateway router provides the following features.<br>- **Circuit Breaker** Each AI Application can be configured with multiple backend endpoints, and the gateway acts as a circuit-breaker by automatically switching to the next prioritized endpoint when one is throttled (HTTP 429), while temporarily excluding throttled endpoints from traffic until they recover.<br>- **Rate Limiting** Users can define RPM limits per backend endpoint. The AI Gateway enforces rate limiting by returning HTTP 429 responses to prevent overloading of an endpoint and ensure fair utilization of model capacity.<br>- **Traffic Splitting** Router implementations include Priority based (default), Least Recently Used (LRU), Least Active Connections, Random Weighted and Latency Weighted<br>- **Health Check Policies** When enabled, the AI Gateway monitors backend endpoint latency and automatically disables an endpoint when the pre-configured response time threshold (in minutes) is exceeded.
+**Streaming API Responses** | Azure AI Foundry Models (Chat Completions API only) | The AI Application Gateway fully supports the response *streaming* feature provided by Azure OpenAI Chat Completions API.  This function is seamlessly integrated with semantic caching, state management and traffic routing features.
+**Semantic Caching** | Azure AI Foundry Models | This feature, integrated into the AI Application Gateway, caches OpenAI Service prompts and responses based on semantic similarity. It can improve runtime performance of LLM/AI applications by up to 40%, leveraging *PostgreSQL's* vectorization and semantic search capabilities.
+**Conversational State Management** | Azure AI Foundry Models (Chat Completion API only) | AI Chatbots must maintain context during end user sessions so they can reference previous user inputs, ensuring coherent and contextually relevant conversations.  This feature manages conversational state, scaling to support 10 to hundreds of concurrent user sessions for multiple AI applications. It can operate independently or with *Semantic Caching* to enhance performance.
+**Long-term Memory (Personalization)** | Azure AI Foundry Models (Chat Completion API only) | The AI Gateway supports long-term user memory, a feature that enables personalized interactions by continuously learning from user inputs over time. When enabled for an AI Application, the gateway extracts and stores relevant facts from user prompts such as preferences, context and behavioral patterns. It then uses this accumulated knowledge to tailor responses, maintain conversational continuity, and generate context-aware follow-up questions that reflect the user’s history and intent.
+**Message Persistence (Chat History)** | Azure AI Foundry Models | This feature allows persisting Azure OpenAI Service *Prompts* and *Completions* in a PostgreSQL database for introspection and quick troubleshooting of API requests.
 **Secure by Design** | All | The API's exposed by the AI Application Gateway can be easily secured using Microsoft Entra ID (Default). This feature ensures only authenticated users or client applications are able to access the API endpoints. 
 **Dynamic Server Configuration** | All | In standalone mode (**single instance**), the AI Gateway server exposes a separate reconfiguration (/reconfig) endpoint to enable rapid deployment and testing of backend endpoints.
 **API Metrics Collection** | All | The Gateway continously collects backend API metrics and exposes them thru the metrics (/ metrics) endpoint.  Using this feature, users can analyze the throughput and latency metrics for each AI Application & optimize traffic routing.
 **Observability and Traceability** | All | The AI Application Gateway uses the Azure Application Insights SDK to collect and send detailed telemetry on Azure OpenAI and dependent services to Azure Monitor.
-**Client SDK's and AI Application (LLM) Frameworks** | Azure OpenAI Service | The AI Application Gateway server supports [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints) Client SDK.  The gateway has also been tested to work with [Prompt Flow](https://github.com/microsoft/promptflow) and [Langchain](https://python.langchain.com/docs/integrations/llms/azure_openai/) LLM frameworks.
+**Client SDK's and AI Application (LLM) Frameworks** | Azure AI Foundry Models | The AI Application Gateway server supports [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints) Client SDK.  The gateway has also been tested to work with [Prompt Flow](https://github.com/microsoft/promptflow) and [Langchain](https://python.langchain.com/docs/integrations/llms/azure_openai/) LLM frameworks.
 **Robust Runtime** | All | The AI Application Gateway, powered by the Node.js runtime and Chrome V8 engine, uses a single-threaded event loop for asynchronous request handling. It is highly performant and can scale to manage thousands of concurrent requests.
 
 ### Usage scenarios
@@ -45,8 +46,8 @@ The AI Application Gateway can be used in the following scenarios.
    For each AI Application, the AI Application Gateway functions as an intelligent router and distributes AI Service API traffic among multiple backend endpoints.  The gateway keeps track of unavailable/busy backend endpoints and automatically redirects traffic to available endpoints thereby distributing the API traffic load evenly and not overloading a given endpoint with too many requests.  
 
    The gateway currently supports proxying requests to the following Azure AI Services.
-     - Azure OpenAI Service (Full API support)
-     - Azure AI Foundry (Support for models that support the *Azure AI Model Inference API*)
+     - Azure AI Foundry Models (Support for OpenAI models and models that support the *Azure AI Model Inference API*)
+     - OpenAI Models
      - Azure AI Search (Full API support)
      - Azure AI Language (Limited API support - Entity Linking, Language detection, Key phrase extraction, NER, PII, Sentiment analysis and opinion mining only)
      - Azure AI Translator (Limited API support - Text Translation only)
@@ -54,11 +55,12 @@ The AI Application Gateway can be used in the following scenarios.
 
 ### Feature/Capability Support Matrix
 
-Feature/Capability | Configurable (Yes/No) | Azure OpenAI Service<br> Azure AI Foundry | Azure AI Search | Azure AI Language | Azure AI Translator | Azure AI Content Safety |
+Feature/Capability | Configurable (Yes/No) | Azure AI Foundry Models | Azure AI Search | Azure AI Language | Azure AI Translator | Azure AI Content Safety |
 ------------------ | --------------------- | -------------------- | --------------- | ----------------- | ------------------- | ----------------------- |
 **Semantic Cache** | Yes | Yes <br> - Completions API <br> - Chat Completions API | No | No | No | No
 **State Management** | Yes | Yes <br> - Chat Completions API | No | No | No | No
-**API Router** | Yes | Yes | Yes | Yes | Yes | Yes
+**Long-term Memory (Personalization)** | Yes | Yes | No | No | No | No
+**Traffic Routing/Splitting** | Yes | Yes | Yes | Yes | Yes | Yes
 **Message Persistence** | Yes | Yes | No | No | No | No
 **Metrics Collection** | No | Yes | Yes | Yes | Yes | Yes
 
@@ -236,14 +238,14 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    VECTOR_DB_UPWD | Password of the database user (Saved in step above)
    VECTOR_DB_NAME | Name of the database (Saved in step above)
 
-   Create the database tables using the script `./db-scripts/pg-test.js`. See command snippet below.
+   Create the database tables using the script `./db-scripts/pg-create-db-resources.js`. See command snippet below.
 
    ```bash
    # Make sure you are in the project's root directory.
    # Use 'drop-tables' option if you want to delete and recreate the tables.
-   # Usage: node ./db-scripts/pg-test.js [drop-tables]
+   # Usage: node ./db-scripts/pg-create-db-resources.js [drop-tables]
    #
-   $ node ./db-scripts/pg-test.js
+   $ node ./db-scripts/pg-create-db-resources.js
    #
    ```
 
