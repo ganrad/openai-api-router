@@ -222,7 +222,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
 3. Install PostgreSQL database server.
 
    > **NOTE**:
-   > If you do not intend to use *Semantic Caching*, *Conversational State Management* or *Prompt Persistence* features, you can safely skip this step and go to Step 4.
+   > If you do not intend to use *Semantic Caching*, *Conversational State Management*, *Long-term User Memory* or *Message Persistence* features, you can safely skip this step and go to Step 4.
 
    Refer to the installation instructions [here](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/quickstart-create-server-portal) to install *Azure Database for PostgreSQL*.  Create a new database and give it a suitable name.  Note down the database name, server user name and password.  Save it in a secure location as we will need this info. in a subsequent step (below).
 
@@ -257,6 +257,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    apigtwycache | This table stores vectorized prompts and completions
    apigtwyprompts | This table stores prompts and completions
    apigtwymemory | This table stores state for user sessions (threads)
+   userfacts | This table stores facts extracted from user prompts
    aiapptoolstrace | This table stores the tool execution details for multi-domain AI Applications. 
 
 4. Update the **AI Application Gateway Configuration file**.
@@ -284,40 +285,66 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      azure_content_safety | This value denotes Azure AI Content Safety service
      azure_search | This value denotes Azure AI Search service
 
+   - Optionally specify the backend endpoint router type *endpointRouterType*. The router types supported by the AI Application Gateway are listed in the table below.
+
+     Router Type | Description
+     ----------- | -----------
+     Priority | (Default) Routes incoming API calls to the first available endpoint listed in the AI Gateway configuration.
+     LeastActiveConnections | Directs API calls to the endpoint with the fewest active connections at the time of the request.
+     LeastRecentlyUsed | Sends API calls to the endpoint that has not been used for the longest duration, promoting balanced usage.
+     RandomWeighted | Routes incoming API calls to backend endpoints based on predefined weight assignments.
+     LatencyWeighted | Dynamically routes API calls to the endpoint with the lowest observed latency, adjusting weights in real time based on performance.
+
    - Specify Azure AI Service endpoints/URI's and corresponding API key values within **endpoints** attribute.  Refer to the table below and set appropriate values for each attribute.
 
-     Attribute Name | Description
-     -------------- | -----------
-     uri | AI Service endpoint URI
-     apikey | AI Service API Key
-     rpm | Requests per minute (RPM) rate limit to be applied to this endpoint.  This attribute is optional.  When it is not specified, no rate limits are applied.
+     Attribute Name | Type | Required | Description
+     -------------- | ---- | -------- | -----------
+     id | String | No | An ID used to uniquely identify the endpoint.  This value if specified has to be unique for an AI application.
+     uri | String | Yes | AI Service endpoint (backend) URI
+     apikey | String| Yes | AI Service API Key
+     rpm | Number | No | Requests per minute (RPM) rate limit to be applied to this endpoint.  No rate limits are applied when this value is absent.
+     weight | Number | No | Specifies the percentage-based weight used to distribute API calls across backend endpoints. The combined weights for all endpoints must total 100. This value must be specified for the following router types - *RandomWeighted* and *LatencyWeighted*.
+     healthPolicy.maxCallsBeforeUnhealthy | Number | No | Maximum no. of high latency API calls allowed before this endpoint is marked as unhealthy.
+     healthPolicy.latencyThresholdSeconds | Number | No | Response time threshold (in seconds) used to evaluate backend performance.
+     healthPolicy.retryAfterMinutes | Number | No | Duration (in minutes) after which a previously unhealthy endpoint is re-evaluated and considered healthy again.
 
    - (Optional) To enable caching and retrieval of OpenAI Service completions (Semantic Caching feature), specify values for attributes contained within **cacheSettings** attribute.  Refer to the table below and set appropriate values.
 
-     Attribute Name | Description
-     -------------- | -----------
-     useCache | AI Application Gateway will cache OpenAI Service completions (output) based on this value.  If caching is desired, set it to *true*.  Default is *false*.
-     searchType | AI Application Gateway will search and retrieve OpenAI Service completions based on a semantic text similarity algorithm.<br>This attribute is used to specify the similarity distance function/algorithm for vector search.  Supported values are a) CosineSimilarity (= *Cosine Similarity*).  This is the default. b) EuclideanDistance (= *Level 2 or Euclidean distance*) c) InnerProduct (= *Inner Product*).
-     searchDistance | This attribute is used to specify the search similarity threshold.  For instance, if the search type = *CosineSimilarity*, this value should be set to a value between 0 and 1.
-     searchContent.term | This value specifies the attribute in the request payload which should be vectorized and used for semantic search. For OpenAI completions API, this value should be *prompt*.  For chat completions API, this value should be set to *messages*.
-     searchContent.includeRoles | This attribute value should only be set for OpenAI models that expose chat completions API. Value can be a comma separated list.  Permissible values are *system*, *user* and *assistant*.
-     entryExpiry | This attribute is used to specify when cached entries (*completions*) should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
+     Attribute Name | Type | Description
+     -------------- | ---- | -----------
+     useCache | Boolean | AI Application Gateway will cache OpenAI Service completions (output) based on this value.  If caching is desired, set it to *true*.  Default is *false*.
+     searchType | String | AI Application Gateway will search and retrieve OpenAI Service completions based on a semantic text similarity algorithm.<br>This attribute is used to specify the similarity distance function/algorithm for vector search.  Supported values are a) CosineSimilarity (= *Cosine Similarity*).  This is the default. b) EuclideanDistance (= *Level 2 or Euclidean distance*) c) InnerProduct (= *Inner Product*).
+     searchDistance | Decimal | This attribute is used to specify the search similarity threshold.  For instance, if the search type = *CosineSimilarity*, this value should be set to a value between 0 and 1.
+     searchContent.term | String | This value specifies the attribute in the request payload which should be vectorized and used for semantic search. For OpenAI completions API, this value should be *prompt*.  For chat completions API, this value should be set to *messages*.
+     searchContent.includeRoles | String | This attribute value should only be set for OpenAI models that expose chat completions API. Value can be a comma separated list.  Permissible values are *system*, *user* and *assistant*.
+     entryExpiry | String | This attribute is used to specify when cached entries (*completions*) should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
 
    - (Optional) To enable conversational state management for user chat sessions, specify values for attributes contained within **memorySettings** attribute.  Refer to the table below and set appropriate values.
 
-     Attribute Name | Description
-     -------------- | -----------
-     useMemory | When this value is set to *true*, AI Application Gateway will manage state for user sessions.  Default is *false*.
-     msgCount | This attribute is used to specify the number of messages (*user - assistant* interactions) to store and send to the LLM.
-     entryExpiry | This attribute is used to specify when the user sessions should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
+     Attribute Name | Type | Description
+     -------------- | ---- | -----------
+     useMemory | Boolean | When this value is set to *true*, AI Application Gateway will manage state for user sessions.  Default is *false*.
+     affinity | Boolean | (Optional) When set to *true*, the AI Gateway maintains session stickiness by routing all queries from the same user session to the same backend endpoint that handled the initial request.
+     msgCount | Number | This attribute is used to specify the number of messages (*user - assistant* interactions) to store and send to the LLM.
+     entryExpiry | String | This attribute is used to specify when the user sessions should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
+
+   - (Optional) To enable long-term user memory (Personalization feature), specify values for attributes contained within **personalizationSettings** attribute.  Refer to the table below and set appropriate values.
+
+     Attribute Name | Type | Required | Description
+     -------------- | ---- | -------- | -----------
+     userMemory | Boolean | Yes | Enables or disables long-term user memory, allowing the AI Gateway to retain and use information from previous user interactions for personalization.
+     generateFollowupMessages | Boolean | No | Used to specify whether the AI Gateway should generate follow-up messages based on the current conversation context.
+     userFactsAppName | String | No | Used to specify the name of the AI Application responsible for identifying and extracting user-specific facts. Defaults to value of **API_GATEWAY_VECTOR_AIAPP**.
+     extractionPrompt | String | No | The prompt used to guide the AI Gateway in extracting personal attributes or facts from user input/prompt.
+     followupPrompt | String | No | The prompt used to help the AI Gateway generate relevant follow-up questions based on the model’s response.
 
    After making the changes, save the `./api-router-config.json` file.
 
    **IMPORTANT**:
 
-   **Azure OpenAI Service**:
+   **Azure AI Foundry Models**:
 
-   The model deployment endpoints/URI's should be listed in increasing order of priority (top down). Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  For each API Application, the Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to OpenAI API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
+   When no backend endpoint router type is specified for an AI Application, the default **Priority** based router will be used.  For priority based endpoint routing, the model/agent deployment endpoints/URI's should be listed in increasing order of priority (top down). Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  For each API Application, the Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to OpenAI API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
 
 5. Set the gateway server environment variables.
 
