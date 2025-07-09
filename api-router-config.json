@@ -235,6 +235,41 @@
           "apikey": "c44a8e19"
         }
       ]
+    },
+    {
+      "appId": "ai-chatbot-v2.3.9-gpt4o-mini-w",
+      "description": "A sample AI Application that uses a) Unique ID's for backend endpoints b) Random weighted endpoint traffic router c) Combination of OAI and AOAI backend endpoints and d) Endpoint Health Policy.  These features were introduced in RAPID v2.3.9.",
+      "appType": "azure_oai",
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "memorySettings": {
+        "useMemory": false
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "endpointRouterType": "RandomWeighted",
+      "endpoints": [
+        {
+          "id": "gpt-4o-open-ai",
+          "weight": 50,
+          "uri": "https://api.openai.com/v1/chat/completions",
+          "apikey": "_bSMIGlclmosA",
+          "healthPolicy": {
+            "maxCallsBeforeUnhealthy": 1,
+            "latencyThresholdSeconds": 20,
+            "retryAfterMinutes": 5
+          }
+        },
+        {
+          "id": "gpt-4o-mini-eastus",
+          "weight": 50,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+          "apikey": "9ecabe6d"
+        }
+      ]
     }
   ]
 }
