@@ -7,9 +7,9 @@
 
   Each AI Application (Type=oai/ai_inf/ai_agent) backend endpoint can now be optionally assigned a unique identifier for improved traceability and configuration flexibility.
 
-* Enhancement: **Memory Affinity for Stateful Sessions**
+* Enhancement: **Endpoint Affinity for Stateful Sessions**
 
-  For AI Applications with state management enabled, the AI Gateway now supports memory affinity. API calls within the same user session are routed to the same backend endpoint that handled the initial request. If that endpoint is unavailable (e.g., throttled or down), the request is seamlessly redirected to an alternative configured endpoint.
+  For AI Applications with state management enabled, the AI Gateway now supports endpoint affinity. API calls within the same user session are routed to the same backend endpoint that handled the initial request. If that endpoint is unavailable (e.g., throttled or down), the request is seamlessly redirected to an alternative configured endpoint.
 
 * Enhancement: **Backend Endpoint Health Policy**
 
