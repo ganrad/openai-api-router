@@ -635,6 +635,47 @@ class AzOaiProcessor {
     return (retval);
   }
 
+  async #getOpenAICallMetadata(req, element, config) { // ID06162025.n
+    const meta = new Map();
+    meta.set('Content-Type', 'application/json');
+    
+    let bearerToken = req.headers['Authorization'] || req.headers['authorization'];
+    if (config.appType === AzAiServices.OAI) {
+      if (bearerToken && !req.authInfo) { // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
+        if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") // ID03052025.n
+          bearerToken = await getAccessToken(req);
+        meta.set('Authorization', bearerToken);
+        logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using bearer token for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+      }
+      else { // Use API Key Auth ID10302024.en
+        if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") { // ID03052025.n
+          bearerToken = await getAccessToken(req);
+          meta.set('Authorization', bearerToken);
+          logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using bearer token for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+        }
+        else {
+          const authHdrKey = element.uri.includes(OpenAIBaseUri) ? 'Authorization' : 'api-key';
+          const authHdrVal = element.uri.includes(OpenAIBaseUri) ? "Bearer " + element.apikey : element.apikey;
+          // meta.set('api-key', element.apikey); ID06162025.o
+          meta.set(authHdrKey,authHdrVal); // ID06162025.n
+          logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using API Key for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+        };
+      };
+    }
+    else { // ~ Az Ai Model Inference API models
+      if (bearerToken && !req.authInfo) // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
+        meta.set('Authorization', bearerToken);
+      else // Use API Key Auth ID10302024.en
+        meta.set('Authorization', "Bearer " + element.apikey);
+      /*
+      delete req.body.presence_penalty;
+      delete req.body.frequency_penalty; */
+      meta.set('extra-parameters', 'drop'); // Drop any parameters the model doesn't understand; Don't return an error!
+    };
+
+    return(meta);
+  }
+
   async processRequest(
     req, // 0
     res, // 1 ID06052024.n
@@ -918,43 +959,7 @@ class AzOaiProcessor {
         };
 
         try {
-          const meta = new Map();
-          meta.set('Content-Type', 'application/json');
-          // const bearerToken = req.get("Authorization"); // case-insensitive header match ID10302024.sn, ID03052025.o
-          // let bearerToken = req.headers['Authorization']; // ID03052025.n, ID03262025.o
-          let bearerToken = req.headers['Authorization'] || req.headers['authorization']; // ID03262025.n
-          if (config.appType === AzAiServices.OAI) { // ID11052024.n
-            if (bearerToken && !req.authInfo) { // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
-              if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") // ID03052025.n
-                bearerToken = await getAccessToken(req);
-              meta.set('Authorization', bearerToken);
-              logger.log({ level: "debug", message: "[%s] %s.processRequest(): Using bearer token for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
-            }
-            else { // Use API Key Auth ID10302024.en
-              if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") { // ID03052025.n
-                bearerToken = await getAccessToken(req);
-                meta.set('Authorization', bearerToken);
-                logger.log({ level: "debug", message: "[%s] %s.processRequest(): Using bearer token for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
-              }
-              else {
-                const authHdrKey = element.uri.includes(OpenAIBaseUri) ? 'Authorization' : 'api-key';
-                const authHdrVal = element.uri.includes(OpenAIBaseUri) ? "Bearer " + element.apikey : element.apikey;
-                // meta.set('api-key', element.apikey); ID06162025.o
-                meta.set(authHdrKey,authHdrVal); // ID06162025.n
-                logger.log({ level: "debug", message: "[%s] %s.processRequest(): Using API Key for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
-              };
-            };
-          }
-          else { // ID11052024.n (Az Ai Model Inference API models)
-            if (bearerToken && !req.authInfo) // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
-              meta.set('Authorization', bearerToken);
-            else // Use API Key Auth ID10302024.en
-              meta.set('Authorization', "Bearer " + element.apikey);
-            /*
-            delete req.body.presence_penalty;
-            delete req.body.frequency_penalty; */
-            meta.set('extra-parameters', 'drop'); // Drop any parameters the model doesn't understand; Don't return an error!
-          };
+          const meta = await this.#getOpenAICallMetadata(req, element, config); // ID06162025.n
 
           // ID06162025.sn
           if ( routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter) )
