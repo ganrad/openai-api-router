@@ -7,6 +7,7 @@
  * Version: 2.2.0
  *
  * Notes:
+ * ID07252025: ganrad: v2.4.0: (Refactored code) Moved all cp router endpoint literals to the constants module ~ app-gtwy-constants.js.
 */
 
 const path = require('path');
@@ -14,6 +15,7 @@ const scriptName = path.basename(__filename);
 
 const express = require("express");
 const AppResProcessorFactory = require("../ai-app-resources/app-res-processor-factory.js");
+const { GatewayRouterEndpoints } = require("../utilities/app-gtwy-constants.js"); // ID07252025.n
 const logger = require("../utilities/logger.js");
 const cprouter = express.Router();
 
@@ -21,7 +23,7 @@ const cprouter = express.Router();
 // Method(s): GET, POST, DELETE
 // Resources: AiAppServer, AiApplication, MdAiApplication, RagAiApplication
 // Actions: operations, deploy, status, get, delete
-cprouter.use(["/cp/:res_type/:res_id/:action", "/cp/:res_type/:action"], async (req, res) => {
+cprouter.use([GatewayRouterEndpoints.ControlPlaneEndpoint + "/:res_type/:res_id/:action", GatewayRouterEndpoints.ControlPlaneEndpoint + "/:res_type/:action"], async (req, res) => { // ID07252025.n
   const resourceType = req.params.res_type; // AI Gateway resource type
   const action = req.params.action; // Action to be performed on resource
   logger.log({ level: "info", message: "[%s] cprouter():\n  Request ID: %s\n  Resource Type: %s\n  Action: %s", splat: [scriptName, req.id, resourceType, action] });
