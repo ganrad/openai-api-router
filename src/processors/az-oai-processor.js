@@ -48,6 +48,7 @@
  *   4) Introduced Least Recently Used (LRU) and Least Connections Used (LCU) endpoint routers.
  *   5) Updated auth header to support OpenAI API calls.
  * ID07312025: ganrad: v2.4.0: (Refactored code) Globally unique ID's are generated using a single function defined in module ~ app-gtwy-constants.js.
+ * ID08052025: ganrad: v2.4.0: (Enhancement) Introduced payload size based backend API routing.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -852,7 +853,7 @@ class AzOaiProcessor {
         req.body.messages = ctxMsgs;
         endpointId = userContext.data[0].endpoint_id; // ID05082025.n
 
-        logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Retrieved Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, JSON.stringify(req.body.messages, null, 2)] });
+        logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Endpoint ID: %s\n  Prompt + Retrieved Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, endpointId, JSON.stringify(req.body.messages, null, 2)] });
       }
       else {
         /* ID06132024.so
@@ -909,7 +910,8 @@ class AzOaiProcessor {
     // ID06162025.en
 
     if ( routerInstance ) // ID06162025.n
-      routerEndpointId = routerInstance.getEndpointId(req.id);
+      // routerEndpointId = routerInstance.getEndpointId(req.id);  // ID08052025.o
+      routerEndpointId = routerInstance.getEndpointId(req);  // ID08052025.n
 
     // 3. Call Azure OAI endpoint(s)
     // let epdata = appConnections.getConnection(config.appId); ID04302025.o

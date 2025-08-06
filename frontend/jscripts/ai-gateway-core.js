@@ -29,6 +29,7 @@
  * ID06162025: ganrad: v2.3.9-v1.3.0: (Enhancement) Introduced support for OpenAI models and endpoints.
  * ID07102025: ganrad: v2.4.0-v1.3.1: (Bugfix, Enhancement) 1) Catch and render auth exception messages 2) Made updates to render AI Foundry Agent 
  * Service citation url's properly.
+ * ID08052025: ganrad: v2.4.0-v1.3.1: (Enhancement) Model name can now be specified by the user (in UI) and passed to the AI App Gateway.
 */
 // Adjust the system prompt as needed
 const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // Default prompt
@@ -256,7 +257,8 @@ function setInferenceTarget() {
   // document.getElementById("uid").value = isAuthEnabled ? username : aiAppObject.user; ID06062025.o
   document.getElementById("uid").value = isAuthEnabled ? username : uiUserName; // ID06062025.n
   document.getElementById("stream").checked = aiAppObject.model_params.stream;
-  document.getElementById("stopSequence").value = aiAppObject.model_params.stop;
+  document.getElementById("stopSequence").value = aiAppObject.model_params.stop ?? ''; // ID08052025.n
+  document.getElementById("modelName").value = aiAppObject.model ?? ''; // ID08052025.n
   document.getElementById("temperature").value = aiAppObject.model_params.temperature;
   document.getElementById("temp_o").value = aiAppObject.model_params.temperature;
   document.getElementById("mtokens").value = aiAppObject.model_params.max_tokens;
@@ -404,6 +406,9 @@ function saveContent(configName) {
     let value = document.getElementById("stopSequence").value; // ID11082024.n
     if ((value !== "undefined") && value)
       promptObject.stop = value;
+    value = document.getElementById("modelName").value; // ID08052025.n
+    if ((value !== "undefined") && value) // ID08052025.n
+      promptObject.model = value;
     promptObject.top_p = Number(document.getElementById("topp").value);
 
     const alert = document.getElementById('modelConfigToast'); //select id of toast

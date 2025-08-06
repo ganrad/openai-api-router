@@ -2,11 +2,11 @@
 
 If you're seeking the essential components for rapid implementation and deployment of **AI Information Assistant (a.k.a AI Chatbot)** solutions on Azure, the *AI Application Gateway* is your go-to resource to expedite the development process and transition smoothly from pilot phase to full-scale production.
 
-This *solution accelerator* is designed to deliver 80-90% of the core functionality essential for constructing and deploying AI Solutions and Chatbots. Most notably, it accelerates the smooth roll out of numerous AI Chatbots/Solutions on a shared, minimal set of infrastructure components/services.
+This *solution accelerator* is designed to deliver 80-90% of the core functionality essential for constructing and deploying AI Solutions and Chatbots. Most notably, it accelerates the smooth roll out of numerous AI Chatbot Solutions on a shared, minimal set of infrastructure components/services.
 
 Recipe | Components | Functional Architecture (**)
 ------ | ---------- | ----------------------------
-***AI Information Assistant*** | 1. **Chatbot User Interface** <br> 2. **Semantic Cache** <br> 3. **State Manager** <br> 4. **Intelligent Router** <br> 5. Azure OpenAI Service <br> 6. Azure AI Search Service (RAG/OYD) <br> 7. **Message Logger (Chat History)** <br> 8. **API Metrics Collector** | ![alt tag](./images/ai-chatbot-usecase-gh.PNG)
+***AI Information Assistant*** | 1. AI Applications <br> 2. **Semantic Cache** <br> 3. **State Manager** <br> 4. **Long-Term Memory** <br> 5. **Intelligent Router** <br> 6. **Message Logger (Chat History)** <br> 7. **API Metrics Collector** <br> 8. Azure AI Foundry Service | ![alt tag](./images/ai-chatbot-usecase-gh.PNG)
 
 ** Components marked by green circles are out of box features.
 
@@ -17,7 +17,7 @@ Feature/Capability | Azure AI Service | Description
 **Shared Infrastructure Model** | All | The AI Application Gateway simplifies and streamlines the deployment of multiple AI Solutions by utilizing a shared infrastructure backbone. This approach allows for deploying the infrastructure once and subsequently scaling it to build and deploy numerous AI Chatbots/Applications.
 **Enhanced AI Application Deployments** | All | The gateway is designed to be AI Application *Aware*, allowing Azure AI Service deployments to be configured individually for each AI Application. This approach simplifies the sharing of AI Service deployments across different AI Applications.
 **Model Agnostic Endpoints** | - Azure AI Foundry Models<br>- Azure AI Agent Service | The gateway exposes each AI Application through a unified endpoint, hiding the underlying AI Service model deployment endpoints from client applications. As a result, model/agent deployment endpoints can be quickly updated without requiring any changes to client applications.
-**Intelligent Traffic Routing** | - Azure AI Foundry Models<br>- Azure AI Agent Service | The gateway router provides the following features.<br>- **Circuit Breaker** Each AI Application can be configured with multiple backend endpoints, and the gateway acts as a circuit-breaker by automatically switching to the next prioritized endpoint when one is throttled (HTTP 429), while temporarily excluding throttled endpoints from traffic until they recover.<br>- **Rate Limiting** Users can define RPM limits per backend endpoint. The AI Gateway enforces rate limiting by returning HTTP 429 responses to prevent overloading of an endpoint and ensure fair utilization of model capacity.<br>- **Traffic Splitting** Router implementations include Priority based (default), Least Recently Used (LRU), Least Active Connections, Random Weighted and Latency Weighted<br>- **Health Check Policies** When enabled, the AI Gateway monitors backend endpoint latency and automatically disables an endpoint when the pre-configured response time threshold (in minutes) is exceeded.
+**Intelligent Traffic Routing** | - Azure AI Foundry Models<br>- Azure AI Agent Service | The gateway router provides the following features.<br>**<u>Circuit Breaker</u>** Each AI Application can be configured with multiple backend endpoints, and the gateway acts as a circuit-breaker by automatically switching to the next prioritized endpoint when one is throttled (HTTP 429), while temporarily excluding throttled endpoints from traffic until they recover.<br>**<u>Rate Limiting</u>** Users can define RPM limits per backend endpoint. The AI Gateway enforces rate limiting by returning HTTP 429 responses to prevent overloading of an endpoint and ensure fair utilization of model capacity.<br>**<u>Traffic Splitting</u>** Router implementations include<br>- **Priority** (Default)<br>- **Least Recently Used** (Based on last access time)<br>- **Least Active Connections** (Based on no. of connections)<br>- **Random Weighted** (Based on pre-assigned weights)<br>- **Latency Weighted** (Based on response times/latency)<br>- **Payload Switch** (Based on payload size)<br>**<u>Health Check Policies</u>** When enabled, the AI Gateway monitors backend endpoint latency and automatically disables an endpoint when the pre-configured response time threshold (in minutes) is exceeded.
 **Streaming API Responses** | Azure AI Foundry Models (Chat Completions API only) | The AI Application Gateway fully supports the response *streaming* feature provided by Azure OpenAI Chat Completions API.  This function is seamlessly integrated with semantic caching, state management and traffic routing features.
 **Semantic Caching** | Azure AI Foundry Models | This feature, integrated into the AI Application Gateway, caches OpenAI Service prompts and responses based on semantic similarity. It can improve runtime performance of LLM/AI applications by up to 40%, leveraging *PostgreSQL's* vectorization and semantic search capabilities.
 **Conversational State Management** | Azure AI Foundry Models (Chat Completion API only) | AI Chatbots must maintain context during end user sessions so they can reference previous user inputs, ensuring coherent and contextually relevant conversations.  This feature manages conversational state, scaling to support 10 to hundreds of concurrent user sessions for multiple AI applications. It can operate independently or with *Semantic Caching* to enhance performance.
@@ -278,8 +278,9 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      
      Application Type | Description
      ---------------- | -----------
-     azure_oai | This value denotes Azure OpenAI service
+     azure_oai | This value denotes Azure OpenAI service Or OpenAI Service
      azure_aimodel_inf | This value denotes Azure AI Foundry Service
+     azure_ai_agent | This value denotes Azure AI Foundry Agent Service
      azure_language | This value denotes Azure AI Language service
      azure_translator | This value denotes Azure AI Translator service
      azure_content_safety | This value denotes Azure AI Content Safety service
@@ -294,16 +295,18 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      LeastRecentlyUsed | Sends API calls to the endpoint that has not been used for the longest duration, promoting balanced usage.
      RandomWeighted | Routes incoming API calls to backend endpoints based on predefined weight assignments.
      LatencyWeighted | Dynamically routes API calls to the endpoint with the lowest observed latency, adjusting weights in real time based on performance.
+     PayloadSwitch | Directs incoming API requests to the appropriate endpoint by comparing the size of the request payload to the configured size (threshold) for that endpoint.
 
    - Specify Azure AI Service endpoints/URI's and corresponding API key values within **endpoints** attribute.  Refer to the table below and set appropriate values for each attribute.
 
      Attribute Name | Type | Required | Description
      -------------- | ---- | -------- | -----------
-     id | String | No | An ID used to uniquely identify the endpoint.  This value if specified has to be unique for an AI application.
+     id | String | No | An ID used to uniquely identify the endpoint or an AI Agent defined in Azure AI Foundry Service.  This value if specified has to be unique for an AI application.
      uri | String | Yes | AI Service endpoint (backend) URI
      apikey | String| Yes | AI Service API Key
      rpm | Number | No | Requests per minute (RPM) rate limit to be applied to this endpoint.  No rate limits are applied when this value is absent.
-     weight | Number | No | Specifies the percentage-based weight used to distribute API calls across backend endpoints. The combined weights for all endpoints must total 100. This value must be specified for the following router types - *RandomWeighted* and *LatencyWeighted*.
+     weight | Number | No | Percentage-based weight used to distribute API calls across backend endpoints. The combined weights for all endpoints must total 100. This value must be specified for the following router types - *RandomWeighted* and *LatencyWeighted*.
+     payloadThreshold | String | No | Request payload size (/threshold) specified in `Bytes`, `kb` (Kilo bytes) or `mb` (Mega bytes).  This value must be specified for each endpoint when a router type of *PayloadSwitch* is configured for an AI Application.
      healthPolicy.maxCallsBeforeUnhealthy | Number | No | Maximum no. of high latency API calls allowed before this endpoint is marked as unhealthy.
      healthPolicy.latencyThresholdSeconds | Number | No | Response time threshold (in seconds) used to evaluate backend performance.
      healthPolicy.retryAfterMinutes | Number | No | Duration (in minutes) after which a previously unhealthy endpoint is re-evaluated and considered healthy again.
@@ -393,22 +396,22 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    You will see the API Gateway server start up message in the terminal window as shown in the snippet below.
 
    ```bash
-   > openai-api-router@2.3.0 start
+   > openai-api-router@2.4.0 start
    > node ./src/server.js
 
-   21-Mar-2025 17:35:20 [info] [server.js] Starting initialization of AI Application Gateway ...
-   21-Mar-2025 17:35:20 [info] [server.js] Azure Application Monitor OpenTelemetry configured.
-   21-Mar-2025 17:35:21 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
-   21-Mar-2025 17:35:21 [info] [server.js] Completions will be cached
-   21-Mar-2025 17:35:21 [info] [server.js] Prompts will be persisted
-   21-Mar-2025 17:35:21 [info] [server.js] Conversational state will be managed
-   21-Mar-2025 17:35:21 [info] [validate-json-config.js] validateAiServerSchema():
+   05-Aug-2025 17:35:20 [info] [server.js] Starting initialization of AI Application Gateway ...
+   05-Aug-2025 17:35:20 [info] [server.js] Azure Application Monitor OpenTelemetry configured.
+   05-Aug-2025 17:35:21 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
+   05-Aug-2025 17:35:21 [info] [server.js] Completions will be cached
+   05-Aug-2025 17:35:21 [info] [server.js] Prompts will be persisted
+   05-Aug-2025 17:35:21 [info] [server.js] Conversational state will be managed
+   05-Aug-2025 17:35:21 [info] [validate-json-config.js] validateAiServerSchema():
    Result:
    {
    "schema_compliant": true,
    "errors": "None"
    }
-   21-Mar-2025 17:35:21 [info] [server.js] Listing AI Application backend (Azure AI Service) endpoints:
+   05-Aug-2025 17:35:21 [info] [server.js] Listing AI Application backend (Azure AI Service) endpoints:
    Application ID: ai-reason-o1-2024-12-17; Type: azure_oai; useCache=true; useMemory=true
    Priority: 0   Uri: https://gbb-ea-aoai-swedencentral-shared-reasoning.openai.azure.com/openai/deployments/o1/chat/completions?api-version=2024-12-01-preview
    Application ID: ai-reason-o3-mini-2025-01-31; Type: azure_oai; useCache=true; useMemory=true
@@ -419,20 +422,20 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15
    Application ID: Deepseek-R1-chatbot; Type: azure_aimodel_inf; useCache=true; useMemory=true
    Priority: 0   Uri: https://DeepSeek-R1-021025.eastus2.models.ai.azure.com/chat/completions
-   21-Mar-2025 17:35:21 [info] [server.js] Cache entry invalidate run schedule (Cron) - */2 * * * *
-   21-Mar-2025 17:35:21 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */4 * * * *
-   21-Mar-2025 17:35:21 [info] [bootstrap-auth.js] initAuth(): Protected endpoint: [/api/v1/dev/apirouter]
+   05-Aug-2025 17:35:21 [info] [server.js] Cache entry invalidate run schedule (Cron) - */2 * * * *
+   05-Aug-2025 17:35:21 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */4 * * * *
+   05-Aug-2025 17:35:21 [info] [bootstrap-auth.js] initAuth(): Protected endpoint: [/api/v1/dev/apirouter]
    {"name":"AzureAD: Bearer Strategy","hostname":"ubuntu-lts22-jump-box","pid":13964,"level":30,"msg":"In BearerStrategy constructor: strategy created","time":"2025-03-21T17:35:21.313Z","v":0}
-   21-Mar-2025 17:35:21 [info] [bootstrap-auth.js] initAuth(): Initialized passport for authenticating users/apps using Azure Entra ID (OP)
-   21-Mar-2025 17:35:21 [info] [server.js] Server(): Azure AI Application Gateway started successfully.
+   05-Aug-2025 17:35:21 [info] [bootstrap-auth.js] initAuth(): Initialized passport for authenticating users/apps using Azure Entra ID (OP)
+   05-Aug-2025 17:35:21 [info] [server.js] Server(): Azure AI Application Gateway started successfully.
    -----
    Details:
    Server Name: Ai-App-Gateway-Local
    Server Type: single-domain
-   Version: 2.3.0
+   Version: 2.4.0
    Config. Provider Type: File
    Endpoint URI: http://localhost:8080/api/v1/dev/apirouter
-   Start Date: 3/21/2025, 5:35:21 PM
+   Start Date: 8/05/2025, 5:35:21 PM
    -----
    ```
 

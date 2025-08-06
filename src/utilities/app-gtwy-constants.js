@@ -30,6 +30,7 @@
  * ID07242025: ganrad: v2.4.0: Added new literals/constants for AI App Gateway data plane resources - InstanceInfo, Request, Session, Metrics. 
  * ID07252025: ganrad: v2.4.0: Defined new constants for AI App Gateway endpoints, server version & API version.
  * ID07312025: ganrad: v2.4.0: Defined function for generating a globally unique identifier prefixed with a string constant/literal.
+ * ID08052025: ganrad: v2.4.0: Introduced payload size based backend endpoint router.
 */
 const { randomUUID } = require('node:crypto'); // ID07312025.n
 
@@ -206,7 +207,8 @@ const EndpointRouterTypes = { // ID06162025.n
   LRURouter: "LeastRecentlyUsed",
   LeastConnectionsRouter: "LeastActiveConnections",
   WeightedRandomRouter: "RandomWeighted",
-  WeightedDynamicRouter: "LatencyWeighted"
+  WeightedDynamicRouter: "LatencyWeighted",
+  PayloadSizeRouter: "PayloadSwitch" // ID08052025.n
 }
 
 const AzAiAgentRunStatus = { // ID03252025.n

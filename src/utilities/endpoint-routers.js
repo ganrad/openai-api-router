@@ -43,7 +43,7 @@ class WeightedRandomRouter { // Random Weighted Router.  Uses static weights to 
       }
     };
 
-    logger.log({ level: "info", message: "[%s] %s.buildRoutingTable():\n  App ID: %s\n  Router Type:  %s\n  Router Config: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(config,null,2)] });
+    logger.log({ level: "info", message: "[%s] %s.buildRoutingTable():\n  App ID: %s\n  Router Type:  %s\n  Router Config: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(config, null, 2)] });
     return table;
   }
 
@@ -57,11 +57,11 @@ class WeightedRandomRouter { // Random Weighted Router.  Uses static weights to 
     return this._routerType;
   }
 
-  getEndpointId(requestId) {
+  getEndpointId(request) {
     const epIdx = this._routingTable[Math.floor(Math.random() * this._routingTable.length)];
-    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d", splat: [scriptName, this.constructor.name, requestId, this._appName, epIdx] });
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx] });
 
-    return(epIdx);
+    return (epIdx);
   }
 }
 
@@ -99,9 +99,9 @@ class WeightedDynamicRouter { // Latency Weighted Router
       this._routingTable.push(...Array(entries).fill(Number(url)));
     };
 
-    logger.log({ level: "info", message: "[%s] %s.rebuildRoutingTable():\n  App ID: %s\n  Router Type:  %s\n  Router Config: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this.backendStats,null,2)] });
+    logger.log({ level: "info", message: "[%s] %s.rebuildRoutingTable():\n  App ID: %s\n  Router Type:  %s\n  Router Config: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this.backendStats, null, 2)] });
   }
-  
+
   updateWeightsBasedOnLatency(selectedBackend, latency) {
     this.backendStats[selectedBackend].latency = latency;
 
@@ -126,11 +126,11 @@ class WeightedDynamicRouter { // Latency Weighted Router
     return this._routerType;
   }
 
-  getEndpointId(requestId) {
+  getEndpointId(request) {
     const epIdx = this._routingTable[Math.floor(Math.random() * this._routingTable.length)];
-    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d", splat: [scriptName, this.constructor.name, requestId, this._appName, epIdx] });
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx] });
 
-    return(epIdx);
+    return (epIdx);
   }
 }
 
@@ -150,14 +150,14 @@ class LRURouter { // Least Recently Used a.k.a Round Robin Router
       this._lastUsed[backend] = now;
     });
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type:  %s\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this.#getLRUTable(),null,2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type:  %s\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this.#getLRUTable(), null, 2)] });
   }
 
   #getLRUTable() {
     const lastUsedObj = {};
     const padTwoDigits = (num) => String(num).padStart(2, '0');
 
-    Object.keys(this._lastUsed).forEach( element => {
+    Object.keys(this._lastUsed).forEach(element => {
       const ts = this._lastUsed[element];
 
       const year = ts.getFullYear();
@@ -178,14 +178,14 @@ class LRURouter { // Least Recently Used a.k.a Round Robin Router
       lastUsedObj[element] = formattedDateTime; // Example output: "2025-07-02 11:53:00"
     });
 
-    return(lastUsedObj);
+    return (lastUsedObj);
   }
 
   get routerType() {
     return this._routerType;
   }
 
-  getEndpointId(requestId) {
+  getEndpointId(request) {
     // Get the least recently used backend
     const backendUri = Object.keys(this._lastUsed).reduce((leastUsed, backend) => {
       return this._lastUsed[backend] < this._lastUsed[leastUsed] ? backend : leastUsed;
@@ -196,9 +196,9 @@ class LRURouter { // Least Recently Used a.k.a Round Robin Router
 
     // Get & return the backend index
     const epIdx = this._backends.indexOf(backendUri);
-    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, requestId, this._appName, epIdx, this.#getLRUTable()] });
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, this.#getLRUTable()] });
 
-    return(epIdx);
+    return (epIdx);
   }
 }
 
@@ -217,7 +217,7 @@ class LeastConnectionsRouter { // Least Active Connections Router
       this._uriConnections[backend] = 0;
     });
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type:  %s\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._uriConnections,null,2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type:  %s\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._uriConnections, null, 2)] });
   }
 
   get routerType() {
@@ -225,23 +225,75 @@ class LeastConnectionsRouter { // Least Active Connections Router
   }
 
   updateUriConnections(requestId, increment, epIdx) {
-    if ( increment )
+    if (increment)
       this._uriConnections[this._backends[epIdx]]++;
     else
       this._uriConnections[this._backends[epIdx]]--;
 
-    logger.log({ level: "debug", message: "[%s] %s.updateUriConnections():\n  Request ID: %s\n  Endpoint ID:  %d\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, requestId, epIdx, JSON.stringify(this._uriConnections,null,2)] });
+    logger.log({ level: "debug", message: "[%s] %s.updateUriConnections():\n  Request ID: %s\n  Endpoint ID:  %d\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, requestId, epIdx, JSON.stringify(this._uriConnections, null, 2)] });
   }
 
-  getEndpointId(requestId) {
+  getEndpointId(request) {
     const uri = Object.entries(this._uriConnections).reduce((min, [url, count]) => {
-      return count < min.count ? { url, count } :  min;
-    }, { url: null, count: Infinity}).url;
-    
-    const epIdx = this._backends.indexOf(uri);
-    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, requestId, this._appName, epIdx, JSON.stringify(this._uriConnections, null, 2)] });
+      return count < min.count ? { url, count } : min;
+    }, { url: null, count: Infinity }).url;
 
-    return(epIdx);
+    const epIdx = this._backends.indexOf(uri);
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, JSON.stringify(this._uriConnections, null, 2)] });
+
+    return (epIdx);
+  }
+}
+
+class PayloadSizeRouter { // Payload size router; ID08052025.n
+
+  constructor(appId, endpointObj, type) {
+    this._backends = new Array();
+    endpointObj.forEach(element => {
+      this._backends.push({ uri: element.uri, threshold: element.payloadThreshold });
+    });
+
+    this._appName = appId;
+    this._routerType = type;
+
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type:  %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+  }
+
+  get routerType() {
+    return this._routerType;
+  }
+
+  // Function to convert size strings to bytes
+  #sizeToBytes(sizeStr) {
+    const size = parseFloat(sizeStr);
+    const unit = sizeStr.replace(size, '').trim().toLowerCase();
+
+    switch (unit) {
+      case 'kb':
+        return size * 1024; // Convert KB to bytes
+      case 'mb':
+        return size * 1024 * 1024; // Convert MB to bytes
+      default:
+        return size; // Assume bytes if no unit is specified
+    }
+  };
+
+  getEndpointId(request) {
+    // Calculate the size of the request payload
+    const contentLength = request.headers['content-length'];
+    const payloadSize = contentLength ? parseInt(contentLength, 10) : 0;
+
+    // Determine the appropriate backend based on the payload size
+    const backendIdx = this._backends.findIndex((backend) => {
+        const thresholdBytes = this.#sizeToBytes(backend.threshold);
+        return payloadSize < thresholdBytes;
+    });
+
+    // If no backend is found, use the last one as a default
+    const epIdx = (backendIdx !== -1) ? backendIdx : this._backends.length - 1;
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Payload Size (Bytes): %d\n  Endpoint ID: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, payloadSize, epIdx] });
+
+    return (epIdx);
   }
 }
 
@@ -249,5 +301,6 @@ module.exports = {
   LRURouter,
   LeastConnectionsRouter,
   WeightedRandomRouter,
-  WeightedDynamicRouter
+  WeightedDynamicRouter,
+  PayloadSizeRouter, // ID08052025.n
 }
