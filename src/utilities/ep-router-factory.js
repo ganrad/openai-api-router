@@ -8,11 +8,18 @@
  * Version (Introduced): v2.3.9
  *
  * Notes:
+ * ID08052025: ganrad: v2.4.0: Introduced payload size based backend endpoint router.
  * 
 */
 
 const { EndpointRouterTypes } = require("./app-gtwy-constants.js"); // AI weighted router types
-const { LRURouter, LeastConnectionsRouter, WeightedRandomRouter, WeightedDynamicRouter } = require("./endpoint-routers.js");
+const {
+  LRURouter,
+  LeastConnectionsRouter,
+  WeightedRandomRouter,
+  WeightedDynamicRouter,
+  PayloadSizeRouter // ID08052025.n
+} = require("./endpoint-routers.js");
 
 class EndpointRouterFactory {
 
@@ -38,6 +45,9 @@ class EndpointRouterFactory {
         break;
       case EndpointRouterTypes.WeightedDynamicRouter:
         router = new WeightedDynamicRouter(appId, epConfig, EndpointRouterTypes.WeightedDynamicRouter);
+        break;
+      case EndpointRouterTypes.PayloadSizeRouter: // ID08052025.n
+        router = new PayloadSizeRouter(appId, epConfig, EndpointRouterTypes.PayloadSizeRouter);
         break;
     };
 

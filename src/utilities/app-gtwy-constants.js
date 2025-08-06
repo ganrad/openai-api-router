@@ -1,6 +1,6 @@
 /**
  * Name: AI application gateway constants
- * Description: This module contains definitions for constants used in AI Application Gateway.
+ * Description: This module contains constant definitions used in AI Application Gateway.
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 04-24-2024
@@ -26,7 +26,13 @@
  * ID03282025: ganrad: v2.4.0: Added new constant for AI Agent Service Annotation types
  * ID03242025: ganrad: v2.4.0: Added new constants 1) To support AI Agent Service 2) Agent API version
  * ID06162025: ganrad: v2.3.9: Added new constant for 1) Backend endpoint router types 2) OpenAI Base URI
+ * ID07102025: ganrad: v2.4.0: Updated AI Agent Service API version (after GA)
+ * ID07242025: ganrad: v2.4.0: Added new literals/constants for AI App Gateway data plane resources - InstanceInfo, Request, Session, Metrics. 
+ * ID07252025: ganrad: v2.4.0: Defined new constants for AI App Gateway endpoints, server version & API version.
+ * ID07312025: ganrad: v2.4.0: Defined function for generating a globally unique identifier prefixed with a string constant/literal.
+ * ID08052025: ganrad: v2.4.0: Introduced payload size based backend endpoint router.
 */
+const { randomUUID } = require('node:crypto'); // ID07312025.n
 
 const DefaultAiGatewayUri = "http://localhost:8080/api/v1/dev/apirouter/lb"; // ID02102025.n
 const DefaultJsonParserCharLimit = "600kb"; // ID02202025.n
@@ -34,8 +40,33 @@ const DefEmbeddingModelTokenLimit = 8192; // ID02212025.n
 const OpenAIBaseUri = "api.openai.com"; // ID06162025.n
 const DefaultEndpointLatency = 5000; // ID06162025.n; 5 seconds
 
+function generateGUID(prefix) { // ID07312025.n
+  const idPrefix = (!prefix || (prefix.length < 3)) ? "uid" : prefix;
+
+  return(idPrefix.slice(0,3) + "_" + randomUUID());
+}
+
+// ID07252025.sn
+const AiAppGateway = {
+  Version: "2.4.0",
+  ApiVersion: "/api/v1/",
+  RouterContextPath: "/apirouter"
+};
+
+const GatewayRouterEndpoints = {
+  ControlPlaneEndpoint: "/cp",
+  InstanceInfoEndpoint: "/instanceinfo",
+  HealthEndpoint: "/healthz",
+  MetricsEndpoint: "/metrics",
+  RequestsEndpoint: "/requests",
+  SessionsEndpoint: "/sessions",
+  ReconfigureEndpoint: "/reconfig",
+  InferenceEndpoint: "/lb"
+};
+// ID07252025.en
+
 const AzureApiVersions = { // ID03242025.n
-  AiAgentService: '2024-12-01-preview'
+  AiAgentService: '2025-05-01' // ID07102025.n
 };
 
 const HttpMethods = { // ID01242025.n
@@ -120,13 +151,17 @@ const SearchAlgorithms = { // ID11072024.n
 const AppServerStatus = { // ID01232025.n
   Started: "Started",
   Running: "Running",
+  Degraded: "Degraded", // ID07242025.n
   Stopped: "Stopped"
 }
 
 const AppResourceTypes = { // ID01232025.n
   AiAppServer: "AiAppServer",
   AiApplication: "AiApplication",
-  RagApplication: "RagApplication"
+  RagApplication: "RagApplication",
+  AiAppGatewayRequest: "AiAppGatewayRequest", // ID07242025.n
+  AiAppGatewaySession: "AiAppGatewaySession",
+  AiAppGatewayMetrics: "AiAppGatewayMetrics"
 }
 
 const AppResourceActions = { // API Level; ID01232025.n
@@ -172,7 +207,8 @@ const EndpointRouterTypes = { // ID06162025.n
   LRURouter: "LeastRecentlyUsed",
   LeastConnectionsRouter: "LeastActiveConnections",
   WeightedRandomRouter: "RandomWeighted",
-  WeightedDynamicRouter: "LatencyWeighted"
+  WeightedDynamicRouter: "LatencyWeighted",
+  PayloadSizeRouter: "PayloadSwitch" // ID08052025.n
 }
 
 const AzAiAgentRunStatus = { // ID03252025.n
@@ -189,6 +225,9 @@ const AzAiAgentAnnotationTypes = { // ID03282025.n
 }
 
 module.exports = {
+  generateGUID, // ID07312025.n
+  AiAppGateway, // ID07252025.n
+  GatewayRouterEndpoints, // ID07252025.n
   DefaultAiGatewayUri, // ID02102025.n
   DefaultJsonParserCharLimit, // ID02202025.n
   DefEmbeddingModelTokenLimit, // ID02212025.n

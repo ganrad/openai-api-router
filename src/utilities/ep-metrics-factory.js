@@ -11,6 +11,7 @@
  * ID11052024: ganrad: v2.1.0: Added support for LLMs that support Azure AI Model Inference API (Chat completion).
  * ID04302025: ganrad: v2.3.2: (Enhancement) Each endpoint can (optional) have a unique id ~ assistant id
  * ID05122025: ganrad: v2.3.6: (Enhancement) Introduced endpoint health policy feature for AOAI and AI Model Inf. API calls. 
+ * ID07102025: ganrad: v2.4.0: (Enhancement) Added support for AI Foundry Agent Service.
 */
 
 const AzOaiEpMetrics = require("./az-oai-ep-metrics.js"); // Open AI Metrics
@@ -36,6 +37,7 @@ class EndpointMetricsFactory {
     switch (appType) {
       case AzAiServices.OAI:
       case AzAiServices.AzAiModelInfApi: // ID11052024.n
+      case AzAiServices.AzAiAgent: // ID07102025.n
         metricsObj = new AzOaiEpMetrics(
           uri,
           process.env.API_GATEWAY_METRICS_CINTERVAL,

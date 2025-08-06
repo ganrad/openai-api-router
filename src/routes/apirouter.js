@@ -1,7 +1,6 @@
 /**
- * Name: API Gateway/Router (Single Agent)
- * Description: An intelligent stateful API gateway that routes incoming requests to backend 
- * OpenAI deployment resources based on 1) Priority and 2) Availability
+ * Name: AI Application Gateway/Router (Single Agent)
+ * Description: An API router that forwards incoming requests to backend intelligent AI Service processors.
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 01-28-2024
@@ -45,7 +44,10 @@
  * result in all requests tied to a given thread/session to be routed to the same backend uri.
  * ID05122025: ganrad: v2.3.6: (Enhancement) Introduced endpoint health policy feature for AOAI and AI Model Inf. API calls. 
  * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced user personalization feature ~ Long term memory.
- * ID06162025: ganrad: v2.3.9: (Enhancement) Introduced endpoint routing types - Priority (default), Random weighted and Latency weighted.
+ * ID06162025: ganrad: v2.3.9: (Enhancement) Introduced endpoint routing types - Priority (default), LRU, LAC, Random weighted and Latency weighted.
+ * ID07242025: ganrad: v2.4.0: (Enhancement + Refactored code) Introduced resource handlers for AI Gateway resources. Added support for retrieving
+ * sessions (threads) managed by Azure AI Foundry Agent Service.
+ * ID07252025: ganrad: v2.4.0: (Refactored code) Moved all router endpoint literals to the constants module ~ app-gtwy-constants.js.
 */
 
 const path = require('path');
@@ -55,14 +57,15 @@ const express = require("express");
 const EndpointMetricsFactory = require("../utilities/ep-metrics-factory.js"); // ID04222024.n
 const AppConnections = require("../utilities/app-connection.js");
 const AppCacheMetrics = require("../utilities/cache-metrics.js"); // ID02202024.n
-const { AzAiServices, CustomRequestHeaders } = require("../utilities/app-gtwy-constants.js");
+const { AzAiServices, CustomRequestHeaders, AppResourceTypes, GatewayRouterEndpoints } = require("../utilities/app-gtwy-constants.js"); // ID07242025.n, ID07252025.n
 const AiProcessorFactory = require("../processors/ai-processor-factory.js"); // ID04222024.n
 const EndpointRouterFactory = require("../utilities/ep-router-factory.js"); // ID06162025.n
+const ResourceHandlerFactory = require("../handlers/res-handler-factory.js"); // ID07242025.n
 const logger = require("../utilities/logger.js"); // ID04272024.n
 const router = express.Router();
 
-const { TblNames, PersistDao } = require("../utilities/persist-dao.js"); // ID11042024.n
-const persistdb = require("../services/pp-pg.js");
+// const { TblNames, PersistDao } = require("../utilities/persist-dao.js"); // ID11042024.n, ID07242025.o
+// const persistdb = require("../services/pp-pg.js"); // ID07242025.o
 
 // Total API calls handled by this router instance
 // Includes (successApicalls + cachedCalls)
@@ -84,280 +87,58 @@ let cacheMetrics = new AppCacheMetrics();
 // ID06162025.n - Init container for app specific endpoint router
 let appRouters = new Map();
 
-function retrieveSrvInstanceMetrics(req) { // ID04172025.n
-  let conList = [];
-  appConnections.getAllConnections().forEach(function (epdata, ky) {
-    let priorityIdx = 0;
-    let epDict = [];
-    epdata.forEach(function (value, key) {
-      let dict = {
-        id: value.getUniqueId(), // ID04172025.n
-        endpoint: key,
-        priority: priorityIdx,
-        metrics: value.toJSON()
-      };
-      epDict.push(dict);
-      priorityIdx++;
-    });
+// ID07242025.n
+// Method: GET
+// Description: Get Ai App Gateway Instance info. 
+// Endpoint: /apirouter/instanceinfo
+router.get(GatewayRouterEndpoints.InstanceInfoEndpoint, (req, res) => { // ID07252025.n
+  const response = 
+    new ResourceHandlerFactory().getDataHandler(AppResourceTypes.AiAppServer).
+      handleRequest(req); 
 
-    let conObject = {
-      applicationId: ky,
-      cacheMetrics: cacheMetrics.getCacheMetrics(ky),
-      endpointMetrics: epDict
-    };
-    conList.push(conObject);
-  });
+  res.status(response.http_code).json(response.data);
+});
 
-  let srv_data = {
-    hostName: process.env.API_GATEWAY_HOST,
-    listenPort: process.env.API_GATEWAY_PORT,
-    // instanceName: process.env.API_GATEWAY_NAME, ID09032024.o
-    serverName: req.targeturis.serverId, // ID09032024.n (+ To be consistent with server, changed 'instanceName' to 'serverName')
-    serverType: req.targeturis.serverType, // ID09032024.n
-    // ID09032024.sn
-    containerInfo: {
-      imageID: process.env.IMAGE_ID,
-      nodeName: process.env.NODE_NAME,
-      podName: process.env.POD_NAME,
-    },
-    // ID09032024.en
-    collectionIntervalMins: Number(process.env.API_GATEWAY_METRICS_CINTERVAL),
-    historyCount: Number(process.env.API_GATEWAY_METRICS_CHISTORY),
-    applicationMetrics: conList,
-    successApiCalls: (instanceCalls - instanceFailedCalls) - cachedCalls, // ID04222024.n
-    cachedApiCalls: cachedCalls, // ID02202024.n
-    failedApiCalls: instanceFailedCalls,
-    totalApiCalls: instanceCalls,
-    endpointUri: req.originalUrl,
-    currentDate: new Date().toLocaleString(),
-    serverStatus: "OK"
-  };
-
-  return( {
-    http_code: 200,
-    data: srv_data
-  });
-}
-
-function retrieveAiAppMetrics(req, appId) { // ID04172025.n
-  const appsConfig = req.targeturis; // AI application configurations
-  let application = getAiApplication(appId, appsConfig); 
-
-  if ( ! application ) {
-    return(
-      {
-        http_code: 404, // Resource not found!
-        data: {
-          error: {
-            target: req.originalUrl,
-            message: `AI Application ID [${appId}] not found. Unable to process request.`,
-            code: "invalidPayload"
-          }
-        }
-      }
-    );
-  };
-
-  let payload = null;
-  let appConnection = appConnections.getConnection(appId);
-  if ( appConnection ) { // A map keyed by endpoint uri's containing metrics data
-    let priorityIdx = 0;
-    let epDict = [];
-
-    appConnection.forEach(function (value, key) {
-      let dict = {
-        id: value.getUniqueId(),
-        endpoint: key,
-        priority: priorityIdx,
-        metrics: value.toJSON()
-      };
-      epDict.push(dict);
-      priorityIdx++;
-    });
-
-    payload = {
-      applicationId: appId,
-      appType: application.appType,
-      description: application.description,
-      cacheMetrics: cacheMetrics.getCacheMetrics(appId),
-      endpointMetrics: epDict
-    };
-  }
-  else { // AI Application has not been invoked yet. Hence connection metrics have not been lazy loaded.
-    payload = {
-      applicationId: appId,
-      appType: application.appType,
-      description: application.description,
-      cacheMetrics: {
-        hitCount: 0,
-        avgScore: 0.0
-      },
-      endpointMetrics: []
-    };
-  }
-
-  return(
-    {
-      http_code: 200,
-      data: payload
-    }
-  );
-}
-
-// Endpoint: /apirouter/metrics
-// router.get("/metrics", (req, res) => { // ID04172025.o
-router.get(["/metrics","/metrics/:app_id"], (req, res) => { // ID04172025.n
-  const appId = req.params.app_id; // AI Application ID
-
-  const response = appId ? retrieveAiAppMetrics(req, appId) : retrieveSrvInstanceMetrics(req);
+// Method: GET
+// Description: Get metrics for Ai App Gateway / Ai Application
+// Endpoint: /apirouter/metrics[/app_id]
+// Path Parameters:
+//   app_id: (Optional) AI Application ID
+router.get([GatewayRouterEndpoints.MetricsEndpoint,GatewayRouterEndpoints.MetricsEndpoint + "/:app_id"], (req, res) => { // ID04172025.n, ID07252025.n
+  const response = 
+    new ResourceHandlerFactory().getDataHandler(AppResourceTypes.AiAppGatewayMetrics).
+      handleRequest(req, appConnections, cacheMetrics, [instanceCalls, instanceFailedCalls, cachedCalls]);  // ID07242025.n
 
   res.status(response.http_code).json(response.data);
 });
 
 // ID11042024.sn
-// Endpoint: /apirouter/requests
-router.get(["/requests/:app_id/:request_id"], async (req, res) => { // ID02142025.n
-  if ( ! (process.env.API_GATEWAY_PERSIST_PROMPTS === "true") ) {
-    err_obj = {
-      error: {
-        endpointUri: req.originalUrl,
-        message: `Prompt persistence is not enabled for this AI App Gateway instance! Unable to process request.`,
-        code: "invalidPayload"
-      }
-    };
+// Method: GET
+// Description: Get Ai App request info.
+// Endpoint: /apirouter/requests/app_id/request_id
+// Path Parameters:
+//   app_id: AI Application ID
+//   request_id: A Request ID generated by AI App Gateway
+router.get([GatewayRouterEndpoints.RequestsEndpoint + "/:app_id/:request_id"], async (req, res) => { // ID02142025.n, ID07252025.n
+  const response = await new ResourceHandlerFactory().getDataHandler(AppResourceTypes.AiAppGatewayRequest).
+    handleRequest(req); // ID07242025.n
 
-    res.status(400).json(err_obj); // 400 = Bad request
-    return;
-  };
-
-  const appId = req.params.app_id; // AI Application ID
-  const requestId = req.params.request_id; // AI App. Request ID
-  logger.log({ level: "info", message: "[%s] apirouter():\n  Req ID: %s\n  AI Application ID: %s\n  Request ID: %s", splat: [scriptName, req.id, appId, requestId] });
-
-  if (!requestId || !appId) {
-    err_obj = {
-      error: {
-        endpointUri: req.originalUrl,
-        message: `AI Application ID [${appId}] and Request ID [${requestId}] are required parameters! Unable to process request.`,
-        code: "invalidPayload"
-      }
-    };
-
-    res.status(400).json(err_obj); // 400 = Bad request
-    return;
-  };
-
-  let respMessage;
-
-  let promptsDao = new PersistDao(persistdb, TblNames.Prompts);
-  let values = [
-    requestId,
-    appId
-  ];
-  const promptTrace = await promptsDao.queryTable(req.id, 1, values)
-  if (promptTrace.rCount === 1) {
-    respMessage = {
-      http_code: 200, // OK
-      data: {
-        messageTrace: promptTrace.data[0],
-        endpointUri: req.originalUrl,
-        currentDate: new Date().toLocaleString(),
-      }
-    };
-  }
-  else {
-    err_msg = {
-      error: {
-        endpointUri: req.originalUrl,
-        message: `Request ID=[${requestId}] for AI Application ID=[${appId}] not found.  Please check the parameter values and try again!`,
-        code: "invalidPayload"
-      }
-    };
-
-    respMessage = {
-      http_code: 400, // Bad request
-      data: err_msg
-    };
-  };
-
-  res.status(respMessage.http_code).json(respMessage.data);
+  res.status(response.http_code).json(response.data);
 });
 // ID11042024.en
 
 // ID02142025.sn
-// Endpoint: /apirouter/sessions
-router.get(["/sessions/:app_id/:session_id"], async (req, res) => {
-  if ( ! (process.env.API_GATEWAY_PERSIST_PROMPTS === "true") ) {
-    err_obj = {
-      error: {
-        endpointUri: req.originalUrl,
-        message: `Prompt persistence is not enabled for this AI App Gateway instance! Unable to process request.`,
-        code: "invalidPayload"
-      }
-    };
+// Method: GET
+// Description: Get Ai App session/thread info.
+// Endpoint: /apirouter/sessions/app_id/session_id
+// Path Parameters:
+//   app_id: AI Application ID
+//   session_id: Thread/Session ID
+router.get([GatewayRouterEndpoints.SessionsEndpoint + "/:app_id/:session_id"], async (req, res) => { // ID07252025.n
+  const response = await new ResourceHandlerFactory().getDataHandler(AppResourceTypes.AiAppGatewaySession).
+    handleRequest(req); // ID07242025.n
 
-    res.status(400).json(err_obj); // 400 = Bad request
-    return;
-  };
-
-  const appId = req.params.app_id; // AI Application ID
-  const threadId = req.params.session_id; // User session (/Thread) ID
-  logger.log({ level: "info", message: "[%s] apirouter():\n  Req ID: %s\n  AI Application ID: %s\n  Thread ID: %s", splat: [scriptName, req.id, appId, threadId] });
-
-  if (!threadId || !appId) {
-    err_obj = {
-      error: {
-        endpointUri: req.originalUrl,
-        message: `AI Application ID [${appId}] and Session ID [${threadId}] are required parameters! Unable to process request.`,
-        code: "invalidPayload"
-      }
-    };
-
-    res.status(400).json(err_obj); // 400 = Bad request
-    return;
-  };
-
-  let respMessage;
-  let values = [
-    threadId,
-    appId
-  ];
-
-  let memoryDao = new PersistDao(persistdb, TblNames.Memory); // ID05082025.n
-  let endpointId = "NA";
-  const sessionInfo = await memoryDao.queryTable(req.id, 1, values);
-  if (sessionInfo.rCount == 1) // ID05082025.n
-    endpointId = sessionInfo.data[0].endpoint_id;
-
-  let promptsDao = new PersistDao(persistdb, TblNames.Prompts);
-  const sessionTrace = await promptsDao.queryTable(req.id, 2, values);
-  if (sessionTrace.rCount >= 1) {
-    respMessage = {
-      http_code: 200, // OK
-      data: {
-        backendUriIndex: endpointId, // ID05082025.n
-        messageTrace: sessionTrace.data,
-        endpointUri: req.originalUrl,
-        currentDate: new Date().toLocaleString(),
-      }
-    };
-  }
-  else {
-    err_msg = {
-      error: {
-        endpointUri: req.originalUrl,
-        message: `Session [ID=${threadId}] not found for AI Application [ID=${appId}].  Please check the parameter values and try again!`,
-        code: "invalidPayload"
-      }
-    };
-
-    respMessage = {
-      http_code: 400, // Bad request
-      data: err_msg
-    };
-  };
-
-  res.status(respMessage.http_code).json(respMessage.data);
+  res.status(response.http_code).json(response.data);
 });
 // ID02142025.en
 
@@ -388,11 +169,14 @@ function getAiApplication(appName, ctx) { // ID01292025.n
   return(application);
 }
 
-// Intelligent API router / Load Balancer
+// Method: POST
+// Description: Intelligent API router / Load Balancer
 // Endpoint: /apirouter/lb
+// Path Parameters:
+//   app_id: AI Application ID
 // router.post("/lb/:app_id", async (req, res) => { // ID03192024.o
 // router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024.n, ID04102024.o
-router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"], async (req, res) => { // ID04102024.n
+router.post([GatewayRouterEndpoints.InferenceEndpoint + "/:app_id", GatewayRouterEndpoints.InferenceEndpoint + "/openai/deployments/:app_id/*", GatewayRouterEndpoints.InferenceEndpoint + "/:app_id/*"], async (req, res) => { // ID04102024.n, ID07252025.n
   const eps = req.targeturis; // AI application configuration
   const cdb = req.cacheconfig; // Global cache configuration
   const appTypes = [ AzAiServices.OAI, AzAiServices.AzAiModelInfApi, AzAiServices.AzAiAgent ]; // ID11052024.n; ID03242025.n
@@ -466,7 +250,7 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
     let epmetrics = null;
     for (const element of application.endpoints) {
       // epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm); ID04302025.o
-      epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm, element.id); // ID04302025.n
+      epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm, element.id, element.healthPolicy); // ID04302025.n, ID05122025.n
 
       epinfo.set(element.uri, epmetrics);
     };
@@ -543,6 +327,7 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
     switch (appConfig.appType) {
       case AzAiServices.OAI:
       case AzAiServices.AzAiModelInfApi: // ID11052024.n
+      case AzAiServices.AzAiAgent: // ID07102025.n
         response = await processor.processRequest(
           req,
           res, // ID06052024.n
@@ -552,15 +337,6 @@ router.post(["/lb/:app_id", "/lb/openai/deployments/:app_id/*", "/lb/:app_id/*"]
           cacheMetrics,
           userMemConfig, // ID05142025.n
           routerInstance // ID06162025.n
-        );
-        break;
-      case AzAiServices.AzAiAgent: // ID03242025.n
-        response = await processor.processRequest(
-          req,
-          res,
-          appConfig,
-          appConnections,
-          cacheMetrics
         );
         break;
       case AzAiServices.AiSearch:

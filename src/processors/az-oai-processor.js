@@ -47,6 +47,8 @@
  *   3) Extension of #2: Dynamically adjust the endpoint weights based on latency/response times of backend endpoints.
  *   4) Introduced Least Recently Used (LRU) and Least Connections Used (LCU) endpoint routers.
  *   5) Updated auth header to support OpenAI API calls.
+ * ID07312025: ganrad: v2.4.0: (Refactored code) Globally unique ID's are generated using a single function defined in module ~ app-gtwy-constants.js.
+ * ID08052025: ganrad: v2.4.0: (Enhancement) Introduced payload size based backend API routing.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -60,14 +62,15 @@ const { TblNames, PersistDao } = require("../utilities/persist-dao.js"); // ID03
 const persistdb = require("../services/pp-pg.js"); // ID03012024.n
 const UserMemDao = require("../utilities/user-mem-dao.js"); // ID05142025.n
 const pgvector = require("pgvector/pg"); // ID02202024.n
-const { 
+const {
+  generateGUID, // ID07312025.n 
   DefEmbeddingModelTokenLimit, 
   CustomRequestHeaders, 
   AzAiServices, 
   EndpointRouterTypes, // ID06162025.n
   OpenAIBaseUri // ID06162025.n
 } = require("../utilities/app-gtwy-constants.js"); // ID05062024.n; ID06162025.n
-const { randomUUID } = require('node:crypto'); // ID05062024.n
+// const { randomUUID } = require('node:crypto'); // ID05062024.n; ID07312025.o
 
 const { encode } = require('gpt-tokenizer'); // ID02212025.n
 const { getAccessToken } = require("../auth/bootstrap-auth.js"); // ID03052025.n
@@ -776,7 +779,8 @@ class AzOaiProcessor {
           cacheMetrics.updateCacheMetrics(config.appId, simScore);
 
           if (req.body.messages && manageState && memoryConfig && memoryConfig.useMemory) { // Generate thread id if manage state == true
-            threadId = randomUUID();
+            // threadId = randomUUID(); ID07312025.o
+            threadId = generateGUID("thread"); // ID07312025.n
 
             // When response is served from the cache and state mgmt is turned on, update the thread count of the first end-point
             for (const element of config.appEndpoints) { // ID04302025.n
@@ -849,7 +853,7 @@ class AzOaiProcessor {
         req.body.messages = ctxMsgs;
         endpointId = userContext.data[0].endpoint_id; // ID05082025.n
 
-        logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Retrieved Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, JSON.stringify(req.body.messages, null, 2)] });
+        logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Endpoint ID: %s\n  Prompt + Retrieved Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, endpointId, JSON.stringify(req.body.messages, null, 2)] });
       }
       else {
         /* ID06132024.so
@@ -906,7 +910,8 @@ class AzOaiProcessor {
     // ID06162025.en
 
     if ( routerInstance ) // ID06162025.n
-      routerEndpointId = routerInstance.getEndpointId(req.id);
+      // routerEndpointId = routerInstance.getEndpointId(req.id);  // ID08052025.o
+      routerEndpointId = routerInstance.getEndpointId(req);  // ID08052025.n
 
     // 3. Call Azure OAI endpoint(s)
     // let epdata = appConnections.getConnection(config.appId); ID04302025.o
@@ -978,7 +983,8 @@ class AzOaiProcessor {
             // data = await response.json(); ID06052024.o
             // ID06052024.sn
             // let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? randomUUID() : threadId; // ID04302025.o
-            let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? (function () { threadStarted = true; return (randomUUID()); })() : threadId; // ID04302025.n
+            // let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? (function () { threadStarted = true; return (randomUUID()); })() : threadId; // ID04302025.n; ID07312025.o
+            let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? (function () { threadStarted = true; return (generateGUID("thread")); })() : threadId; // ID07312025.n
             if (req.body.stream) // Streaming request?
               data = (req.body.data_sources) ?
                 await this.#streamChatCompletionOyd(req.id, th_id, config.appId, res, response) :  // OYD call
@@ -1281,7 +1287,8 @@ class AzOaiProcessor {
 
       memoryDao = new PersistDao(persistdb, TblNames.Memory);
       if (!threadId)
-        threadId = randomUUID();
+        // threadId = randomUUID(); ID07312025.o
+        threadId = generateGUID("thread");
 
       logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Completed Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, JSON.stringify(req.body.messages, null, 2)] });
 

@@ -27,4 +27,5 @@ class CacheConfiguration {
     return this._srchEngine;
   }
 }
+
 module.exports = CacheConfiguration;

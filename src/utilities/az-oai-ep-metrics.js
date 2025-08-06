@@ -15,6 +15,8 @@
  * ID04302025: ganrad: v2.3.2: (Enhancement) Track no. of user sessions/threads in each metrics collection interval
  * ID05082025: ganrad: v2.3.5: (Enhancement) Log the request id when an backend endpoint is marked as unhealthy
  * ID05122025: ganrad: v2.3.6: (Enhancement) Introduced endpoint health policy feature for AOAI and AI Model Inf. API calls
+ * ID07302025: ganrad: v2.4.0: (Enhancement) Updated health policy feature to mark endpoint as unhealthy when multiple (configured)
+ * consecutive api calls return > 500 http status.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -150,6 +152,19 @@ class AzOaiEpMetrics {
       this.filteredCalls++;
 
     this.totalCalls++;
+
+    // ID07302025.sn
+    if ( this.healthPolicy ) { // Has health policy been configured for this endpoint?
+      if ( status >= 200 && status < 500)
+        this.callAttempts = 0;
+      else {
+        this.callAttempts++;
+        if ( this.callAttempts >= this.maxCallAttempts )
+          // Mark this endpoint as unhealthy for configured 'retryAfterMinutes' when 'maxCallAttempts' api calls fail!
+          this.timeMarker = Date.now() + (this.healthPolicy.retryAfterMinutes * 60 * 1000);
+      };
+    };
+    // ID07302025.en
   }
 
   updateMetrics() {

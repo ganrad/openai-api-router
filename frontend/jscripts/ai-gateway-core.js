@@ -27,6 +27,9 @@
  * ID06062025: ganrad: v2.3.8-v1.3.0: (Enhancement) When auth is turned off - To allow different users to test RAPID server, the 
  * username will be auto-generated each time this SPA is refreshed within the browser.
  * ID06162025: ganrad: v2.3.9-v1.3.0: (Enhancement) Introduced support for OpenAI models and endpoints.
+ * ID07102025: ganrad: v2.4.0-v1.3.1: (Bugfix, Enhancement) 1) Catch and render auth exception messages 2) Made updates to render AI Foundry Agent 
+ * Service citation url's properly.
+ * ID08052025: ganrad: v2.4.0-v1.3.1: (Enhancement) Model name can now be specified by the user (in UI) and passed to the AI App Gateway.
 */
 // Adjust the system prompt as needed
 const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // Default prompt
@@ -254,7 +257,8 @@ function setInferenceTarget() {
   // document.getElementById("uid").value = isAuthEnabled ? username : aiAppObject.user; ID06062025.o
   document.getElementById("uid").value = isAuthEnabled ? username : uiUserName; // ID06062025.n
   document.getElementById("stream").checked = aiAppObject.model_params.stream;
-  document.getElementById("stopSequence").value = aiAppObject.model_params.stop;
+  document.getElementById("stopSequence").value = aiAppObject.model_params.stop ?? ''; // ID08052025.n
+  document.getElementById("modelName").value = aiAppObject.model ?? ''; // ID08052025.n
   document.getElementById("temperature").value = aiAppObject.model_params.temperature;
   document.getElementById("temp_o").value = aiAppObject.model_params.temperature;
   document.getElementById("mtokens").value = aiAppObject.model_params.max_tokens;
@@ -402,6 +406,9 @@ function saveContent(configName) {
     let value = document.getElementById("stopSequence").value; // ID11082024.n
     if ((value !== "undefined") && value)
       promptObject.stop = value;
+    value = document.getElementById("modelName").value; // ID08052025.n
+    if ((value !== "undefined") && value) // ID08052025.n
+      promptObject.model = value;
     promptObject.top_p = Number(document.getElementById("topp").value);
 
     const alert = document.getElementById('modelConfigToast'); //select id of toast
@@ -624,10 +631,17 @@ function insertCitationLinks(cits) {
   let docNo = 1;
 
   for (const citation of cits) {
-    refList += '<li class="list-group-item"><b>' +
-      docNo + '.</b> ' +
-      generateLinkWithOffcanvas(citation.title, citation.filepath, extractAndEncloseImageURLs(citation.content)) +
-      '</li>';
+    if ( citation.filepath ) { // ID07102025.n
+      refList += '<li class="list-group-item"><b>' +
+        docNo + '.</b> ' +
+        generateLinkWithOffcanvas(citation.title, citation.filepath, extractAndEncloseImageURLs(citation.content)) +
+        '</li>';
+    }
+    else { // ID07102025.sn
+      refList += '<li class="list-group-item"><b>' +
+        docNo + '.</b><a href="' + citation.url + '" class="link-info link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover">' +
+        citation.title + '</a></li>'; 
+    }; // ID07102025.en
     docNo++;
   };
   refList += '</ul>';
@@ -750,12 +764,20 @@ function addMessageToChatBox(box, cls, msg, ctx) { // ID12022024.sn, ID03132025.
   let docNo = 1;
   if (ctx) {
     for (const citation of ctx.citations) {
-      content = content.replaceAll("[doc" + docNo + "]", "<sup>[" + docNo + "]</sup>");
-      refList += '<li class="list-group-item"><b>' +
-        docNo + '.</b> ' +
-        generateLinkWithOffcanvas(citation.title, citation.filepath, extractAndEncloseImageURLs(citation.content)) +
-        '</li>';
-      // console.log(`Title: ${citation.title}; Filepath: ${citation.filepath}`);
+      if ( citation.filepath ) { // ID07102025.n
+        content = content.replaceAll("[doc" + docNo + "]", "<sup>[" + docNo + "]</sup>");
+        refList += '<li class="list-group-item"><b>' +
+          docNo + '.</b> ' +
+          generateLinkWithOffcanvas(citation.title, citation.filepath, extractAndEncloseImageURLs(citation.content)) +
+          '</li>';
+        // console.log(`Title: ${citation.title}; Filepath: ${citation.filepath}`);
+      }
+      else { // ID07102025.sn
+        content = content.replaceAll(citation.content, "<sup>[" + docNo + "]</sup>");
+        refList += '<li class="list-group-item"><b>' +
+          docNo + '.</b><a href="' + citation.url + '" class="link-info link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover">' +
+          citation.title + '</a></li>'; 
+      }; // ID07102025.en
       docNo++;
     };
     refList += '</ul>';
@@ -906,7 +928,8 @@ async function streamCompletion(serverId, uri, appId, hdrs, box) { // ID02272025
         if (done) break;
         if (!ttToken) ttToken = Date.now();
 
-        // console.log(`Raw line: ${value}`);
+        console.log(`Raw line:\n${value}`);
+        console.log("===== +++++ =====");
         const arr = value.split('\n');
         arr.forEach((data) => {
           // console.log(`Line: ${data}`);
@@ -949,10 +972,26 @@ async function streamCompletion(serverId, uri, appId, hdrs, box) { // ID02272025
                 citLen = citations ? citations.length : 0;
                 // let content = msg.replace(/(?:\r\n|\r|\n)/g, '<br>'); // Get rid of all the newlines ID12022024.o
                 let content = msg; // ID12022024.n
+                
+                /** ID07102025.so
                 if (citLen > 0) {
                   for (let i = 1; i <= citLen; i++)
                     content = content.replaceAll("[doc" + i + "]", "<sup>[" + i + "]</sup>");
                 };
+                ID07102025.eo */
+
+                // ID07102025.sn
+                if ( citLen > 0 ) {
+                  let i = 1;
+                  for (const citation of citations) {
+                    // console.log(`**** Message=${content}, Citation Content=${citation.content} ****`);
+                    content = content.replaceAll("[doc" + i + "]", "<sup>[" + i + "]</sup>");
+                    content = content.replaceAll(citation.content, "<sup>[" + i + "]</sup>");
+                    i++;
+                  };
+                };
+                // ID07102025.en
+
                 // ID05142025.sn
                 currentBuffer += content;
                 const contentHtml = marked.parse(currentBuffer);
@@ -1047,7 +1086,11 @@ async function streamCompletion(serverId, uri, appId, hdrs, box) { // ID02272025
     }
     else {
       const data = await response.json();
-      if (data.error?.message?.includes("Thread")) { // ID11082024.n
+      if ( status === 401 ) { // ID07102025.n
+        let msg = "Authentication failed!  Please refer to the error details in the 'Exceptions' tab.";
+        addMessageToBox(chatBox, 'mb-2 rounded bg-light text-danger', msg);
+      }
+      else if (data.error?.message?.includes("Thread")) { // ID11082024.n
         let msg = "Your session [ID = " + threadId + "] has expired.  Please start a new chat session.";
         addMessageToBox(box, 'mb-2 rounded bg-light text-info', msg);
       }
@@ -1312,7 +1355,11 @@ async function sendMessage() {
             data.choices[0].message.context);
         }
         else {
-          if (data.error.message?.includes("Thread")) {
+          if ( status === 401 ) { // ID07102025.n
+            let msg = "Authentication failed!  Please refer to the error details in the 'Exceptions' tab.";
+            addMessageToBox(chatBox, 'mb-2 rounded bg-light text-danger', msg);
+          }
+          else if (data.error.message?.includes("Thread")) {
             let msg = "Your session [ID = " + threadId + "] has expired.  Please start a new chat session.";
             addMessageToBox(chatBox, 'mb-2 rounded bg-light text-info', msg);
           }

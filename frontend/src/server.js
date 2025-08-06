@@ -16,6 +16,8 @@
  * handle requests containing JSON payload & c) Added new API endpoint
  * to save new AI App definition.
  * ID04172025: ganrad: v2.3.2-v1.3.0: (Enhancement) Implemented AI App Metrics dialog.
+ * ID07102025: ganrad: v2.4.0-v1.3.1: (Bugfix, Enhancement) Server auth exception was not being caught and displayed on UI. Fixed it.
+ * Made updates to render AI Foundry Agent Service response (Citation URL's).
  */
 
 require('console-stamp')(console, {
@@ -24,7 +26,7 @@ require('console-stamp')(console, {
 const express = require('express');
 const fs = require('fs');
 
-const srvVersion = "1.3.0"; // ID04172025.n
+const srvVersion = "1.3.1"; // ID07102025.n
 const srvUriPrefix = "/ais-chatbot/ui/";
 const srvStartTime = new Date().toLocaleString();
 
