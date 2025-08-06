@@ -35,7 +35,7 @@ Feature/Capability | Azure AI Service | Description
 The AI Application Gateway can be used in the following scenarios.
 1. **Rapid deployment of AI Chatbots (or AI Information Assistants)**
    
-   The AI Application Gateway solution provides core features such as *Semantic Caching*, *State Management*, *Traffic Routing* and *API Metrics Collection* right out of the box, which are crucial for implementing conversational AI applications such as AI Chatbots.
+   The AI Application Gateway solution provides value add features such as *Semantic Caching*, *State Management*, *Long-term Memory*, *Traffic Routing* and *API Metrics Collection* right out of the box, which are crucial for implementing conversational AI applications such as AI Chatbots.
 
 2. **Capturing Azure AI Service API usage metrics and estimating capacity for AI applications/workloads**
 
@@ -47,6 +47,7 @@ The AI Application Gateway can be used in the following scenarios.
 
    The gateway currently supports proxying requests to the following Azure AI Services.
      - Azure AI Foundry Models (Support for OpenAI models and models that support the *Azure AI Model Inference API*)
+     - Azure AI Foundry Agent Service (Experimental/In-Preview)
      - OpenAI Models
      - Azure AI Search (Full API support)
      - Azure AI Language (Limited API support - Entity Linking, Language detection, Key phrase extraction, NER, PII, Sentiment analysis and opinion mining only)
@@ -55,14 +56,14 @@ The AI Application Gateway can be used in the following scenarios.
 
 ### Feature/Capability Support Matrix
 
-Feature/Capability | Configurable (Yes/No) | Azure AI Foundry Models | Azure AI Search | Azure AI Language | Azure AI Translator | Azure AI Content Safety |
------------------- | --------------------- | -------------------- | --------------- | ----------------- | ------------------- | ----------------------- |
-**Semantic Cache** | Yes | Yes <br> - Completions API <br> - Chat Completions API | No | No | No | No
-**State Management** | Yes | Yes <br> - Chat Completions API | No | No | No | No
-**Long-term Memory (Personalization)** | Yes | Yes | No | No | No | No
-**Traffic Routing/Splitting** | Yes | Yes | Yes | Yes | Yes | Yes
-**Message Persistence** | Yes | Yes | No | No | No | No
-**Metrics Collection** | No | Yes | Yes | Yes | Yes | Yes
+Feature/Capability | Configurable (Yes/No) | Azure AI Foundry Models | Azure AI Foundry Agent Service | Azure AI Search | Azure AI Language | Azure AI Translator | Azure AI Content Safety |
+------------------ | --------------------- | -------------------- | --------------- | ----------------- | ----------------- | ------------------- | ----------------------- |
+**Semantic Cache** | Yes | Yes <br> - Completions API <br> - Chat Completions API | No | No | No | No | No
+**State Management** | Yes | Yes <br> - Chat Completions API | Yes | No | No | No | No
+**Long-term Memory (Personalization)** | Yes | Yes | No | No | No | No | No
+**Traffic Routing/Splitting** | Yes | Yes | Yes | Yes | Yes | Yes | Yes
+**Message Persistence** | Yes | Yes | Yes | No | No | No | No
+**Metrics Collection** | No | Yes | Yes | Yes | Yes | Yes | Yes
 
 ### Reference Architecture: Single Domain AI Application Gateway
 
@@ -134,7 +135,8 @@ The Sections below describe the steps to configure and deploy the Gateway on Azu
 
 It is important to understand how the Gateway's load balancer distributes incoming API requests among configured Azure OpenAI backends (model deployment endpoints). Please read below.
 
-- The Gateway will strictly follow the priority order when forwarding OpenAI API requests to backends. Lower numeric values equate to higher priority. This implies, the gateway will forward requests to backends with priority of '0', '1' and then go in that order.  Priorities assigned to OpenAI backends can be viewed by invoking the *instanceinfo* endpoint - `/instanceinfo`. 
+- The Gateway will use the configured API router to forward requests to the backend OpenAI (AI Service) endpoints.  Refer to Section **A** for details on supported router types. If no router type is configured for an AI Application, the gateway will use the default **Priority** based routing.  In this case, the Gateway will follow the priority order when forwarding requests to the configured OpenAI backends. Lower numeric values equate to higher priority. This implies, the gateway will forward requests to backends with priority of '0', '1' and then go in that order.  Priorities assigned to OpenAI backends can be viewed by invoking the *instanceinfo* endpoint - `/instanceinfo`.
+- If a specific Azure OpenAI model deployment or Agent endpoint is throttled or unavailable, the Gateway will automatically forward the request to the next available endpoint. This process continues sequentially until all configured endpoints for the application have been attempted.   
 - When a backend endpoint is busy or throttled (returns http status code = 429), the gateway will mark this endpoint as unavailable and **record** the 'retry-after' seconds value returned in the OpenAI API response header.  The gateway will not forward/proxy any more API requests to this backend until retry-after seconds has elapsed thereby ensuring the backend (OpenAI endpoint) doesn't get overloaded with too many requests.
 - When all configured backend endpoints are busy or throttled (return http status code = 429), the gateway will return the **lowest** 'retry-after' seconds value returned by one of the *throttled* OpenAI backends. This value (in seconds) will be returned in the Gateway response header 'retry-after'.  Client applications should ideally wait the no. of seconds returned in the 'retry-after' response header before making a subsequent API call.
 - For as long as all the backend endpoints are busy/throttled, the Gateway will perform global rate limiting and continue to return the **lowest** 'retry-after' seconds in it's response header ('retry-after').
@@ -280,7 +282,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      ---------------- | -----------
      azure_oai | This value denotes Azure OpenAI service Or OpenAI Service
      azure_aimodel_inf | This value denotes Azure AI Foundry Service
-     azure_ai_agent | This value denotes Azure AI Foundry Agent Service
+     azure_ai_agent | (Experimental/In-Preview) This value denotes Azure AI Foundry Agent Service
      azure_language | This value denotes Azure AI Language service
      azure_translator | This value denotes Azure AI Translator service
      azure_content_safety | This value denotes Azure AI Content Safety service
@@ -293,9 +295,9 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      Priority | (Default) Routes incoming API calls to the first available endpoint listed in the AI Gateway configuration.
      LeastActiveConnections | Directs API calls to the endpoint with the fewest active connections at the time of the request.
      LeastRecentlyUsed | Sends API calls to the endpoint that has not been used for the longest duration, promoting balanced usage.
-     RandomWeighted | Routes incoming API calls to backend endpoints based on predefined weight assignments.
+     RandomWeighted | Routes incoming API calls to backend endpoints based on predefined (fixed) weight assignments.
      LatencyWeighted | Dynamically routes API calls to the endpoint with the lowest observed latency, adjusting weights in real time based on performance.
-     PayloadSwitch | Directs incoming API requests to the appropriate endpoint by comparing the size of the request payload to the configured size (threshold) for that endpoint.
+     PayloadSwitch | Routes incoming API requests to the appropriate endpoint by comparing the request payload size against each endpoint’s configured threshold. An endpoint is selected if the payload size is below its threshold.
 
    - Specify Azure AI Service endpoints/URI's and corresponding API key values within **endpoints** attribute.  Refer to the table below and set appropriate values for each attribute.
 
@@ -306,7 +308,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      apikey | String| Yes | AI Service API Key
      rpm | Number | No | Requests per minute (RPM) rate limit to be applied to this endpoint.  No rate limits are applied when this value is absent.
      weight | Number | No | Percentage-based weight used to distribute API calls across backend endpoints. The combined weights for all endpoints must total 100. This value must be specified for the following router types - *RandomWeighted* and *LatencyWeighted*.
-     payloadThreshold | String | No | Request payload size (/threshold) specified in `Bytes`, `kb` (Kilo bytes) or `mb` (Mega bytes).  This value must be specified for each endpoint when a router type of *PayloadSwitch* is configured for an AI Application.
+     payloadThreshold | String | No | Request payload size (/threshold) specified in `bytes`, `kb` (Kilo bytes) or `mb` (Mega bytes).  This value must be specified for each endpoint when a router type of *PayloadSwitch* is configured for an AI Application.
      healthPolicy.maxCallsBeforeUnhealthy | Number | No | Maximum no. of high latency API calls allowed before this endpoint is marked as unhealthy.
      healthPolicy.latencyThresholdSeconds | Number | No | Response time threshold (in seconds) used to evaluate backend performance.
      healthPolicy.retryAfterMinutes | Number | No | Duration (in minutes) after which a previously unhealthy endpoint is re-evaluated and considered healthy again.

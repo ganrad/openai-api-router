@@ -1,5 +1,39 @@
 # CHANGELOG
 
+## [v2.4.0](https://github.com/ganrad/openai-api-router/compare/v2.3.9...v2.4.0)
+### Functionality changes
+**Azure AI Application Gateway (Server)**
+
+* Enhancement: **Resource Handlers**
+
+  Introduced resource handlers for AI Gateway resources. Added support for retrieving sessions (threads) managed by the Azure AI Foundry Agent Service.
+
+* Refactor: 
+
+  - Centralized all router endpoint literals into the constants module `app-gtwy-constants.js`.
+  - Implemented a standardized function for generating globally unique IDs, located in `app-gtwy-constants.js`.
+
+* Enhancement: **Traffic Routing**
+
+  Added a new traffic router (`PayloadSwitch`) that dynamically routes API calls to backend endpoints based on configured request payload size thresholds.
+
+* Experimental / In-Preview: **Synchronous Unified Interface (API) for Azure AI Agents**
+
+  Enabled routing of requests to the Azure AI Foundry Agent Service using a unified synchronous OpenAI API interface.
+
+---
+
+**AI Application Gateway Console (UI/SPA)**
+
+- **Release v1.3.1**
+
+  This patch introduces minor UI refinements to support integration with the Azure AI Foundry Agent Service.
+
+---
+
+### Documentation changes
+* Updated the documentation to reflect changes introduced in this release.
+
 ## [v2.3.9](https://github.com/ganrad/openai-api-router/compare/v2.3.1...v2.3.9)
 ### Functionality changes
 **Azure AI Application Gateway (Server)**
