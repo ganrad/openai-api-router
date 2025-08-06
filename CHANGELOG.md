@@ -6,7 +6,8 @@
 
 * Enhancement: **Resource Handlers**
 
-  Introduced resource handlers for AI Gateway resources. Added support for retrieving sessions (threads) managed by the Azure AI Foundry Agent Service.
+  - Introduced resource handlers for AI Gateway resources.
+  - Added support for retrieving sessions (threads) managed by the Azure AI Foundry Agent Service.
 
 * Refactor: 
 
