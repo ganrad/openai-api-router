@@ -9,6 +9,10 @@
   - Introduced resource handlers for AI Gateway resources.
   - Added support for retrieving sessions (threads) managed by the Azure AI Foundry Agent Service.
 
+* Enhancement: **Health Check Policy**
+
+  - The health check policy associated with a backend endpoint is used by the AI Gateway to track consecutive failed API calls. If the number of failures exceeds the configured threshold (*healthPolicy.maxCallsBeforeUnhealthy*), the endpoint is marked as unhealthy for a duration specified by *healthPolicy.retryAfterMinutes*.
+
 * Refactor: 
 
   - Centralized all router endpoint literals into the constants module `app-gtwy-constants.js`.
@@ -16,7 +20,19 @@
 
 * Enhancement: **Traffic Routing**
 
-  Added a new traffic router (`PayloadSwitch`) that dynamically routes API calls to backend endpoints based on configured request payload size thresholds.
+  Added the following backend endpoint Traffic Routers:
+
+  - PayloadSwitch
+
+    Dynamically routes API requests to backend endpoints when the size of the HTTP request payload is less than the configured *payloadThreshold* value. This routing decision ensures that smaller payloads are directed to endpoints (Models) optimized for lightweight processing.
+
+  - HeaderSwitch
+
+    Routes API requests by matching the value of the `x-endpoint-id` HTTP header to a corresponding backend endpoint ID.
+
+  - ModelAware
+
+    Routes API requests to a backend endpoint when the value of its associated task attribute is contained within the system prompt.
 
 * Experimental / In-Preview: **Synchronous Unified Interface (API) for Azure AI Agents**
 

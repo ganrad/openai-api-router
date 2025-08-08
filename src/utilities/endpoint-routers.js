@@ -12,12 +12,17 @@
  * Version (Introduced): v2.3.9
  *
  * Notes:
- * 
+ * ID08052025: ganrad: v2.4.0: Introduced additional endpoint router types (classes).
+ *   1) Payload size router: Routes incoming request to the corresponding backend endpoint if the payload size is less than the threshold configured
+ *      for the respective endpoint.
+ *   2) Header value router: Routes incoming request to the endpoint whose 'id' matches the value sent in the http header ~ 'x-endpoint-id'.
+ *   3) Model aware router: Routes an incoming request to an endpoint that specializes in a specific task - summarization, translation, advanced
+ *      reasoning, low-cost inferencing ... Routing decision is based on 'task' description which should be contained in the 'system' prompt.  
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('./logger');
-const { DefaultEndpointLatency } = require("./app-gtwy-constants.js");
+const { DefaultEndpointLatency, CustomRequestHeaders } = require("./app-gtwy-constants.js"); // ID08052025.n
 
 class WeightedRandomRouter { // Random Weighted Router.  Uses static weights to pick an endpoint ID.
 
@@ -297,10 +302,89 @@ class PayloadSizeRouter { // Payload size router; ID08052025.n
   }
 }
 
+class HeaderValueRouter { // Header value ('x-endpoint-id') router; ID08052025.n
+
+  constructor(appId, endpointObj, type) {
+    this._backends = new Array();
+    endpointObj.forEach(element => {
+      this._backends.push(element.id);
+    });
+
+    this._appName = appId;
+    this._routerType = type;
+
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type:  %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+  }
+
+  get routerType() {
+    return this._routerType;
+  }
+
+  getEndpointId(request) {
+    // Retrieve the endpoint ID from the http header 'x-endpoint-id'
+    const endpointId = request.headers[CustomRequestHeaders.EndpointId];
+    if ( ! endpointId )
+      return(0); // If header value is missing, return the first endpoint index
+
+    // Determine the appropriate backend based on header value
+    const backendIdx = this._backends.findIndex((backend) => { backend === endpointId });
+
+    // If a matching backend is not found, use the index of the first endpoint as a default
+    const epIdx = (backendIdx !== -1) ? backendIdx : 0;
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Header (x-endpoint-id): %s\n  Endpoint ID: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, endpointId, epIdx] });
+
+    return (epIdx);
+  }
+}
+
+class ModelAwareRouter { // Model aware router; ID08052025.n
+
+  constructor(appId, endpointObj, type) {
+    this._backends = new Array();
+    endpointObj.forEach(element => {
+      this._backends.push({ id: element.id, task: element.task });
+    });
+
+    this._appName = appId;
+    this._routerType = type;
+
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type:  %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+  }
+
+  get routerType() {
+    return this._routerType;
+  }
+
+  #inferTask(messages) {
+    const sysPrompt = messages.find(m => m.role === 'system')?.content || '';
+
+    let task;
+    for ( i=0; i < this._backends.length; i++) {
+      task = this._backends[i].task;
+      if ( sysPrompt.toLowerCase().includes(task) )
+        return(i);
+    };
+
+    return(-1); // Task not found!
+  }
+
+  getEndpointId(request) {
+    // Retrieve the endpoint ID based on the task contained in the system prompt
+    const backendIdx = this.#inferTask(request.body.messages);
+    const epIdx = (backendIdx !== -1) ? backendIdx : 0; // If task could not be identified, return the first endpoint index
+    
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Task Found: %d\n  Endpoint Task: %s\n  Endpoint ID: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, (backendIdx !== -1), this._backends[epIdx].task, epIdx] });
+
+    return (epIdx);
+  }
+}
+
 module.exports = {
   LRURouter,
   LeastConnectionsRouter,
   WeightedRandomRouter,
   WeightedDynamicRouter,
   PayloadSizeRouter, // ID08052025.n
+  HeaderValueRouter, // ID08052025.n
+  ModelAwareRouter // ID08052025.n
 }

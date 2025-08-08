@@ -38,6 +38,7 @@ class SessionDataHandler extends AbstractDataHandler {
 
   async #getSDServerModelSessionInfo(req, aiApp) {
     let respMessage;
+    let err_msg;
 
     const appId = req.params.app_id; // AI Application ID
     const threadId = req.params.session_id; // User session (/Thread) ID
@@ -221,6 +222,7 @@ class SessionDataHandler extends AbstractDataHandler {
 
   async handleRequest(request) {
     let response = null;
+    let err_msg;
 
     if (!(process.env.API_GATEWAY_PERSIST_PROMPTS === "true")) {
       err_obj = {

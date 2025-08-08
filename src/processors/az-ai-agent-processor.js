@@ -3,7 +3,7 @@
  * Description: This class implements a processor for executing/invoking an AI Agent deployed in Azure AI Foundry.
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
- * Date: 03-24-2025; 07-10-2025
+ * Date: 03-24-2025; 07-10-2025; 08-05-2025
  * Version (Introduced): v2.4.0
  *
  * Notes:
@@ -17,7 +17,7 @@ const CacheDao = require("../utilities/cache-dao.js");
 const cachedb = require("../services/cp-pg.js");
 const { TblNames, PersistDao } = require("../utilities/persist-dao.js");
 const persistdb = require("../services/pp-pg.js");
-const pgvector = require("pgvector/pg");
+
 const {
   CustomRequestHeaders,
   HttpMethods,
@@ -27,7 +27,6 @@ const {
   EndpointRouterTypes } = require("../utilities/app-gtwy-constants.js");
 
 const { getAccessToken } = require("../auth/bootstrap-auth.js");
-// const assert = require('assert');
 
 const runStates = [AzAiAgentRunStatus.Queued, AzAiAgentRunStatus.InProgress, AzAiAgentRunStatus.Completed];
 const AiAgentProcessorConstants = {
@@ -357,47 +356,58 @@ class AzAiAgentProcessor {
     router_res.flushHeaders();
 
     let recv_data = "";
-    let cit_data = "";
+    let cit_data = null;
+    let cit_data_str = "";
+    let run_data;
     let buffer = "";
     let continueProcess = true;
-    while ( continueProcess ) {
+    while (continueProcess) {
       const { done, value } = await reader.read();
       if (done) break;
 
       buffer += decoder.decode(value); // , {stream: true});
-      console.log("=============== ++++ ================");
-      console.log(`Decoded Chunk:\n${buffer}`);
+      // 0. console.log("=============== ++++ ================");
+      // 1. console.log(`Decoded Chunk:\n${buffer}`);
 
       let lines = buffer.split("\n");
       buffer = lines.pop() || "";
 
-      for ( const line of lines ) {
-        if ( line.startsWith("event: ") ) {
+      for (const line of lines) {
+        if (line.startsWith("event: ")) {
           const eventStr = line.slice(6).trim();
-          console.log(`Processing Event: (${eventStr})`);
+          // 2. console.log(`Processing Event: (${eventStr})`);
 
-          if ( eventStr !== "thread.message.delta" &&
-               eventStr !== "thread.run.completed" &&
-               eventStr !== "done" ) {
+          if (eventStr !== "thread.message.delta" &&
+            eventStr !== "thread.run.completed" &&
+            eventStr !== "done") {
             console.log("Skipping ....");
             break;
           };
         };
 
-        if ( line.startsWith("data: ") ) {
+        if (line.startsWith("data: ")) {
           const payloadStr = line.slice(5).trim();
 
-          if ( payloadStr === "[DONE]") {
+          if (payloadStr === "[DONE]") {
             continueProcess = false;
-            
+
             break;
           };
 
           try {
             const payloadObj = JSON.parse(payloadStr);
 
+            if ( payloadObj.id.startsWith("run_") )
+              run_data = {
+                id: payloadObj.id,
+                object: payloadObj.object,
+                created: payloadObj.created_at,
+                model: payloadObj.model,
+                system_fingerprint: payloadObj.assistant_id
+              };
+
             const annotations = payloadObj.delta?.content[0].text.annotations;
-            if ( annotations?.length > 0 ) {  // Send annotations first
+            if (annotations?.length > 0) {  // Send annotations first
               const openAIChunk = {
                 id: payloadObj.id,
                 object: "extensions.chat.completion.chunk",
@@ -419,11 +429,15 @@ class AzAiAgentProcessor {
                 ]
               };
               router_res.write(`data: ${JSON.stringify(openAIChunk)}\n\n`);
-              cit_data += openAIChunk.choices[0].delta.context.citations[0].content;
+              cit_data_str += openAIChunk.choices[0].delta.context.citations[0].content;
+              if ( ! cit_data )
+                cit_data = annotations; // If null initialize
+              else
+                cit_data.push(...annotations);
             };
 
             const dataStr = payloadObj.delta?.content[0].text.value
-            if ( dataStr ) { // Next annotated content
+            if (dataStr) { // Next annotated content
               const openAIChunk = {
                 id: payloadObj.id,
                 object: "extensions.chat.completion.chunk",
@@ -444,15 +458,18 @@ class AzAiAgentProcessor {
             };
 
             const usageObj = payloadObj?.usage;
-            if ( usageObj ) { // Send token usage info.
+            if (usageObj) { // Send token usage info.
               const openAIChunk = {
-               id: payloadObj.id, // Run ID
-               object: "extensions.chat.completion.chunk",
-               created: payloadObj.created_at,
-               model: payloadObj.model,
-               usage: usageObj
+                id: payloadObj.id, // Run ID
+                object: "extensions.chat.completion.chunk",
+                created: payloadObj.created_at,
+                model: payloadObj.model,
+                usage: usageObj
               };
               router_res.write(`data: ${JSON.stringify(openAIChunk)}\n\n`);
+
+              if ( run_data )
+                run_data.usage = usageObj;
             };
           }
           catch (err) {
@@ -460,14 +477,16 @@ class AzAiAgentProcessor {
           }
         };
       };
-      if ( !continueProcess ) 
+      if (!continueProcess)
         break;
     }; // end of while loop
     router_res.write(`data: [DONE]\n\n`); // Finally, send [DONE] msg
 
-    logger.log({ level: "debug", message: "[%s] %s.#streamAgentOutput():\n  Request ID: %s\n  Thread ID: %s\n  Agent ID: %s\n  Annotations:\n  %s\n  Completion:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, agent_id, cit_data, recv_data] });
+    logger.log({ level: "info", message: "[%s] %s.#streamAgentOutput():\n  Request ID: %s\n  Thread ID: %s\n  Agent ID: %s\n  Run ID: %s\n  Annotations:\n  %s\n  Completion:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, agent_id, run_data.id, cit_data_str, recv_data] });
 
-    return recv_data;
+    const resp_data = this.#constructCompletionMessage(req_id, recv_data, cit_data, run_data);
+
+    return resp_data;
   }
 
   async #runAgentThread(
@@ -501,13 +520,13 @@ class AzAiAgentProcessor {
 
       // Avoid Zombie connections, memory leaks etc
       let signal = null;
-      if ( payload.stream ){
+      if (payload.stream) {
         const controller = new AbortController();
         signal = controller.signal;
-        
+
         // Abort fetch if client disconnects -
         req.on('close', () => {
-          logger.log({ level: "warn", message: "[%s] %s.#runAgentThread():\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id]});
+          logger.log({ level: "warn", message: "[%s] %s.#runAgentThread():\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
           controller.abort();
         });
       };
@@ -523,7 +542,7 @@ class AzAiAgentProcessor {
 
       let status = response.status;
       if (status === 200) { // All Ok
-        if ( payload.stream )
+        if (payload.stream)
           data = await this.#streamAgentOutput(req.id, threadId, agentId, res, response);
         else
           data = await response.json();
@@ -739,7 +758,7 @@ class AzAiAgentProcessor {
     let memoryConfig = arguments[3]; // AI application state management config
     let appConnections = arguments[4]; // EP metrics obj for all applications
     let cacheMetrics = arguments[5]; // Cache hit metrics obj for all apps
-    const routerInstance = arguments[7];
+    const routerInstance = arguments[7]; // Router instance
     let instanceName = (process.env.POD_NAME) ? apps.serverId + '-' + process.env.POD_NAME : apps.serverId; // Server instance name
 
     // Get agent thread ID from request header
@@ -772,12 +791,16 @@ class AzAiAgentProcessor {
     let triedEps = new Array(config.appEndpoints.length).fill(false);
 
     if (routerInstance)
-      routerEndpointId = routerInstance.getEndpointId(req.id);
+      routerEndpointId = routerInstance.getEndpointId(req);
 
-    let stTime;
+    let stTime; // Endpoint processing start time
+    const callStartTime = Date.now(); // Inbound API call start time
+    let endpointId;
     do {
       uriIdx = 0;  // Initialize the endpoint index!
       for (const endpoint of config.appEndpoints) { // start of endpoint for loop
+        endpointId = endpoint.id; // Set the endpoint id
+
         if ((!routerIdTried) && (routerEndpointId !== null) && (routerEndpointId >= 0)) {
           if (uriIdx !== routerEndpointId) {
             uriIdx++
@@ -800,8 +823,8 @@ class AzAiAgentProcessor {
         let metricsObj = epdata.get(endpoint.uri);
         const meta = await this.#getOpenAICallMetadata(req, endpoint);
         try {
-          if ( routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter) )
-            routerInstance.updateUriConnections(req.id, true, uriIdx - 1); 
+          if (routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter))
+            routerInstance.updateUriConnections(req.id, true, uriIdx - 1);
 
           stTime = Date.now();
           // 1. Create a new agent thread
@@ -833,10 +856,10 @@ class AzAiAgentProcessor {
             continue;
           }
           else {
-            runId = respMessage.data.id
-
-            if ( req.body.stream )
+            if (req.body.stream)
               break;
+            else
+              runId = respMessage.data.id;
           };
 
           // 4. Check agent run status
@@ -913,15 +936,15 @@ class AzAiAgentProcessor {
               threadId: threadId
             };
 
-            let respTime = Date.now() - stTime;
+            const respTime = Date.now() - stTime;
             metricsObj.updateApiCallsAndTokens(
               respMessage.data.usage?.total_tokens,
               respTime,
               threadStarted
             );
 
-            if ( routerInstance && (routerInstance.routerType === EndpointRouterTypes.WeightedDynamicRouter) )
-              routerInstance.updateWeightsBasedOnLatency(uriIdx - 1, respTime); 
+            if (routerInstance && (routerInstance.routerType === EndpointRouterTypes.WeightedDynamicRouter))
+              routerInstance.updateWeightsBasedOnLatency(uriIdx - 1, respTime);
           };
           break; // Completed request; break!
         }
@@ -949,6 +972,30 @@ class AzAiAgentProcessor {
     while ((respMessage.http_code !== 200) && triedEps.some(val => val === false));
 
     respMessage.uri_idx = uriIdx - 1; // Set the URI index in both success and failure paths ....
+
+    // 7. Persist prompt and completion in both success and failure paths
+    let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
+    if ( persistPrompts ) { // Persist prompt and completion ?
+      promptDao = new PersistDao(persistdb, TblNames.Prompts);
+      values = [
+        threadId,
+        req.id,
+        instanceName,
+        config.appId,
+        req.body,
+        respMessage.data,
+        req.body.user,
+        ( Date.now() - callStartTime ) / 1000, // End to end call time
+        endpointId ?? "index-" + respMessage.uri_idx
+      ];
+
+      await promptDao.storeEntity(
+        req.id,
+        2,
+        values
+      );
+    };
+
     return (respMessage);
   } // end of processRequest()
 }
