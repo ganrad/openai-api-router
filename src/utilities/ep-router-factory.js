@@ -8,7 +8,7 @@
  * Version (Introduced): v2.3.9
  *
  * Notes:
- * ID08052025: ganrad: v2.4.0: Introduced payload size based backend endpoint router.
+ * ID08052025: ganrad: v2.4.0: Introduced 1) Payload size based & 2) HTTP header value based & 3) Model aware, backend endpoint routers.
  * 
 */
 
@@ -18,7 +18,9 @@ const {
   LeastConnectionsRouter,
   WeightedRandomRouter,
   WeightedDynamicRouter,
-  PayloadSizeRouter // ID08052025.n
+  PayloadSizeRouter, // ID08052025.n
+  HeaderValueRouter, // ID08052025.n
+  ModelAwareRouter // ID08052025.n
 } = require("./endpoint-routers.js");
 
 class EndpointRouterFactory {
@@ -48,6 +50,12 @@ class EndpointRouterFactory {
         break;
       case EndpointRouterTypes.PayloadSizeRouter: // ID08052025.n
         router = new PayloadSizeRouter(appId, epConfig, EndpointRouterTypes.PayloadSizeRouter);
+        break;
+      case EndpointRouterTypes.HeaderValueRouter: // ID08052025.n
+        router = new HeaderValueRouter(appId, epConfig, EndpointRouterTypes.HeaderValueRouter);
+        break;
+      case EndpointRouterTypes.ModelAwareRouter: // ID08052025.n
+        router = new ModelAwareRouter(appId, epConfig, EndpointRouterTypes.ModelAwareRouter);
         break;
     };
 

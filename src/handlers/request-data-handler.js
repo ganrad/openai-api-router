@@ -25,6 +25,7 @@ class RequestDataHandler extends AbstractDataHandler {
 
   async #getSingleDomainAppReqInfo(req) {
     let respMessage;
+    let err_msg;
 
     if (!(process.env.API_GATEWAY_PERSIST_PROMPTS === "true")) {
       err_obj = {
@@ -101,6 +102,7 @@ class RequestDataHandler extends AbstractDataHandler {
 
   async #getMultiDomainAppReqInfo(req) {
     let respMessage;
+    let err_msg;
 
     const appId = req.params.app_id; // AI Application ID
     const requestId = req.params.request_id; // AI App. Request ID

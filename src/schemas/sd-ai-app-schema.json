@@ -1,6 +1,6 @@
 {
     "$id": "https://github.com/ganrad/rapid/schemas/sd-ai-app-schema.json",
-    "$comment": "ID03242025: ganrad: v2.4.0: Added new enum to AI App Type and 'id' attribute to endpoints array. ID04302025: ganrad: v2.3.5: Added new 'affinity' attribute to memorySettings. ID05092025: ganrad: v2.3.6: Added endpoint 'healthPolicy' attributes. ID05142025: ganrad: v2.3.8: Added attributes to support personalization feature. ID08052025: ganrad: v2.4.0: Added new router - PayloadSwitch",
+    "$comment": "ID03242025: ganrad: v2.4.0: Added new enum to AI App Type and 'id' attribute to endpoints array. ID04302025: ganrad: v2.3.5: Added new 'affinity' attribute to memorySettings. ID05092025: ganrad: v2.3.6: Added endpoint 'healthPolicy' attributes. ID05142025: ganrad: v2.3.8: Added attributes to support personalization feature. ID08052025: ganrad: v2.4.0: Added new routers - PayloadSwitch, HeaderSwitch",
     "title": "SingleDomainAiApp",
 	"description": "A single domain AI Application",
     "type": "object",
@@ -126,7 +126,7 @@
         "endpointRouterType": {
             "description": "Type of backend endpoint router",
             "type": "string",
-            "enum": ["Priority", "LeastActiveConnections", "LeastRecentlyUsed", "RandomWeighted", "LatencyWeighted", "PayloadSwitch"]
+            "enum": ["Priority", "LeastActiveConnections", "LeastRecentlyUsed", "RandomWeighted", "LatencyWeighted", "PayloadSwitch", "HeaderSwitch", "ModelAware"]
         },
         "endpoints": {
             "description": "Endpoint settings for an AI Application",
@@ -159,6 +159,10 @@
                     },
                     "payloadThreshold": {
                         "description": "Request payload size threshold. Used when payload size based routing of endpoints is configured for this AI App.",
+                        "type": "string"
+                    },
+                    "task" : {
+                        "description": "A specific task which the model pointed to by this endpoint specializes in such as summarization, adv. reasoning, low-cost etc. Used when model aware routing is configured for this AI App.",
                         "type": "string"
                     },
                     "healthPolicy": {
