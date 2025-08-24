@@ -56,6 +56,7 @@
  * ID07242025: ganrad: v2.4.0: (Refactored code) Moved instance info endpoint into the corresponding router implementation.
  * ID07252025: ganrad: v2.4.0: (Refactored code) Moved all server literals to the constants module ~ app-gtwy-constants.js.
  * ID07312025: ganrad: v2.4.0: (Refactored code) Globally unique ID's are generated using a single function defined in module ~ app-gtwy-constants.js.
+ * ID08212025: ganrad: v2.4.0: (Enhancement) Updated code to support AI Foundry Service Agents.
 */
 
 // ID04272024.sn
@@ -398,7 +399,10 @@ async function readAiAppGatewayConfig() { // ID01292025.n
           vectorAppFound = true;
 
         app.endpoints.forEach((element) => {
-          console.log(`  Priority: ${pidx}\tUri: ${element.uri}`);
+          if ( app.appType === AzAiServices.AzAiAgent ) // ID08212025.n
+            console.log(`  Priority: ${pidx}\tUri: ${element.uri}/${element.id}`);
+          else
+            console.log(`  Priority: ${pidx}\tUri: ${element.uri}`);
           pidx++;
         });
       });

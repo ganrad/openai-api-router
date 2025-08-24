@@ -9,7 +9,7 @@
  * ID05032024: ganrad: Added traffic routing support for Azure AI Content Safety service APIs
  * ID09042024: ganrad: Added routing support for AI orchestration engines
  * ID11052024: ganrad: v2.1.0: (Enhancement) Added support for LLMs which use Azure AI Model Inference API (Chat completion).
- * ID03242025: ganrad: v2.4.0: (Enhancement) Added support for AI Agents hosted/deployed in AI Foundry/Agent Service.
+ * ID03242025: ganrad: v2.4.0: (Enhancement) Added support for AI Agents hosted/deployed in AI Foundry Agent Service.
 */
 
 const AzOaiProcessor = require("./az-oai-processor.js");

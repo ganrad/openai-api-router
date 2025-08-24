@@ -24,7 +24,9 @@ const {
   AzureApiVersions,
   AzAiAgentRunStatus,
   AzAiAgentAnnotationTypes,
-  EndpointRouterTypes } = require("../utilities/app-gtwy-constants.js");
+  EndpointRouterTypes,
+  OpenAIChatCompletionMsgRoleTypes,
+  AzureResourceUris } = require("../utilities/app-gtwy-constants.js");
 
 const { getAccessToken } = require("../auth/bootstrap-auth.js");
 
@@ -37,6 +39,7 @@ const AiAgentProcessorConstants = {
 class AzAiAgentProcessor {
 
   constructor() {
+    this.streamed_response_sent = false;  // When streaming mode is on, send the http headers only once.
   }
 
   #retrieveCitations(annotations) {
@@ -107,59 +110,6 @@ class AzAiAgentProcessor {
     return (completionObj);
   }
 
-  #constructCompletionMessage_0(completion, citations, metadata) { // Not used!
-    let completionObj = null;
-
-    if (citations) {
-      const citsObj = JSON.parse(citations);
-      completionObj = {
-        id: metadata.id,
-        object: metadata.object,
-        created: metadata.created,
-        model: metadata.model,
-        choices: [
-          {
-            message: {
-              role: "assistant",
-              content: completion,
-              context: {
-                citations: citsObj.choices[0].delta.context.citations,
-                intent: citsObj.choices[0].delta.context.intent,
-                all_retrieved_documents: citsObj.choices[0].delta.context.all_retrieved_documents
-              }
-            },
-            finish_reason: "stop",
-            index: 0
-          }
-        ],
-        system_fingerprint: metadata.system_fingerprint
-      };
-    }
-    else {
-      completionObj = {
-        id: metadata.id,
-        object: metadata.object,
-        created: metadata.created,
-        model: metadata.model,
-        choices: [
-          {
-            message: {
-              role: "assistant",
-              content: completion,
-            },
-            finish_reason: "stop",
-            index: 0
-          }
-        ],
-        system_fingerprint: metadata.system_fingerprint
-      };
-      if (metadata.usage)
-        completionObj.usage = metadata.usage;
-    };
-
-    return (completionObj);
-  }
-
   #sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
@@ -171,17 +121,17 @@ class AzAiAgentProcessor {
 
     if (bearerToken && !req.authInfo) { // AI App Gateway security is not set
       if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true")
-        // Use managed identity of the AI App Gateway host if this env var is set
-        bearerToken = await getAccessToken(req);
+        // Use managed identity of the AI App Gateway host if this env var is set (Override the token sent in the header!)
+        bearerToken = await getAccessToken(req, AzureResourceUris.AzureAiFoundryService);
 
       meta.set('Authorization', bearerToken);
-      logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using Bearer token for AI Agent Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+      logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using Bearer token (MID-IMDS) for AI Agent Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
     }
     else { // Use managed identity of the AI App Gateway host to authenticate (discard Ai app gateway auth token!)
       if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") {
-        bearerToken = await getAccessToken(req);
+        bearerToken = await getAccessToken(req, AzureResourceUris.AzureAiFoundryService);
         meta.set('Authorization', bearerToken);
-        logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using Bearer token for AI Agent Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+        logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using Bearer token (MID-IMDS) for AI Agent Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
       }
       else {
         // meta.set('api-key', endpoint.apikey);
@@ -272,7 +222,7 @@ class AzAiAgentProcessor {
     try {
       let idx = 0;
       for (const item of req.body.messages) {
-        if (item.role === "user")
+        if (item.role === OpenAIChatCompletionMsgRoleTypes.UserMessage)
           break;
         idx++;
       };
@@ -342,18 +292,22 @@ class AzAiAgentProcessor {
     const reader = agent_res.body.getReader();
     const decoder = new TextDecoder("utf-8");
 
-    // Send 200 response status and headers
-    let res_hdrs = CustomRequestHeaders.RequestId;
-    router_res.setHeader('Content-Type', 'text/event-stream');
-    router_res.setHeader('Cache-Control', 'no-cache');
-    router_res.setHeader('Connection', 'keep-alive');
-    router_res.set(CustomRequestHeaders.RequestId, req_id);
-    if (t_id) {
-      res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
-      router_res.set(CustomRequestHeaders.ThreadId, t_id);
+    if (!this.streamed_response_sent) {
+      // Send 200 response status and headers
+      let res_hdrs = CustomRequestHeaders.RequestId;
+      router_res.setHeader('Content-Type', 'text/event-stream');
+      router_res.setHeader('Cache-Control', 'no-cache');
+      router_res.setHeader('Connection', 'keep-alive');
+      router_res.set(CustomRequestHeaders.RequestId, req_id);
+      if (t_id) {
+        res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
+        router_res.set(CustomRequestHeaders.ThreadId, t_id);
+      };
+      router_res.set("Access-Control-Expose-Headers", res_hdrs);
+      router_res.flushHeaders();
+
+      this.streamed_response_sent = true;
     };
-    router_res.set("Access-Control-Expose-Headers", res_hdrs);
-    router_res.flushHeaders();
 
     let recv_data = "";
     let cit_data = null;
@@ -365,9 +319,9 @@ class AzAiAgentProcessor {
       const { done, value } = await reader.read();
       if (done) break;
 
-      buffer += decoder.decode(value); // , {stream: true});
-      // 0. console.log("=============== ++++ ================");
-      // 1. console.log(`Decoded Chunk:\n${buffer}`);
+      buffer += decoder.decode(value);
+      // console.log("=============== ++++ ================"); // 0
+      // console.log(`Decoded Chunk:\n${buffer}`); // 1
 
       let lines = buffer.split("\n");
       buffer = lines.pop() || "";
@@ -375,12 +329,13 @@ class AzAiAgentProcessor {
       for (const line of lines) {
         if (line.startsWith("event: ")) {
           const eventStr = line.slice(6).trim();
-          // 2. console.log(`Processing Event: (${eventStr})`);
+          // console.log(`Processing Event: (${eventStr})`); // 2
 
           if (eventStr !== "thread.message.delta" &&
             eventStr !== "thread.run.completed" &&
+            eventStr !== "thread.run.incomplete" &&
             eventStr !== "done") {
-            console.log("Skipping ....");
+            // console.log("Skipping event ...."); // 3
             break;
           };
         };
@@ -391,13 +346,13 @@ class AzAiAgentProcessor {
           if (payloadStr === "[DONE]") {
             continueProcess = false;
 
-            break;
+            break; // break out of the message processing for loop
           };
 
           try {
             const payloadObj = JSON.parse(payloadStr);
 
-            if ( payloadObj.id.startsWith("run_") )
+            if (payloadObj.id.startsWith("run_"))
               run_data = {
                 id: payloadObj.id,
                 object: payloadObj.object,
@@ -430,14 +385,14 @@ class AzAiAgentProcessor {
               };
               router_res.write(`data: ${JSON.stringify(openAIChunk)}\n\n`);
               cit_data_str += openAIChunk.choices[0].delta.context.citations[0].content;
-              if ( ! cit_data )
+              if (!cit_data)
                 cit_data = annotations; // If null initialize
               else
                 cit_data.push(...annotations);
             };
 
             const dataStr = payloadObj.delta?.content[0].text.value
-            if (dataStr) { // Next annotated content
+            if (dataStr) { // Next send content
               const openAIChunk = {
                 id: payloadObj.id,
                 object: "extensions.chat.completion.chunk",
@@ -468,7 +423,7 @@ class AzAiAgentProcessor {
               };
               router_res.write(`data: ${JSON.stringify(openAIChunk)}\n\n`);
 
-              if ( run_data )
+              if (run_data)
                 run_data.usage = usageObj;
             };
           }
@@ -478,7 +433,7 @@ class AzAiAgentProcessor {
         };
       };
       if (!continueProcess)
-        break;
+        break;  // break out of the outer while loop
     }; // end of while loop
     router_res.write(`data: [DONE]\n\n`); // Finally, send [DONE] msg
 
@@ -495,7 +450,7 @@ class AzAiAgentProcessor {
     meta,
     agentEndpoint,
     threadId,
-    agentId) { // 3 - Create a run on the thread using the supplied agent
+    agentId) { // 3 - Activate a run on the thread using the supplied agent
     let respMessage;
     let data;
     let err_msg;
@@ -794,6 +749,7 @@ class AzAiAgentProcessor {
       routerEndpointId = routerInstance.getEndpointId(req);
 
     let stTime; // Endpoint processing start time
+    let retryAfter = 0;
     const callStartTime = Date.now(); // Inbound API call start time
     let endpointId;
     do {
@@ -820,7 +776,18 @@ class AzAiAgentProcessor {
           triedEps[uriIdx] = true;
 
         uriIdx++;
-        let metricsObj = epdata.get(endpoint.uri);
+
+        let metricsObj = epdata.get(endpoint.uri + "/" + endpoint.id);
+        let healthArr = metricsObj.isEndpointHealthy(req.id);
+        if (!healthArr[0]) {
+          if (retryAfter > 0)
+            retryAfter = (healthArr[1] < retryAfter) ? healthArr[1] : retryAfter;
+          else
+            retryAfter = healthArr[1];
+
+          continue; // skip this endpoint as rpm has been hit!
+        };
+
         const meta = await this.#getOpenAICallMetadata(req, endpoint);
         try {
           if (routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter))
@@ -856,8 +823,16 @@ class AzAiAgentProcessor {
             continue;
           }
           else {
-            if (req.body.stream)
-              break;
+            if (req.body.stream) {
+              const respTime = Date.now() - stTime;
+              metricsObj.updateApiCallsAndTokens(
+                respMessage.data.usage?.total_tokens,
+                respTime,
+                threadStarted
+              );
+
+              break; // Break out of the endpoint for loop
+            }
             else
               runId = respMessage.data.id;
           };
@@ -946,6 +921,8 @@ class AzAiAgentProcessor {
             if (routerInstance && (routerInstance.routerType === EndpointRouterTypes.WeightedDynamicRouter))
               routerInstance.updateWeightsBasedOnLatency(uriIdx - 1, respTime);
           };
+
+          retryAfter = 0;  // IMP: Set the retry after var to zero!!
           break; // Completed request; break!
         }
         catch (error) {
@@ -969,13 +946,28 @@ class AzAiAgentProcessor {
         };
       }; // end of endpoints for loop
     }
-    while ((respMessage.http_code !== 200) && triedEps.some(val => val === false));
+    while (((retryAfter > 0) || (respMessage.http_code !== 200)) && triedEps.some(val => val === false));
 
+    if ((retryAfter > 0) && (respMessage == null)) { // When all endpoints have hit RPM limit | Backends latency is high
+      err_msg = {
+        error: {
+          target: req.originalUrl,
+          message: `All backend AI Agents have either a) Hit the configured RPM limits or b) Surpassed the configured latency threshold! Retry after [${retryAfter}] seconds ...`,
+          code: "tooManyRequests"
+        }
+      };
+
+      respMessage = {
+        http_code: 429, // Too many requests, retry later!
+        data: err_msg,
+        retry_after: retryAfter
+      };
+    };
     respMessage.uri_idx = uriIdx - 1; // Set the URI index in both success and failure paths ....
 
     // 7. Persist prompt and completion in both success and failure paths
     let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
-    if ( persistPrompts ) { // Persist prompt and completion ?
+    if (persistPrompts) { // Persist prompt and completion ?
       promptDao = new PersistDao(persistdb, TblNames.Prompts);
       values = [
         threadId,
@@ -985,7 +977,7 @@ class AzAiAgentProcessor {
         req.body,
         respMessage.data,
         req.body.user,
-        ( Date.now() - callStartTime ) / 1000, // End to end call time
+        (Date.now() - callStartTime) / 1000, // End to end call time
         endpointId ?? "index-" + respMessage.uri_idx
       ];
 

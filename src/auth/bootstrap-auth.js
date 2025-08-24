@@ -11,6 +11,8 @@
  * ID11192024: ganrad: (Enhancement) a) Support User + Client App OR Client App only authentication. b) Bypass Auth check for 
  * 'healthz' endpoint.
  * ID03052025: ganrad: v2.3.0: (Enhancement) Introduced support for using RAPID host's system MID for authenticating against Azure AI Service(s).
+ * ID08212025: ganrad: v2.4.0: (Enhancement) Updated 'getAccessToken' method to obtain access token for multiple/any Azure resource identified
+ * by it's unique URI.
  */
 
 const passport = require('passport');
@@ -143,15 +145,16 @@ function initAuth(app, endpoint) {
   logger.log({ level: "info", message: "[%s] initAuth(): Initialized passport for authenticating users/apps using Azure Entra ID (OP)", splat: [scriptName] });
 }
 
-async function getAccessToken(req) { // ID03052025.n
+async function getAccessToken(req, resourceUri) { // ID03052025.n, ID08212025.n
   let bToken = null;
   
   // Make a fetch call to Azure instance metadata service (IMDS)
   try {
       const endpoint = 'http://169.254.169.254/metadata/identity/oauth2/token';
-      const resource = 'https://cognitiveservices.azure.com'; // set the right audience!
+      // const resource = 'https://cognitiveservices.azure.com'; // set the right audience! ID08212025.o
       const apiVersion = '2019-08-01';
-      const response = await fetch(`${endpoint}?resource=${resource}&api-version=${apiVersion}`, {
+      // const response = await fetch(`${endpoint}?resource=${resource}&api-version=${apiVersion}`, { ID08212025.o
+      const response = await fetch(`${endpoint}?resource=${resourceUri}&api-version=${apiVersion}`, { // ID08212025.n
         method: 'GET',
         headers: {
             'Metadata': 'true'
@@ -159,18 +162,18 @@ async function getAccessToken(req) { // ID03052025.n
       });
 
       if (!response.ok)
-        logger.log({ level: "warn", message: "[%s] getAccessToken(): Error retrieving access token\nMessage:\n  [%s]", splat: [scriptName, response.statusText] });
+        logger.log({ level: "warn", message: "[%s] getAccessToken(): Error retrieving access token\n  Request ID: %s\n  Resource URI: %s\n  Message:\n  %s", splat: [scriptName, req.id, resourceUri, response.statusText] });
         // throw new Error(`Error fetching access token: ${response.statusText}`);
       else {
         const data = await response.json();
         const accessToken = data.access_token;
-        logger.log({ level: "info", message: "[%s] getAccessToken(): Fetched MID access token\n  Request ID: [%s]", splat: [scriptName, req.id] });
+        logger.log({ level: "info", message: "[%s] getAccessToken(): Fetched MID access token\n  Request ID: %s\n  Resource URI: %s", splat: [scriptName, req.id, resourceUri] });
         bToken =  "Bearer " + accessToken;
         // console.log(`Access Token: ${accessToken}`);
       };
   } 
   catch (err) {
-    logger.log({ level: "warn", message: "[%s] getAccessToken(): Error retrieving access token.  Will resort to using API Key.  \nError:\n  [%s]", splat: [scriptName, err] });
+    logger.log({ level: "warn", message: "[%s] getAccessToken(): Error retrieving access token.\n  Request ID: %s\n  Resource URI: %s\n  Error:\n  %s", splat: [scriptName, req.id, resourceUri, err] });
     // console.error('Error retrieving access token:', err);
   };
 

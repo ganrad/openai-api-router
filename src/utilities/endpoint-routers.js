@@ -1,4 +1,3 @@
-
 /**
  * Name: Container for endpoint router implementations
  * Description: This program contains implementations (classes) for the following router types: 
@@ -17,12 +16,187 @@
  *      for the respective endpoint.
  *   2) Header value router: Routes incoming request to the endpoint whose 'id' matches the value sent in the http header ~ 'x-endpoint-id'.
  *   3) Model aware router: Routes an incoming request to an endpoint that specializes in a specific task - summarization, translation, advanced
- *      reasoning, low-cost inferencing ... Routing decision is based on 'task' description which should be contained in the 'system' prompt.  
+ *      reasoning, low-cost inferencing ... Routing decision is based on 'task' description which should be contained in the 'system' prompt.
+ * ID08082025: ganrad: v2.4.0: Introduced static class method for creating routers.  This method can be used to validate router inputs.
+ * ID08082025: ganrad: v2.4.0: Introduced TrafficRouterFactory and TokenAwareRouter implementations. 
+ * ID08202025: ganrad: v2.4.0: Updated 'ModelAware' router implementation to use an array of tasks, to make routing decisions (~ terms).
+ * ID08212025: ganrad: v2.4.0: Introduced TimeAwareRouter implementation.
+ * ID08222025: ganrad: v2.4.0: Introduced traffic router configuration validation checks. Refactored code.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('./logger');
-const { DefaultEndpointLatency, CustomRequestHeaders } = require("./app-gtwy-constants.js"); // ID08052025.n
+const {
+  DefaultEndpointLatency,
+  CustomRequestHeaders,
+  EndpointRouterTypes,
+  ConfigValidationStatus, // ID08222025.n
+  ModelFamily,
+  OpenAIChatCompletionMsgRoleTypes // ID08202025.n 
+} = require("./app-gtwy-constants.js"); // ID08052025.n; ID08082025.n
+
+// Load encodings and encodeChat from gpt-tokenizer; ID08082025.n
+// GPT models use BPE ~ Byte Pair Encoding
+const { encodeChat, cl100k_base, o200k_base, r50k_base } = require('gpt-tokenizer');
+
+/**
+ * Prior to instantiating a concrete router implementation use this factory method to validate the 'required' configuration parameters.
+ */
+class TrafficRouterFactory { // ID08082025.n
+
+  static #isStringValid(str) {
+    // Check for null or undefined first
+    if (str === null || str === undefined) {
+      return false;
+    }
+    // Check if it's a string and then if it's empty after trimming whitespace
+    if (typeof str === 'string' && str.trim().length === 0) {
+      return false;
+    }
+    // If none of the above, the string is valid
+    return true;
+  }
+
+  static create(appId, type, endpointObj) {
+    let validationStatus = ConfigValidationStatus.Passed;
+    let router = null;  // Default ~ validation failed!
+    let error = null;
+
+    switch (type) {
+      case EndpointRouterTypes.LRURouter: // ID08222025.n
+        router = new LRURouter(appId, endpointObj, type);
+        break;
+      case EndpointRouterTypes.LeastConnectionsRouter: // ID08222025.n
+        router = new LeastConnectionsRouter(appId, endpointObj, type);
+        break;
+      case EndpointRouterTypes.HeaderValueRouter: // ID08222025.n
+        // Loop thru all the endpoints and check if 'id' attribute exists
+        for (let i = 0; i < endpointObj.length; i++) {
+          if ( ! Object.hasOwn(endpointObj[i],"id") ) {
+            validationStatus = ConfigValidationStatus.Failed;
+
+            break;
+          };
+        };
+
+        if (validationStatus === ConfigValidationStatus.Passed)
+          router = new HeaderValueRouter(appId, endpointObj, type);
+        else {
+          // Log the error and exit -
+          error = "Attribute 'id' must be defined for all configured endpoints. Check endpoint configuration. Falling back to default router (Priority) implementation.";
+          logger.log({ level: "warn", message: "[%s] TrafficRouterFactory.create():\n  App ID: %s\n  Router Type: %s\n  Error: %s", splat: [scriptName, appId, type, error] });
+        };
+        break;
+      case EndpointRouterTypes.WeightedDynamicRouter: // ID08222025.n
+      case EndpointRouterTypes.WeightedRandomRouter: // ID08222025.n
+        // Check if 'weight' attribute is specified for each endpoint and the total of all endpoint weights equals 100.
+        let totalWeight = 0;
+        for (let i = 0; i < endpointObj.length; i++) {
+          if (! "weight" in endpointObj[i] ) {
+            validationStatus = ConfigValidationStatus.Failed;
+
+            break;
+          }
+          else
+            totalWeight += endpointObj[i].weight;
+        };
+
+        if (validationStatus === ConfigValidationStatus.Passed) {
+          if ( totalWeight === 100 )
+            router = (type === EndpointRouterTypes.WeightedDynamicRouter) ? new WeightedDynamicRouter(appId, endpointObj, type) : new WeightedRandomRouter(appId, endpointObj, type);
+          else {
+            // Log the error and exit -
+            error = "The sum of all endpoint weights ('weight' attribute) should equal 100. Check endpoint configuration & update weights. Falling back to default router (Priority) implementation.";
+            logger.log({ level: "warn", message: "[%s] TrafficRouterFactory.create():\n  App ID: %s\n  Router Type: %s\n  Error: %s", splat: [scriptName, appId, type, error] });
+          };
+        }
+        else {
+          // Log the error and exit -
+          error = "Attribute 'weight' must be defined for all configured endpoints. Check endpoint configuration. Falling back to default router (Priority) implementation.";
+          logger.log({ level: "warn", message: "[%s] TrafficRouterFactory.create():\n  App ID: %s\n  Router Type: %s\n  Error: %s", splat: [scriptName, appId, type, error] });
+        };
+        break;
+      case EndpointRouterTypes.PayloadSizeRouter: // ID08222025.n
+        // Loop thru all the endpoints and check if 'payloadThreshold' attribute has been defined.
+        for (let i = 0; i < endpointObj.length; i++) {
+          if (! TrafficRouterFactory.#isStringValid(endpointObj[i].payloadThreshold)) {
+            validationStatus = ConfigValidationStatus.Failed;
+
+            break;
+          };
+        };
+
+        if (validationStatus === ConfigValidationStatus.Passed)
+          router = new PayloadSizeRouter(appId, endpointObj, type);
+        else {
+          // Log the error and exit -
+          error = "Attribute 'payloadThreshold' must be defined for all configured endpoints. Check endpoint configuration. Falling back to default router (Priority) implementation.";
+          logger.log({ level: "warn", message: "[%s] TrafficRouterFactory.create():\n  App ID: %s\n  Router Type: %s\n  Error: %s", splat: [scriptName, appId, type, error] });
+        };
+        break;
+      case EndpointRouterTypes.ModelAwareRouter: // ID08222025.n
+        // Loop thru all the endpoints and check if 'id' and 'task' attributes exist
+        for (let i = 0; i < endpointObj.length; i++) {
+          // Check to see if 'id' and 'task' array exists?
+          if (!Object.hasOwn(endpointObj[i],"id") || !endpointObj[i].task) {
+            validationStatus = ConfigValidationStatus.Failed;
+
+            break;
+          };
+        };
+
+        if (validationStatus === ConfigValidationStatus.Passed)
+          router = new ModelAwareRouter(appId, endpointObj, type);
+        else {
+          // Log the error and exit -
+          error = "Attributes 'id' and 'task' must be defined for all configured endpoints. Check endpoint configuration. Falling back to default router (Priority) implementation.";
+          logger.log({ level: "warn", message: "[%s] TrafficRouterFactory.create():\n  App ID: %s\n  Router Type: %s\n  Error: %s", splat: [scriptName, appId, type, error] });
+        };
+        break;
+      case EndpointRouterTypes.TokenAwareRouter: // ID08222025.n
+        // Loop thru all the endpoints and check if 'model' & 'payloadThreshold' attributes have been defined.
+        for (let i = 0; i < endpointObj.length; i++) {
+          // Check to see if task array exists?
+          if (! Object.hasOwn(endpointObj[i],"id") || ! TrafficRouterFactory.#isStringValid(endpointObj[i].model) || ! TrafficRouterFactory.#isStringValid(endpointObj[i].payloadThreshold)) {
+            validationStatus = ConfigValidationStatus.Failed;
+
+            break;
+          };
+        };
+
+        if (validationStatus === ConfigValidationStatus.Passed)
+          router = new TokenAwareRouter(appId, endpointObj, type);
+        else {
+          // Log the error and exit -
+          error = "Attributes 'id', 'model' and 'payloadThreshold' must be specified for all configured endpoints. Check endpoint configuration. Falling back to default router (Priority) implementation.";
+          logger.log({ level: "warn", message: "[%s] TrafficRouterFactory.create():\n  App ID: %s\n  Router Type: %s\n  Error: %s", splat: [scriptName, appId, type, error] });
+        };
+        break;
+      case EndpointRouterTypes.TimeAwareRouter: // ID08222025.n
+        // Loop thru all the endpoints and check if 'id', 'days', 'startHour' and 'endHour' attributes have been defined.
+        for (let i = 0; i < endpointObj.length; i++) {
+          // Check to see if task array exists?
+          if ( (! Object.hasOwn(endpointObj[i],"id") || ! "days" in endpointObj[i]) || (! "startHour" in endpointObj[i]) || (! "endHour" in endpointObj[i]) ) {
+            validationStatus = ConfigValidationStatus.Failed;
+
+            break;
+          };
+        };
+
+        if (validationStatus === ConfigValidationStatus.Passed)
+          router = new TimeAwareRouter(appId, endpointObj, type);
+        else {
+          // Log the error and exit -
+          error = "Attributes 'id', 'days', 'startHour' and 'endHour' must be defined for all configured endpoints. Check endpoint configuration. Falling back to default router (Priority) implementation.";
+          logger.log({ level: "warn", message: "[%s] TrafficRouterFactory.create():\n  App ID: %s\n  Router Type: %s\n  Error: %s", splat: [scriptName, appId, type, error] });
+        };
+        break;
+    };
+
+    return (router);
+  }
+
+}
 
 class WeightedRandomRouter { // Random Weighted Router.  Uses static weights to pick an endpoint ID.
 
@@ -48,15 +222,9 @@ class WeightedRandomRouter { // Random Weighted Router.  Uses static weights to 
       }
     };
 
-    logger.log({ level: "info", message: "[%s] %s.buildRoutingTable():\n  App ID: %s\n  Router Type:  %s\n  Router Config: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(config, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.buildRoutingTable():\n  App ID: %s\n  Router Type: %s\n  Router Config: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(config, null, 2)] });
     return table;
   }
-
-  /**
-  get routingTable() {
-    return this._routingTable;
-  }
-  */
 
   get routerType() {
     return this._routerType;
@@ -104,7 +272,7 @@ class WeightedDynamicRouter { // Latency Weighted Router
       this._routingTable.push(...Array(entries).fill(Number(url)));
     };
 
-    logger.log({ level: "info", message: "[%s] %s.rebuildRoutingTable():\n  App ID: %s\n  Router Type:  %s\n  Router Config: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this.backendStats, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.rebuildRoutingTable():\n  App ID: %s\n  Router Type: %s\n  Router Config: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this.backendStats, null, 2)] });
   }
 
   updateWeightsBasedOnLatency(selectedBackend, latency) {
@@ -120,12 +288,6 @@ class WeightedDynamicRouter { // Latency Weighted Router
 
     this.#rebuildRoutingTable();
   }
-
-  /**
-  get routingTable() {
-    return this._routingTable;
-  }
-  */
 
   get routerType() {
     return this._routerType;
@@ -155,7 +317,7 @@ class LRURouter { // Least Recently Used a.k.a Round Robin Router
       this._lastUsed[backend] = now;
     });
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type:  %s\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this.#getLRUTable(), null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this.#getLRUTable(), null, 2)] });
   }
 
   #getLRUTable() {
@@ -201,7 +363,7 @@ class LRURouter { // Least Recently Used a.k.a Round Robin Router
 
     // Get & return the backend index
     const epIdx = this._backends.indexOf(backendUri);
-    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, this.#getLRUTable()] });
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint URI: %s\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, backendUri, this.#getLRUTable()] });
 
     return (epIdx);
   }
@@ -222,7 +384,7 @@ class LeastConnectionsRouter { // Least Active Connections Router
       this._uriConnections[backend] = 0;
     });
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type:  %s\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._uriConnections, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._uriConnections, null, 2)] });
   }
 
   get routerType() {
@@ -244,7 +406,7 @@ class LeastConnectionsRouter { // Least Active Connections Router
     }, { url: null, count: Infinity }).url;
 
     const epIdx = this._backends.indexOf(uri);
-    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, JSON.stringify(this._uriConnections, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint URI: %s\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, uri, JSON.stringify(this._uriConnections, null, 2)] });
 
     return (epIdx);
   }
@@ -261,7 +423,7 @@ class PayloadSizeRouter { // Payload size router; ID08052025.n
     this._appName = appId;
     this._routerType = type;
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type:  %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
   }
 
   get routerType() {
@@ -290,30 +452,33 @@ class PayloadSizeRouter { // Payload size router; ID08052025.n
 
     // Determine the appropriate backend based on the payload size
     const backendIdx = this._backends.findIndex((backend) => {
-        const thresholdBytes = this.#sizeToBytes(backend.threshold);
-        return payloadSize < thresholdBytes;
+      const thresholdBytes = this.#sizeToBytes(backend.threshold);
+      return payloadSize <= thresholdBytes;
     });
 
     // If no backend is found, use the last one as a default
     const epIdx = (backendIdx !== -1) ? backendIdx : this._backends.length - 1;
-    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Payload Size (Bytes): %d\n  Endpoint ID: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, payloadSize, epIdx] });
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Payload Size (Bytes): %d\n  Endpoint ID: %d\n  Endpoint URI: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, payloadSize, epIdx, this._backends[epIdx].uri] });
 
     return (epIdx);
   }
 }
 
+/**
+ * IMP: Make sure to set a unique ID for each endpoint when using this routing algorithm!
+ */
 class HeaderValueRouter { // Header value ('x-endpoint-id') router; ID08052025.n
 
   constructor(appId, endpointObj, type) {
     this._backends = new Array();
     endpointObj.forEach(element => {
-      this._backends.push(element.id);
+      this._backends.push({ id: element?.id, uri: element.uri });
     });
 
     this._appName = appId;
     this._routerType = type;
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type:  %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
   }
 
   get routerType() {
@@ -323,32 +488,40 @@ class HeaderValueRouter { // Header value ('x-endpoint-id') router; ID08052025.n
   getEndpointId(request) {
     // Retrieve the endpoint ID from the http header 'x-endpoint-id'
     const endpointId = request.headers[CustomRequestHeaders.EndpointId];
-    if ( ! endpointId )
-      return(0); // If header value is missing, return the first endpoint index
+    if (!endpointId)
+      return (0); // If header value is missing, return the first endpoint index
 
     // Determine the appropriate backend based on header value
     const backendIdx = this._backends.findIndex((backend) => { backend === endpointId });
 
     // If a matching backend is not found, use the index of the first endpoint as a default
     const epIdx = (backendIdx !== -1) ? backendIdx : 0;
-    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Header (x-endpoint-id): %s\n  Endpoint ID: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, endpointId, epIdx] });
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Header (x-endpoint-id): %s\n  Endpoint ID: %d\n  Endpoint URI: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, endpointId, epIdx, this._backends[epIdx].uri] });
 
     return (epIdx);
   }
 }
 
+/**
+ * IMP: Make sure to set a unique ID for each endpoint when using this routing algorithm!
+ */
 class ModelAwareRouter { // Model aware router; ID08052025.n
 
   constructor(appId, endpointObj, type) {
     this._backends = new Array();
     endpointObj.forEach(element => {
-      this._backends.push({ id: element.id, task: element.task });
+      this._backends.push({ id: element?.id, task: element.task, uri: element.uri });
     });
 
     this._appName = appId;
     this._routerType = type;
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type:  %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+    // IMP: Default msg role type is set to 'system'. Use env variable 'GATEWAY_ROUTER_MSG_ROLE_TYPE' to set the message role type to desired value = [ user | system | developer].
+    const msgRoleType = process.env.GATEWAY_ROUTER_MSG_ROLE_TYPE ?? OpenAIChatCompletionMsgRoleTypes.SystemMessage;
+    const roleTypes = [OpenAIChatCompletionMsgRoleTypes.Developer, OpenAIChatCompletionMsgRoleTypes.SystemMessage, OpenAIChatCompletionMsgRoleTypes.UserMessage];
+    this._msgRoleType = roleTypes.includes(msgRoleType.toLowerCase()) ? msgRoleType : OpenAIChatCompletionMsgRoleTypes.SystemMessage;
+
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table:\n %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
   }
 
   get routerType() {
@@ -356,35 +529,167 @@ class ModelAwareRouter { // Model aware router; ID08052025.n
   }
 
   #inferTask(messages) {
-    const sysPrompt = messages.find(m => m.role === 'system')?.content || '';
+    let sysPrompt = messages.find(m => m.role === this._msgRoleType)?.content || '';
+    sysPrompt = sysPrompt.toLowerCase();
 
-    let task;
-    for ( i=0; i < this._backends.length; i++) {
-      task = this._backends[i].task;
-      if ( sysPrompt.toLowerCase().includes(task) )
-        return(i);
+    let idx = 0; // If task term associated with an endpoint is not contained within the message, return the first endpoint index
+    let tmatch = ''; // Matched term
+    for (let i = 0; i < this._backends.length; i++) {
+      const terms = this._backends[i].task; // An array of search terms
+      if (terms.some(term => {
+        if (sysPrompt.includes(term.toLowerCase())) {
+          tmatch = term;
+          return (true);
+        };
+        return false;
+      })) { // Perform lowercase search
+        idx = i;
+
+        break;
+      };
     };
 
-    return(-1); // Task not found!
+    return ({ epIdx: idx, term: tmatch });
   }
 
   getEndpointId(request) {
     // Retrieve the endpoint ID based on the task contained in the system prompt
-    const backendIdx = this.#inferTask(request.body.messages);
-    const epIdx = (backendIdx !== -1) ? backendIdx : 0; // If task could not be identified, return the first endpoint index
-    
-    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Task Found: %d\n  Endpoint Task: %s\n  Endpoint ID: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, (backendIdx !== -1), this._backends[epIdx].task, epIdx] });
+    const result = this.#inferTask(request.body.messages);
+
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Message Role Type: %s\n  Endpoint Terms: %s\n  Matched Term: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, result.epIdx, this._msgRoleType, JSON.stringify(this._backends[result.epIdx]), result.term] });
+
+    return (result.epIdx);
+  }
+}
+
+/**
+ * IMP: 
+ * 1) Make sure to set a unique ID for each endpoint when using this routing algorithm!
+ * 2) Only use this router when the AI App is backed by chat completion models/LLM's deployed in OAI / Azure AI Foundry!
+ * 3) Use this router with OpenAI models only!
+ */
+class TokenAwareRouter { // Token aware router; ID08082025.n
+
+  constructor(appId, endpointObj, type) {
+    this._backends = new Array();
+    endpointObj.forEach(element => {
+      this._backends.push({ id: element?.id, uri: element.uri, model: element.model, threshold: this.#sizeToBytes(element.payloadThreshold) });
+    });
+
+    this._appName = appId;
+    this._routerType = type;
+
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+  }
+
+  get routerType() {
+    return this._routerType;
+  }
+
+  // Function to convert size strings to numeric tokens
+  #sizeToBytes(sizeStr) {
+    const size = parseFloat(sizeStr);
+    const unit = sizeStr.replace(size, '').trim().toLowerCase();
+
+    switch (unit) {
+      case 'k':
+        return size * 1000; // Convert to K tokens
+      case 'm':
+        return size * 1000 * 1000; // Convert to M tokens
+      default:
+        return size; // Assume numeric tokens if no (or wrong) unit is specified
+    }
+  };
+
+  #inferEndpoint(messages) {
+    let tokens;
+    let idx = -1;
+    for (let i = 0; i < this._backends.length; i++) {
+      switch (this._backends[i].model) {
+        case ModelFamily.GPT_3_5:
+        case ModelFamily.GPT_4:
+        case ModelFamily.o1:
+          tokens = encodeChat(messages, cl100k_base);
+          break;
+        case ModelFamily.GPT_4o:
+        case ModelFamily.GPT_4_1:
+        case ModelFamily.GPT_5:
+        case ModelFamily.o3:
+        case ModelFamily.o4:
+          tokens = encodeChat(messages, o200k_base);
+          break;
+      };
+
+      if (tokens <= this._backends[i].threshold) {
+        idx = i;
+
+        break;
+      };
+    };
+
+    // Return index of last endpoint in case message tokens are above the configured threshold for all models.
+    return ({ epIdx: (idx !== -1) ? idx : this._backends.length - 1, tokenCount: tokens });
+  }
+
+  getEndpointId(request) {
+    // Get the endpoint ID based on the prompt tokens, model id and payload threshold (tokens) associated with an endpoint
+    const result = this.#inferEndpoint(request.body.messages);
+
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Spec.: %s\n  Token Count: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, result.epIdx, JSON.stringify(this._backends[result.epIdx]), result.tokenCount] });
+
+    return (result.epIdx);
+  }
+}
+
+/**
+ * IMP:
+ * 1) Make sure to set a unique ID for each endpoint when using this routing algorithm!
+ * 2) 'days' config param should list the days of the week when the endpoint is considered active
+ * 3) 'startHour' and 'endHour' config params should be a value between 0 and 24
+ */
+class TimeAwareRouter { // Time aware router; ID08212025.n
+
+  constructor(appId, endpointObj, type) {
+    this._backends = new Array();
+    endpointObj.forEach(element => {
+      this._backends.push({ id: element?.id, uri: element.uri, days: element.days, startHour: element.startHour, endHour: element.endHour });
+    });
+
+    this._appName = appId;
+    this._routerType = type;
+
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+  }
+
+  get routerType() {
+    return this._routerType;
+  }
+
+  #inferEndpoint() {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentDay = now.getDay(); // 0 = Sunday, 6 = Saturday
+
+    const epIdx = this._backends.find(({ days, startHour, endHour }) =>
+      days.includes(currentDay) && currentHour >= startHour && currentHour < endHour
+    );
+
+    if (!epIdx)
+      epIdx = 0; // Default to the first endpoint
+
+    return (epIdx);
+  }
+
+  getEndpointId(request) {
+    // Get the endpoint ID based the current time and hours configured for each endpoint
+    const epIdx = this.#inferEndpoint();
+
+    logger.log({ level: "info", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Spec.: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, JSON.stringify(this._backends[epIdx])] });
 
     return (epIdx);
   }
 }
 
 module.exports = {
-  LRURouter,
-  LeastConnectionsRouter,
-  WeightedRandomRouter,
-  WeightedDynamicRouter,
-  PayloadSizeRouter, // ID08052025.n
-  HeaderValueRouter, // ID08052025.n
-  ModelAwareRouter // ID08052025.n
+  TrafficRouterFactory, // ID08082025.n, ID08222025.n
 }

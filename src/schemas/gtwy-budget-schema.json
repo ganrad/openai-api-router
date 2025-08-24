@@ -1,0 +1,71 @@
+{
+    "$id": "https://github.com/ganrad/rapid/schemas/gtwy-budget-schema.json",
+    "$comment": "ID08242025: ganrad: v2.5.0: This schema defines the attributes for budgeting / tracking costs of LLM API calls",
+    "title": "LlmCostTracking",
+    "description": "This schema lists attributes used for tracking LLM API call costs",
+    "type": "object",
+    "properties": {
+        "budgetName": {
+            "description": "Name of the budget",
+            "type": "string",
+            "unique": true
+        },
+        "description": {
+            "description": "Description of the budget",
+            "type": "string"
+        },
+        "models": {
+            "description": "List of models that belong to this budget",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "modelName": {
+                        "description": "Unique Name/ID of the model",
+                        "type": "string",
+                        "minLength": 1,
+                        "unique": true
+                    },
+                    "priceInfo": {
+                        "description": "Token pricing information for the model",
+                        "type": "object",
+                        "properties": {
+                            "inputTokens": {
+                                "description": "Price per input token",
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
+                            "cachedInputTokens": {
+                                "description": "Price per cached input token",
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
+                            "outputTokens": {
+                                "description": "Price per output token",
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            }
+                        },
+                        "required": [
+                            "inputTokens",
+                            "cachedInputTokens",
+                            "outputTokens"
+                        ],
+                        "additionalProperties": false
+                    }
+                },
+                "required": [
+                    "modelName",
+                    "priceInfo"
+                ],
+                "additionalProperties": false
+            },
+            "minItems": 1
+        }
+    },
+    "required": [
+        "budgetName",
+        "models"
+    ],
+    "additionalProperties": false
+}

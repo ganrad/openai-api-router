@@ -47,7 +47,9 @@
  * ID06162025: ganrad: v2.3.9: (Enhancement) Introduced endpoint routing types - Priority (default), LRU, LAC, Random weighted and Latency weighted.
  * ID07242025: ganrad: v2.4.0: (Enhancement + Refactored code) Introduced resource handlers for AI Gateway resources. Added support for retrieving
  * sessions (threads) managed by Azure AI Foundry Agent Service.
- * ID07252025: ganrad: v2.4.0: (Refactored code) Moved all router endpoint literals to the constants module ~ app-gtwy-constants.js.
+ * ID07252025: ganrad: v2.4.0: (Refactored code) Moved all AI App Gateway router endpoint literals to the constants module ~ app-gtwy-constants.js.
+ * ID08212025: ganrad: v2.4.0: (Enhancement) Updated code to support metrics collection for AI Foundry Service Agents.
+ * ID08222025: ganrad: v2.4.0: (Refactored code) Updated endpoint traffic router factory implementation.
 */
 
 const path = require('path');
@@ -59,7 +61,7 @@ const AppConnections = require("../utilities/app-connection.js");
 const AppCacheMetrics = require("../utilities/cache-metrics.js"); // ID02202024.n
 const { AzAiServices, CustomRequestHeaders, AppResourceTypes, GatewayRouterEndpoints } = require("../utilities/app-gtwy-constants.js"); // ID07242025.n, ID07252025.n
 const AiProcessorFactory = require("../processors/ai-processor-factory.js"); // ID04222024.n
-const EndpointRouterFactory = require("../utilities/ep-router-factory.js"); // ID06162025.n
+const { TrafficRouterFactory } = require("../utilities/endpoint-routers.js"); // ID08222025.n
 const ResourceHandlerFactory = require("../handlers/res-handler-factory.js"); // ID07242025.n
 const logger = require("../utilities/logger.js"); // ID04272024.n
 const router = express.Router();
@@ -252,7 +254,10 @@ router.post([GatewayRouterEndpoints.InferenceEndpoint + "/:app_id", GatewayRoute
       // epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm); ID04302025.o
       epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm, element.id, element.healthPolicy); // ID04302025.n, ID05122025.n
 
-      epinfo.set(element.uri, epmetrics);
+      if ( application.appType === AzAiServices.AzAiAgent ) // ID08212025.n
+        epinfo.set(element.uri + "/" + element.id, epmetrics);
+      else
+        epinfo.set(element.uri, epmetrics);
     };
     appConnections.addConnection(application.appId, epinfo);
     if ( cdb.cacheResults && (application.appId !== cdb.embeddApp) && (appTypes.includes(application.appType)) )
@@ -305,7 +310,7 @@ router.post([GatewayRouterEndpoints.InferenceEndpoint + "/:app_id", GatewayRoute
      */
     if ( ! appRouters.has(appId) ) {
       routerInstance = application.endpointRouterType ?
-        new EndpointRouterFactory().getEndpointRouter(application.appId, application.endpointRouterType, application.endpoints) : null;
+        TrafficRouterFactory.create(application.appId, application.endpointRouterType, application.endpoints) : null; // ID08222025.n
 
       if ( routerInstance )
         appRouters.set(appId, routerInstance);  // A single router instance per AI App!

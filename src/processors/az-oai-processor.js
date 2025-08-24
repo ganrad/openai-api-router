@@ -49,6 +49,9 @@
  *   5) Updated auth header to support OpenAI API calls.
  * ID07312025: ganrad: v2.4.0: (Refactored code) Globally unique ID's are generated using a single function defined in module ~ app-gtwy-constants.js.
  * ID08052025: ganrad: v2.4.0: (Enhancement) Introduced payload size based backend API routing.
+ * ID08202025: ganrad: v2.4.0: (Refactored code) Replaced hardcoded strings with constants. Http headers should only be sent once when in 
+ * streaming mode especially when the backend (AOAI) API connection fails & multiple connections are re-tried.
+ * ID08212025: ganrad: v2.4.0: (Enhancement) The method used to obtain Azure Entra access token (MID Auth) now supports multiple resource uris.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -68,7 +71,9 @@ const {
   CustomRequestHeaders, 
   AzAiServices, 
   EndpointRouterTypes, // ID06162025.n
-  OpenAIBaseUri // ID06162025.n
+  OpenAIBaseUri, // ID06162025.n
+  OpenAIChatCompletionMsgRoleTypes, // ID08202025.n
+  AzureResourceUris // ID08212025.n
 } = require("../utilities/app-gtwy-constants.js"); // ID05062024.n; ID06162025.n
 // const { randomUUID } = require('node:crypto'); // ID05062024.n; ID07312025.o
 
@@ -80,6 +85,7 @@ const { callAiAppEndpoint } = require("../utilities/helper-funcs.js"); // ID0514
 class AzOaiProcessor {
 
   constructor() {
+    this.streamed_response_sent = false;  // ID08202025.n
   }
 
   #tokensWithinLimit(req) { // ID02212025.n
@@ -281,18 +287,22 @@ class AzOaiProcessor {
     const reader = oai_res.body.getReader(); // use Nodejs native fetch!
     // const reader = oai_res.body; // use node-fetch library!
 
-    // Send 200 response status and headers
-    let res_hdrs = CustomRequestHeaders.RequestId;
-    router_res.setHeader('Content-Type', 'text/event-stream');
-    router_res.setHeader('Cache-Control', 'no-cache');
-    router_res.setHeader('Connection', 'keep-alive');
-    router_res.set(CustomRequestHeaders.RequestId, req_id);
-    if (t_id) {
-      res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
-      router_res.set(CustomRequestHeaders.ThreadId, t_id);
+    if ( ! this.streamed_response_sent) { // ID08202025.n
+      // Send 200 response status and headers
+      let res_hdrs = CustomRequestHeaders.RequestId;
+      router_res.setHeader('Content-Type', 'text/event-stream');
+      router_res.setHeader('Cache-Control', 'no-cache');
+      router_res.setHeader('Connection', 'keep-alive');
+      router_res.set(CustomRequestHeaders.RequestId, req_id);
+      if (t_id) {
+        res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
+        router_res.set(CustomRequestHeaders.ThreadId, t_id);
+      };
+      router_res.set("Access-Control-Expose-Headers", res_hdrs);
+      router_res.flushHeaders();
+
+      this.streamed_response_sent = true; // ID08202025.n
     };
-    router_res.set("Access-Control-Expose-Headers", res_hdrs);
-    router_res.flushHeaders();
 
     let chkPart = null;
     let recv_data = '';
@@ -453,18 +463,22 @@ class AzOaiProcessor {
   async #streamChatCompletionOyd(req_id, t_id, app_id, router_res, oai_res) {
     const reader = oai_res.body.getReader();
 
-    // Send 200 response status and headers
-    let res_hdrs = CustomRequestHeaders.RequestId;
-    router_res.setHeader('Content-Type', 'text/event-stream');
-    router_res.setHeader('Cache-Control', 'no-cache');
-    router_res.setHeader('Connection', 'keep-alive');
-    router_res.set(CustomRequestHeaders.RequestId, req_id);
-    if (t_id) {
-      res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
-      router_res.set(CustomRequestHeaders.ThreadId, t_id);
+    if ( ! this.streamed_response_sent) { // ID08202025.n
+      // Send 200 response status and headers
+      let res_hdrs = CustomRequestHeaders.RequestId;
+      router_res.setHeader('Content-Type', 'text/event-stream');
+      router_res.setHeader('Cache-Control', 'no-cache');
+      router_res.setHeader('Connection', 'keep-alive');
+      router_res.set(CustomRequestHeaders.RequestId, req_id);
+      if (t_id) {
+        res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
+        router_res.set(CustomRequestHeaders.ThreadId, t_id);
+      };
+      router_res.set("Access-Control-Expose-Headers", res_hdrs);
+      router_res.flushHeaders();
+
+       this.streamed_response_sent = true; // ID08202025.n
     };
-    router_res.set("Access-Control-Expose-Headers", res_hdrs);
-    router_res.flushHeaders();
 
     let recv_data = "";
     let cit_data = "";
@@ -646,22 +660,22 @@ class AzOaiProcessor {
     if (config.appType === AzAiServices.OAI) {
       if (bearerToken && !req.authInfo) { // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
         if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") // ID03052025.n
-          bearerToken = await getAccessToken(req);
+          bearerToken = await getAccessToken(req, AzureResourceUris.AzureCognitiveServices); // ID08212025.n
         meta.set('Authorization', bearerToken);
-        logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using bearer token for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+        logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using bearer token (MID-IMDS) for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
       }
       else { // Use API Key Auth ID10302024.en
         if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") { // ID03052025.n
-          bearerToken = await getAccessToken(req);
+          bearerToken = await getAccessToken(req, AzureResourceUris.AzureCognitiveServices); // ID08212025.n
           meta.set('Authorization', bearerToken);
-          logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using bearer token for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+          logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using bearer token (MID-IMDS) for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
         }
         else {
           const authHdrKey = element.uri.includes(OpenAIBaseUri) ? 'Authorization' : 'api-key';
           const authHdrVal = element.uri.includes(OpenAIBaseUri) ? "Bearer " + element.apikey : element.apikey;
           // meta.set('api-key', element.apikey); ID06162025.o
           meta.set(authHdrKey,authHdrVal); // ID06162025.n
-          logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using API Key for Az OAI Auth. Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
+          logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using API Key for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
         };
       };
     }
@@ -674,6 +688,7 @@ class AzOaiProcessor {
       delete req.body.presence_penalty;
       delete req.body.frequency_penalty; */
       meta.set('extra-parameters', 'drop'); // Drop any parameters the model doesn't understand; Don't return an error!
+      logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using API Key for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
     };
 
     return(meta);
@@ -729,7 +744,7 @@ class AzOaiProcessor {
     let endpointId = 0; // ID05082025.n
     let routerEndpointId; // ID06162025.n
     let routerIdTried = false; // ID06162025.n
-    let userMessage = req.body.messages.find(msg => msg.role === "user")?.content;// ID05142025.n
+    let userMessage = req.body.messages.find(msg => msg.role === OpenAIChatCompletionMsgRoleTypes.UserMessage)?.content;// ID05142025.n, ID08202025.n
 
     let epdata = appConnections.getConnection(config.appId); // ID04302025.n
 

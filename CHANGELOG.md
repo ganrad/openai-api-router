@@ -22,17 +22,21 @@
 
   Added the following backend endpoint Traffic Routers:
 
-  - PayloadSwitch
+  - **PayloadSwitch**
 
-    Dynamically routes API requests to backend endpoints when the size of the HTTP request payload is less than the configured *payloadThreshold* value. This routing decision ensures that smaller payloads are directed to endpoints (Models) optimized for lightweight processing.
+    Dynamically routes API requests to backend endpoints when the size of the HTTP request payload is less than equal to the configured *payloadThreshold* value. This router ensures that smaller payloads are directed to endpoints (Models) optimized for lightweight processing.
 
-  - HeaderSwitch
+  - **HeaderSwitch**
 
-    Routes API requests by matching the value of the `x-endpoint-id` HTTP header to a corresponding backend endpoint ID.
+    Routes API requests to the appropriate backend endpoint by comparing the value of the *x-endpoint-id* HTTP header against a predefined list of backend endpoint identifiers. This ensures that each request is efficiently directed to the endpoint (Model) used to generate the best response, improving performance and reliability.
 
-  - ModelAware
+  - **ModelAware**
 
-    Routes API requests to a backend endpoint when the value of its associated task attribute is contained within the system prompt.
+    Routes API requests to a backend endpoint when the system prompt contains any value listed in the associated task attribute, ensuring the request is directed to the endpoint (Model) used to generate the best response based on it's specialized functions.
+
+  - **TokenAware**
+
+    Routes API requests to a backend endpoint when the token count of the prompt message is less than or equal to the configured *payloadThreshold* value. This router ensures that smaller request payloads are directed to endpoints (Models) optimized for lightweight processing without exceeding model-specific input limits.
 
 * Experimental / In-Preview: **Synchronous Unified Interface (API) for Azure AI Agents**
 
@@ -44,7 +48,7 @@
 
 - **Release v1.3.1**
 
-  This patch introduces minor UI refinements to support integration with the Azure AI Foundry Agent Service.
+  This patch release introduces minor UI refinements to support integration with the Azure AI Foundry Agent Service.
 
 ---
 
