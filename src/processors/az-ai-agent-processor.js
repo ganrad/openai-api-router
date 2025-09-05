@@ -826,7 +826,9 @@ class AzAiAgentProcessor {
             if (req.body.stream) {
               const respTime = Date.now() - stTime;
               metricsObj.updateApiCallsAndTokens(
-                respMessage.data.usage?.total_tokens,
+                // respMessage.data.usage?.total_tokens,
+                req.id,
+                respMessage.data.usage,
                 respTime,
                 threadStarted
               );
@@ -913,7 +915,9 @@ class AzAiAgentProcessor {
 
             const respTime = Date.now() - stTime;
             metricsObj.updateApiCallsAndTokens(
-              respMessage.data.usage?.total_tokens,
+              // respMessage.data.usage?.total_tokens,
+              req.id,
+              respMessage.data.usage,
               respTime,
               threadStarted
             );

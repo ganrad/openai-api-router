@@ -35,6 +35,9 @@
  * ID08202025: ganrad: v2.4.0: Added new constant for OAI chat completion model message role types.
  * ID08212025: ganrad: v2.4.0: Added new constant for Azure resource URIs & literals for new endpoint router types.
  * ID08222025: ganrad: v2.4.0: Added new constant for gateway config validation checks.
+ * ID08292025: ganrad: v2.5.0: Added new literal/constant for Budget aware router type & a new constant type ~ RouterBudgetTiers.
+ * ID09022025: ganrad: v2.5.0: Added new literal/constant for Adaptive budget aware router type & new constant types ~ AdaptiveRouterStrategies &
+ * AdaptiveRouterStrategyTiers.
 */
 const { randomUUID } = require('node:crypto'); // ID07312025.n
 
@@ -52,7 +55,7 @@ function generateGUID(prefix) { // ID07312025.n
 
 // ID07252025.sn
 const AiAppGateway = {
-  Version: "2.4.0",
+  Version: "2.5.0",
   ApiVersion: "/api/v1/",
   RouterContextPath: "/apirouter"
 };
@@ -216,13 +219,36 @@ const EndpointRouterTypes = { // ID06162025.n
   PriorityRouter: "Priority",  // Default
   LRURouter: "LeastRecentlyUsed",
   LeastConnectionsRouter: "LeastActiveConnections",
-  WeightedRandomRouter: "RandomWeighted",
+  WeightedRandomRouter: "WeightedRandom",
   WeightedDynamicRouter: "LatencyWeighted",
   PayloadSizeRouter: "PayloadSwitch", // ID08052025.n
   HeaderValueRouter: "HeaderSwitch", // ID08052025.n
   ModelAwareRouter: "ModelAware", // ID08052025.n
   TokenAwareRouter: "TokenAware", // ID08212025.n
-  TimeAwareRouter: "TimeAware" // ID08212025.n
+  TimeAwareRouter: "TimeAware", // ID08212025.n
+  BudgetAwareRouter: "BudgetAware", // ID08292025.n
+  AdaptiveBudgetAwareRouter: "AdaptiveBudgetAware" // ID09022025.n
+}
+
+const AdaptiveRouterStrategies = { // ID09022025.n
+  Priority: "Priority",
+  WeightedRandom: "WeightedRandom",
+  RoundRobin: "RoundRobin",
+  LeastSpent: "LeastSpent",
+  Adaptive: "Adaptive"
+}
+
+const AdaptiveRouterStrategyTiers = { // ID09022025.n
+  TierA: "A",
+  TierB: "B",
+  TierC: "C"
+}
+
+const RouterBudgetTiers = { // ID08292025.n
+  Hourly: "hourly",
+  Daily: "daily",
+  Weekly: "weekly",
+  Monthly: "monthly"
 }
 
 const ConfigValidationStatus = { // ID08222025.n
@@ -302,8 +328,11 @@ module.exports = {
   AzureApiVersions, // ID03242025.n
   MessageRoleTypes, // ID05142025.n
   EndpointRouterTypes, // ID06162025.n
+  AdaptiveRouterStrategies, // ID09022025.n
+  AdaptiveRouterStrategyTiers, // ID090220205.n
   ConfigValidationStatus, // ID08222025.n
   ModelFamily, // ID08082025.n
+  RouterBudgetTiers, // ID08292025.n
   AzureResourceUris, // ID08212025.n
   AzAiAgentRunStatus, // ID03252025.n
   AzAiAgentAnnotationTypes, // ID03282025.n

@@ -174,15 +174,46 @@
                 "Priority",
                 "LeastActiveConnections",
                 "LeastRecentlyUsed",
-                "RandomWeighted",
+                "WeightedRandom",
                 "LatencyWeighted",
                 "PayloadSwitch",
                 "HeaderSwitch",
                 "ModelAware",
                 "TokenAware",
-                "TimeAware"
+                "TimeAware",
+                "BudgetAware",
+                "AdaptiveBudgetAware"
             ],
             "minLength": 1
+        },
+        "adaptiveRouterSettings": {
+            "description": "Router settings when 'Adaptive' endpoint router type is used",
+            "type": "object",
+            "properties": {
+                "strategy": {
+                    "description": "Routing strategy",
+                    "type": "string",
+                    "enum": [
+                        "Priority",
+                        "WeightedRandom",
+                        "RoundRobin",
+                        "LeastSpent",
+                        "Adaptive"
+                    ],
+                    "minLength": 1
+                },
+                "windowType": {
+                    "description": "Window type to use when making budget based routing decisions",
+                    "type": "string",
+                    "enum": [
+                        "Hourly",
+                        "Daily",
+                        "Weekly",
+                        "Monthly"
+                    ],
+                    "minLength": 1
+                }
+            }
         },
         "endpoints": {
             "description": "Endpoint settings for an AI Application",
@@ -281,7 +312,7 @@
                         "type": "object",
                         "properties": {
                             "defaultEndpoint": {
-                                "description": "Is this the default endpoint for spillover traffic when all other endpoints have crossed the cost threshold?",
+                                "description": "Default model endpoint for spillover traffic when all endpoints have crossed the cost threshold",
                                 "type": "boolean"
                             },
                             "modelName": {
@@ -289,27 +320,54 @@
                                 "type": "string",
                                 "minLength": 1
                             },
-                            "costThreshold": {
-                                "description": "The threshold for amount specified in dollars",
-                                "type": "string",
-                                "minLength": 2
-                            },
-                            "resetFrequency": {
-                                "description": "Frequency to reset the accumulated costs",
-                                "type": "string",
-                                "enum": [
-                                    "Hourly",
-                                    "Daily",
-                                    "Weekly",
-                                    "Monthly"
+                            "costBudgets": {
+                                "description": "The threshold amount specified in dollars",
+                                "type": "object",
+                                "properties": {
+                                    "hourly": {
+                                        "description": "Hourly cost budget",
+                                        "type": "number",
+                                        "exclusiveMinimum": 0
+                                    },
+                                    "daily": {
+                                        "description": "Daily cost budget",
+                                        "type": "number",
+                                        "exclusiveMinimum": 0
+                                    },
+                                    "weekly": {
+                                        "description": "Weekly cost budget",
+                                        "type": "number",
+                                        "exclusiveMinimum": 0
+                                    },
+                                    "monthly": {
+                                        "description": "Monthly cost budget",
+                                        "type": "number",
+                                        "exclusiveMinimum": 0
+                                    }
+                                },
+                                "required": [
+                                    "hourly",
+                                    "daily",
+                                    "weekly",
+                                    "monthly"
                                 ],
-                                "minLength": 1
+                                "additionalProperties": false
                             }
                         },
                         "required": [
                             "modelName"
                         ],
                         "additionalProperties": false
+                    },
+                    "qualityTier": {
+                        "description": "Quality tier (A, B or C) is required when 'Adaptive' endpoing routing alg. and 'Adaptive' strategy is used",
+                        "type": "string",
+                        "enum": [
+                            "A",
+                            "B",
+                            "C"
+                        ],
+                        "minLength": 1
                     },
                     "healthPolicy": {
                         "description": "Describes the health policy to apply when endpoint response time exceeds a set threshold",

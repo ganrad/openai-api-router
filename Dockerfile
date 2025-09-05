@@ -22,8 +22,8 @@
 #
 FROM public.ecr.aws/docker/library/node:20.11.0-alpine3.19
 LABEL name="Azure AI Application Gateway server"
-LABEL version="2.4.0"
-LABEL description="This container image exposes endpoints to 1) Track API usage for capacity planning (Azure OAI Service) 2) Load balancing AI Application requests across multiple Azure AI Services deployments/endpoints + many more value add features"
+LABEL version="2.5.0"
+LABEL description="This container image exposes the Azure AI Application Gateway endpoints"
 LABEL author="Ganesh Radhakrishnan" email="ganrad01@gmail.com" dated="01-28-2024" license="MIT"
 
 # (Optional) API Gateway config file. If this env is not set, SQL DB config. provider will be used.

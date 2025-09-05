@@ -18,6 +18,13 @@ const SessionDataHandler = require('./session-data-handler');
 const MetricsDataHandler = require('./metrics-data-handler.js');
 const InstanceInfoDataHandler = require('./instance-data-handler.js');
 
+const handlerMap = {
+  [AppResourceTypes.AiAppServer]: InstanceInfoDataHandler,
+  [AppResourceTypes.AiAppGatewayRequest]: RequestDataHandler,
+  [AppResourceTypes.AiAppGatewaySession]: SessionDataHandler,
+  [AppResourceTypes.AiAppGatewayMetrics]: MetricsDataHandler
+};
+
 class ResourceHandlerFactory {
   constructor() { // Singleton 
     if (!ResourceHandlerFactory.instance)
@@ -27,23 +34,14 @@ class ResourceHandlerFactory {
   }
 
   getDataHandler(resourceType) {
-    let resourceHandler;
-    switch ( resourceType) {
-      case AppResourceTypes.AiAppServer:
-        resourceHandler = new InstanceInfoDataHandler();
-        break;
-      case AppResourceTypes.AiAppGatewayRequest:
-        resourceHandler = new RequestDataHandler();
-        break;
-      case AppResourceTypes.AiAppGatewaySession:
-        resourceHandler = new SessionDataHandler();
-        break;
-      case AppResourceTypes.AiAppGatewayMetrics:
-        resourceHandler = new MetricsDataHandler();
-        break;
+    const HandlerClass = handlerMap[resourceType];
+
+    if (!HandlerClass) {  // HandlerClass should not be null!
+      // log an error
+      return(null);
     };
 
-    return(resourceHandler);
+    return(new HandlerClass());
   }
 }
 

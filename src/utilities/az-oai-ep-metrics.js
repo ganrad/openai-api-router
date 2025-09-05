@@ -1,6 +1,6 @@
 /**
  * Name: AzOaiEpMetrics
- * Description: This class collects OAI API endpoint metrics and stores them in a 
+ * Description: This class collects OAI API endpoint metrics and stores them in a rolling 
  * light-weight data structure (~ Queue).
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
@@ -17,6 +17,8 @@
  * ID05122025: ganrad: v2.3.6: (Enhancement) Introduced endpoint health policy feature for AOAI and AI Model Inf. API calls
  * ID07302025: ganrad: v2.4.0: (Enhancement) Updated health policy feature to mark endpoint as unhealthy when multiple (configured)
  * consecutive api calls return > 500 http status.
+ * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
+ * 
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -29,9 +31,11 @@ class AzOaiEpMetrics {
   // constructor(endpoint,interval,count) { ID05282024.o
   // constructor(endpoint, interval, count, rpm) { // ID05282024.n, ID04302025.o
   // constructor(endpoint, interval, count, rpm, id) { // ID04302025.n
-  constructor(endpoint, interval, count, rpm, id, healthPolicy) { // ID04302025.n, ID05122025.n
+  constructor(endpoint, interval, count, rpm, id, healthPolicy, modelInfo) { // ID04302025.n, ID05122025.n, ID08252025.n
     if ( id ) // ID04302025.n
       this.id = id; // Unique ID assistant to this endpoint
+
+    this.modelInfo = modelInfo; // ID08252025.n
 
     if ( healthPolicy ) { // ID05122025.n
       this.healthPolicy = healthPolicy;
@@ -48,6 +52,7 @@ class AzOaiEpMetrics {
     this.failedCalls = 0; // No. of failed calls ~ 429's
     this.totalCalls = 0; // Total calls handled by this target endpoint
     this.totalTokens = 0; // Total tokens processed by this target endpoint
+    this.totalCost = 0.0; // Total cost of tokens ID08252025.n
 
     this.throttledCalls = 0; // Throttled (429) API calls - ID05042024.n
     this.filteredCalls = 0; // Api calls to which content filters (400) were applied - ID05042024.n
@@ -70,13 +75,13 @@ class AzOaiEpMetrics {
     this.rpmTimeMarker = Date.now();
     // ID05282024.en
     // console.log(`\n  Endpoint:  ${this.endpoint}\n  Cache Interval (minutes): ${this.cInterval}\n  History Count: ${this.hStack}`);
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  ID: %s\n  Endpoint:  %s\n  Cache Interval (minutes): %d\n  History Count: %d\n  RPM Limit: %d", splat: [scriptName, this.constructor.name, (this.id ? this.id : "NA"), this.endpoint, this.cInterval, this.hStack, this.rpmLimit] }); // ID04302025.n
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  Endpoint ID: %s\n  Endpoint URI:  %s\n  Model Name: %s\n  Cache Interval (minutes): %d\n  History Count: %d\n  RPM Limit: %d", splat: [scriptName, this.constructor.name, (this.id ? this.id : "NA"), this.endpoint, this.modelInfo?.modelName, this.cInterval, this.hStack, this.rpmLimit] }); // ID04302025.n, ID08252025.n
 
     this.startTime = Date.now();
     this.endTime = this.startTime + (this.cInterval * 60 * 1000);
 
     this.respTime = 0; // Average api call response time for a cInterval
-    this.historyQueue = new Queue(count); // Metrics history cache (fifo queue)
+    this.historyQueue = new Queue(this.hStack); // Metrics history cache (fifo queue)
   }
 
   isEndpointHealthy(reqid) { // ID05082025.n
@@ -109,15 +114,45 @@ class AzOaiEpMetrics {
     this.threads++;
   }
 
+  #calculateTokenCost(usage) { // ID08252025.n
+    let callTotalCost = 0;
+
+    if ( ! usage ) return(callTotalCost); // Just to be safe ...
+
+    if ( this.modelInfo ) {
+      const promptTokens = usage.prompt_tokens;
+      const cachedTokens = usage.prompt_tokens_details?.cached_tokens ?? 0;
+      const completionTokens = usage.completion_tokens ?? 0;
+
+      const promptTokensCost = ((promptTokens - cachedTokens) * this.modelInfo.tokenPriceInfo.inputTokensCostPer1k) / 1000;
+      // console.log(`***** prompt token cost = [${promptTokensCost}] *****`);
+      const cachedInputTokensCost = cachedTokens ? (cachedTokens * this.modelInfo.tokenPriceInfo.cachedInputTokensCostPer1k) / 1000 : 0;
+      // console.log(`***** cached input token cost = [${cachedInputTokensCost}] *****`);
+      const completionTokensCost = completionTokens ? (completionTokens * this.modelInfo.tokenPriceInfo.outputTokensCostPer1k) / 1000 : 0;
+      // console.log(`***** completed token cost = [${completionTokensCost}] *****`);
+
+      callTotalCost = promptTokensCost + cachedInputTokensCost + completionTokensCost;
+    };
+
+    return(callTotalCost);
+  }
+
   // updateApiCallsAndTokens(tokens, latency) { ID04302025.o
-  updateApiCallsAndTokens(tokens, latency, threadStarted) { // ID04302025.n
-    this.updateMetrics();
+  // updateApiCallsAndTokens(tokens, latency, threadStarted) { // ID04302025.n
+  updateApiCallsAndTokens(reqid, usage, latency, threadStarted) { // ID08252025.n
+    this.#updateMetrics();
+
+    const callCost = this.#calculateTokenCost(usage);
+    logger.log({ level: "debug", message: "[%s] %s.updateApiCallsAndTokens():\n  Request ID: %s\n  Usage: %s\n  Token Cost: %d", splat: [scriptName, this.constructor.name, reqid, JSON.stringify(usage, null, 2), callCost] });
+    const tokens = usage?.total_tokens;
 
     if ( threadStarted ) // ID04302025.n
       this.threads++;
 
-    if (tokens) // ID06052024.n
+    if (tokens)  { // ID06052024.n, ID08252025.n
       this.totalTokens += tokens;
+      this.totalCost += callCost; 
+    };
       
     this.respTime += latency;
     this.apiCalls++;
@@ -141,7 +176,7 @@ class AzOaiEpMetrics {
 
   // updateFailedCalls(retrySeconds) { // ID05042024.o
   updateFailedCalls(status, retrySeconds) { // ID05042024.n
-    this.updateMetrics();
+    this.#updateMetrics();
 
     this.timeMarker = Date.now() + (retrySeconds * 1000);
     this.failedCalls++;
@@ -167,7 +202,7 @@ class AzOaiEpMetrics {
     // ID07302025.en
   }
 
-  updateMetrics() {
+  #updateMetrics() {
     let ctime = Date.now();
 
     if (ctime > this.endTime) {
@@ -185,16 +220,17 @@ class AzOaiEpMetrics {
           throttledApiCalls: this.throttledCalls, // ID05042024.n
           filteredApiCalls: this.filteredCalls, // ID05042024.n
           totalApiCalls: this.totalCalls,
+          totalCost: this.totalCost.toFixed(6), // ID08252025.n
           throughput: {
             kTokensPerWindow: kTokens,
-            requestsPerWindow: (kTokens * 6),
+            // requestsPerWindow: (kTokens * 6), ID08252025.o, Not tracked
             avgTokensPerCall: tokens_per_call,
-            avgRequestsPerCall: (tokens_per_call * 6) / 1000,
+            // avgRequestsPerCall: (tokens_per_call * 6) / 1000, ID08252025.o, Not tracked
             tokensPerMinute: (this.totalTokens / this.cInterval), // ID05042024.n
             requestsPerMinute: (this.apiCalls / this.cInterval) // ID05042024.n
           },
           latency: {
-            avgResponseTimeMsec: latency
+            avgResponseTimeSec: latency / 1000 // ID08252025.n
           }
         }
       };
@@ -208,6 +244,7 @@ class AzOaiEpMetrics {
       this.totalCalls = 0;
       this.totalTokens = 0;
       this.respTime = 0;
+      this.totalCost = 0.0; // ID08252025.n
 
       this.startTime = Date.now();
       this.endTime = this.startTime + (this.cInterval * 60 * 1000);
@@ -229,6 +266,7 @@ class AzOaiEpMetrics {
       filteredApiCalls: this.filteredCalls, // ID05042024.n
       totalApiCalls: this.totalCalls,
       kInferenceTokens: kTokens,
+      totalCost: this.totalCost.toFixed(6), // ID08252025.n
       history: this.historyQueue.queueItems
     };
   }

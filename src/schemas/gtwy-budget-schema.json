@@ -12,7 +12,8 @@
         },
         "description": {
             "description": "Description of the budget",
-            "type": "string"
+            "type": "string",
+            "minLength": 1
         },
         "models": {
             "description": "List of models that belong to this budget",
@@ -26,37 +27,42 @@
                         "minLength": 1,
                         "unique": true
                     },
-                    "priceInfo": {
+                    "description": {
+                        "description": "Description of the model",
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "tokenPriceInfo": {
                         "description": "Token pricing information for the model",
                         "type": "object",
                         "properties": {
-                            "inputTokens": {
+                            "inputTokensCostPer1k": {
                                 "description": "Price per input token",
                                 "type": "number",
                                 "exclusiveMinimum": 0
                             },
-                            "cachedInputTokens": {
+                            "cachedInputTokensCostPer1k": {
                                 "description": "Price per cached input token",
                                 "type": "number",
-                                "exclusiveMinimum": 0
+                                "minimum": 0
                             },
-                            "outputTokens": {
+                            "outputTokensCostPer1k": {
                                 "description": "Price per output token",
                                 "type": "number",
-                                "exclusiveMinimum": 0
+                                "minimum": 0
                             }
                         },
                         "required": [
-                            "inputTokens",
-                            "cachedInputTokens",
-                            "outputTokens"
+                            "inputTokensCostPer1k",
+                            "cachedInputTokensCostPer1k",
+                            "outputTokensCostPer1k"
                         ],
                         "additionalProperties": false
                     }
                 },
                 "required": [
                     "modelName",
-                    "priceInfo"
+                    "tokenPriceInfo"
                 ],
                 "additionalProperties": false
             },

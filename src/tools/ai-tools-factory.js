@@ -15,12 +15,12 @@ const { RetrievalToolTypes } = require("../utilities/app-gtwy-constants.js");
 class AiRetrievalToolsFactory {
 
   constructor() { // Singleton 
-    if (! AiRetrievalToolsFactory.instance)
+    if (!AiRetrievalToolsFactory.instance)
       AiRetrievalToolsFactory.instance = this;
 
     return AiRetrievalToolsFactory.instance;
   }
- 
+
   getRetrievalTool(toolType) {
     let tool = null;
 
@@ -29,8 +29,8 @@ class AiRetrievalToolsFactory {
         tool = new AiAppGatewayTool();
         break;
       case RetrievalToolTypes.WebApiApp:
-	tool = new WebApiAppTool();
-	break;
+        tool = new WebApiAppTool();
+        break;
       default:
         tool = null;
     };

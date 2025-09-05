@@ -52,6 +52,10 @@
  * ID08202025: ganrad: v2.4.0: (Refactored code) Replaced hardcoded strings with constants. Http headers should only be sent once when in 
  * streaming mode especially when the backend (AOAI) API connection fails & multiple connections are re-tried.
  * ID08212025: ganrad: v2.4.0: (Enhancement) The method used to obtain Azure Entra access token (MID Auth) now supports multiple resource uris.
+ * ID08272025: ganrad: v2.5.0: (Refactored code) Move the function to set AI Foundry API call request headers to 'helper-funcs.js'.
+ * ID08292025: ganrad: v2.5.0: (Enhancement) Introduced BudgetAwareRouter implementation.
+ * ID09022025: ganrad: v2.5.0: (Enhancement) Introduced AdaptiveBudgetAwareRouter implementation.
+ * 
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -67,20 +71,16 @@ const UserMemDao = require("../utilities/user-mem-dao.js"); // ID05142025.n
 const pgvector = require("pgvector/pg"); // ID02202024.n
 const {
   generateGUID, // ID07312025.n 
-  DefEmbeddingModelTokenLimit, 
-  CustomRequestHeaders, 
-  AzAiServices, 
+  DefEmbeddingModelTokenLimit,
+  CustomRequestHeaders,
   EndpointRouterTypes, // ID06162025.n
-  OpenAIBaseUri, // ID06162025.n
   OpenAIChatCompletionMsgRoleTypes, // ID08202025.n
-  AzureResourceUris // ID08212025.n
 } = require("../utilities/app-gtwy-constants.js"); // ID05062024.n; ID06162025.n
 // const { randomUUID } = require('node:crypto'); // ID05062024.n; ID07312025.o
 
 const { encode } = require('gpt-tokenizer'); // ID02212025.n
-const { getAccessToken } = require("../auth/bootstrap-auth.js"); // ID03052025.n
 const { getExtractionPrompt, updateSystemMessage, storeUserFacts } = require("../utilities/lt-mem-manager.js"); // ID05142025.n
-const { callAiAppEndpoint } = require("../utilities/helper-funcs.js"); // ID05142025.n
+const { getOpenAICallMetadata, callAiAppEndpoint } = require("../utilities/helper-funcs.js"); // ID05142025.n
 
 class AzOaiProcessor {
 
@@ -287,7 +287,7 @@ class AzOaiProcessor {
     const reader = oai_res.body.getReader(); // use Nodejs native fetch!
     // const reader = oai_res.body; // use node-fetch library!
 
-    if ( ! this.streamed_response_sent) { // ID08202025.n
+    if (!this.streamed_response_sent) { // ID08202025.n
       // Send 200 response status and headers
       let res_hdrs = CustomRequestHeaders.RequestId;
       router_res.setHeader('Content-Type', 'text/event-stream');
@@ -463,7 +463,7 @@ class AzOaiProcessor {
   async #streamChatCompletionOyd(req_id, t_id, app_id, router_res, oai_res) {
     const reader = oai_res.body.getReader();
 
-    if ( ! this.streamed_response_sent) { // ID08202025.n
+    if (!this.streamed_response_sent) { // ID08202025.n
       // Send 200 response status and headers
       let res_hdrs = CustomRequestHeaders.RequestId;
       router_res.setHeader('Content-Type', 'text/event-stream');
@@ -477,7 +477,7 @@ class AzOaiProcessor {
       router_res.set("Access-Control-Expose-Headers", res_hdrs);
       router_res.flushHeaders();
 
-       this.streamed_response_sent = true; // ID08202025.n
+      this.streamed_response_sent = true; // ID08202025.n
     };
 
     let recv_data = "";
@@ -650,48 +650,6 @@ class AzOaiProcessor {
     });
 
     return (retval);
-  }
-
-  async #getOpenAICallMetadata(req, element, config) { // ID06162025.n
-    const meta = new Map();
-    meta.set('Content-Type', 'application/json');
-    
-    let bearerToken = req.headers['Authorization'] || req.headers['authorization'];
-    if (config.appType === AzAiServices.OAI) {
-      if (bearerToken && !req.authInfo) { // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
-        if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") // ID03052025.n
-          bearerToken = await getAccessToken(req, AzureResourceUris.AzureCognitiveServices); // ID08212025.n
-        meta.set('Authorization', bearerToken);
-        logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using bearer token (MID-IMDS) for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
-      }
-      else { // Use API Key Auth ID10302024.en
-        if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") { // ID03052025.n
-          bearerToken = await getAccessToken(req, AzureResourceUris.AzureCognitiveServices); // ID08212025.n
-          meta.set('Authorization', bearerToken);
-          logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using bearer token (MID-IMDS) for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
-        }
-        else {
-          const authHdrKey = element.uri.includes(OpenAIBaseUri) ? 'Authorization' : 'api-key';
-          const authHdrVal = element.uri.includes(OpenAIBaseUri) ? "Bearer " + element.apikey : element.apikey;
-          // meta.set('api-key', element.apikey); ID06162025.o
-          meta.set(authHdrKey,authHdrVal); // ID06162025.n
-          logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using API Key for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
-        };
-      };
-    }
-    else { // ~ Az Ai Model Inference API models
-      if (bearerToken && !req.authInfo) // Authorization header present; Use MID Auth ID10302024.n; + Ensure AI App Gateway is not configured with Entra ID ID11152024.n
-        meta.set('Authorization', bearerToken);
-      else // Use API Key Auth ID10302024.en
-        meta.set('Authorization', "Bearer " + element.apikey);
-      /*
-      delete req.body.presence_penalty;
-      delete req.body.frequency_penalty; */
-      meta.set('extra-parameters', 'drop'); // Drop any parameters the model doesn't understand; Don't return an error!
-      logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using API Key for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
-    };
-
-    return(meta);
   }
 
   async processRequest(
@@ -896,7 +854,7 @@ class AzOaiProcessor {
         return (respMessage);
       };
 
-      if ( memoryConfig.affinity ) // ID06162025.n
+      if (memoryConfig.affinity) // ID06162025.n
         routerIdTried = true;
     }; // end of user session if
 
@@ -924,7 +882,7 @@ class AzOaiProcessor {
     let triedEps = new Array(config.appEndpoints.length).fill(false);
     // ID06162025.en
 
-    if ( routerInstance ) // ID06162025.n
+    if (!routerIdTried && routerInstance) // ID06162025.n; Skip if session affinity is configured and this call is part of an existing session.
       // routerEndpointId = routerInstance.getEndpointId(req.id);  // ID08052025.o
       routerEndpointId = routerInstance.getEndpointId(req);  // ID08052025.n
 
@@ -946,8 +904,8 @@ class AzOaiProcessor {
         else
           endpointIdMatched = true;
 
-        if ( (!routerIdTried) && (routerEndpointId !== null) && (routerEndpointId >= 0) ) { // ID06162025.n
-          if ( uriIdx !== routerEndpointId ) {
+        if ((!routerIdTried) && (routerEndpointId !== null) && (routerEndpointId >= 0)) { // ID06162025.n
+          if (uriIdx !== routerEndpointId) {
             uriIdx++
 
             continue;
@@ -979,11 +937,12 @@ class AzOaiProcessor {
         };
 
         try {
-          const meta = await this.#getOpenAICallMetadata(req, element, config); // ID06162025.n
+          // const meta = await this.#getOpenAICallMetadata(req, element, config); // ID06162025.n, ID08272025.o
+          const meta = await getOpenAICallMetadata(req, element, config.appType); // ID08272025.n
 
           // ID06162025.sn
-          if ( routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter) )
-            routerInstance.updateUriConnections(req.id, true, uriIdx - 1); 
+          if (routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter))
+            routerInstance.updateUriConnections(req.id, true, uriIdx - 1);
           // ID06162025.en
 
           stTime = Date.now();
@@ -1010,7 +969,9 @@ class AzOaiProcessor {
 
             let respTime = Date.now() - stTime;
             metricsObj.updateApiCallsAndTokens(
-              data.usage?.total_tokens,
+              // data.usage?.total_tokens,
+              req.id, // ID08252025.n
+              data.usage, // ID08252025.n
               respTime,
               threadStarted // ID04302025.n
             );
@@ -1073,8 +1034,11 @@ class AzOaiProcessor {
             // ID03012024.en
 
             // ID06162025.sn
-            if ( routerInstance && (routerInstance.routerType === EndpointRouterTypes.WeightedDynamicRouter) )
-              routerInstance.updateWeightsBasedOnLatency(uriIdx - 1, respTime); 
+            if ( routerInstance )
+              if (routerInstance.routerType === EndpointRouterTypes.WeightedDynamicRouter)
+                routerInstance.updateWeightsBasedOnLatency(uriIdx - 1, respTime);
+              else if ( (routerInstance.routerType === EndpointRouterTypes.BudgetAwareRouter) || (routerInstance.routerType === EndpointRouterTypes.AdaptiveBudgetAwareRouter) ) // ID08292025.n, ID09022025.n
+                routerInstance.updateActualCost(req.id, uriIdx - 1, data.usage);
             // ID06162025.en
 
             respMessage = {
@@ -1090,13 +1054,10 @@ class AzOaiProcessor {
           else if (status === 429) { // Endpoint is busy so try next one
             data = await response.json();
 
-            let retryAfterSecs = response.headers.get('retry-after');
-            // let retryAfterMs = headers.get('retry-after-ms');
-
-            if (retryAfter > 0)
-              retryAfter = (retryAfterSecs < retryAfter) ? retryAfterSecs : retryAfter;
-            else
-              retryAfter = retryAfterSecs;
+            const retryAfterHeader = response.headers.get('retry-after');
+            const retryAfterSecs = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 0;
+            if (!isNaN(retryAfterSecs) && retryAfterSecs > 0)
+              retryAfter = retryAfter > 0 ? Math.min(retryAfter, retryAfterSecs) : retryAfterSecs;
 
             metricsObj.updateFailedCalls(status, retryAfterSecs);
 
@@ -1220,8 +1181,8 @@ class AzOaiProcessor {
           retryAfter = 1; // ID06162025.n; Try remaining endpoints if any!
         }
         finally { // ID06162025.sn
-          if ( routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter) )
-            routerInstance.updateUriConnections(req.id, false, uriIdx - 1); 
+          if (routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter))
+            routerInstance.updateUriConnections(req.id, false, uriIdx - 1);
         }; // ID06162025.en
       }; // end of endpoint for loop
 
@@ -1381,7 +1342,7 @@ class AzOaiProcessor {
       };
 
       // 2) Extract user facts from input query and assistant reply
-      const extraction = await callAiAppEndpoint(req, epMetricsObject, aiAppEndpoints, extractionPrompt);
+      const extraction = await callAiAppEndpoint(req, epMetricsObject, aiAppEndpoints, extractionPrompt, config.appType); // ID08272025.n
       if (extraction) {
         const factMsg = extraction.choices[0].message.content;
         logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Facts: %s", splat: [scriptName, this.constructor.name, req.id, threadId, factMsg] });

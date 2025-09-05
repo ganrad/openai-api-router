@@ -103,7 +103,7 @@ async function updateSystemMessage(req, appId, userMemConfig, userMemDao) {
   let userInput = req.body.messages.find(msg => msg.role === "user")?.content;
 
   const userFacts = await userMemDao.queryUserFactsFromDB(req, appId, userInput);
-  if ( userFacts.errors )
+  if ( !userFacts || userFacts.errors )
     return;
 
   // Retrieve the system prompt

@@ -14,9 +14,9 @@
 			"enum": ["single-domain", "multi-domain"]
 		},
 		"budgetConfig": {
-			"description": "",
+			"description": "Budget classes used for cost tracking",
 			"type": "array",
-			"items": {"$ref": "./gtwy-budget-schema.json"},
+			"items": { "$ref": "./gtwy-budget-schema.json" },
 			"minItems": 1,
 			"uniqueItems": true
 		},

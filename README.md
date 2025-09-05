@@ -1,5 +1,13 @@
 # Azure *AI Application Gateway*
 
+> ** Humble Request **
+
+> If you find this project helpful, we did greatly appreciate it if you could give it a star :star:! Your support helps keep this project alive and motivates further improvements.
+
+> Thanks You!
+
+If you find this project
+
 If you're seeking the essential components for rapid implementation and deployment of **AI Information Assistant (a.k.a AI Chatbot)** solutions on Azure, the *AI Application Gateway* is your go-to resource to expedite the development process and transition smoothly from pilot phase to full-scale production.
 
 This *solution accelerator* is designed to deliver 80-90% of the core functionality essential for constructing and deploying AI Solutions and Chatbots. Most notably, it accelerates the smooth roll out of numerous AI Chatbot Solutions on a shared, minimal set of infrastructure components/services.
