@@ -368,7 +368,7 @@ class LRURouter { // Least Recently Used a.k.a Round Robin Router
       this._lastUsed[backend] = now;
     });
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this.#getLRUTable(), null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Endpoint Table:\n%s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this.#getLRUTable(), null, 2)] });
   }
 
   #getLRUTable() {
@@ -414,7 +414,7 @@ class LRURouter { // Least Recently Used a.k.a Round Robin Router
 
     // Get & return the backend index
     const epIdx = this._backends.indexOf(backendUri);
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint URI: %s\n  Endpoint Table:\n  %s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, backendUri, JSON.stringify(this.#getLRUTable(), null, 2)] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint URI: %s\n  Endpoint Table:\n%s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, backendUri, JSON.stringify(this.#getLRUTable(), null, 2)] });
 
     return (epIdx);
   }
@@ -435,7 +435,7 @@ class LeastConnectionsRouter { // Least Active Connections Router
       this._uriConnections[backend] = 0;
     });
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Endpoint Table:\n  %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._uriConnections, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Endpoint Table:\n%s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._uriConnections, null, 2)] });
   }
 
   get routerType() {
@@ -457,7 +457,7 @@ class LeastConnectionsRouter { // Least Active Connections Router
     }, { url: null, count: Infinity }).url;
 
     const epIdx = this._backends.indexOf(uri);
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint URI: %s\n  Endpoint Table:\n  %s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, uri, JSON.stringify(this._uriConnections, null, 2)] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint URI: %s\n  Endpoint Table:\n%s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, uri, JSON.stringify(this._uriConnections, null, 2)] });
 
     return (epIdx);
   }
@@ -474,7 +474,7 @@ class PayloadSizeRouter { // Payload size router; ID08052025.n
     this._appName = appId;
     this._routerType = type;
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table:\n%s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
   }
 
   get routerType() {
@@ -529,7 +529,7 @@ class HeaderValueRouter { // Header value ('x-endpoint-id') router; ID08052025.n
     this._appName = appId;
     this._routerType = type;
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table:\n%s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
   }
 
   get routerType() {
@@ -572,7 +572,7 @@ class ModelAwareRouter { // Model aware router; ID08052025.n
     const roleTypes = [OpenAIChatCompletionMsgRoleTypes.Developer, OpenAIChatCompletionMsgRoleTypes.SystemMessage, OpenAIChatCompletionMsgRoleTypes.UserMessage];
     this._msgRoleType = roleTypes.includes(msgRoleType.toLowerCase()) ? msgRoleType : OpenAIChatCompletionMsgRoleTypes.SystemMessage;
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table:\n %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table:\n%s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
   }
 
   get routerType() {
@@ -607,7 +607,7 @@ class ModelAwareRouter { // Model aware router; ID08052025.n
     // Retrieve the endpoint ID based on the task contained in the system prompt
     const result = this.#inferTask(request.body.messages);
 
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Message Role Type: %s\n  Endpoint Terms:\n  %s\n  Matched Term: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, result.epIdx, this._msgRoleType, JSON.stringify(this._backends[result.epIdx], null, 2), result.term] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Message Role Type: %s\n  Endpoint Terms:\n%s\n  Matched Term: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, result.epIdx, this._msgRoleType, JSON.stringify(this._backends[result.epIdx], null, 2), result.term] });
 
     return (result.epIdx);
   }
@@ -630,7 +630,7 @@ class TokenAwareRouter { // Token aware router; ID08082025.n
     this._appName = appId;
     this._routerType = type;
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table:\n%s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
   }
 
   get routerType() {
@@ -686,7 +686,7 @@ class TokenAwareRouter { // Token aware router; ID08082025.n
     // Get the endpoint ID based on the prompt tokens, model id and payload threshold (tokens) associated with an endpoint
     const result = this.#inferEndpoint(request.body.messages);
 
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Spec.:\n  %s\n  Token Count: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, result.epIdx, JSON.stringify(this._backends[result.epIdx], null, 2), result.tokenCount] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Spec.:\n%s\n  Token Count: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, result.epIdx, JSON.stringify(this._backends[result.epIdx], null, 2), result.tokenCount] });
 
     return (result.epIdx);
   }
@@ -709,7 +709,7 @@ class TimeAwareRouter { // Time aware router; ID08212025.n
     this._appName = appId;
     this._routerType = type;
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table:\n%s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
   }
 
   get routerType() {
@@ -721,23 +721,27 @@ class TimeAwareRouter { // Time aware router; ID08212025.n
     const currentHour = now.getHours();
     const currentDay = now.getDay(); // 0 = Sunday, 6 = Saturday
 
-    const epIdx = this._backends.find(({ days, startHour, endHour }) =>
-      days.includes(currentDay) && currentHour >= startHour && currentHour < endHour
-    );
+    let epIdx = 0; // Default to the first endpoint
+    const backend = this._backends.find(({ days, startHour, endHour }, index) => {
+      if (days.includes(currentDay) && currentHour >= startHour && currentHour < endHour) {
+        epIdx = index;
 
-    if (!epIdx)
-      epIdx = 0; // Default to the first endpoint
+        return(true);
+      }
+      else 
+        return(false);
+    });
 
-    return (epIdx);
+    return(epIdx);
   }
 
   getEndpointId(request) {
     // Get the endpoint ID based the current time and hours configured for each endpoint
     const epIdx = this.#inferEndpoint();
 
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Spec.:\n  %s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, JSON.stringify(this._backends[epIdx], null, 2)] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Spec.:\n%s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, JSON.stringify(this._backends.find((b,index) => index === epIdx), null, 2)] });
 
-    return (epIdx);
+    return(epIdx);
   }
 }
 
@@ -795,7 +799,7 @@ class BudgetAwareRouter { // ID08292025.n
     this._appName = appId;
     this._routerType = type;
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Backend Table:\n%s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, JSON.stringify(this._backends, null, 2)] });
   }
 
   get routerType() {
@@ -972,7 +976,7 @@ class BudgetAwareRouter { // ID08292025.n
       effectiveRemaining: selectedBackend.effectiveRemaining?.toFixed(2)
     };
 
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Selected Endpoint Spec.:\n  %s", splat: [scriptName, this.constructor.name, request.id, this._appName, JSON.stringify(backendInfo, null, 2)] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Selected Endpoint Spec.:\n%s", splat: [scriptName, this.constructor.name, request.id, this._appName, JSON.stringify(backendInfo, null, 2)] });
 
     return (selectedBackend.id);
   }
@@ -1002,7 +1006,7 @@ class BudgetAwareRouter { // ID08292025.n
       actualCost: actualCost.toFixed(4)
     };
     // console.log(`Actual cost: $${actualCost.toFixed(4)}. Updated all remainings for ${selectedBackend.name}`);
-    logger.log({ level: "debug", message: "[%s] %s.updateActualCost():\n  Request ID: %s\n  App ID: %s\n  Cost Info.:\n  %s", splat: [scriptName, this.constructor.name, reqid, this._appName, JSON.stringify(costInfo, null, 2)] });
+    logger.log({ level: "debug", message: "[%s] %s.updateActualCost():\n  Request ID: %s\n  App ID: %s\n  Cost Info.:\n%s", splat: [scriptName, this.constructor.name, reqid, this._appName, JSON.stringify(costInfo, null, 2)] });
   }
 }
 
@@ -1230,7 +1234,7 @@ class AdaptiveBudgetAwareRouter { // ID09022025.n
     this._routerType = type;
     this._rrIndex = 0; // Initialize round-robin index
 
-    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Strategy: %s\n  Window Type: %s\n  Backend Table: %s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, this._strategy, this._windowType, JSON.stringify(this._backends, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.constructor():\n  App ID: %s\n  Router Type: %s\n  Strategy: %s\n  Window Type: %s\n  Backend Table:\n%s", splat: [scriptName, this.constructor.name, this._appName, this._routerType, this._strategy, this._windowType, JSON.stringify(this._backends, null, 2)] });
   }
 
   get routerType() {
@@ -1338,7 +1342,7 @@ class AdaptiveBudgetAwareRouter { // ID09022025.n
       name: selectedBackend.name,
       model: selectedBackend.model
     };
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Router Strategy: %s\n  Selected Endpoint Spec.:\n  %s", splat: [scriptName, this.constructor.name, request.id, this._appName, this._strategy, JSON.stringify(backendInfo, null, 2)] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Router Strategy: %s\n  Selected Endpoint Spec.:\n%s", splat: [scriptName, this.constructor.name, request.id, this._appName, this._strategy, JSON.stringify(backendInfo, null, 2)] });
 
     return (selectedBackend.id);
   }
@@ -1375,7 +1379,7 @@ class AdaptiveBudgetAwareRouter { // ID09022025.n
       totalTokens: tokenUsage.total_tokens,
       actualCost: actualCost.toFixed(4)
     };
-    logger.log({ level: "debug", message: "[%s] %s.updateActualCost():\n  Request ID: %s\n  App ID: %s\n  Cost Info.:\n  %s", splat: [scriptName, this.constructor.name, reqid, this._appName, JSON.stringify(costInfo, null, 2)] });
+    logger.log({ level: "debug", message: "[%s] %s.updateActualCost():\n  Request ID: %s\n  App ID: %s\n  Cost Info.:\n%s", splat: [scriptName, this.constructor.name, reqid, this._appName, JSON.stringify(costInfo, null, 2)] });
   }
 }
 
