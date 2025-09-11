@@ -283,7 +283,7 @@ class WeightedRandomRouter { // Random Weighted Router.  Uses static weights to 
 
   getEndpointId(request) {
     const epIdx = this._routingTable[Math.floor(Math.random() * this._routingTable.length)];
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint Index: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx] });
 
     return (epIdx);
   }
@@ -346,7 +346,7 @@ class WeightedDynamicRouter { // Latency Weighted Router
 
   getEndpointId(request) {
     const epIdx = this._routingTable[Math.floor(Math.random() * this._routingTable.length)];
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint Index: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx] });
 
     return (epIdx);
   }
@@ -414,7 +414,7 @@ class LRURouter { // Least Recently Used a.k.a Round Robin Router
 
     // Get & return the backend index
     const epIdx = this._backends.indexOf(backendUri);
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint URI: %s\n  Endpoint Table:\n%s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, backendUri, JSON.stringify(this.#getLRUTable(), null, 2)] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint Index: %d\n  Endpoint URI: %s\n  Endpoint Table:\n%s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, backendUri, JSON.stringify(this.#getLRUTable(), null, 2)] });
 
     return (epIdx);
   }
@@ -448,7 +448,7 @@ class LeastConnectionsRouter { // Least Active Connections Router
     else
       this._uriConnections[this._backends[epIdx]]--;
 
-    logger.log({ level: "debug", message: "[%s] %s.updateUriConnections():\n  Request ID: %s\n  Endpoint ID:  %d\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, requestId, epIdx, JSON.stringify(this._uriConnections, null, 2)] });
+    logger.log({ level: "debug", message: "[%s] %s.updateUriConnections():\n  Request ID: %s\n  Endpoint Index:  %d\n  Endpoint Table: %s", splat: [scriptName, this.constructor.name, requestId, epIdx, JSON.stringify(this._uriConnections, null, 2)] });
   }
 
   getEndpointId(request) {
@@ -457,7 +457,7 @@ class LeastConnectionsRouter { // Least Active Connections Router
     }, { url: null, count: Infinity }).url;
 
     const epIdx = this._backends.indexOf(uri);
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint URI: %s\n  Endpoint Table:\n%s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, uri, JSON.stringify(this._uriConnections, null, 2)] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint Index: %d\n  Endpoint URI: %s\n  Endpoint Table:\n%s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, uri, JSON.stringify(this._uriConnections, null, 2)] });
 
     return (epIdx);
   }
@@ -509,7 +509,7 @@ class PayloadSizeRouter { // Payload size router; ID08052025.n
 
     // If no backend is found, use the last one as a default
     const epIdx = (backendIdx !== -1) ? backendIdx : this._backends.length - 1;
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Payload Size (Bytes): %d\n  Endpoint ID: %d\n  Endpoint URI: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, payloadSize, epIdx, this._backends[epIdx].uri] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Payload Size (Bytes): %d\n  Endpoint Index: %d\n  Endpoint URI: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, payloadSize, epIdx, this._backends[epIdx].uri] });
 
     return (epIdx);
   }
@@ -543,11 +543,11 @@ class HeaderValueRouter { // Header value ('x-endpoint-id') router; ID08052025.n
       return (0); // If header value is missing, return the first endpoint index
 
     // Determine the appropriate backend based on header value
-    const backendIdx = this._backends.findIndex((backend) => { backend === endpointId });
+    const backendIdx = this._backends.findIndex((backend) => backend.id === endpointId);
 
     // If a matching backend is not found, use the index of the first endpoint as a default
     const epIdx = (backendIdx !== -1) ? backendIdx : 0;
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Header (x-endpoint-id): %s\n  Endpoint ID: %d\n  Endpoint URI: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, endpointId, epIdx, this._backends[epIdx].uri] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Header Value (x-endpoint-id): %s\n  Endpoint Index: %d\n  Endpoint Info.:\n%s", splat: [scriptName, this.constructor.name, request.id, this._appName, endpointId, epIdx, JSON.stringify(this._backends[epIdx], null, 2)] });
 
     return (epIdx);
   }
@@ -607,7 +607,7 @@ class ModelAwareRouter { // Model aware router; ID08052025.n
     // Retrieve the endpoint ID based on the task contained in the system prompt
     const result = this.#inferTask(request.body.messages);
 
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Message Role Type: %s\n  Endpoint Terms:\n%s\n  Matched Term: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, result.epIdx, this._msgRoleType, JSON.stringify(this._backends[result.epIdx], null, 2), result.term] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint Index: %d\n  Message Role Type: %s\n  Endpoint Terms:\n%s\n  Matched Term: %s", splat: [scriptName, this.constructor.name, request.id, this._appName, result.epIdx, this._msgRoleType, JSON.stringify(this._backends[result.epIdx], null, 2), result.term] });
 
     return (result.epIdx);
   }
@@ -686,7 +686,7 @@ class TokenAwareRouter { // Token aware router; ID08082025.n
     // Get the endpoint ID based on the prompt tokens, model id and payload threshold (tokens) associated with an endpoint
     const result = this.#inferEndpoint(request.body.messages);
 
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Spec.:\n%s\n  Token Count: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, result.epIdx, JSON.stringify(this._backends[result.epIdx], null, 2), result.tokenCount] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint Index: %d\n  Endpoint Spec.:\n%s\n  Token Count: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, result.epIdx, JSON.stringify(this._backends[result.epIdx], null, 2), result.tokenCount] });
 
     return (result.epIdx);
   }
@@ -726,22 +726,22 @@ class TimeAwareRouter { // Time aware router; ID08212025.n
       if (days.includes(currentDay) && currentHour >= startHour && currentHour < endHour) {
         epIdx = index;
 
-        return(true);
+        return (true);
       }
-      else 
-        return(false);
+      else
+        return (false);
     });
 
-    return(epIdx);
+    return (epIdx);
   }
 
   getEndpointId(request) {
     // Get the endpoint ID based the current time and hours configured for each endpoint
     const epIdx = this.#inferEndpoint();
 
-    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint ID: %d\n  Endpoint Spec.:\n%s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, JSON.stringify(this._backends.find((b,index) => index === epIdx), null, 2)] });
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint Index: %d\n  Endpoint Spec.:\n%s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, JSON.stringify(this._backends.find((b, index) => index === epIdx), null, 2)] });
 
-    return(epIdx);
+    return (epIdx);
   }
 }
 
@@ -751,6 +751,7 @@ class TimeAwareRouter { // Time aware router; ID08212025.n
  * 
  * IMP:
  * 1) Endpoint id is not mandatory
+ * 2) Ensure model configured for an endpoint has a corresponding budget defined
  */
 class BudgetAwareRouter { // ID08292025.n
 
@@ -761,39 +762,40 @@ class BudgetAwareRouter { // ID08292025.n
     endpointObj.forEach((element, index) => {
       const modelObj = costCatalog.find(model => model.modelName === element.budget.modelName);
 
-      this._backends.push(
-        {
-          id: index,
-          name: element.id ?? "index-" + index,
-          uri: element.uri,
-          model: element.budget.modelName,
-          defBackend: element.budget.defaultEndpoint ?? false,
-          inputCostPer1K: modelObj.tokenPriceInfo.inputTokensCostPer1k,
-          cachedInputCostPer1K: modelObj.tokenPriceInfo.cachedInputTokensCostPer1k,
-          outputCostPer1K: modelObj.tokenPriceInfo.outputTokensCostPer1k,
-          budgets: {
-            hourly: {
-              limit: element.budget.costBudgets.hourly,
-              remaining: element.budget.costBudgets.hourly,
-              lastReset: Date.now()
-            },
-            daily: {
-              limit: element.budget.costBudgets.daily,
-              remaining: element.budget.costBudgets.daily,
-              lastReset: Date.now()
-            },
-            weekly: {
-              limit: element.budget.costBudgets.weekly,
-              remaining: element.budget.costBudgets.weekly,
-              lastReset: Date.now()
-            },
-            monthly: {
-              limit: element.budget.costBudgets.monthly,
-              remaining: element.budget.costBudgets.monthly,
-              lastReset: Date.now()
-            },
-          }
-        });
+      if (modelObj)
+        this._backends.push(
+          {
+            id: index,
+            name: element.id ?? "index-" + index,
+            uri: element.uri,
+            model: element.budget.modelName,
+            defBackend: element.budget.defaultEndpoint ?? false,
+            inputCostPer1K: modelObj.tokenPriceInfo.inputTokensCostPer1k,
+            cachedInputCostPer1K: modelObj.tokenPriceInfo.cachedInputTokensCostPer1k,
+            outputCostPer1K: modelObj.tokenPriceInfo.outputTokensCostPer1k,
+            budgets: {
+              hourly: {
+                limit: element.budget.costBudgets.hourly,
+                remaining: element.budget.costBudgets.hourly,
+                lastReset: Date.now()
+              },
+              daily: {
+                limit: element.budget.costBudgets.daily,
+                remaining: element.budget.costBudgets.daily,
+                lastReset: Date.now()
+              },
+              weekly: {
+                limit: element.budget.costBudgets.weekly,
+                remaining: element.budget.costBudgets.weekly,
+                lastReset: Date.now()
+              },
+              monthly: {
+                limit: element.budget.costBudgets.monthly,
+                remaining: element.budget.costBudgets.monthly,
+                lastReset: Date.now()
+              },
+            }
+          });
     });
 
     this._appName = appId;
@@ -1011,7 +1013,7 @@ class BudgetAwareRouter { // ID08292025.n
 }
 
 /**
- * Pure in-memory metrics with aligned sliding windows
+ * Pure in-memory metrics store with aligned sliding windows
  */
 class MetricsStore {
 

@@ -271,5 +271,125 @@
         }
       ]
     }
+  ],
+  "budgetConfig": [
+    {
+      "budgetName": "AzureAIFoundry-Direct-Models",
+      "description": "A budget class for Azure Direct Models on Azure AI Foundry",
+      "models": [
+        {
+          "modelName": "gpt-4o-mini-0718-std",
+          "description": "Deployed in westus3 region - AIF Hub = dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.000165,
+            "cachedInputTokensCostPer1k": 0.000083,
+            "outputTokensCostPer1k": 0.00066
+          }
+        },
+        {
+          "modelName": "gpt-4o-0806-global-std",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0025,
+            "cachedInputTokensCostPer1k": 0.00125,
+            "outputTokensCostPer1k": 0.01
+          }
+        },
+        {
+          "modelName": "gpt-4o-1120-std",
+          "description": "Deployed in westus3 AIF = oai-gr-dev-wus3",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00275,
+            "cachedInputTokensCostPer1k": 0.001375,
+            "outputTokensCostPer1k": 0.011
+          }
+        },
+        {
+          "modelName": "gpt-4.1-mini-global",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0004,
+            "cachedInputTokensCostPer1k": 0.0001,
+            "outputTokensCostPer1k": 0.0016
+          }
+        },
+        {
+          "modelName": "o4-mini-global-std",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0011,
+            "cachedInputTokensCostPer1k": 0.00028,
+            "outputTokensCostPer1k": 0.0044
+          }
+        },
+        {
+          "modelName": "gpt-5-chat-global",
+          "description": "Deployed in eastus2 region",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00125,
+            "cachedInputTokensCostPer1k": 0.000125,
+            "outputTokensCostPer1k": 0.01
+          }
+        },
+        {
+          "modelName": "text-embedding-3-small-global",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00002,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0
+          }
+        },
+        {
+          "modelName": "Phi-3-small-8k-instruct",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub - dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00015,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.0006
+          }
+        },
+        {
+          "modelName": "phi-3.5-MoE-Instruct",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub - dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00016,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.00064
+          }
+        },
+        {
+          "modelName": "Phi-4",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub - dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.000125,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.0005
+          }
+        },
+        {
+          "modelName": "DeepSeek-R1-021025",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.001485,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.00594
+          }
+        },
+        {
+          "modelName": "Llama-3.3-70B-Instruct-global",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00071,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.00071
+          }
+        },
+        {
+          "modelName": "grok-3-mini-global",
+          "description": "Grok-3-mini is deployed as global standard in westus3 region on AI Foundry",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.003,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.015
+          }
+        }
+      ]
+    }
   ]
 }
