@@ -394,13 +394,13 @@ async function readAiAppGatewayConfig() { // ID01292025.n
 
     if (context.serverType === ServerTypes.SingleDomain) { // ID09042024.n
       // console.log("Server(): AI Application backend (Azure OpenAI Service) endpoints:");
-      wlogger.log({ level: "info", message: "[%s] Listing AI Application backend (Azure AI Service) endpoints:", splat: [scriptName] });
+      wlogger.log({ level: "info", message: "[%s] Listing AI Applications:", splat: [scriptName] });
       context.applications?.forEach((app) => {
         let pidx = 0;
         if ((app.appType === AzAiServices.OAI) || (app.appType === AzAiServices.AzAiModelInfApi))
-          console.log(`Application ID: ${app.appId}\n  Type: ${app.appType}\n  Config:\n    useCache=${app?.cacheSettings?.useCache ?? false}\n    useMemory=${app?.memorySettings?.useMemory ?? false}\n    personalization=${app?.personalizationSettings?.userMemory ?? false}\n    budgeting=${app?.budgetSettings?.useBudget ?? false}`); // ID05142025.n; ID08252025.n
+          console.log(`\nApplication ID: ${app.appId}\n  Type: ${app.appType}\n  Config:\n    useCache=${app?.cacheSettings?.useCache ?? false}\n    useMemory=${app?.memorySettings?.useMemory ?? false}\n    personalization=${app?.personalizationSettings?.userMemory ?? false}\n    budgeting=${app?.budgetSettings?.useBudget ?? false}`); // ID05142025.n; ID08252025.n
         else
-          console.log(`Application ID: ${app.appId}\n  Type: ${app.appType}`);
+          console.log(`\nApplication ID: ${app.appId}\n  Type: ${app.appType}`);
 
         if ((cacheConfig.cacheResults) && (app.appId === cacheConfig.embeddApp))
           vectorAppFound = true;

@@ -29,7 +29,7 @@ Recipe | Components | Functional Architecture
 | **Shared Infrastructure Model** | All | The AI Application Gateway simplifies and streamlines the deployment of multiple AI Solutions by utilizing a shared infrastructure backbone. This approach allows for deploying the infrastructure once and subsequently scaling it to build and deploy numerous AI Chatbots/Applications. |
 | **Enhanced AI Application Deployments** | All | The gateway is designed to be AI Application *Aware*, allowing Azure AI Service deployments to be configured individually for each AI Application. This approach simplifies the sharing of AI Service deployments across different AI Applications. |
 | **Model Agnostic Endpoints** | - Azure AI Foundry Models<br>- Azure AI Agent Service | The gateway exposes each AI Application through a unified endpoint, hiding the underlying AI Service model deployment endpoints from client applications. As a result, model/agent deployment endpoints can be quickly updated without requiring any changes to client applications. |
-| **Intelligent Traffic Routing** | - Azure AI Foundry Models<br>- Azure AI Agent Service | The gateway router provides the following features.<br><br>**<u>Circuit Breaker</u>** Each AI Application can be configured with multiple backend endpoints, and the gateway acts as a circuit-breaker by automatically switching to the next prioritized endpoint when one is throttled (HTTP 429), while temporarily excluding throttled endpoints from traffic until they recover.<br><br>**<u>Rate Limiting</u>** Users can define RPM limits per backend endpoint. The AI Gateway enforces rate limiting by returning HTTP 429 responses to prevent overloading of an endpoint and ensure fair utilization of model capacity.<br><br>**<u>Traffic Splitting</u>** Each AI Application can be configured with any one of the built-in endpoint router implementations described below.<br>**Priority:** (**Default**) Routes API calls based on top down order of endpoints listed in the Gateway configuration file.<br>**Least Recently Used:** Routes API calls to endpoint that has been least recently used.<br>**Least Active Connections:** Routes API calls to the endpoint with the fewest active connections.<br>**Random Weighted:** Routes API calls to endpoints based on fixed weight assignments.<br>**Latency Weighted:** Dynamically adjusts routing weights based on real-time endpoint performance, ensuring each API call is directed to the endpoint with the lowest latency for optimal responsiveness. This strategy enhances efficiency by continuously monitoring and prioritizing faster endpoints.<br>**Payload Switch:** Routes API calls to endpoints based on the size of the HTTP request payload and configured thresholds.<br>**Header Switch:** Routes API calls to the endpoint whose unique ID matches the value provided in the `x-endpoint-id` HTTP request header.<br>**Model Aware:** Intelligently directs API calls to endpoints whose configured task attributes match specific phrases or terms found in the request message.<br>**Token Aware:** Routes API requests to the most suitable endpoint by comparing the token consumption of each API request against the model's maximum allowed context size. An endpoint is selected if the request message's token size is below the model's context size.<br>**Time Aware:** Routes API requests to the most appropriate endpoint based on the current day of the week and time of day.<br>**Budget Aware:** Estimates token usage with simple heuristics, calculates cost, and compares it against model-specific budget thresholds to select the most economical endpoint.<br>**Adaptive Budget Aware:** Identifies the most cost-effective endpoint by applying the configured (built-in) routing strategy within defined budget thresholds.<br><br>**<u>Health Check Policies</u>** When enabled, the AI Gateway monitors backend endpoint latency and automatically disables an endpoint when the pre-configured response time threshold (in minutes) is exceeded. |
+| **Intelligent Traffic Routing** | - Azure AI Foundry Models<br>- Azure AI Agent Service | The gateway provides the following API traffic management features.<br><br>**<u>Circuit Breaker</u>** Each AI Application can be configured with multiple backend endpoints, and the gateway acts as a circuit-breaker by automatically switching to the next prioritized endpoint when one is throttled (HTTP 429), while temporarily excluding throttled endpoints from traffic until they recover.<br><br>**<u>Rate Limiting</u>** Users can define RPM limits per backend endpoint. The AI Gateway enforces rate limiting by returning HTTP 429 responses to prevent overloading of an endpoint and ensure fair utilization of model capacity.<br><br>**<u>Traffic Splitting</u>** Each AI Application can be configured with any one of the built-in endpoint router implementations described below.<br>**- Priority:** (**Default**) Routes API calls based on top down order of endpoints listed in the Gateway configuration file.<br>**- Least Recently Used:** Routes API calls to endpoint that has been least recently used.<br>**- Least Active Connections:** Routes API calls to the endpoint with the fewest active connections.<br>**- Random Weighted:** Routes API calls to endpoints based on fixed weight assignments.<br>**- Latency Weighted:** Dynamically adjusts routing weights based on real-time endpoint performance, ensuring each API call is directed to the endpoint with the lowest latency for optimal responsiveness. This strategy enhances efficiency by continuously monitoring and prioritizing faster endpoints.<br>**- Payload Switch:** Routes API calls to endpoints based on the size of the HTTP request payload and configured thresholds.<br>**- Header Switch:** Routes API calls to the endpoint whose unique ID matches the value provided in the `x-endpoint-id` HTTP request header.<br>**- Model Aware:** Intelligently directs API calls to endpoints whose configured task attributes match specific phrases or terms found in the request message.<br>**- Token Aware:** Routes API requests to the most suitable endpoint by comparing the token consumption of each API request against the model's maximum allowed context size. An endpoint is selected if the request message's token size is below the model's context size.<br>**- Time Aware:** Routes API requests to the most appropriate endpoint based on the current day of the week and time of day.<br>**- Budget Aware:** Estimates token usage with simple heuristics, calculates cost, and compares it against model-specific budget thresholds to select the most economical endpoint.<br>**- Adaptive Budget Aware:** Identifies the most cost-effective endpoint by applying the configured (built-in) routing strategy within defined budget thresholds.<br><br>**<u>Health Check Policies</u>** When enabled, the AI Gateway monitors backend endpoint latency and automatically disables an endpoint when the pre-configured response time threshold (in minutes) is exceeded. |
 | **Model Budgeting (Cost Tracking)** | Azure AI Foundry Models | When this feature is enabled for AI Applications, the AI Application Gateway calculates & stores API call costs using token counts reported by Azure AI Foundry Models, helping teams monitor usage and manage expenses effectively. This feature also helps teams stay within budget, optimize resource allocation, and make informed decisions about endpoint selection and usage. |
 | **Semantic Caching** | Azure AI Foundry Models | This feature, integrated into the AI Application Gateway, caches OpenAI Service prompts and responses based on semantic similarity. It can improve runtime performance of LLM/AI applications by up to 40%, leveraging *PostgreSQL's* vectorization and semantic search capabilities. |
 | **Conversational State Management** | Azure AI Foundry Models (Chat Completion API only) | AI Chatbots must maintain context during end user sessions so they can reference previous user inputs, ensuring coherent and contextually relevant conversations.  This feature manages conversational state, scaling to support 10 to hundreds of concurrent user sessions for multiple AI applications. It can operate independently or with *Semantic Caching* to enhance performance. |
@@ -277,14 +277,41 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
 
 4. Update the **AI Application Gateway Configuration file**.
 
+   <ins>***AI Gateway/Server Configuration:***</ins>
+
    Edit the `./api-router-config.json` file.
 
-   Specify, the AI Application Gateway server **type**.  Refer to the table below.
+   Use attributes *serverId* and *serverType* to specify the AI Application Gateway server **ID/Name** (should be unique) and **Type**.
+
+   > **NOTE:** The *serverId* and *serverType* attribute values in the configuration file should match the values of environment variables **API_GATEWAY_ID** and **API_GATEWAY_TYPE**.  Otherwise the gateway server will throw an exception and fail to start. 
+   
+   A gateway server can be one of two types.  Refer to the table below.
 
    Server Type | Description
    ----------- | -----------
    single-domain | A single domain gateway server used to deploy and manage AI Applications that use an LLM grounded with data from a single data repository (RAG appplications).
    multi-domain | A multi domain gateway server used to deploy and manage complex workflows that comprise of multiple AI agent and tool calls.   
+
+   Next, use the *budgetConfig* attribute to configure the gateway budget classes (1..N) used for API cost tracking. Refer to the table below.
+   > **NOTE:** If you are not planning to use the cost tracking feature and/or one of the budget aware gateway router implementations, you can safely skip this section and go to the *AI Application Configuration* section (below).
+
+   | Attribute Name | Type | Required | Description |
+   | -------------- | ---- | -------- | ----------- |
+   | budgetName | String | Yes | The name of the budget class |
+   | description | String | No | Description of the budget class |
+   | models | Object[] | Yes | An array containing large language model budget definitions (cost info.) associated with the budget class. When cost tracking feature is used, a minimum of one model budget/cost definition is required. |
+
+   The *models* attribute is an array containing model cost definitions.  Refer to the table below and configure values appropriately.
+
+   | Attribute Name | Type | Required | Description |
+   | -------------- | ---- | -------- | ----------- |
+   | modelName | String | Yes | Name of the large language model |
+   | description | String | No | Brief description of the model |
+   | tokenPriceInfo.inputTokensCostPer1k | Number | Yes | Cost for 1K input tokens |
+   | tokenPriceInfo.cachedInputTokensCostPer1k | Number | No | Cost for 1K cached prompt/input tokens |
+   | tokenPriceInfo.outputTokensCostPer1k | Number | Yes | Cost for 1K output tokens |
+
+   <ins>***AI Application Configuration:***</ins>
 
    For each AI Application, 
 
@@ -301,9 +328,9 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      azure_content_safety | This value denotes Azure AI Content Safety service
      azure_search | This value denotes Azure AI Search service
 
-   - Optionally specify the backend endpoint router type *endpointRouterType*.
+   - Optionally, specify the backend endpoint router type *endpointRouterType*.
 
-     Sample AI Application configuration files using different endpoint router's can be found in directory `./ai-app-gateway-configs`. 
+     Sample AI Application configuration files using different endpoint router types can be found in directory `./ai-app-gateway-configs`. 
    
      The routers (types) supported by the AI Application Gateway are listed in the table below.
 
@@ -320,9 +347,16 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      TokenAware | Routes API calls to the most suitable endpoint by evaluating token consumption of each request. This router uses configured token threshold limits per endpoint to ensure requests are routed efficiently, optimizing resource usage and preventing overages while maintaining performance. 
      TimeAware | Intelligently directs API calls to the most appropriate endpoint based on the current day of the week and time of day. By leveraging temporal routing logic, it ensures optimal resource utilization, performance alignment, and cost efficiency by matching traffic patterns with endpoint availability and operational preferences.
      BudgetAware | This router applies lightweight heuristics to estimate token usage and compute the cost of each API request. It then compares the estimates against model-specific cost budgets to intelligently route requests to the most cost-effective (least expensive) endpoint. This ensures cost-effective execution aligned with configured budget constraints.
-     AdaptiveBudgetAware | This router identifies the most cost-effective endpoint by utilizing one of the following configurable strategies that fall within pre-configured budget thresholds. This ensures optimal performance while minimizing operational costs, making it a highly cost-effective solution for scalable deployments.<br>**Router Strategies:**<br>- **Priority:** Uses endpoints listing order, then first under budget<br>- **RoundRobin:** Cycles thru endpoints that are under budget<br>- **LeastSpent:** Selects an endpoint with the highest remaining budget %tage<br>- **WeightedRandom:** Selects an endpoint by weight (skips exhausted)<br>- **Adaptive:** Prefers endpoint with `qualityTier` A, B and then C but switches to a lower quality tier if the remaining allocated budget of the higher tier is < minimum threshold (Default ~ 10% of budget)
+     AdaptiveBudgetAware | This router identifies the most cost-effective endpoint by utilizing one of the following configurable strategies that fall within pre-configured budget thresholds. This ensures optimal performance while minimizing operational costs, making it a highly cost-effective solution for scalable deployments.<br>**Router Strategies:**<br>- **Priority:** Uses endpoints listing order, then first under budget<br>- **RoundRobin:** Cycles thru endpoints that are under budget<br>- **LeastSpent:** Selects an endpoint with the highest remaining budget percentage<br>- **WeightedRandom:** Selects an endpoint by weight (skips exhausted)<br>- **Adaptive:** Prefers endpoint with `qualityTier` A, B and then C but switches to a lower quality tier if the remaining allocated budget of the higher tier is < minimum threshold (Default threshold ~ 10% of budget)
 
-   - Specify Azure AI Service endpoints/URI's and corresponding API key values within **endpoints** attribute.  Refer to the table below and set appropriate values for each endpoint attribute.
+   - Optionally, when *AdaptiveBudgetAware* router type is configured for an AI Application, specify additional traffic router settings using attribute *adaptiveRouterSettings*.  Refer to the table below.
+
+     Attribute Name | Type | Required | Description
+     -------------- | ---- | -------- | -----------
+     strategy | Enum(String) | Yes | The router strategy to use. Acceptable values are<br>**- Priority**<br>**- WeightedRandom**<br>**- RoundRobin**<br>**- LeastSpent**<br>**- Adaptive**
+     windowType | Enum(String) | Yes | The default window tier to use when comparing API call costs against endpoint cost thresholds. Acceptable values are<br>**- Hourly**<br>**- Daily**<br>**- Weekly**<br>**- Monthly**
+   
+   - The **endpoints** attribute is an array containing endpoint definitions.  Refer to the table below and set appropriate values for each endpoint attribute.
 
      Attribute Name | Type | Required | Description
      -------------- | ---- | -------- | -----------
@@ -330,9 +364,20 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      uri | String | Yes | AI Service endpoint (backend) URI
      apikey | String| Yes | AI Service API Key
      rpm | Number | No | Requests per minute (RPM) rate limit to be applied to this endpoint.  No rate limits are applied when this value is absent.
-     task | String | No | Specifies the unique capability or specialization of the model associated with this endpoint. This value is required for each endpoint when the router type is set to *ModelAware* in an AI Application configuration.
+     task | String[] | No | Use this string array to specify the unique capabilities or specializations of the model associated with this endpoint. This value has to be specified for each endpoint when the router type (*endpointRouterType*) attribute is set to *ModelAware* for an AI Application.
+     model | Enum(String) | No | The LLM family.  This value must be specified for each endpoint when the router type (*endpointRouterType*) attribute is set to *TokenAware* for an AI Application. Acceptable values are<br>**- gpt-3.5**<br>**- gpt-4**<br>**- gpt-4o**<br>**- gpt-4.1**<br>**- gpt-5**<br>**- o1/o3/o4**
      weight | Number | No | Percentage-based weight used to distribute API calls across backend endpoints. The combined weights for all endpoints must total 100. This value must be specified for the following router types - *RandomWeighted* and *LatencyWeighted*.
      payloadThreshold | String | No | Request payload size (/threshold) specified in `bytes`, `kb` (Kilo bytes) or `mb` (Mega bytes).  This value must be specified for each endpoint when a router type of *PayloadSwitch* is configured for an AI Application.<br>Eg., 2000, 5kb, 10Mb.
+     days | Number[] | No | An integer array containing days of the week. Acceptable values range from 0 to 6, where 0 represents Sunday and 6 represents Saturday.  This value must be specified for each endpoint when a router type of *TimeAware* is configured for an AI Application.
+     startHour | Number | No | An integer representing the start hour. Acceptable values range from 0 to 24. This value must be specified for each endpoint when a router type of *TimeAware* is configured for an AI Application.
+     endHour | Number | No | An integer representing the end hour. Acceptable values range from 0 to 24. This value must be specified for each endpoint when a router type of *TimeAware* is configured for an AI Application.
+     qualityTier | Enum(String) | No | Specifies the quality tier associated with this endpoint when *AdaptiveBudgetAware* router type & *Adaptive* router strategy is configured for an AI Application.  Acceptable values are **A**, **B** or **C**.
+     budget.modelName | String | No | The name of the model budget definition associated with this endpoint.  This model budget definition must exist within the budget class associated with the AI Application. This value must be specified for each endpoint when a router type of *BudgetAware* or *AdaptiveBudgetAware* is configured for an AI Application.
+     budget.defaultEndpoint | Boolean | No | A boolean which indicates if this is the default endpoint for spillover traffic when all endpoints have crossed the budget cost thresholds. This value must be specified for exactly one endpoint when a router type of *BudgetAware* or *AdaptiveBudgetAware* is configured for an AI Application.  
+     budget.costBudgets.hourly | Number | No | Hourly cost budget allocated to this endpoint. This value must be specified for each endpoint when a router type of *BudgetAware* or *AdaptiveBudgetAware* is configured for an AI Application.
+     budget.costBudgets.daily | Number | No | Daily cost budget allocated to this endpoint. This value must be specified for each endpoint when a router type of *BudgetAware* or *AdaptiveBudgetAware* is configured for an AI Application.
+     budget.costBudgets.weekly | Number | No | Weekly cost budget allocated to this endpoint. This value must be specified for each endpoint when a router type of *BudgetAware* or *AdaptiveBudgetAware* is configured for an AI Application.
+     budget.costBudgets.monthly | Number | No | Monthly cost budget allocated to this endpoint. This value must be specified for each endpoint when a router type of *BudgetAware* or *AdaptiveBudgetAware* is configured for an AI Application.
      healthPolicy.maxCallsBeforeUnhealthy | Number | No | Defines the maximum number of consecutive failed or high latency API calls allowed to a backend endpoint before it is marked as unhealthy by the AI Gateway. Once this threshold is exceeded, the endpoint is temporarily removed from the routing pool to prevent further traffic until it recovers.
      healthPolicy.latencyThresholdSeconds | Number | No | Response time threshold (in seconds) used to evaluate backend performance. Used in conjunction with attribute *healthPolicy.maxCallsBeforeUnhealthy*.
      healthPolicy.retryAfterMinutes | Number | No | Duration (in minutes) after which a previously unhealthy endpoint is re-evaluated and considered healthy again.
@@ -366,6 +411,13 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      userFactsAppName | String | No | Used to specify the name of the AI Application responsible for identifying and extracting user-specific facts. Defaults to value of **API_GATEWAY_VECTOR_AIAPP**.
      extractionPrompt | String | No | The prompt used to guide the AI Gateway in extracting personal attributes or facts from user input/prompt.
      followupPrompt | String | No | The prompt used to help the AI Gateway generate relevant follow-up questions based on the model’s response.
+
+   - (Optional) To enable cost tracking for an AI Application, specify values for attributes contained within **budgetSettings** attribute.  Refer to the table below and set appropriate values.
+
+     Attribute Name | Type | Required | Description
+     -------------- | ---- | -------- | -----------
+     useBudget | Boolean | Yes | A boolean value to either enable or disable cost tracking for an AI Application
+     budgetName | String | Yes | Name of the budget class used for computing API call costs (~ cost tracking).  This budget class should be defined in the *budgetConfig* server attribute.
 
    After making the changes, save the `./api-router-config.json` file.
 
@@ -422,46 +474,80 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    You will see the API Gateway server start up message in the terminal window as shown in the snippet below.
 
    ```bash
-   > openai-api-router@2.4.0 start
+   > openai-api-router@2.5.0 start
    > node ./src/server.js
 
-   05-Aug-2025 17:35:20 [info] [server.js] Starting initialization of AI Application Gateway ...
-   05-Aug-2025 17:35:20 [info] [server.js] Azure Application Monitor OpenTelemetry configured.
-   05-Aug-2025 17:35:21 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
-   05-Aug-2025 17:35:21 [info] [server.js] Completions will be cached
-   05-Aug-2025 17:35:21 [info] [server.js] Prompts will be persisted
-   05-Aug-2025 17:35:21 [info] [server.js] Conversational state will be managed
-   05-Aug-2025 17:35:21 [info] [validate-json-config.js] validateAiServerSchema():
+   12-Sep-2025 18:18:36 [info] [server.js] Starting initialization of AI Application Gateway ...
+   12-Sep-2025 18:18:36 [info] [server.js] Azure Application Monitor OpenTelemetry configured.
+   12-Sep-2025 18:18:37 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
+   12-Sep-2025 18:18:37 [info] [server.js] Completions will be cached
+   12-Sep-2025 18:18:37 [info] [server.js] Prompts will be persisted
+   12-Sep-2025 18:18:37 [info] [server.js] Conversational state will be managed
+   12-Sep-2025 18:18:37 [info] [validate-json-config.js] validateAiServerSchema():
    Result:
    {
    "schema_compliant": true,
    "errors": "None"
    }
-   05-Aug-2025 17:35:21 [info] [server.js] Listing AI Application backend (Azure AI Service) endpoints:
-   Application ID: ai-reason-o1-2024-12-17; Type: azure_oai; useCache=true; useMemory=true
-   Priority: 0   Uri: https://gbb-ea-aoai-swedencentral-shared-reasoning.openai.azure.com/openai/deployments/o1/chat/completions?api-version=2024-12-01-preview
-   Application ID: ai-reason-o3-mini-2025-01-31; Type: azure_oai; useCache=true; useMemory=true
-   Priority: 0   Uri: https://gbb-ea-aoai-swedencentral-shared-reasoning.openai.azure.com/openai/deployments/o3-mini/chat/completions?api-version=2024-12-01-preview
-   Application ID: ai-chatbot-gpt4o; Type: azure_oai; useCache=true; useMemory=true
-   Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01
-   Application ID: vectorizedata; Type: azure_oai; useCache=false; useMemory=false
-   Priority: 0   Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15
-   Application ID: Deepseek-R1-chatbot; Type: azure_aimodel_inf; useCache=true; useMemory=true
-   Priority: 0   Uri: https://DeepSeek-R1-021025.eastus2.models.ai.azure.com/chat/completions
-   05-Aug-2025 17:35:21 [info] [server.js] Cache entry invalidate run schedule (Cron) - */2 * * * *
-   05-Aug-2025 17:35:21 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */4 * * * *
-   05-Aug-2025 17:35:21 [info] [bootstrap-auth.js] initAuth(): Protected endpoint: [/api/v1/dev/apirouter]
-   {"name":"AzureAD: Bearer Strategy","hostname":"ubuntu-lts22-jump-box","pid":13964,"level":30,"msg":"In BearerStrategy constructor: strategy created","time":"2025-03-21T17:35:21.313Z","v":0}
-   05-Aug-2025 17:35:21 [info] [bootstrap-auth.js] initAuth(): Initialized passport for authenticating users/apps using Azure Entra ID (OP)
-   05-Aug-2025 17:35:21 [info] [server.js] Server(): Azure AI Application Gateway started successfully.
+   12-Sep-2025 18:18:37 [info] [server.js] Listing AI Applications:
+
+   Application ID: ai-chatbot-phi-4
+   Type: azure_aimodel_inf
+   Config:
+      useCache=true
+      useMemory=true
+      personalization=false
+      budgeting=false
+   Endpoint Router Type: Priority
+   Endpoints:
+      Priority: 0 Uri: https://Phi-4-011625.eastus2.models.ai.azure.com/v1/chat/completions?api-version=2024-06-01
+
+   Application ID: vectorizedata
+   Type: azure_oai
+   Config:
+      useCache=false
+      useMemory=false
+      personalization=false
+      budgeting=false
+   Endpoint Router Type: Priority
+   Endpoints:
+      Priority: 0 Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15
+
+   Application ID: AIF-Proj-Model-gpt-4.1
+   Type: azure_oai
+   Config:
+      useCache=true
+      useMemory=true
+      personalization=false
+      budgeting=true
+   Endpoint Router Type: Priority
+   Endpoints:
+      Priority: 0 Uri: https://aif-project-westus3-072-resource.cognitiveservices.azure.com/openai/deployments/gpt-4.1-mini/chat/completions?api-version=2025-01-01-preview
+
+   Application ID: ai-chatbot-v2.3.8-gpt4o-mini
+   Type: azure_oai
+   Config:
+      useCache=true
+      useMemory=true
+      personalization=true
+      budgeting=false
+   Endpoint Router Type: Priority
+   Endpoints:
+      Priority: 0 Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01
+      Priority: 1 Uri: https://oai-gr-dev-wus3.openai.azure.com/openai/deployments/gpt-4o-wus3/chat/completions?api-version=2025-01-01-preview
+   12-Sep-2025 18:18:37 [info] [server.js] Cache entry invalidate run schedule (Cron) - */2 * * * *
+   12-Sep-2025 18:18:37 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */4 * * * *
+   12-Sep-2025 18:18:37 [warn] [server.js] AI Application Gateway endpoints are not secured by Microsoft Entra ID!
+   12-Sep-2025 18:18:37 [info] [server.js] Server(): Azure AI Application Gateway started successfully.
    -----
    Details:
    Server Name: Ai-App-Gateway-Local
    Server Type: single-domain
-   Version: 2.4.0
+   Version: 2.5.0
    Config. Provider Type: File
    Endpoint URI: http://localhost:8080/api/v1/dev/apirouter
-   Start Date: 8/05/2025, 5:35:21 PM
+   Status: Running
+   Start Date: 9/12/2025, 6:18:37 PM
    -----
    ```
 
