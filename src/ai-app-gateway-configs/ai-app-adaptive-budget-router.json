@@ -1,0 +1,98 @@
+{
+  "appId": "Adaptive-Budget-Aware-App",
+  "description": "An AI App which uses Adaptive Budget Aware endpoint routing algorithm to route requests to backend models.",
+  "appType": "azure_oai",
+  "searchAiApp": "",
+  "cacheSettings": {
+    "useCache": true,
+    "searchType": "CosineSimilarity",
+    "searchDistance": 0.92,
+    "searchContent": {
+      "term": "messages",
+      "includeRoles": "user"
+    },
+    "entryExpiry": "10 minutes"
+  },
+  "memorySettings": {
+    "useMemory": true,
+    "msgCount": 5,
+    "entryExpiry": "30 minutes",
+    "affinity": true
+  },
+  "budgetSettings": {
+    "useBudget": true,
+    "budgetName": "AzureAIFoundry-Direct-Models"
+  },
+  "endpointRouterType": "AdaptiveBudgetAware",
+  "adaptiveRouterSettings": {
+    "strategy": "Adaptive",
+    "windowType": "Monthly"
+  },
+  "endpoints": [
+    {
+      "id": "gpt-4.1-mini-wus3-global-std",
+      "uri": "https://aif-project-westus3-072-resource.cognitiveservices.azure.com/openai/deployments/gpt-4.1-mini/chat/completions?api-version=2025-01-01-preview",
+      "apikey": "eyJ0FxAiOiJKV1",
+      "weight": 4,
+      "budget": {
+        "modelName": "gpt-4.1-mini-global",
+        "defaultEndpoint": true,
+        "costBudgets": {
+          "hourly": 3,
+          "daily": 6,
+          "weekly": 8,
+          "monthly": 12
+        }
+      },
+      "qualityTier": "A"
+    },
+    {
+      "id": "gpt-4o-mini",
+      "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+      "apikey": "9eca9ec12e1e",
+      "weight": 3,
+      "budget": {
+        "modelName": "gpt-4o-mini-0718-std",
+        "costBudgets": {
+          "hourly": 3,
+          "daily": 5,
+          "weekly": 6,
+          "monthly": 10
+        }
+      },
+      "qualityTier": "A"
+    },
+    {
+      "id": "dev-gpt-4o",
+      "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt-4o/chat/completions?api-version=2025-01-01-preview",
+      "apikey": "9eca9ec12e1e",
+      "weight": 2,
+      "budget": {
+        "modelName": "gpt-4o-0806-global-std",
+        "costBudgets": {
+          "hourly": 2,
+          "daily": 5,
+          "weekly": 6,
+          "monthly": 10
+        }
+      },
+      "qualityTier": "B"
+    },
+    {
+      "id": "gpt-5-chat-eus2-global-std",
+      "uri": "https://ganes-mbjvew83-eastus2.cognitiveservices.azure.com/openai/deployments/gpt-5-chat-GS/chat/completions?api-version=2025-01-01-preview",
+      "apikey": "omJ0eKYiOiJKV1",
+      "weight": 1,
+      "budget": {
+        "modelName": "gpt-5-chat-global",
+        "costBudgets": {
+          "hourly": 1,
+          "daily": 2,
+          "weekly": 4,
+          "monthly": 6
+        }
+      },
+      "qualityTier": "C"
+    }
+  ]
+}

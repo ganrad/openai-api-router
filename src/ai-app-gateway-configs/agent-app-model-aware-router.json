@@ -1,0 +1,56 @@
+{
+  "appId": "Model-Aware-Agent",
+  "description": "An AI agentic application which uses 2 Azure AI Foundry Agents - 1) A Bing search agent to answer queries of current topics such as weather, sports & news & 2) An AI Agent that uses gpt-4.1-mini model for generating responses on all topics.",
+  "appType": "azure_ai_agent",
+  "searchAiApp": "",
+  "cacheSettings": {
+    "useCache": false,
+    "searchType": "CosineSimilarity",
+    "searchDistance": 0.9,
+    "searchContent": {
+      "term": "messages",
+      "includeRoles": "user"
+    },
+    "entryExpiry": "10 minutes"
+  },
+  "memorySettings": {
+    "useMemory": true,
+    "msgCount": 5,
+    "entryExpiry": "30 minutes"
+  },
+  "budgetSettings": {
+    "useBudget": true,
+    "budgetName": "AzureAIFoundry-Direct-Models"
+  },
+  "endpointRouterType": "ModelAware",
+  "endpoints": [
+    {
+      "task": [
+        "AI Assistant",
+        "Trained by OpenAI"
+      ],
+      "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/api/projects/aif-project-westus3-072225",
+      "apikey": "eyJLqXAiOiJKV1",
+      "id": "asst_V3N6KyevoNbElGOyB5cchp6G",
+      "budget": {
+        "modelName": "gpt-4.1-mini-global"
+      }
+    },
+    {
+      "task": [
+        "Weather",
+        "News",
+        "Sports",
+        "Reservations",
+        "Airlines",
+        "Hotels"
+      ],
+      "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/api/projects/aif-project-westus3-072225",
+      "apikey": "eyJ0eMiiOsTKV1",
+      "id": "asst_eeyrZ0Q9p9W2nIlxtwEyjqcn",
+      "budget": {
+        "modelName": "gpt-4.1-mini-global"
+      }
+    }
+  ]
+}
