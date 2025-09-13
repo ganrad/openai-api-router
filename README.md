@@ -5,7 +5,7 @@
 ### Release Info
 Release | Date | Production Ready | Notes
 ------- | ---- | -------------------- | -----
-**v2.5.0** | 09/14/2025 | Yes | This latest release includes new features, enhancements and several bug fixes. This release also includes preview features which have not been fully tested.
+**v2.5.0** | 09/12/2025 | Yes | This latest release includes new features, enhancements and several bug fixes. This release also includes preview features which have not been fully tested.
 **v2.3.9** | 08/09/2025 | Yes | This is the last stable release & has gone thru end to end regression tests.  However, this release may lack some critical features introduced in later releases.
 
 ### Release Notes
