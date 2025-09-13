@@ -1,6 +1,29 @@
 # CHANGELOG
 
-## [v2.4.0](https://github.com/ganrad/openai-api-router/compare/v2.3.9...v2.4.0)
+## [v2.5.0](https://github.com/ganrad/openai-api-router/compare/v2.4.0-beta...v2.5.0) - 09/12/2025
+### Functionality changes
+**Azure AI Application Gateway (Server)**
+* **New Features:**
+
+  - **Cost Tracking:** A new cost tracking capability has been introduced, enabling AI Applications to capture total API call costs based on token usage. This feature is seamlessly integrated with the metrics collection sub-system, allowing users to view not only API metrics such as success/failure rates, cached calls, token counts, and request volumes but also detailed cost metrics. All data is collected at the configured gateway interval and retained according to the defined metrics history buckets.
+  - **New Router Types:** Three advanced router types have been added — TimeAware, BudgetAware, and AdaptiveBudgetAware, to optimize routing for Azure AI Foundry APIs. Notably, the AdaptiveBudgetAware router supports multiple strategies, ranging from simple priority-based routing to dynamic, quality-tier driven decisions based on endpoint performance and cost efficiency.
+
+* **Enhancements:**
+
+  - **Router Configuration:** The AI Application Gateway automatically validates all required configuration settings for the selected router type. If any prerequisites are missing or invalid, it gracefully defaults to the *Priority* based Router, ensuring uninterrupted request routing.
+  - **Unified API Interface:** Multiple improvements have been made to harden the AI Application Gateway’s unified API interface. These enhancements ensure that API calls to AI Agents hosted on Azure AI Foundry are handled reliably, with graceful error handling and consistent response delivery critical for maintaining robust conversational AI experiences.
+  - **Metrics Collection:** Added support for metrics collection feature for Azure AI Foundry Agents.
+
+* **Bug Fixes:**
+
+  - Multiple minor bug fixes were applied.
+
+---
+
+### Documentation changes
+* Updated the documentation to reflect changes introduced in this release.
+
+## [v2.4.0-beta](https://github.com/ganrad/openai-api-router/compare/v2.3.9...v2.4.0-beta)
 ### Functionality changes
 **Azure AI Application Gateway (Server)**
 
