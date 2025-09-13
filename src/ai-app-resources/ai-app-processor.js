@@ -8,6 +8,7 @@
  *
  * Notes:
  * ID03102025: ganrad: v2.3.0: (Enhancement) Added http method to 'operations' API
+ * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
 */
 
 const path = require('path');
@@ -24,7 +25,7 @@ const {
   AppResourceActions, 
   ResourceDBActions, 
   ConfigProviderType } = require("../utilities/app-gtwy-constants.js");
-const { validateAiAppSchema, sdAiAppSchema, mdAiAppSchema } = require("../schemas/validate-json-config.js");
+const { validateAiAppSchema, sdAiAppSchema, sdAiAppBudgetSchema, mdAiAppSchema } = require("../schemas/validate-json-config.js"); // ID08252025.n
 const { reinitAppConnection } = require("../routes/apirouter.js");
 const { reconfigAppMetrics } = require("../routes/md-apirouter.js");
 
@@ -61,7 +62,7 @@ class AiAppProcessor {
     return(respMessage);
   }
 
-  #getResourceOperations(req) {  // => /cp/AiApplication/operations
+  #getResourceOperations(req) {  // GET => /cp/AiApplication/operations
     let serverDef = req.srvconf;
     const serverName = serverDef.serverId;
     const serverType = serverDef.serverType;
@@ -116,7 +117,7 @@ class AiAppProcessor {
     return(respMessage);
   }
 
-  async #getAiAppDetails(req) { // => /cp/AiApplication/{application-name}/get
+  async #getAiAppDetails(req) { // GET => /cp/AiApplication/{application-name}/get
     const appId = req.params.res_id;
     const serverDef = req.srvconf;
 
@@ -176,7 +177,7 @@ class AiAppProcessor {
     return(respMessage);
   }
 
-  async #deployAiApp(req) { // (Insert / Update) => /cp/AiApplication/{application-name}/deploy
+  async #deployAiApp(req) { // POST => (Insert / Update) => /cp/AiApplication/{application-name}/deploy
     let serverDef = req.srvconf;
     const serverName = serverDef.serverId;
     const serverType = serverDef.serverType;
@@ -256,11 +257,16 @@ class AiAppProcessor {
     if ( providerType === ConfigProviderType.SqlDB ) {
       let aiSrvsDao = new PersistDao(persistdb, TblNames.AiAppServers);
       let values;
-      if ( noOfApps > 0 ) // Update
+      if ( noOfApps > 0 ) { // Update
         values = [
           serverName,
-          { applications: serverDef.applications }
+          // { applications: serverDef.applications } ID08252025.o
+          { // ID08252025.n
+            budgetConfig: serverDef.budgetConfig, // Can be null!
+            applications: serverDef.applications
+          }
         ];
+      }
       else { // Insert
         serverDef.aiGatewayUri = (serverType === ServerTypes.MultiDomain) ? DefaultAiGatewayUri : "NA";
 
@@ -312,7 +318,7 @@ class AiAppProcessor {
     return(respMessage);
   }
 
-  async #deleteAiApp(req) { // => /cp/AiApplication/{application-name}/delete
+  async #deleteAiApp(req) { // DELETE => /cp/AiApplication/{application-name}/delete
     let serverDef = req.srvconf;
     const appId = req.params.res_id;
     const serverName = serverDef.serverId;
@@ -374,7 +380,11 @@ class AiAppProcessor {
       if ( noOfApps > 0 ) // Update
         values = [
           serverName,
-          { applications: serverDef.applications }
+          // { applications: serverDef.applications } ID08252025.o
+          { // ID08252025.n
+            budgetConfig: serverDef.budgetConfig, // Can be null!
+            applications: serverDef.applications
+          }
         ];
       else // Delete
         values = [

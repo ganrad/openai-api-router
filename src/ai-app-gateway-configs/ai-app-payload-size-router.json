@@ -1,0 +1,41 @@
+{
+  "appId": "ai-chatbot-v2.4.0-gpt4o-mini-payload",
+  "description": "An AI Application which uses Payload Switch endpoint routing algorithm introduced in RAPID v2.4.0.",
+  "appType": "azure_oai",
+  "searchAiApp": "",
+  "cacheSettings": {
+    "useCache": false
+  },
+  "memorySettings": {
+    "useMemory": false
+  },
+  "personalizationSettings": {
+    "userMemory": false
+  },
+  "budgetSettings": {
+    "useBudget": true,
+    "budgetName": "AzureAIFoundry-Direct-Models"
+  },
+  "endpointRouterType": "PayloadSwitch",
+  "endpoints": [
+    {
+      "id": "gpt-4.1-mini-global-std",
+      "rpm": 10,
+      "payloadThreshold": "5Kb",
+      "uri": "https://oai-gr-dev-wus3.openai.azure.com/openai/deployments/gpt-4o-wus3/chat/completions?api-version=2025-01-01-preview",
+      "apikey": "65d72ca615c4",
+      "budget": {
+        "modelName": "gpt-4o-1120-std"
+      }
+    },
+    {
+      "id": "gpt-4o-mini-eastus",
+      "payloadThreshold": "10kb",
+      "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+      "apikey": "9eca9ec12e1e",
+      "budget": {
+        "modelName": "gpt-4o-mini-0718-std"
+      }
+    }
+  ]
+}

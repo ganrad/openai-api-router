@@ -12,6 +12,8 @@
  * ID04302025: ganrad: v2.3.2: (Enhancement) Each endpoint can (optional) have a unique id ~ assistant id
  * ID05122025: ganrad: v2.3.6: (Enhancement) Introduced endpoint health policy feature for AOAI and AI Model Inf. API calls. 
  * ID07102025: ganrad: v2.4.0: (Enhancement) Added support for AI Foundry Agent Service.
+ * ID08212025: ganrad: v2.4.0: (Enhancement) Updated code to support metrics collection for AI Foundry Agent Service.
+ * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
 */
 
 const AzOaiEpMetrics = require("./az-oai-ep-metrics.js"); // Open AI Metrics
@@ -31,9 +33,11 @@ class EndpointMetricsFactory {
   }
 
   // getMetricsObject(appType, uri) { ID05282024.o
-  getMetricsObject(appType, uri, ...epConfig) { // ID05282024.n
+  // getMetricsObject(appType, uri, ...epConfig) { // ID05282024.n, ID08212025.o
+  getMetricsObject(appType, targetUri, ...epConfig) { // ID08212025.n
     let metricsObj = null;
 
+    const uri = (appType === AzAiServices.AzAiAgent) ? targetUri + "/" + epConfig[1] : targetUri; // ID08212025.n
     switch (appType) {
       case AzAiServices.OAI:
       case AzAiServices.AzAiModelInfApi: // ID11052024.n
@@ -45,7 +49,8 @@ class EndpointMetricsFactory {
           process.env.API_GATEWAY_METRICS_CHISTORY,
           epConfig[0], // (RPM) ID05282024.n
           epConfig[1], // (ID) ID04302025.n
-          epConfig[2]); // (Health Policy) ID05122025.n
+          epConfig[2], // (Health Policy) ID05122025.n
+          epConfig[3]); // Model pricing info. ID08252025.n
         break;
       case AzAiServices.AiSearch:
         metricsObj = new AzAiSearchEpMetrics(

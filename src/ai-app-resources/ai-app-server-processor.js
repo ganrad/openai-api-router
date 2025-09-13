@@ -8,6 +8,7 @@
  *
  * Notes:
  * ID03102025: ganrad: v2.3.0: (Enhancement) Added http method to 'operations' API
+ * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
 */
 
 const fs = require("fs");
@@ -27,7 +28,8 @@ const {
   ConfigProviderType } = require("../utilities/app-gtwy-constants.js");
 const { 
   validateAiServerSchema,
-  sdAiAppSchema, 
+  sdAiAppSchema,
+  sdAiAppBudgetSchema, // ID08252025.n 
   singleDomainAgentSchema,
   mdAiAppSchema, 
   multiDomainAgentSchema } = require("../schemas/validate-json-config.js");
@@ -64,7 +66,7 @@ class AiAppServerProcessor {
     return(respMessage);
   }
 
-  #getResourceOperations(req) { // => /cp/AiAppServer/operations
+  #getResourceOperations(req) { // GET => /cp/AiAppServer/operations
     let serverDef = req.srvconf;
     const serverName = serverDef.serverId;
     const serverType = serverDef.serverType;
@@ -110,15 +112,17 @@ class AiAppServerProcessor {
         date: new Date().toLocaleString()
       }
     };
-    if ( serverType === ServerTypes.SingleDomain )
+    if ( serverType === ServerTypes.SingleDomain ) {
       respMessage.data.resourceSchema.properties.applications.items = sdAiAppSchema;
+      respMessage.data.resourceSchema.properties.budgetConfig.items = sdAiAppBudgetSchema; // ID08252025.n
+    }
     else
       respMessage.data.resourceSchema.properties.applications.items = mdAiAppSchema; 
 
     return(respMessage);
   }
 
-  async #getAppServerDetails(req) { // => /cp/AiAppServer/get
+  async #getAppServerDetails(req) { // GET => /cp/AiAppServer/get
     let serverDef = req.srvconf; // In-Memory server context
 
     if ( req.method !== HttpMethods.GET )
@@ -163,9 +167,9 @@ class AiAppServerProcessor {
     return(respMessage);
   }
 
-  async #deployAiApps(req) { // => /cp/AiAppServer/deploy
+  async #deployAiApps(req) { // POST => /cp/AiAppServer/deploy
     // Deploy a bunch of Apps. 
-    // CAUTION: This operation will replace all the Ai Apps currently deployed on the server &
+    // CAUTION: This operation will replace all the Ai Apps & budget configs currently deployed on the server &
     // load the new Ai Apps into the in-memory context!!
     let serverDef = req.srvconf; // In-Memory server context
     const serverId = req.body.serverId; // Server ID / Name to be updated
@@ -238,14 +242,22 @@ class AiAppServerProcessor {
         values = [
           srvName,
           gatewayUri,
-          { applications: req.body.applications }
+          // { applications: req.body.applications } ID08252025.o
+          { // ID08252025.n
+            budgetConfig: req.body.budgetConfig, // Can be null!
+            applications: req.body.applications
+          }
         ];
       else // Insert
         values = [
           srvName,
           srvType,
           gatewayUri, // Optional and only required for MD Ai Server
-          { applications: req.body.applications },
+          // { applications: req.body.applications } ID08252025.o
+          { // ID08252025.n
+            budgetConfig: req.body.budgetConfig,
+            applications: req.body.applications
+          },
           req.user // created by
         ];
     
@@ -258,11 +270,15 @@ class AiAppServerProcessor {
     let respMessage;
     if ( fileSaved || (dbresp?.record_id > 0) ) {
       // Replace the AI Apps in in-memory context
-      serverDef.applications = [];  // empty the in-memory context
+      serverDef.applications = [];  // empty the in-memory application context
+      serverDef.budgetConfig = null; // empty the in-memory budget config; ID08252025.n
       const noOfApps = req.body.applications.length; // No Ai Apps to be deployed
     
       for ( const app of req.body.applications )  // Populate the in-memory server context with updated Ai Apps
         serverDef.applications.push(app);
+
+      if ( req.body.budgetConfig ) // ID08252025.n
+        serverDef.budgetConfig = req.body.budgetConfig;
 
       respMessage = {
         http_code: 200, // No content (Record created / updated)
@@ -271,6 +287,7 @@ class AiAppServerProcessor {
           endpointUri: req.originalUrl,
           serverId: srvName,
           serverType: srvType,
+          budgetConfigCount: (req.body.budgetConfig) ? req.body.budgetConfig.length : 0, // ID08252025.n
           aiAppCount: noOfApps,
           status: (aiApps > 0) ? ResourceDBActions.Updated : ResourceDBActions.Created,
           date: new Date().toLocaleString()

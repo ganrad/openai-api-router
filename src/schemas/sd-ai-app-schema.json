@@ -1,8 +1,8 @@
 {
     "$id": "https://github.com/ganrad/rapid/schemas/sd-ai-app-schema.json",
-    "$comment": "ID03242025: ganrad: v2.4.0: Added new enum to AI App Type and 'id' attribute to endpoints array. ID04302025: ganrad: v2.3.5: Added new 'affinity' attribute to memorySettings. ID05092025: ganrad: v2.3.6: Added endpoint 'healthPolicy' attributes. ID05142025: ganrad: v2.3.8: Added attributes to support personalization feature. ID08052025: ganrad: v2.4.0: Added new routers - PayloadSwitch, HeaderSwitch",
+    "$comment": "ID03242025: ganrad: v2.4.0: Added new enum to AI App Type and 'id' attribute to endpoints array. ID04302025: ganrad: v2.3.5: Added new 'affinity' attribute to memorySettings. ID05092025: ganrad: v2.3.6: Added endpoint 'healthPolicy' attributes. ID05142025: ganrad: v2.3.8: Added attributes to support personalization feature. ID08052025: ganrad: v2.4.0: Added new routers - PayloadSwitch, HeaderSwitch, ModelAware * TokenAware",
     "title": "SingleDomainAiApp",
-	"description": "A single domain AI Application",
+    "description": "A single domain AI Application",
     "type": "object",
     "properties": {
         "appId": {
@@ -17,7 +17,15 @@
         "appType": {
             "description": "Type of AI Application",
             "type": "string",
-            "enum": ["azure_language", "azure_translator", "azure_content_safety", "azure_search", "azure_oai", "azure_aimodel_inf", "azure_ai_agent"]
+            "enum": [
+                "azure_language",
+                "azure_translator",
+                "azure_content_safety",
+                "azure_search",
+                "azure_oai",
+                "azure_aimodel_inf",
+                "azure_ai_agent"
+            ]
         },
         "searchAiApp": {
             "description": "Name of the AI Search Application",
@@ -34,7 +42,10 @@
                 "searchType": {
                     "description": "Type of algorithm used to match vector entities",
                     "type": "string",
-                    "enum": ["CosineSimilarity", "EuclideanDistance"]
+                    "enum": [
+                        "CosineSimilarity",
+                        "EuclideanDistance"
+                    ]
                 },
                 "searchDistance": {
                     "description": "Search algorithm match rate - 1.0 to 100.0%",
@@ -47,14 +58,19 @@
                         "term": {
                             "description": "Search terms - prompt or messages",
                             "type": "string",
-                            "enum": ["prompt", "messages"]
+                            "enum": [
+                                "prompt",
+                                "messages"
+                            ]
                         },
                         "includeRoles": {
                             "description": "Role values to extract and include in search",
                             "type": "string"
                         }
                     },
-                    "required": ["term"],
+                    "required": [
+                        "term"
+                    ],
                     "additionalProperties": false
                 },
                 "entryExpiry": {
@@ -62,7 +78,9 @@
                     "type": "string"
                 }
             },
-            "required": ["useCache"],
+            "required": [
+                "useCache"
+            ],
             "additionalProperties": false
         },
         "memorySettings": {
@@ -87,7 +105,9 @@
                     "type": "boolean"
                 }
             },
-            "required": ["useMemory"],
+            "required": [
+                "useMemory"
+            ],
             "additionalProperties": false
         },
         "personalizationSettings": {
@@ -109,7 +129,11 @@
                 "extractRoleValues": {
                     "description": "Message role values to be used for extracting user facts",
                     "type": "string",
-                    "enum": ["UserAssistant", "User", "Assistant"]
+                    "enum": [
+                        "UserAssistant",
+                        "User",
+                        "Assistant"
+                    ]
                 },
                 "extractionPrompt": {
                     "description": "Prompt used to extract personal attributes",
@@ -120,13 +144,76 @@
                     "type": "string"
                 }
             },
-            "required": ["userMemory"],
+            "required": [
+                "userMemory"
+            ],
+            "additionalProperties": false
+        },
+        "budgetSettings": {
+            "description": "Budget settings for an AI Application",
+            "type": "object",
+            "properties": {
+                "useBudget": {
+                    "description": "Enable cost tracking for this AI Application?",
+                    "type": "boolean"
+                },
+                "budgetName": {
+                    "description": "Name/ID of the budget",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "useBudget"
+            ],
             "additionalProperties": false
         },
         "endpointRouterType": {
             "description": "Type of backend endpoint router",
             "type": "string",
-            "enum": ["Priority", "LeastActiveConnections", "LeastRecentlyUsed", "RandomWeighted", "LatencyWeighted", "PayloadSwitch", "HeaderSwitch", "ModelAware"]
+            "enum": [
+                "Priority",
+                "LeastActiveConnections",
+                "LeastRecentlyUsed",
+                "WeightedRandom",
+                "LatencyWeighted",
+                "PayloadSwitch",
+                "HeaderSwitch",
+                "ModelAware",
+                "TokenAware",
+                "TimeAware",
+                "BudgetAware",
+                "AdaptiveBudgetAware"
+            ],
+            "minLength": 1
+        },
+        "adaptiveRouterSettings": {
+            "description": "Router settings when 'Adaptive' endpoint router type is used",
+            "type": "object",
+            "properties": {
+                "strategy": {
+                    "description": "Routing strategy",
+                    "type": "string",
+                    "enum": [
+                        "Priority",
+                        "WeightedRandom",
+                        "RoundRobin",
+                        "LeastSpent",
+                        "Adaptive"
+                    ],
+                    "minLength": 1
+                },
+                "windowType": {
+                    "description": "Window type to use when making budget based routing decisions",
+                    "type": "string",
+                    "enum": [
+                        "Hourly",
+                        "Daily",
+                        "Weekly",
+                        "Monthly"
+                    ],
+                    "minLength": 1
+                }
+            }
         },
         "endpoints": {
             "description": "Endpoint settings for an AI Application",
@@ -141,15 +228,33 @@
                     },
                     "uri": {
                         "description": "AI Service endpoint URI",
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                     },
                     "apikey": {
                         "description": "AI Service API Key",
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                     },
                     "id": {
                         "description": "Endpoint / Assistant ID",
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "model": {
+                        "description": "Model ID",
+                        "type": "string",
+                        "enum": [
+                            "gpt-3.5",
+                            "gpt-4",
+                            "gpt-4o",
+                            "gpt-4.1",
+                            "gpt-5",
+                            "o1",
+                            "o3",
+                            "o4"
+                        ],
+                        "minLength": 1
                     },
                     "weight": {
                         "description": "Weight assigned to this endpoint. Used when weighted routing of endpoints is configured for this AI App.",
@@ -158,12 +263,111 @@
                         "maximum": 100
                     },
                     "payloadThreshold": {
-                        "description": "Request payload size threshold. Used when payload size based routing of endpoints is configured for this AI App.",
-                        "type": "string"
+                        "description": "Request payload size (bytes/tokens) threshold. Used when payload size based routing of endpoints is configured for this AI App.",
+                        "type": "string",
+                        "minLength": 1
                     },
-                    "task" : {
-                        "description": "A specific task which the model pointed to by this endpoint specializes in such as summarization, adv. reasoning, low-cost etc. Used when model aware routing is configured for this AI App.",
-                        "type": "string"
+                    "task": {
+                        "description": "A JSON array listing specific task-related terms such as summarization, advanced reasoning, or cost-efficiency, that indicate the model's specialization as defined by the endpoint. Used when model aware routing is configured for an AI App.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "minItems": 1,
+                        "uniqueItems": true
+                    },
+                    "days": {
+                        "description": "A JSON array listing the week days in numbers (Sunday = 0 & Saturday = 6).  Backend calls will be routed to this endpoint only during the listed days.",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "enum": [
+                                0,
+                                1,
+                                2,
+                                3,
+                                4,
+                                5,
+                                6
+                            ]
+                        },
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "uniqueItems": true
+                    },
+                    "startHour": {
+                        "description": "Backend calls will be routed to this endpoint when the current hour is greater than or equal to this value.",
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 24
+                    },
+                    "endHour": {
+                        "description": "Backend calls will be routed to this endpoint until the current hour is less than this value.",
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 24
+                    },
+                    "budget": {
+                        "description": "The budget used for tracking LLM API costs and optionally routing requests",
+                        "type": "object",
+                        "properties": {
+                            "defaultEndpoint": {
+                                "description": "Default model endpoint for spillover traffic when all endpoints have crossed the cost threshold",
+                                "type": "boolean"
+                            },
+                            "modelName": {
+                                "description": "Unique Name/ID of the model",
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "costBudgets": {
+                                "description": "The threshold amount specified in dollars",
+                                "type": "object",
+                                "properties": {
+                                    "hourly": {
+                                        "description": "Hourly cost budget",
+                                        "type": "number",
+                                        "exclusiveMinimum": 0
+                                    },
+                                    "daily": {
+                                        "description": "Daily cost budget",
+                                        "type": "number",
+                                        "exclusiveMinimum": 0
+                                    },
+                                    "weekly": {
+                                        "description": "Weekly cost budget",
+                                        "type": "number",
+                                        "exclusiveMinimum": 0
+                                    },
+                                    "monthly": {
+                                        "description": "Monthly cost budget",
+                                        "type": "number",
+                                        "exclusiveMinimum": 0
+                                    }
+                                },
+                                "required": [
+                                    "hourly",
+                                    "daily",
+                                    "weekly",
+                                    "monthly"
+                                ],
+                                "additionalProperties": false
+                            }
+                        },
+                        "required": [
+                            "modelName"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "qualityTier": {
+                        "description": "Quality tier (A, B or C) is required when 'Adaptive' endpoing routing alg. and 'Adaptive' strategy is used",
+                        "type": "string",
+                        "enum": [
+                            "A",
+                            "B",
+                            "C"
+                        ],
+                        "minLength": 1
                     },
                     "healthPolicy": {
                         "description": "Describes the health policy to apply when endpoint response time exceeds a set threshold",
@@ -185,16 +389,28 @@
                                 "exclusiveMinimum": 4
                             }
                         },
-                        "required": ["latencyThresholdSeconds", "retryAfterMinutes"],
+                        "required": [
+                            "latencyThresholdSeconds",
+                            "retryAfterMinutes"
+                        ],
                         "additionalProperties": false
                     }
                 },
-                "required": ["uri", "apikey"],
+                "required": [
+                    "uri",
+                    "apikey"
+                ],
                 "additionalProperties": false
             },
             "minItems": 1
         }
     },
-    "required": ["appId", "appType", "cacheSettings", "memorySettings", "endpoints"],
+    "required": [
+        "appId",
+        "appType",
+        "cacheSettings",
+        "memorySettings",
+        "endpoints"
+    ],
     "additionalProperties": false
 }

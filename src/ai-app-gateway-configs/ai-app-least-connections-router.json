@@ -1,0 +1,38 @@
+{
+  "appId": "ai-chatbot-v2.3.9-gpt4o-mini-lru",
+  "description": "An AI Application which uses Least Active Connections (LAC) endpoint routing algorithm introduced in RAPID v2.3.9.",
+  "appType": "azure_oai",
+  "searchAiApp": "",
+  "cacheSettings": {
+    "useCache": false
+  },
+  "memorySettings": {
+    "useMemory": false
+  },
+  "personalizationSettings": {
+    "userMemory": false
+  },
+  "budgetSettings": {
+    "useBudget": true,
+    "budgetName": "AzureAIFoundry-Direct-Models"
+  },
+  "endpointRouterType": "LeastActiveConnections",
+  "endpoints": [
+    {
+      "id": "gpt-4o-open-ai",
+      "uri": "https://oai-gr-dev-wus3.openai.azure.com/openai/deployments/gpt-4o-wus3/chat/completions?api-version=2025-01-01-preview",
+      "apikey": "65d72ca615c4",
+      "budget": {
+        "modelName": "gpt-4o-1120-std"
+      }
+    },
+    {
+      "id": "gpt-4o-mini-eastus",
+      "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+      "apikey": "9eca9ec12e1e",
+      "budget": {
+        "modelName": "gpt-4o-mini-0718-std"
+      }
+    }
+  ]
+}

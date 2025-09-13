@@ -17,6 +17,10 @@
  * server instance actually created a record in the respective DB table.
  * ID01292025: ganrad: v2.2.0: (Bugfix) Gracefully skip caching when embedding application and endpoints are not configured.
  * ID03052025: ganrad: v2.3.0: (Bugfix) Use MID auth for Azure AI Service(s) when it is enabled & configured for the runtime.
+ * ID09032025: ganrad: v2.5.0: (Code refactoring) Optimized query to retrieve vectorized prompt.
+ * ID09122025: ganrad: v2.5.0: (Enhancement) When querying the cache, search for a similar prompt in server instance(s) whose names start with the
+ * server id and AI application id.
+ *   
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -39,7 +43,8 @@ function constructQuery(strings, operator, srchDistance) {
 const queryStmts = [
   // "SELECT completion, 1 - (embedding <=> $1) as similarity FROM apigtwycache WHERE 1 - (embedding <=> $1) > $2 ORDER BY embedding <=> $1 LIMIT $3", ID04112024.o
   // Cosine similarity search
-  "SELECT completion, 1 - (embedding <=> $1) as similarity FROM apigtwycache WHERE (aiappname = $4) AND (1 - (embedding <=> $1) > $2) ORDER BY embedding <=> $1 LIMIT $3", // ID04112024.n
+  // "SELECT completion, 1 - (embedding <=> $1) as similarity FROM apigtwycache WHERE (aiappname = $4) AND (1 - (embedding <=> $1) > $2) ORDER BY embedding <=> $1 LIMIT $3", // ID04112024.n, ID09032025.o
+  "SELECT completion, 1 - (embedding <=> $1) as similarity FROM apigtwycache WHERE (srv_name LIKE $5 || '%') AND (aiappname = $4) AND 1 - (embedding <=> $1) >= $2 ORDER BY similarity DESC LIMIT $3", // ID09032025.n, ID09122025.n
   // "SELECT completion, embedding <-> $1 as similarity FROM apigtwycache WHERE embedding <-> $1 < $2 ORDER BY embedding <-> $1 LIMIT $3", ID04112024.o
   // Euclidean or L2 search
   "SELECT completion, embedding <-> $1 as similarity FROM apigtwycache WHERE (aiappname = $4) AND (embedding <-> $1 < $2) ORDER BY embedding <-> $1 LIMIT $3", // ID04112024.n
@@ -129,7 +134,8 @@ class CacheDao {
               pgvector.toSql(apiResp.embedding),
               this.srchDistance,
               1,
-              appId // ID04112024.n
+              appId, // ID04112024.n
+              req.targeturis.serverId // ID09122025.n
             ]
           );
 

@@ -47,7 +47,12 @@
  * ID06162025: ganrad: v2.3.9: (Enhancement) Introduced endpoint routing types - Priority (default), LRU, LAC, Random weighted and Latency weighted.
  * ID07242025: ganrad: v2.4.0: (Enhancement + Refactored code) Introduced resource handlers for AI Gateway resources. Added support for retrieving
  * sessions (threads) managed by Azure AI Foundry Agent Service.
- * ID07252025: ganrad: v2.4.0: (Refactored code) Moved all router endpoint literals to the constants module ~ app-gtwy-constants.js.
+ * ID07252025: ganrad: v2.4.0: (Refactored code) Moved all AI App Gateway router endpoint literals to the constants module ~ app-gtwy-constants.js.
+ * ID08212025: ganrad: v2.4.0: (Enhancement) Updated code to support metrics collection for AI Foundry Service Agents.
+ * ID08222025: ganrad: v2.4.0: (Refactored code) Updated endpoint traffic router factory implementation.
+ * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
+ * ID08292025: ganrad: v2.5.0: Introduced BudgetAwareRouter implementation.
+ * ID09022025: ganrad: v2.5.0: Introduced AdaptiveBudgetAwareRouter implementation.
 */
 
 const path = require('path');
@@ -59,7 +64,7 @@ const AppConnections = require("../utilities/app-connection.js");
 const AppCacheMetrics = require("../utilities/cache-metrics.js"); // ID02202024.n
 const { AzAiServices, CustomRequestHeaders, AppResourceTypes, GatewayRouterEndpoints } = require("../utilities/app-gtwy-constants.js"); // ID07242025.n, ID07252025.n
 const AiProcessorFactory = require("../processors/ai-processor-factory.js"); // ID04222024.n
-const EndpointRouterFactory = require("../utilities/ep-router-factory.js"); // ID06162025.n
+const { TrafficRouterFactory } = require("../utilities/endpoint-routers.js"); // ID08222025.n
 const ResourceHandlerFactory = require("../handlers/res-handler-factory.js"); // ID07242025.n
 const logger = require("../utilities/logger.js"); // ID04272024.n
 const router = express.Router();
@@ -92,9 +97,9 @@ let appRouters = new Map();
 // Description: Get Ai App Gateway Instance info. 
 // Endpoint: /apirouter/instanceinfo
 router.get(GatewayRouterEndpoints.InstanceInfoEndpoint, (req, res) => { // ID07252025.n
-  const response = 
+  const response =
     new ResourceHandlerFactory().getDataHandler(AppResourceTypes.AiAppServer).
-      handleRequest(req); 
+      handleRequest(req);
 
   res.status(response.http_code).json(response.data);
 });
@@ -104,8 +109,8 @@ router.get(GatewayRouterEndpoints.InstanceInfoEndpoint, (req, res) => { // ID072
 // Endpoint: /apirouter/metrics[/app_id]
 // Path Parameters:
 //   app_id: (Optional) AI Application ID
-router.get([GatewayRouterEndpoints.MetricsEndpoint,GatewayRouterEndpoints.MetricsEndpoint + "/:app_id"], (req, res) => { // ID04172025.n, ID07252025.n
-  const response = 
+router.get([GatewayRouterEndpoints.MetricsEndpoint, GatewayRouterEndpoints.MetricsEndpoint + "/:app_id"], (req, res) => { // ID04172025.n, ID07252025.n
+  const response =
     new ResourceHandlerFactory().getDataHandler(AppResourceTypes.AiAppGatewayMetrics).
       handleRequest(req, appConnections, cacheMetrics, [instanceCalls, instanceFailedCalls, cachedCalls]);  // ID07242025.n
 
@@ -156,19 +161,6 @@ function getAiSearchAppApikey(ctx, appName) {
 }
 // ID06042024.sn
 
-function getAiApplication(appName, ctx) { // ID01292025.n
-  let application = null;
-  
-  for ( const app of ctx.applications ) {
-    if ( app.appId === appName ) {
-      application = app;
-      break;
-    }
-  };
-  
-  return(application);
-}
-
 // Method: POST
 // Description: Intelligent API router / Load Balancer
 // Endpoint: /apirouter/lb
@@ -179,14 +171,14 @@ function getAiApplication(appName, ctx) { // ID01292025.n
 router.post([GatewayRouterEndpoints.InferenceEndpoint + "/:app_id", GatewayRouterEndpoints.InferenceEndpoint + "/openai/deployments/:app_id/*", GatewayRouterEndpoints.InferenceEndpoint + "/:app_id/*"], async (req, res) => { // ID04102024.n, ID07252025.n
   const eps = req.targeturis; // AI application configuration
   const cdb = req.cacheconfig; // Global cache configuration
-  const appTypes = [ AzAiServices.OAI, AzAiServices.AzAiModelInfApi, AzAiServices.AzAiAgent ]; // ID11052024.n; ID03242025.n
+  const appTypes = [AzAiServices.OAI, AzAiServices.AzAiModelInfApi, AzAiServices.AzAiAgent]; // ID11052024.n; ID03242025.n
 
   let err_obj = null;
   let appId = req.params.app_id; // The AI Application ID
-  let application = (eps.applications) ? getAiApplication(appId, eps) : null;
+  let application = (eps.applications) ? eps.applications.find(app => app.appId === appId) : null;
 
   // Check if AI Application loaded in app context
-  if ( !application ) {
+  if (!application) {
     err_obj = {
       http_code: 404, // Resource not found!
       data: {
@@ -226,16 +218,30 @@ router.post([GatewayRouterEndpoints.InferenceEndpoint + "/:app_id", GatewayRoute
   };
 
   // Check embedding app and load the endpoint info. (if not already loaded!)
-  if ( cdb.cacheResults && (! appConnections.getAllConnections().has(cdb.embeddApp)) ) {
-    const embeddApp = getAiApplication(cdb.embeddApp, eps);
-    if ( embeddApp ) {
+  if (cdb.cacheResults && (!appConnections.getAllConnections().has(cdb.embeddApp))) {
+    const embeddApp = (eps.applications) ? eps.applications.find(app => app.appId === cdb.embeddApp) : null;
+    if (embeddApp) {
+
+      // ID08252025.sn
+      let budgetConfig = null;
+      if ( embeddApp.budgetSettings?.useBudget && eps.budgetConfig )
+        budgetConfig = eps.budgetConfig.find(budget => budget.budgetName === embeddApp.budgetSettings.budgetName);
+      // ID08252025.en
+
       logger.log({ level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName, embeddApp.appId, embeddApp.description, embeddApp.appType] });
       let epinfo = new Map();
       let epmetrics = null;
       for (const element of embeddApp.endpoints) {
+
+        // ID08252025.sn
+        let modelInfo = null;
+        if ( budgetConfig && element.budget?.modelName )
+          modelInfo = budgetConfig.models.find(model => model.modelName === element.budget.modelName);
+        // ID08252025.en
+
         // epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm); ID04302025.o
         // epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm, element.id); // ID04302025.n
-        epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm, element.id, element.healthPolicy); // ID04302025.n, ID05122025.n
+        epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm, element.id, element.healthPolicy, modelInfo); // ID04302025.n, ID05122025.n, ID08252025.n
 
         epinfo.set(element.uri, epmetrics);
       };
@@ -243,19 +249,45 @@ router.post([GatewayRouterEndpoints.InferenceEndpoint + "/:app_id", GatewayRoute
     };
   };
 
+  let appModelCostCatalog = null; // ID08292025.n
   // For each AI App, initialize app connection/endpoint info. & associated cache metrics the FIRST time it is accessed (Lazy loading)
   if (!appConnections.getAllConnections().has(appId)) {
+
+    // ID08252025.sn
+    let budgetConfig = null;
+    if ( application.budgetSettings?.useBudget )
+      budgetConfig = eps.budgetConfig.find(budget => budget.budgetName === application.budgetSettings.budgetName);
+    // ID08252025.en
+
     logger.log({ level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName, appId, application.description, application.appType] });
     let epinfo = new Map();
     let epmetrics = null;
     for (const element of application.endpoints) {
-      // epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm); ID04302025.o
-      epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm, element.id, element.healthPolicy); // ID04302025.n, ID05122025.n
 
-      epinfo.set(element.uri, epmetrics);
+      // ID08252025.sn
+      let modelInfo = null;
+      if ( budgetConfig && element.budget?.modelName ) {
+        modelInfo = budgetConfig.models.find(model => model.modelName === element.budget.modelName);
+        if ( element.budget.costBudgets ) { // ID08292025.n
+          if ( !appModelCostCatalog )
+            appModelCostCatalog = []; // Init cost catalog array
+          
+          appModelCostCatalog.push(modelInfo);
+        };
+
+      };
+      // ID08252025.en
+
+      // epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm); ID04302025.o
+      epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm, element.id, element.healthPolicy, modelInfo); // ID04302025.n, ID05122025.n, ID08252025.n
+
+      if (application.appType === AzAiServices.AzAiAgent) // ID08212025.n
+        epinfo.set(element.uri + "/" + element.id, epmetrics);
+      else
+        epinfo.set(element.uri, epmetrics);
     };
     appConnections.addConnection(application.appId, epinfo);
-    if ( cdb.cacheResults && (application.appId !== cdb.embeddApp) && (appTypes.includes(application.appType)) )
+    if (cdb.cacheResults && (application.appId !== cdb.embeddApp) && (appTypes.includes(application.appType)))
       cacheMetrics.addAiApplication(application.appId);
   };
 
@@ -265,11 +297,11 @@ router.post([GatewayRouterEndpoints.InferenceEndpoint + "/:app_id", GatewayRoute
   let memoryConfig = null;
   let userMemConfig = null; // ID05142025.n
   let routerInstance = null; // ID06162025.n
-  if ( appTypes.includes(application.appType) ) {
+  if (appTypes.includes(application.appType)) {
     if (req.body.data_sources && (req.body.data_sources[0].parameters.authentication.type === "api_key"))
       if (application.searchAiApp === req.body.data_sources[0].parameters.authentication.key)
         req.body.data_sources[0].parameters.authentication.key = getAiSearchAppApikey(eps, application.searchAiApp);
-    
+
     appConfig = {
       appId: application.appId,
       appType: application.appType,
@@ -290,7 +322,7 @@ router.post([GatewayRouterEndpoints.InferenceEndpoint + "/:app_id", GatewayRoute
     /**
      * ID05142025.sn - Check if long term memory obj. has to be populated.
      */
-    if ( application.personalizationSettings?.userMemory )
+    if (application.personalizationSettings?.userMemory)
       userMemConfig = {
         genFollowupMsgs: application.personalizationSettings.generateFollowupMsgs,
         aiAppName: application.personalizationSettings.userFactsAppName,
@@ -303,11 +335,16 @@ router.post([GatewayRouterEndpoints.InferenceEndpoint + "/:app_id", GatewayRoute
     /**
      * ID06162025.sn - Populate the endpoint router instance
      */
-    if ( ! appRouters.has(appId) ) {
+    if (!appRouters.has(appId)) {
       routerInstance = application.endpointRouterType ?
-        new EndpointRouterFactory().getEndpointRouter(application.appId, application.endpointRouterType, application.endpoints) : null;
+        TrafficRouterFactory.create(
+          application.appId,
+          application.endpointRouterType,
+          application.endpoints,
+          application.adaptiveRouterSettings, // ID09022025.n
+          appModelCostCatalog) : null; // ID08222025.n, ID08292025.n
 
-      if ( routerInstance )
+      if (routerInstance)
         appRouters.set(appId, routerInstance);  // A single router instance per AI App!
     }
     else
@@ -404,7 +441,7 @@ router.post([GatewayRouterEndpoints.InferenceEndpoint + "/:app_id", GatewayRoute
     res.set("Access-Control-Expose-Headers", res_hdrs);
   }; ID06212024.eo */
 
-  logger.log({ level: "info", message: "[%s] apirouter(): Request ID=[%s] completed.\n  App. ID: %s\n  Backend URI Index: %d\n  HTTP Status: %d", splat: [scriptName, req.id, appId, response.uri_idx, response.http_code] });
+  logger.log({ level: "info", message: "[%s] apirouter(): Request ID=[%s] completed.\n  App. ID: %s\n  Backend URI Index: %d\n  HTTP Status: %d", splat: [scriptName, req.id, appId, response.uri_idx ?? -1, response.http_code] });
 
   // ID06052024.sn, ID06212024.sn
   if (req.body.stream && // All headers have been sent; close/end the connection
@@ -434,7 +471,7 @@ module.exports = { // ID01292025.n
     instanceCalls = 0;
     cachedCalls = 0;
     instanceFailedCalls = 0;
-  
+
     appConnections = new AppConnections(); // reset the application connections cache;
     cacheMetrics = new AppCacheMetrics(); // reset the application cache metrics
     appRouters = new Map(); // ID06162025.n; reset the endpoint router instances for all Ai Apps
@@ -442,8 +479,10 @@ module.exports = { // ID01292025.n
     logger.log({ level: "info", message: "[%s] apirouter.reconfigEndpoints(): Application connections and metrics cache have been successfully reset", splat: [scriptName] });
   },
   reinitAppConnection: function (appId) { // ID01292025.n
-    if ( appConnections.hasConnection(appId) )
+    if (appConnections.hasConnection(appId)) {
       appConnections.removeConnection(appId);
+      appRouters.delete(appId); // ID06162025.n
+    };
   }
 }
 

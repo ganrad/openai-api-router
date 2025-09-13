@@ -56,6 +56,8 @@
  * ID07242025: ganrad: v2.4.0: (Refactored code) Moved instance info endpoint into the corresponding router implementation.
  * ID07252025: ganrad: v2.4.0: (Refactored code) Moved all server literals to the constants module ~ app-gtwy-constants.js.
  * ID07312025: ganrad: v2.4.0: (Refactored code) Globally unique ID's are generated using a single function defined in module ~ app-gtwy-constants.js.
+ * ID08212025: ganrad: v2.4.0: (Enhancement) Updated code to support AI Foundry Service Agents.
+ * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
 */
 
 // ID04272024.sn
@@ -76,6 +78,7 @@ const {
   AppServerStatus, 
   ConfigProviderType,
   DefaultJsonParserCharLimit,
+  EndpointRouterTypes,
   GatewayRouterEndpoints} = require("./utilities/app-gtwy-constants"); // ID02202025.n, ID07252025.n
 
 // Server version v2.3.9 ~ ID06162025.n
@@ -269,14 +272,16 @@ async function populateServerContext(initialize) { // ID01312025.n
     };
 
     context.applications = ctx.applications;
+    if ( ctx.budgetConfig ) // ID08252025.n
+      context.budgetConfig = ctx.budgetConfig;
 
-    if ( context.serverType == ServerTypes.MultiDomain )
+    if ( context.serverType === ServerTypes.MultiDomain )
       context.aiGatewayUri = ctx.aiGatewayUri;
   }
   else { // Default to SQL DB store when 1) Env var is empty or not set 2) Config file does not exist
     let aiServersDao = new PersistDao(persistdb, TblNames.AiAppServers);
     let values = [ context.serverId ];
-    const srvData = await aiServersDao.queryTable("Loading Context", 1, values); // Retrieve the AI app server data
+    const srvData = await aiServersDao.queryTable("(Init-0) Loading Context", 1, values); // Retrieve the AI app server data
     if ( srvData.rCount === 1 ) {
       if ( srvData.data[0].srv_type !== context.serverType ) {  // Unlikely this will occur!
         wlogger.log({ level: "error", message: "[%s] Server type [%s] does not match type specified in DB record [%s]!. Aborting server initialization ...", splat: [scriptName, context.serverType, srvData.data[0].srv_type] });
@@ -296,10 +301,13 @@ async function populateServerContext(initialize) { // ID01312025.n
           };
       };
 
-      if ( srvData.data[0].app_conf )
+      if ( srvData.data[0].app_conf ) {
         context.applications = srvData.data[0].app_conf.applications;
+        if ( srvData.data[0].app_conf.budgetConfig ) // ID08252025.n
+          context.budgetConfig = srvData.data[0].app_conf.budgetConfig;
+      };
 
-      if ( context.serverType == ServerTypes.MultiDomain )
+      if ( context.serverType === ServerTypes.MultiDomain )
         context.aiGatewayUri = srvData.data[0].def_gateway_uri;
     }
     else {
@@ -386,19 +394,23 @@ async function readAiAppGatewayConfig() { // ID01292025.n
 
     if (context.serverType === ServerTypes.SingleDomain) { // ID09042024.n
       // console.log("Server(): AI Application backend (Azure OpenAI Service) endpoints:");
-      wlogger.log({ level: "info", message: "[%s] Listing AI Application backend (Azure AI Service) endpoints:", splat: [scriptName] });
+      wlogger.log({ level: "info", message: "[%s] Listing AI Applications:", splat: [scriptName] });
       context.applications?.forEach((app) => {
         let pidx = 0;
         if ((app.appType === AzAiServices.OAI) || (app.appType === AzAiServices.AzAiModelInfApi))
-          console.log(`Application ID: ${app.appId}; Type: ${app.appType}; useCache=${app?.cacheSettings?.useCache ?? false}; useMemory=${app?.memorySettings?.useMemory ?? false}; personalization=${app?.personalizationSettings?.userMemory ?? false}`); // ID05142025.n
+          console.log(`\nApplication ID: ${app.appId}\n  Type: ${app.appType}\n  Config:\n    useCache=${app?.cacheSettings?.useCache ?? false}\n    useMemory=${app?.memorySettings?.useMemory ?? false}\n    personalization=${app?.personalizationSettings?.userMemory ?? false}\n    budgeting=${app?.budgetSettings?.useBudget ?? false}`); // ID05142025.n; ID08252025.n
         else
-          console.log(`Application ID: ${app.appId}; Type: ${app.appType}`);
+          console.log(`\nApplication ID: ${app.appId}\n  Type: ${app.appType}`);
 
         if ((cacheConfig.cacheResults) && (app.appId === cacheConfig.embeddApp))
           vectorAppFound = true;
 
+        console.log(`  Endpoint Router Type: ${app.endpointRouterType ?? EndpointRouterTypes.PriorityRouter}\n  Endpoints:`);
         app.endpoints.forEach((element) => {
-          console.log(`  Priority: ${pidx}\tUri: ${element.uri}`);
+          if ( app.appType === AzAiServices.AzAiAgent ) // ID08212025.n
+            console.log(`    Priority: ${pidx}\tUri: ${element.uri}/${element.id}`);
+          else
+            console.log(`    Priority: ${pidx}\tUri: ${element.uri}`);
           pidx++;
         });
       });

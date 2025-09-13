@@ -30,6 +30,7 @@
  * ID07102025: ganrad: v2.4.0-v1.3.1: (Bugfix, Enhancement) 1) Catch and render auth exception messages 2) Made updates to render AI Foundry Agent 
  * Service citation url's properly.
  * ID08052025: ganrad: v2.4.0-v1.3.1: (Enhancement) Model name can now be specified by the user (in UI) and passed to the AI App Gateway.
+ * ID08282025: ganrad: v2.4.5-v1.3.1: (Bugfix) Az Direct Models such as Llama, Grok do not require a 'system' message.
 */
 // Adjust the system prompt as needed
 const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // Default prompt
@@ -1258,10 +1259,11 @@ async function sendMessage() {
         const msgTypeElem = document.getElementById('msgtypedropdown');
         const msgType = msgTypeElem.options[msgTypeElem.selectedIndex].value;
       
-        if ( msgType === "developer") // Developer message; required by reasoning models
+        if ( msgType === "developer" ) // Developer message; required by reasoning models
           promptObject.messages.push({ role: "developer", content: sysPrompt });
-        else
+        else if ( msgType === "system" ) // System message; ID08282025.n
           promptObject.messages.push({ role: "system", content: sysPrompt });
+        // if msgType === "none" then do not send system message 
         // ID02272025.en
       };
       

@@ -8,20 +8,14 @@
  * Version (Introduced): v2.3.9
  *
  * Notes:
- * ID08052025: ganrad: v2.4.0: Introduced 1) Payload size based & 2) HTTP header value based & 3) Model aware, backend endpoint routers.
- * 
+ * ID08052025: ganrad: v2.4.0: Introduced 1) Payload size & 2) HTTP header value (Model provider based), backend endpoint routers.
+ * ID08082025: ganrad: v2.4.0: Introduced Model aware backend endpoint router.
+ * ID08212025: ganrad: v2.4.0: Introduced 1) Token aware & 2) Time aware, backend endpoint routers.
+ * ID08222025: ganrad: v2.4.0: This class is no longer used.
 */
 
 const { EndpointRouterTypes } = require("./app-gtwy-constants.js"); // AI weighted router types
-const {
-  LRURouter,
-  LeastConnectionsRouter,
-  WeightedRandomRouter,
-  WeightedDynamicRouter,
-  PayloadSizeRouter, // ID08052025.n
-  HeaderValueRouter, // ID08052025.n
-  ModelAwareRouter // ID08052025.n
-} = require("./endpoint-routers.js");
+const { CreateTrafficRouter } = require("./endpoint-routers.js"); // ID08082025.n
 
 class EndpointRouterFactory {
 
@@ -37,25 +31,16 @@ class EndpointRouterFactory {
 
     switch ( routerType ){
       case EndpointRouterTypes.LRURouter:
-        router = new LRURouter(appId, epConfig, EndpointRouterTypes.LRURouter);
-        break;
-      case EndpointRouterTypes.LeastConnectionsRouter:
-        router = new LeastConnectionsRouter(appId, epConfig, EndpointRouterTypes.LeastConnectionsRouter);
+        router = CreateTrafficRouter.create(appId, epConfig, EndpointRouterTypes.LRURouter);
         break;
       case EndpointRouterTypes.WeightedRandomRouter:
-        router = new WeightedRandomRouter(appId, epConfig, EndpointRouterTypes.WeightedRandomRouter);
+        router = CreateTrafficRouter.create(appId, epConfig, EndpointRouterTypes.WeightedRandomRouter);
         break;
-      case EndpointRouterTypes.WeightedDynamicRouter:
-        router = new WeightedDynamicRouter(appId, epConfig, EndpointRouterTypes.WeightedDynamicRouter);
+      case EndpointRouterTypes.ModelAwareRouter: // ID08082025.n
+        router = CreateTrafficRouter.create(appId, epConfig, EndpointRouterTypes.ModelAwareRouter);
         break;
-      case EndpointRouterTypes.PayloadSizeRouter: // ID08052025.n
-        router = new PayloadSizeRouter(appId, epConfig, EndpointRouterTypes.PayloadSizeRouter);
-        break;
-      case EndpointRouterTypes.HeaderValueRouter: // ID08052025.n
-        router = new HeaderValueRouter(appId, epConfig, EndpointRouterTypes.HeaderValueRouter);
-        break;
-      case EndpointRouterTypes.ModelAwareRouter: // ID08052025.n
-        router = new ModelAwareRouter(appId, epConfig, EndpointRouterTypes.ModelAwareRouter);
+      case EndpointRouterTypes.TokenAwareRouter: // ID08212025.n
+        router = CreateTrafficRouter.create(appId, epConfig, EndpointRouterTypes.TokenAwareRouter);
         break;
     };
 

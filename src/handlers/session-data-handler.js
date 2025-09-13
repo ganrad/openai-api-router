@@ -15,7 +15,8 @@ const logger = require('../utilities/logger.js');
 
 const { TblNames, PersistDao } = require("../utilities/persist-dao.js");
 const persistdb = require("../services/pp-pg.js");
-const { AzAiServices, ServerTypes, AzureApiVersions, HttpMethods } = require("../utilities/app-gtwy-constants");
+const { AzAiServices, ServerTypes, AzureApiVersions, HttpMethods, AzureResourceUris } = require("../utilities/app-gtwy-constants");
+const { getAccessToken } = require("../auth/bootstrap-auth.js");
 const AbstractDataHandler = require('./abstract-data-handler.js');
 
 class SessionDataHandler extends AbstractDataHandler {
@@ -93,14 +94,14 @@ class SessionDataHandler extends AbstractDataHandler {
     if (bearerToken && !req.authInfo) { // AI App Gateway security is not set
       if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true")
         // Use managed identity of the AI App Gateway host if this env var is set
-        bearerToken = await getAccessToken(req);
+        bearerToken = await getAccessToken(req, AzureResourceUris.AzureAiFoundryService);
 
       meta.set('Authorization', bearerToken);
       logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using Bearer token for AI Agent Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
     }
     else { // Use managed identity of the AI App Gateway host to authenticate (discard Ai app gateway auth token!)
       if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") {
-        bearerToken = await getAccessToken(req);
+        bearerToken = await getAccessToken(req, AzureResourceUris.AzureAiFoundryService);
         meta.set('Authorization', bearerToken);
         logger.log({ level: "debug", message: "[%s] %s.#getOpenAICallMetadata(): Using Bearer token for AI Agent Auth.\n  Request ID: %s", splat: [scriptName, this.constructor.name, req.id] });
       }

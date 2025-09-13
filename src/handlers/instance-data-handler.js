@@ -7,6 +7,7 @@
  * Version (Introduced): 2.4.0
  *
  * Notes:
+ * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
  *
 */
 const path = require('path');
@@ -35,11 +36,18 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
         let epIdx = 0; // Priority index
         let eps = new Map();
         aiapp.endpoints.forEach((element) => {
-          let ep = {
+          let ep = { // ID08252025.n
             id: element.id ?? epIdx, // ID06162025.n
-            weight: element.weight ?? 0, // ID06162025.n
+            weight: element.weight, // ID06162025.n
             rpm: element.rpm,
             uri: element.uri,
+            model: element.model,
+            payloadThreshold: element.payloadThreshold,
+            task: element.task,
+            days: element.days,
+            startHour: element.startHour,
+            endHour: element.endHour,
+            budget: element.budget,
             healthPolicy: element.healthPolicy // ID05122025.n
           };
           eps.set(epIdx, ep);
@@ -78,6 +86,13 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
             followupPrompt: aiapp.personalizationSettings.followupPrompt
           });
         // ID05142025.en
+        // ID08252025.sn
+        if (aiapp.budgetSettings)
+          appeps.set("budgetSettings", {
+            useBudget: aiapp.budgetSettings.useBudget,
+            budgetName: aiapp.budgetSettings.budgetName
+        });
+        // ID08252025.en
         appeps.set("endpointRouterType", aiapp.endpointRouterType ?? EndpointRouterTypes.PriorityRouter); 
         appeps.set("endpoints", Object.fromEntries(eps));
         appcons.push(Object.fromEntries(appeps));
@@ -106,6 +121,7 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
         memoryEnabled: process.env.API_GATEWAY_STATE_MGMT,
         memoryInvalidationSchedule: process.env.API_GATEWAY_MEMORY_INVAL_SCHEDULE
       },
+      budgetConfig: context.budgetConfig, // ID08252025.n
       aiApplications: appcons,
       containerInfo: {
         imageID: process.env.IMAGE_ID,

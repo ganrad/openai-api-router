@@ -122,11 +122,12 @@ function populateMetricsDialog(data) { // private
           <div class="col-md-4"><strong>Inference Tokens (K):</strong> ${endpoint.metrics.kInferenceTokens}</div>
         </div>
         <div class="row mt-1">
+          <div class="col-md-4"><strong>Total Cost:</strong> ${endpoint.metrics.totalCost}</div>
           <div class="col-md-4"><strong>Succeeded:</strong> ${endpoint.metrics.apiCalls}</div>
           <div class="col-md-4"><strong>Failed:</strong> ${endpoint.metrics.failedApiCalls}</div>
-          <div class="col-md-4"><strong>Throttled:</strong> ${endpoint.metrics.throttledApiCalls}</div>
         </div>
         <div class="row mt-1">
+          <div class="col-md-4"><strong>Throttled:</strong> ${endpoint.metrics.throttledApiCalls}</div>
           <div class="col-md-4"><strong>Filtered:</strong> ${endpoint.metrics.filteredApiCalls}</div>
         </div>
         <table class="table table-bordered mt-3">
@@ -135,13 +136,14 @@ function populateMetricsDialog(data) { // private
                     <th>Time Window</th>
                     <th>Threads</th>
                     <th>Total API Calls</th>
+                    <th>Total Cost</th>
                     <th>Succeeded</th>
                     <th>Failed</th>
                     <th>Throttled</th>
                     <th>Filtered</th>
                     <th>Total Tokens (K)</th>
                     <th>Tokens Per Minute</th>
-                    <th>Avg Response Time (ms)</th>
+                    <th>Avg Response Time (Seconds)</th>
                 </tr>
             </thead>
             <tbody>
@@ -150,13 +152,14 @@ function populateMetricsDialog(data) { // private
                   <td>${value.collectionTime}</td>
                   <td>${value.collectedMetrics.threadCount}</td>
                   <td>${value.collectedMetrics.totalApiCalls}</td>
+                  <td>${value.collectedMetrics.totalCost}</td>
                   <td>${value.collectedMetrics.apiCalls}</td>
                   <td>${value.collectedMetrics.failedApiCalls}</td>
                   <td>${value.collectedMetrics.throttledApiCalls}</td>
                   <td>${value.collectedMetrics.filteredApiCalls}</td>
                   <td>${value.collectedMetrics.throughput.kTokensPerWindow}</td>
                   <td>${value.collectedMetrics.throughput.tokensPerMinute}</td>
-                  <td>${value.collectedMetrics.latency.avgResponseTimeMsec}</td>
+                  <td>${value.collectedMetrics.latency.avgResponseTimeSec}</td>
                 </tr>
               `).join('')}
             </tbody>
