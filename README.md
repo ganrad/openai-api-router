@@ -5,7 +5,7 @@
 ### Release Info
 Release | Date | Production Ready | Notes
 ------- | ---- | -------------------- | -----
-**v2.5.0** | 09/12/2025 | Yes | This latest release includes new features, enhancements and several bug fixes. This release also includes preview features which have not been fully tested.
+**v2.6.0** | 09/18/2025 | Yes | This latest release includes new features, enhancements and several bug fixes. This release also includes preview features which have not been fully tested.
 **v2.3.9** | 08/09/2025 | Yes | This is the last stable release & has gone thru end to end regression tests.  However, this release may lack some critical features introduced in later releases.
 
 ### Release Notes
@@ -73,13 +73,14 @@ The AI Application Gateway can be used in the following scenarios.
 
 Feature/Capability | Configurable (Yes/No) | Azure AI Foundry Models | Azure AI Foundry Agent Service | Azure AI Search | Azure AI Language | Azure AI Translator | Azure AI Content Safety |
 ------------------ | --------------------- | -------------------- | --------------- | ----------------- | ----------------- | ------------------- | ----------------------- |
-**Semantic Cache** | Yes | Yes <br>- Completions API <br>- Chat Completions API | No | No | No | No | No
+**Semantic Cache** | Yes | Yes <br>- Completions API <br>- Chat Completions API | No | No | No | No | No |
 **State Management** | Yes | Yes <br>- Chat Completions API | Yes | No | No | No | No
-**Long-term Memory (Personalization)** | Yes | Yes <br>- Chat Completions API | No | No | No | No | No
-**Traffic Routing/Splitting** | Yes | Yes | Yes | Yes | Yes | Yes | Yes
-**Cost Tracking** | Yes | Yes <br>- Chat Completions API | Yes | No | No | No | No
-**Message Persistence** | Yes | Yes | Yes | No | No | No | No
-**Metrics Collection** | No | Yes | Yes | Yes | Yes | Yes | Yes
+**Long-term Memory (Personalization)** | Yes | Yes <br>- Chat Completions API | No | No | No | No | No |
+**Traffic Routing/Splitting** | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+**Cost Tracking** | Yes | Yes <br>- Chat Completions API | Yes | No | No | No | No |
+**Feedback Tracking** | Yes | Yes | Yes | No | No | No | No |
+**Message Persistence** | Yes | Yes | Yes | No | No | No | No |
+**Metrics Collection** | No | Yes | Yes | Yes | Yes | Yes | Yes |
 
 ### Reference Architecture: Single Domain AI Application Gateway
 
@@ -257,23 +258,23 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
 
      > **NOTE:** Sample AI Application configuration files using different endpoint router types can be found in directory [ai-app-gateway-configs](./src/ai-app-gateway-configs). 
    
-     The routers (types) supported by the AI Application Gateway are listed in the table below.
+     The **built-in** routers (types) currently supported by the AI Application Gateway are listed in the table below.
 
      Router Type | Description
      ----------- | -----------
-     Priority | (Default) Routes incoming API calls to the first available endpoint listed in the AI Gateway configuration.
-     LeastActiveConnections | Directs API calls to the endpoint with the fewest active connections at the time of the request.
-     LeastRecentlyUsed | Sends API calls to the endpoint that has not been used for the longest duration, promoting balanced usage.
-     WeightedRandom | Routes incoming API calls to backend endpoints based on predefined (fixed) weight assignments.
-     FeedbackWeightedRandom | This decay router is simple, lightweight, and adapts naturally to changing backend performance. By applying decay, it favors backends with consistently positive feedback while gradually “forgetting” old results, ensuring underperforming backends still get occasional traffic for re-evaluation.<br>**Good defaults:** Set the decay factor to 0.98 and base weight to 2.
-     LatencyWeighted | Dynamically adjusts routing weights based on real-time endpoint performance, ensuring each API call is directed to the endpoint with the lowest latency for optimal responsiveness. This strategy enhances efficiency by continuously monitoring and prioritizing faster endpoints.
-     PayloadSwitch | Routes incoming API requests to the appropriate endpoint by comparing the request payload size against each endpoint’s configured maximum threshold. An endpoint is selected if the payload size is below its configured threshold.
-     HeaderSwitch | Routes API requests to the endpoint whose unique ID matches the value provided in the `x-endpoint-id` HTTP request header.
-     ModelAware | Intelligently directs API calls to endpoints whose configured task attributes match specific phrases or terms found in the request message (role=system). This ensures contextually relevant routing based on semantic alignment between the request and endpoint capabilities.
-     TokenAware | Routes API calls to the most suitable endpoint by evaluating token consumption of each request. This router uses configured token threshold limits per endpoint to ensure requests are routed efficiently, optimizing resource usage and preventing overages while maintaining performance. 
-     TimeAware | Intelligently directs API calls to the most appropriate endpoint based on the current day of the week and time of day. By leveraging temporal routing logic, it ensures optimal resource utilization, performance alignment, and cost efficiency by matching traffic patterns with endpoint availability and operational preferences.
-     BudgetAware | This router applies lightweight heuristics to estimate token usage and compute the cost of each API request. It then compares the estimates against model-specific cost budgets to intelligently route requests to the most cost-effective (least expensive) endpoint. This ensures cost-effective execution aligned with configured budget constraints.
-     AdaptiveBudgetAware | This router identifies the most cost-effective endpoint by utilizing one of the following configurable strategies that fall within pre-configured budget thresholds. This ensures optimal performance while minimizing operational costs, making it a highly cost-effective solution for scalable deployments.<br>**Router Strategies:**<br>- **Priority:** Uses endpoints listing order, then first under budget<br>- **RoundRobin:** Cycles thru endpoints that are under budget<br>- **LeastSpent:** Selects an endpoint with the highest remaining budget percentage<br>- **WeightedRandom:** Selects an endpoint by weight (skips exhausted)<br>- **Adaptive:** Prefers endpoint with `qualityTier` A, B and then C but switches to a lower quality tier if the remaining allocated budget of the higher tier is < minimum threshold (Default threshold ~ 10% of budget)
+     **Priority** | (Default) Routes incoming API calls to the first available endpoint listed in the AI Gateway configuration.
+     **LeastActiveConnections** | Directs API calls to the endpoint with the fewest active connections at the time of the request.
+     **LeastRecentlyUsed** | Sends API calls to the endpoint that has not been used for the longest duration, promoting balanced usage.
+     **WeightedRandom** | Routes incoming API calls to backend endpoints based on predefined (fixed) weight assignments.
+     **FeedbackWeightedRandom** | This decay router is simple, lightweight, and adapts naturally to changing backend performance. By applying decay, it favors backends with consistently positive feedback while gradually “forgetting” old results, ensuring underperforming backends still get occasional traffic for re-evaluation.<br>**Good defaults:** Set the decay factor to 0.98 and base weight to 2.
+     **LatencyWeighted** | Dynamically adjusts routing weights based on real-time endpoint performance, ensuring each API call is directed to the endpoint with the lowest latency for optimal responsiveness. This strategy enhances efficiency by continuously monitoring and prioritizing faster endpoints.
+     **PayloadSwitch** | Routes incoming API requests to the appropriate endpoint by comparing the request payload size against each endpoint’s configured maximum threshold. An endpoint is selected if the payload size is below its configured threshold.
+     **HeaderSwitch** | Routes API requests to the endpoint whose unique ID matches the value provided in the `x-endpoint-id` HTTP request header.
+     **ModelAware** | Intelligently directs API calls to endpoints whose configured task attributes match specific phrases or terms found in the request message (role=system). This ensures contextually relevant routing based on semantic alignment between the request and endpoint capabilities.
+     **TokenAware** | Routes API calls to the most suitable endpoint by evaluating token consumption of each request. This router uses configured token threshold limits per endpoint to ensure requests are routed efficiently, optimizing resource usage and preventing overages while maintaining performance. 
+     **TimeAware** | Intelligently directs API calls to the most appropriate endpoint based on the current day of the week and time of day. By leveraging temporal routing logic, it ensures optimal resource utilization, performance alignment, and cost efficiency by matching traffic patterns with endpoint availability and operational preferences.
+     **BudgetAware** | This router applies lightweight heuristics to estimate token usage and compute the cost of each API request. It then compares the estimates against model-specific cost budgets to intelligently route requests to the most cost-effective (least expensive) endpoint. This ensures cost-effective execution aligned with configured budget constraints.
+     **AdaptiveBudgetAware** | This router identifies the most cost-effective endpoint by utilizing one of the following configurable strategies that fall within pre-configured budget thresholds. This ensures optimal performance while minimizing operational costs, making it a highly cost-effective solution for scalable deployments.<br>**Router Strategies:**<br>- **Priority:** Uses endpoints listing order, then first under budget<br>- **RoundRobin:** Cycles thru endpoints that are under budget<br>- **LeastSpent:** Selects an endpoint with the highest remaining budget percentage<br>- **WeightedRandom:** Selects an endpoint by weight (skips exhausted)<br>- **Adaptive:** Prefers endpoint with `qualityTier` A, B and then C but switches to a lower quality tier if the remaining allocated budget of the higher tier is < minimum threshold (Default threshold ~ 10% of budget)
 
    - Optionally, when *AdaptiveBudgetAware* router type is configured for an AI Application, specify additional traffic router settings using attribute *adaptiveRouterSettings*.  Refer to the table below.
 
@@ -308,27 +309,27 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      healthPolicy.latencyThresholdSeconds | Number | No | Response time threshold (in seconds) used to evaluate backend performance. Used in conjunction with attribute *healthPolicy.maxCallsBeforeUnhealthy*.
      healthPolicy.retryAfterMinutes | Number | No | Duration (in minutes) after which a previously unhealthy endpoint is re-evaluated and considered healthy again.
 
-   - (Optional) To enable caching and retrieval of OpenAI Service completions (Semantic Caching feature), specify values for attributes contained within **cacheSettings** attribute.  Refer to the table below and set appropriate values.
+   - To enable caching and retrieval of OpenAI Service completions (Semantic Caching feature), specify values for attributes contained within **cacheSettings** attribute.  Refer to the table below and set appropriate values.
 
-     Attribute Name | Type | Description
-     -------------- | ---- | -----------
-     useCache | Boolean | AI Application Gateway will cache OpenAI Service completions (output) based on this value.  If caching is desired, set it to *true*.  Default is *false*.
-     searchType | String | AI Application Gateway will search and retrieve OpenAI Service completions based on a semantic text similarity algorithm.<br>This attribute is used to specify the similarity distance function/algorithm for vector search.  Supported values are a) CosineSimilarity (= *Cosine Similarity*).  This is the default. b) EuclideanDistance (= *Level 2 or Euclidean distance*) c) InnerProduct (= *Inner Product*).
-     searchDistance | Decimal | This attribute is used to specify the search similarity threshold.  For instance, if the search type = *CosineSimilarity*, this value should be set to a value between 0 and 1.
-     searchContent.term | String | This value specifies the attribute in the request payload which should be vectorized and used for semantic search. For OpenAI completions API, this value should be *prompt*.  For chat completions API, this value should be set to *messages*.
-     searchContent.includeRoles | String | This attribute value should only be set for OpenAI models that expose chat completions API. Value can be a comma separated list.  Permissible values are *system*, *user* and *assistant*.
-     entryExpiry | String | This attribute is used to specify when cached entries (*completions*) should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
+     Attribute Name | Type | Required | Description
+     -------------- | ---- | -------- | ------------
+     useCache | Boolean | Yes | AI Application Gateway will cache OpenAI Service completions (output) based on this value.  If caching is desired, set it to *true*.  Default is *false*.
+     searchType | String | No | AI Application Gateway will search and retrieve OpenAI Service completions based on a semantic text similarity algorithm.<br>This attribute is used to specify the similarity distance function/algorithm for vector search.  Supported values are a) CosineSimilarity (= *Cosine Similarity*).  This is the default. b) EuclideanDistance (= *Level 2 or Euclidean distance*) c) InnerProduct (= *Inner Product*).
+     searchDistance | Decimal | No | This attribute is used to specify the search similarity threshold.  For instance, if the search type = *CosineSimilarity*, this value should be set to a value between 0 and 1.
+     searchContent.term | String | No | This value specifies the attribute in the request payload which should be vectorized and used for semantic search. For OpenAI completions API, this value should be *prompt*.  For chat completions API, this value should be set to *messages*.
+     searchContent.includeRoles | String | No | This attribute value should only be set for OpenAI models that expose chat completions API. Value can be a comma separated list.  Permissible values are *system*, *user* and *assistant*.
+     entryExpiry | String | No | This attribute is used to specify when cached entries (*completions*) should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
 
-   - (Optional) To enable conversational state management for user chat sessions, specify values for attributes contained within **memorySettings** attribute.  Refer to the table below and set appropriate values.
+   - To enable conversational state management for user chat sessions, specify values for attributes contained within **memorySettings** attribute.  Refer to the table below and set appropriate values.
 
-     Attribute Name | Type | Description
-     -------------- | ---- | -----------
-     useMemory | Boolean | When this value is set to *true*, AI Application Gateway will manage state for user sessions.  Default is *false*.
-     affinity | Boolean | (Optional) When set to *true*, the AI Gateway maintains session stickiness by routing all queries from the same user session to the same backend endpoint that handled the initial request.
-     msgCount | Number | This attribute is used to specify the number of messages (*user - assistant* interactions) to store and send to the LLM.
-     entryExpiry | String | This attribute is used to specify when the user sessions should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
+     Attribute Name | Type | Required | Description
+     -------------- | ---- | -------- | ------------
+     useMemory | Boolean | Yes | When this value is set to *true*, AI Application Gateway will manage state for user sessions.  Default is *false*.
+     affinity | Boolean | No | When set to *true*, the AI Gateway maintains session stickiness by routing all queries from the same user session to the same backend endpoint that handled the initial request.
+     msgCount | Number | No | This attribute is used to specify the number of messages (*user - assistant* interactions) to store and send to the LLM.
+     entryExpiry | String | No | This attribute is used to specify when the user sessions should be invalidated.  Specify, any valid PostgreSQL *Interval* data type expression. Refer to the docs [here](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
 
-   - (Optional) To enable long-term user memory (Personalization feature), specify values for attributes contained within **personalizationSettings** attribute.  Refer to the table below and set appropriate values.
+   - To enable long-term user memory (Personalization feature), specify values for attributes contained within **personalizationSettings** attribute.  Refer to the table below and set appropriate values.
 
      Attribute Name | Type | Required | Description
      -------------- | ---- | -------- | -----------
@@ -338,7 +339,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      extractionPrompt | String | No | The prompt used to guide the AI Gateway in extracting personal attributes or facts from user input/prompt.
      followupPrompt | String | No | The prompt used to help the AI Gateway generate relevant follow-up questions based on the model’s response.
 
-   - (Optional) To enable cost tracking for an AI Application, specify values for attributes contained within **budgetSettings** attribute.  Refer to the table below and set appropriate values.
+   - To enable cost tracking for an AI Application, specify values for attributes contained within **budgetSettings** attribute.  Refer to the table below and set appropriate values.
 
      Attribute Name | Type | Required | Description
      -------------- | ---- | -------- | -----------
@@ -351,7 +352,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
 
    **Azure AI Foundry Models**:
 
-   When no backend endpoint router type is specified for an AI Application, the default **Priority** based router will be used.  For priority based endpoint routing, the model/agent deployment endpoints/URI's should be listed in increasing order of priority (top down). Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  For each API Application, the Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to OpenAI API backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
+   When no backend endpoint router type is specified for an AI Application, the default **Priority** based router will be used.  For priority based endpoint routing, the model/agent deployment endpoints/URI's should be listed in increasing order of priority (top down) in the gateway configuration file. Endpoints listed at the top of the list will be assigned higher priority than those listed at the lower levels.  For each API Application, the Gateway server will traverse and load the deployment URI's starting at the top in order of priority. While routing requests to AI Foundry service backends, the gateway will strictly follow the priority order and route requests to endpoints with higher priority first before falling back to low priority endpoints. 
 
 5. Set the gateway server environment variables.
 
@@ -372,9 +373,9 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    API_GATEWAY_AUTH | Use this env variable to secure AI Application gateway endpoints using Microsoft Entra ID | No | true
    AZURE_TENANT_ID | When security is turned on for the gateway, this value is required. Specify the correct Azure **Tenant ID**. | No | None
    API_GATEWAY_CLIENT_ID | When security is turned on for the gateway, this value is required. Specify the correct **Client ID** for the AI Application Gateway as defined in Application Registrations on Azure.  | No | None
-   AZURE_AI_SERVICE_MID_AUTH | AI App Gateway can use the system managed identity of it's underlying host to authenticate against Azure OAI/Foundry API.  To enable this feature, set this env variable to "true". | No | false
+   AZURE_AI_SERVICE_MID_AUTH | AI App Gateway can use the system managed identity of it's underlying host (or service) to authenticate against Azure OAI/Foundry API.  To enable this feature, set this env variable to "true". | No | false
    API_GATEWAY_METRICS_CINTERVAL | Backend API metrics collection and aggregation interval (in minutes) | Yes | Set it to a numeric value eg., 60 (1 hour)
-   API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numeric value (<= 600)  
+   API_GATEWAY_METRICS_CHISTORY | Backend API metrics collection history count | Yes | Set it to a numeric value between 24 - 168.  Max <= 600.  
    APPLICATION_INSIGHTS_CONNECTION_STRING | Azure Monitor connection string | No | Assign the value of the Azure Application Insights resource *connection string* (from Azure Portal)
    API_GATEWAY_USE_CACHE | Global setting for enabling semantic caching feature. This setting applies to all AI Applications.| No | false
    API_GATEWAY_CACHE_INVAL_SCHEDULE | Global setting for configuring the frequency of *Cache Entry Invalidator* runs.  The schedule should be specified in *GNU Crontab* syntax. Refer to the docs [here](https://www.npmjs.com/package/node-cron). | No | "*/5 * * * *"
