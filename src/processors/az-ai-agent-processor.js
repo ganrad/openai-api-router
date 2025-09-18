@@ -26,7 +26,9 @@ const {
   AzAiAgentAnnotationTypes,
   EndpointRouterTypes,
   OpenAIChatCompletionMsgRoleTypes,
-  AzureResourceUris } = require("../utilities/app-gtwy-constants.js");
+  AzureResourceUris,
+  EndpointMiscConstants
+} = require("../utilities/app-gtwy-constants.js");
 
 const { getAccessToken } = require("../auth/bootstrap-auth.js");
 
@@ -982,7 +984,7 @@ class AzAiAgentProcessor {
         respMessage.data,
         req.body.user,
         (Date.now() - callStartTime) / 1000, // End to end call time
-        endpointId ?? "index-" + respMessage.uri_idx
+        endpointId ?? EndpointMiscConstants.IdIndexPrefix + respMessage.uri_idx
       ];
 
       await promptDao.storeEntity(

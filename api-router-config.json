@@ -121,6 +121,7 @@
       },
       "endpoints": [
         {
+          "id": "phi-3-inst-eastus2",
           "rpm": 10,
           "uri": "https://Phi-3-small-8k-instruct-11042024.eastus2.models.ai.azure.com/chat/completions?api-version=2024-04-01-preview",
           "apikey": "dxI84GEK"
@@ -148,6 +149,7 @@
       },
       "endpoints": [
         {
+          "id": "phi-3.5-MoE-inst-eastus2",
           "rpm": 10,
           "uri": "https://Phi-3-5-MoE-instruct-110424.eastus2.models.ai.azure.com/v1/chat/completions",
           "apikey": "dxI84GEK"
@@ -250,7 +252,7 @@
       "personalizationSettings": {
         "userMemory": false
       },
-      "endpointRouterType": "RandomWeighted",
+      "endpointRouterType": "WeightedRandom",
       "endpoints": [
         {
           "id": "gpt-4o-open-ai",

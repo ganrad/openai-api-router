@@ -26,7 +26,9 @@
  * ID05082025: ganrad: v3.2.5: (Enhancement) Introduced new field 'endpoint_id' in tables 'apigtwyprompts' and 'apigtwymemory'.  This field
  * will contain the backend endpoint idx or id which served a specific request.  When sessions are tracked (affinity = true) for an AI
  * Application, the value of this field will be used to redirect all calls for a given session/thread to the same backend URI.
- * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced table 'userfacts' for long term memory support ~ personalization feature.  
+ * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced table 'userfacts' for long term memory support ~ personalization feature. 
+ * ID09152025: ganrad: v2.6.0: (Enhancement) Introduced user feedback capture for models/agents deployed on Azure AI Foundry.  Added column 'feedback_count' to
+ * table 'apigtwyprompts'.
 */
 
 const path = require('path');
@@ -40,7 +42,7 @@ const pgConfig = require('./pg-config');
 const createTblStmts = [
   // "CREATE TABLE apigtwyprompts (id serial PRIMARY KEY, requestid VARCHAR(100), aiappname VARCHAR(100), prompt JSON, timestamp_ TIMESTAMPTZ default current_timestamp)" // ID04112024.o
   // "CREATE TABLE IF NOT EXISTS apigtwyprompts (id serial PRIMARY KEY, requestid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID04112024.n, ID11082024.o
-  "CREATE TABLE IF NOT EXISTS apigtwyprompts (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, model_res_hdrs JSON, exec_time_secs real, endpoint_id VARCHAR(50), timestamp_ TIMESTAMPTZ default current_timestamp)", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.n
+  "CREATE TABLE IF NOT EXISTS apigtwyprompts (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, model_res_hdrs JSON, exec_time_secs real, endpoint_id VARCHAR(50), feedback_count SMALLINT not null default 0, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.n, ID09152025.n
   "CREATE TABLE IF NOT EXISTS apigtwymemory (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), context JSON, tool_name VARCHAR(75), md_aiappname VARCHAR(100), md_srv_name VARCHAR(100), endpoint_id SMALLINT default 0, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID05062024.n, ID11112024.n, ID11122024.n, ID05082025.n
   "CREATE TABLE IF NOT EXISTS aiapptoolstrace (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), tool_trace JSON, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID10262024.n, ID11112024.n
   "CREATE TABLE IF NOT EXISTS aiappdeploy (" +
@@ -155,13 +157,16 @@ async function createTable(idx) {
 // async function updateData(entity, query, params) { // ID05062024.n, ID11122024.n
 async function updateData(reqid, entity, query, params) {
   let recordid = 0; // ID01232025.n
+  let data = null; // ID09152025.n
   let stTime = Date.now();
   try {
     const client = await pool.connect();
     const res = await client.query(query,params)
 
-    if ( res.rowCount )
+    if ( res.rowCount ) {
       recordid = res.rows[0].id; // ID01232025.n
+      data = res.rows[0]; // ID09152025.n
+    };
     // console.log(`insertData():\n  Entity: ${entity}\n  Request ID: ${params[0]}\n  Inserted recs: [${res.rowCount}]\n  Rowid: [${res.rows[0].id}]\n  Execution time: ${Date.now() - stTime}\n*****`);
     logger.log({level: "info", message: "[%s] updateData():\n  Entity: %s\n  Request ID: %s\n  Operation: %s\n  Affected recs: [%d]\n  Rowid: [%d]\n  Execution time: %d", splat: [scriptName,entity,reqid,res.command,res.rowCount,recordid,Date.now() - stTime]});
 
@@ -172,7 +177,10 @@ async function updateData(reqid, entity, query, params) {
     logger.log({level: "error", message: "[%s] updateData():\n  Entity: %s\n  Encountered exception:\n%s", splat: [scriptName,entity,err.stack]});
   };
 
-  return { record_id: recordid }; // ID01232025.n
+  return { 
+    record_id: recordid,
+    ret_cols: data // ID09152025.n 
+  }; // ID01232025.n
 }
 
 // Execute query

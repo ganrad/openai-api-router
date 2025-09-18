@@ -5,7 +5,8 @@
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 04-04-2025
  * Version (Introduced): v2.3.2:v1.3.0
- * 
+ * Notes:
+ * ID09162025: ganrad: v2.6.0-1.3.2: (Enhancements + Bugfixes) Introduced minor enhancements and made a few display related bug fixes.
  */
 
 // Reset dialog fields when the modal is hidden (dialog is closed)
@@ -74,7 +75,7 @@ function populateMetricsDialog(data) { // private
 
   if ( data.cacheMetrics ) { // If metrics object is not empty
     document.getElementById('m_cachehc').textContent = data.cacheMetrics.hitCount;
-    document.getElementById('m_cacheavgscore').textContent = data.cacheMetrics.avgScore;
+    document.getElementById('m_cacheavgscore').textContent = data.cacheMetrics.avgScore.toFixed(4); // ID09162025.n
   };
 
   const tabs = document.getElementById('m_endpointMetricsTabs');
@@ -123,10 +124,11 @@ function populateMetricsDialog(data) { // private
         </div>
         <div class="row mt-1">
           <div class="col-md-4"><strong>Total Cost:</strong> ${endpoint.metrics.totalCost}</div>
+          <div class="col-md-4"><strong>Feedback Count:</strong> ${endpoint.metrics.feedbackCount}</div>
           <div class="col-md-4"><strong>Succeeded:</strong> ${endpoint.metrics.apiCalls}</div>
-          <div class="col-md-4"><strong>Failed:</strong> ${endpoint.metrics.failedApiCalls}</div>
         </div>
         <div class="row mt-1">
+          <div class="col-md-4"><strong>Failed:</strong> ${endpoint.metrics.failedApiCalls}</div>
           <div class="col-md-4"><strong>Throttled:</strong> ${endpoint.metrics.throttledApiCalls}</div>
           <div class="col-md-4"><strong>Filtered:</strong> ${endpoint.metrics.filteredApiCalls}</div>
         </div>
@@ -137,6 +139,7 @@ function populateMetricsDialog(data) { // private
                     <th>Threads</th>
                     <th>Total API Calls</th>
                     <th>Total Cost</th>
+                    <th>Feedback Count</th>
                     <th>Succeeded</th>
                     <th>Failed</th>
                     <th>Throttled</th>
@@ -153,6 +156,7 @@ function populateMetricsDialog(data) { // private
                   <td>${value.collectedMetrics.threadCount}</td>
                   <td>${value.collectedMetrics.totalApiCalls}</td>
                   <td>${value.collectedMetrics.totalCost}</td>
+                  <td>${value.collectedMetrics.feedbackCount}</td>
                   <td>${value.collectedMetrics.apiCalls}</td>
                   <td>${value.collectedMetrics.failedApiCalls}</td>
                   <td>${value.collectedMetrics.throttledApiCalls}</td>

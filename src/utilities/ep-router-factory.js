@@ -11,7 +11,7 @@
  * ID08052025: ganrad: v2.4.0: Introduced 1) Payload size & 2) HTTP header value (Model provider based), backend endpoint routers.
  * ID08082025: ganrad: v2.4.0: Introduced Model aware backend endpoint router.
  * ID08212025: ganrad: v2.4.0: Introduced 1) Token aware & 2) Time aware, backend endpoint routers.
- * ID08222025: ganrad: v2.4.0: This class is no longer used.
+ * ID08222025: ganrad: v2.4.0: This class is deprecated and no longer used.
 */
 
 const { EndpointRouterTypes } = require("./app-gtwy-constants.js"); // AI weighted router types

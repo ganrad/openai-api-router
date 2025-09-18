@@ -182,7 +182,8 @@
                 "TokenAware",
                 "TimeAware",
                 "BudgetAware",
-                "AdaptiveBudgetAware"
+                "AdaptiveBudgetAware",
+                "FeedbackWeightedRandom"
             ],
             "minLength": 1
         },

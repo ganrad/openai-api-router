@@ -18,6 +18,7 @@
  * ID04172025: ganrad: v2.3.2-v1.3.0: (Enhancement) Implemented AI App Metrics dialog.
  * ID07102025: ganrad: v2.4.0-v1.3.1: (Bugfix, Enhancement) Server auth exception was not being caught and displayed on UI. Fixed it.
  * Made updates to render AI Foundry Agent Service response (Citation URL's).
+ * ID09162025: ganrad: v2.6.0-v1.3.2: (Enhancement) Added support for user feedback submission.
  */
 
 require('console-stamp')(console, {
@@ -26,7 +27,7 @@ require('console-stamp')(console, {
 const express = require('express');
 const fs = require('fs');
 
-const srvVersion = "1.3.1"; // ID07102025.n
+const srvVersion = "1.3.2"; // ID09162025.n
 const srvUriPrefix = "/ais-chatbot/ui/";
 const srvStartTime = new Date().toLocaleString();
 
@@ -88,19 +89,19 @@ function readConfigFile() { // ID03102025.n
   configObject = JSON.parse(content);
   // configObject.aisGtwyEndpoint = aisGtwyEndpoint; ID11132024.o
   configObject.aisGtwyAuth = aisGtwyAuth;
-  if ( aisGtwyAuth ) { // ID07302024.n
+  if (aisGtwyAuth) { // ID07302024.n
     configObject.azTenantId = process.env.AZURE_TENANT_ID;
-    if ( ! configObject.azTenantId ) { // ID11192024.n
+    if (!configObject.azTenantId) { // ID11192024.n
       console.log("Server(): Env. Variable [AZURE_TENANT_ID] not set, aborting ...");
       process.exit(1);
     };
     configObject.appClientId = process.env.FRONTEND_CLIENT_ID;
-    if ( ! configObject.appClientId ) { // ID11192024.n
+    if (!configObject.appClientId) { // ID11192024.n
       console.log("Server(): Env. Variable [FRONTEND_CLIENT_ID] not set, aborting ...");
       process.exit(1);
     };
     configObject.apiGatewayAppId = process.env.API_GATEWAY_APP_ID;
-    if ( ! configObject.apiGatewayAppId ) { // ID11192024.n
+    if (!configObject.apiGatewayAppId) { // ID11192024.n
       console.log("Server(): Env. Variable [API_GATEWAY_APP_ID] not set, aborting ...");
       process.exit(1);
     };
@@ -112,8 +113,8 @@ function readConfigFile() { // ID03102025.n
 function addAiAppToConfigFile(def) {
   let retVal = true;
   const gatewayList = configObject.ai_app_gateways;
-  for ( const gateway of gatewayList ) {
-    if ( gateway.name === def.aiGateway ) {
+  for (const gateway of gatewayList) {
+    if (gateway.name === def.aiGateway) {
       gateway.ai_apps.push(def.aiAppDef); // Append the new ai app definition to the end
       break;
     };
@@ -122,13 +123,13 @@ function addAiAppToConfigFile(def) {
     // write the Ai App Gateway config file to disk -
     fs.writeFileSync(configFile, JSON.stringify(configObject, null, 2), { encoding: 'utf8', flag: 'w' });
     console.log('addAiAppToConfigFile(): Server config file updated successfully');
-  } 
+  }
   catch (err) {
     console.error('addAiAppToConfigFile(): Encountered error while writing server config file:\n', err);
     retVal = false;
   };
 
-  return(retVal);
+  return (retVal);
 }
 // ID03102025.en
 
@@ -165,12 +166,12 @@ app.get(srvUriPrefix.concat('appconfig'), (req, res) => {
   res.json(configObject);
 });
 
-app.post(srvUriPrefix.concat("registerapp"),  (req,res) => { // ID03102025.n
+app.post(srvUriPrefix.concat("registerapp"), (req, res) => { // ID03102025.n
   let resp_obj = {
     endpointUri: req.url,
     currentDate: new Date().toLocaleString(),
   };
-  console.log(`Payload received:\n  ${JSON.stringify(req.body, null ,2 )}`);
+  console.log(`Payload received:\n  ${JSON.stringify(req.body, null, 2)}`);
 
   const status = addAiAppToConfigFile(req.body);
   resp_obj.status = status ? 200 : 500;

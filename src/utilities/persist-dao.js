@@ -32,6 +32,7 @@
  * to use the same backend uri index for all inferencing requests issued from a given thread (~ to leverage prompt caching).
  * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced table 'userfacts' for long term memory support ~ personalization feature.
  * ID08052025: ganrad: v2.4.0: (Enhancement) Added new insert statement to support AI Agent message persistence in 'apigtwyprompts' table.
+ * ID09152025: ganrad: v2.6.0: (Enhancement) Added new update statement to support capturing user feedback in 'apigtwyprompts' table.
 */
 
 // const pgvector = require('pgvector/pg');
@@ -53,7 +54,7 @@ const cacheQueryStmts = [
 
 const promptQueryStmts = [
   "SELECT * FROM apigtwyprompts ORDER BY timestamp_ DESC",
-  "SELECT * FROM apigtwyprompts WHERE requestid = $1 AND aiappname = $2", // ID11042024.n
+  "SELECT * FROM apigtwyprompts WHERE srv_name LIKE $1 || '%' AND requestid = $2 AND aiappname = $3", // ID11042024.n, ID09152025.n
   "SELECT * FROM apigtwyprompts WHERE threadid = $1 AND aiappname = $2 ORDER BY id" // ID02142025.n, ID05082025.n
 ];
 
@@ -63,7 +64,8 @@ const promptInsertStmts = [
   // "INSERT INTO apigtwyprompts (requestid, srv_name, aiappname, prompt, completion, model_res_hdrs, uname, exec_time_secs) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.o
   "INSERT INTO apigtwyprompts (requestid, srv_name, aiappname, prompt, completion, model_res_hdrs, uname, exec_time_secs, endpoint_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.n
   "UPDATE apigtwyprompts SET threadid = $4 WHERE requestid = $1 and srv_name = $2 and aiappname = $3 RETURNING id", // ID02142025.n
-  "INSERT INTO apigtwyprompts (threadid, requestid, srv_name, aiappname, prompt, completion, uname, exec_time_secs, endpoint_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id" // ID08052025.n
+  "INSERT INTO apigtwyprompts (threadid, requestid, srv_name, aiappname, prompt, completion, uname, exec_time_secs, endpoint_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id", // ID08052025.n
+  "UPDATE apigtwyprompts SET feedback_count = feedback_count + $4 WHERE srv_name LIKE $1 || '%' AND requestid = $2 AND aiappname = $3 RETURNING id, endpoint_id", // ID09152025.n
 ];
 
 const memoryQueryStmts = [ // ID05062024.n

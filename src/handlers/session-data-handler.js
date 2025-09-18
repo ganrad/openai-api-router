@@ -7,7 +7,8 @@
  * Version (Introduced): 2.4.0
  *
  * Notes:
- *
+ * ID09162025: ganrad: v2.6.0: (Bugfix) 1) Fixed 'err_obj' is 'not defined error' 2) Session data was not being retrieved for AI Foundry Inference API models
+ * 
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -226,7 +227,7 @@ class SessionDataHandler extends AbstractDataHandler {
     let err_msg;
 
     if (!(process.env.API_GATEWAY_PERSIST_PROMPTS === "true")) {
-      err_obj = {
+      err_msg = {
         error: {
           endpointUri: request.originalUrl,
           message: `Prompt persistence is not enabled for this AI App Gateway instance! Unable to process request.`,
@@ -247,7 +248,7 @@ class SessionDataHandler extends AbstractDataHandler {
     logger.log({ level: "info", message: "[%s] %s.handleRequest():\n  Req ID: %s\n  AI Application ID: %s\n  Thread ID: %s", splat: [scriptName, this.constructor.name, request.id, appId, threadId] });
 
     if (!threadId || !appId) {
-      err_obj = {
+      err_msg = {
         error: {
           endpointUri: req.originalUrl,
           message: `AI Application ID [${appId}] and Session ID [${threadId}] are required parameters! Unable to process request.`,
@@ -267,7 +268,7 @@ class SessionDataHandler extends AbstractDataHandler {
     let application = this._getAiApplication(appId, appsConfig);
 
     if (!application) {
-      err_obj = {
+      err_msg = {
         error: {
           target: request.originalUrl,
           message: `AI Application ID [${appId}] not found. Unable to process request.`,
@@ -287,13 +288,14 @@ class SessionDataHandler extends AbstractDataHandler {
       case ServerTypes.SingleDomain:
         switch (application.appType) {
           case AzAiServices.OAI:
+          case AzAiServices.AzAiModelInfApi: // ID09162025.n
             response = await this.#getSDServerModelSessionInfo(request, application);
             break;
           case AzAiServices.AzAiAgent:
             response = await this.#getSDServerAgentSessionInfo(request, application);
             break;
           default:
-            err_obj = {
+            err_msg = {
               error: {
                 target: request.originalUrl,
                 message: `AI Application type [${application.appType}] is not supported.  Unable to process request.`,
@@ -308,7 +310,7 @@ class SessionDataHandler extends AbstractDataHandler {
         };
         break;
       default:
-        err_obj = {
+        err_msg = {
           error: {
             target: request.originalUrl,
             message: `Server type [${request.targeturis.serverType}] is not supported.  Unable to process request.`,

@@ -15,14 +15,16 @@
  * to invoke an AI App (LLM).
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
  * ID08272025: ganrad: v2.5.0: (Refactoring) Added function to set request headers for AI Foundry + OAI model API calls.
+ * ID09162025: ganrad: v2.6.0: (Refactoring) Updated 'getOpenAICallMetadata()' function to set headers for AOAI + AI Foundry + OAI model API Calls.
+ * ID09172025: ganrad: v2.6.0: (Refactoring) Introduced a new method to retrieve unique URI for endpoint metrics object based on the application type. 
  *
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('./logger');
 const { getAccessToken } = require("../auth/bootstrap-auth.js"); // ID08272025.n
-const { 
-  AzAiServices, 
+const {
+  AzAiServices,
   OpenAIBaseUri,
   AzureResourceUris
 } = require("./app-gtwy-constants.js"); // ID08272025.n
@@ -32,43 +34,47 @@ const {
 async function getOpenAICallMetadata(req, element, appType) { // ID08272025.n
   const meta = new Map();
   meta.set('Content-Type', 'application/json');
-  
+
   let bearerToken = req.headers['Authorization'] || req.headers['authorization'];
-  if (appType === AzAiServices.OAI) {
-    if (bearerToken && !req.authInfo) { // Authorization header present; Use MID Auth + Ensure AI App Gateway is not configured with Entra ID
-      if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true")
-        bearerToken = await getAccessToken(req, AzureResourceUris.AzureCognitiveServices);
+  // if (appType === AzAiServices.OAI) { // ID09162025.o
+
+  if (bearerToken && !req.authInfo) { // Authorization header present; Use MID Auth + Ensure AI App Gateway is not configured with Entra ID
+    if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true")
+      bearerToken = await getAccessToken(req, AzureResourceUris.AzureCognitiveServices);
+    meta.set('Authorization', bearerToken);
+    logger.log({ level: "debug", message: "[%s] getOpenAICallMetadata(): Using bearer token (MID-IMDS) for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, req.id] });
+  }
+  else { // Use API Key Auth
+    if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") {
+      bearerToken = await getAccessToken(req, AzureResourceUris.AzureCognitiveServices);
       meta.set('Authorization', bearerToken);
       logger.log({ level: "debug", message: "[%s] getOpenAICallMetadata(): Using bearer token (MID-IMDS) for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, req.id] });
     }
-    else { // Use API Key Auth
-      if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") {
-        bearerToken = await getAccessToken(req, AzureResourceUris.AzureCognitiveServices);
-        meta.set('Authorization', bearerToken);
-        logger.log({ level: "debug", message: "[%s] getOpenAICallMetadata(): Using bearer token (MID-IMDS) for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, req.id] });
-      }
-      else {
-        const authHdrKey = element.uri.includes(OpenAIBaseUri) ? 'Authorization' : 'api-key';
-        const authHdrVal = element.uri.includes(OpenAIBaseUri) ? "Bearer " + element.apikey : element.apikey;
-        // meta.set('api-key', element.apikey);
-        meta.set(authHdrKey,authHdrVal);
-        logger.log({ level: "debug", message: "[%s] getOpenAICallMetadata(): Using API Key for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, req.id] });
-      };
+    else {
+      const authHdrKey = element.uri.includes(OpenAIBaseUri) || (appType === AzAiServices.AzAiModelInfApi) ? 'Authorization' : 'api-key'; // ID09162025.n
+      const authHdrVal = element.uri.includes(OpenAIBaseUri) || (appType === AzAiServices.AzAiModelInfApi) ? "Bearer " + element.apikey : element.apikey; // ID09162025.n
+      // meta.set('api-key', element.apikey);
+      meta.set(authHdrKey, authHdrVal);
+      logger.log({ level: "debug", message: "[%s] getOpenAICallMetadata(): Using API Key for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, req.id] });
     };
+  };
+
+  /** ID09162025.so
   }
   else { // ~ Az Ai Model Inference API models
     if (bearerToken && !req.authInfo) // Authorization header present; Use MID Auth + Ensure AI App Gateway is not configured with Entra ID
       meta.set('Authorization', bearerToken);
     else // Use API Key Auth
       meta.set('Authorization', "Bearer " + element.apikey);
-    /*
+    
     delete req.body.presence_penalty;
-    delete req.body.frequency_penalty; */
+    delete req.body.frequency_penalty; 
     meta.set('extra-parameters', 'drop'); // Drop any parameters the model doesn't understand; Don't return an error!
     logger.log({ level: "debug", message: "[%s] getOpenAICallMetadata(): Using API Key for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, req.id] });
   };
+  ID09162025.eo */
 
-  return(meta);
+  return (meta);
 }
 
 /**
@@ -82,18 +88,19 @@ async function getOpenAICallMetadata(req, element, appType) { // ID08272025.n
  * @returns 
  */
 async function callAiAppEndpoint(
-  req, 
-  epinfo, 
-  endpoints, 
+  req,
+  epinfo,
+  endpoints,
   messages,
   appType) { // ID08272025.n
-  logger.log({ level: "debug", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  App Type: %s\n  Payload:\n  %s", splat: [scriptName, req.id, appType, JSON.stringify(messages,null,2)] });
-  
+  logger.log({ level: "debug", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  App Type: %s\n  Payload:\n  %s", splat: [scriptName, req.id, appType, JSON.stringify(messages, null, 2)] });
+
   let retryAfter = 0;
 
   let data;
   for (const element of endpoints) {
-    let metricsObj = epinfo.get(element.uri);
+    // let metricsObj = epinfo.get(element.uri); ID09172025.o
+    let metricsObj = epinfo.get(retrieveUniqueURI(element.uri, appType, element.id)); // ID09172025.n
     let healthArr = metricsObj.isEndpointHealthy(req.id);
 
     if (!healthArr[0]) {
@@ -107,7 +114,7 @@ async function callAiAppEndpoint(
     let stTime = Date.now();
     let response = null;
     try {
-      let hdrs = await getOpenAICallMetadata(req,element,appType); // ID08272025.n
+      let hdrs = await getOpenAICallMetadata(req, element, appType); // ID08272025.n
 
       /** ID08272025.o
       const bearerToken = req.headers['Authorization']; 
@@ -118,13 +125,13 @@ async function callAiAppEndpoint(
       else // Use API Key Auth
         hdrs = { 'Content-Type': 'application/json', 'api-key': element.apikey };
       */
-      
+
       response = await fetch(
         element.uri, {
-          method: 'post',
-          headers: hdrs,
-          body: JSON.stringify(messages)
-        });
+        method: 'post',
+        headers: hdrs,
+        body: JSON.stringify(messages)
+      });
 
       let status = response.status;
       if (status === 200) {
@@ -160,8 +167,8 @@ async function callAiAppEndpoint(
     }
     catch (error) {
       const err_msg = { targetUri: element.uri, cause: error };
-      
-      logger.log({ level: "error", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  Encountered exception:\n%s", splat: [scriptName, req.id, JSON.stringify(err_msg, null ,2)] });
+
+      logger.log({ level: "error", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  Encountered exception:\n%s", splat: [scriptName, req.id, JSON.stringify(err_msg, null, 2)] });
     };
   }; // end of for endpoint loop
 
@@ -179,7 +186,7 @@ async function vectorizeQuery(req, epinfo, endpoints, prompt) { // ID03052025.n
 
   let data;
   for (const element of endpoints) {
-    let metricsObj = epinfo.get(element.uri);
+    let metricsObj = epinfo.get(element.uri);  // Vector model endpoints should be unique!
     let healthArr = metricsObj.isEndpointHealthy(req.id);
 
     if (!healthArr[0]) {
@@ -194,7 +201,7 @@ async function vectorizeQuery(req, epinfo, endpoints, prompt) { // ID03052025.n
     let response = null;
     try {
       // ID03052025.sn
-      let hdrs = await getOpenAICallMetadata(req,element,AzAiServices.OAI); // ID08252025.n;
+      let hdrs = await getOpenAICallMetadata(req, element, AzAiServices.OAI); // ID08252025.n;
       /** ID08272025.o
       const bearerToken = req.headers['Authorization']; 
       if ( bearerToken && !req.authInfo ) { // If Authorization header is present use MID Auth; + Ensure AI App Gateway is not configured with Entra ID!
@@ -302,10 +309,21 @@ function prepareTextToEmbedd(
   return content;
 }
 
+// ID09172025.sn
+// Parameters:
+//   baseUri: Endpoint URI
+//   appType: AI Application type
+//   suffix: Endpoint ID
+function retrieveUniqueURI(baseUri, appType, suffix) {
+  return (appType === AzAiServices.OAI) ? baseUri : baseUri + '/' + (suffix ?? '');
+}
+// ID09172025.en
+
 module.exports = {
   getOpenAICallMetadata, // ID08272025.n
   prepareTextToEmbedd,
   // callRestApi ID03052025.o
   vectorizeQuery, // ID03052025.n
-  callAiAppEndpoint // ID05142025.n
+  callAiAppEndpoint, // ID05142025.n
+  retrieveUniqueURI // ID09172025.n
 }

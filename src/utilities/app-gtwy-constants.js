@@ -38,6 +38,9 @@
  * ID08292025: ganrad: v2.5.0: Added new literal/constant for Budget aware router type & a new constant type ~ RouterBudgetTiers.
  * ID09022025: ganrad: v2.5.0: Added new literal/constant for Adaptive budget aware router type & new constant types ~ AdaptiveRouterStrategies &
  * AdaptiveRouterStrategyTiers.
+ * ID09152025: ganrad: v2.6.0: Added new constant type for user feedback ~ UserFeedback.
+ * ID09162025: ganrad: v2.6.0: Added new constant type for misc endpoint constants.
+ * ID09172025: ganrad: v2.6.0: Added new literal/constant for Feedback weighted random endpoint router.
 */
 const { randomUUID } = require('node:crypto'); // ID07312025.n
 
@@ -55,7 +58,7 @@ function generateGUID(prefix) { // ID07312025.n
 
 // ID07252025.sn
 const AiAppGateway = {
-  Version: "2.5.0",
+  Version: "2.6.0",
   ApiVersion: "/api/v1/",
   RouterContextPath: "/apirouter"
 };
@@ -119,6 +122,11 @@ const AzAiServices = {
 const EndpointMetricsConstants = {
   DEF_METRICS_C_INTERVAL: 60, // Default metrics collection interval
   DEF_METRICS_H_COUNT: 24 // Default metrics history count
+};
+
+const EndpointMiscConstants = { // ID091620205.n
+  IdIndexPrefix: "index-", // Use this prefix when 'id' is not specified for an endpoint
+  IdCached: "-cached-" // Use this 'id' value when a response is returned from the cache
 };
 
 const ContentSafetyAPIKind = {
@@ -227,7 +235,8 @@ const EndpointRouterTypes = { // ID06162025.n
   TokenAwareRouter: "TokenAware", // ID08212025.n
   TimeAwareRouter: "TimeAware", // ID08212025.n
   BudgetAwareRouter: "BudgetAware", // ID08292025.n
-  AdaptiveBudgetAwareRouter: "AdaptiveBudgetAware" // ID09022025.n
+  AdaptiveBudgetAwareRouter: "AdaptiveBudgetAware", // ID09022025.n
+  FeedbackWeightedRandomRouter: "FeedbackWeightedRandom" // ID09172025.n
 }
 
 const AdaptiveRouterStrategies = { // ID09022025.n
@@ -296,6 +305,11 @@ const OpenAIChatCompletionMsgRoleTypes = { // ID08202025.n
   Developer: "developer"
 }
 
+const UserFeedback = { // ID09152025.n
+  ThumbsUp: "up",
+  ThumbsDown: "down"
+}
+
 module.exports = {
   generateGUID, // ID07312025.n
   AiAppGateway, // ID07252025.n
@@ -312,6 +326,7 @@ module.exports = {
   AiWorkflowEngines, // ID09042024.n
   AzAiServices,
   EndpointMetricsConstants,
+  EndpointMiscConstants, // ID09162025.n
   TranslatorAPIKind,
   ContentSafetyAPIKind,
   ServerTypes, // ID09042024.n
@@ -336,5 +351,6 @@ module.exports = {
   AzureResourceUris, // ID08212025.n
   AzAiAgentRunStatus, // ID03252025.n
   AzAiAgentAnnotationTypes, // ID03282025.n
-  OpenAIChatCompletionMsgRoleTypes // ID08202025.n
+  OpenAIChatCompletionMsgRoleTypes, // ID08202025.n
+  UserFeedback // ID09152025.n
 }

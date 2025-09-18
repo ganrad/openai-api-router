@@ -1,6 +1,6 @@
 {
-  "appId": "ai-chatbot-v2.3.9-gpt4o-mini-w",
-  "description": "An AI Application which uses Weighted random endpoint routing algorithm introduced in RAPID v2.3.9.",
+  "appId": "ai-chatbot-v2.6.0-gpt4o-mini-fwr",
+  "description": "An AI Application which uses Feedback weighted random endpoint routing algorithm introduced in RAPID v2.6.0.",
   "appType": "azure_oai",
   "searchAiApp": "",
   "cacheSettings": {
@@ -16,17 +16,15 @@
     "useBudget": true,
     "budgetName": "AzureAIFoundry-Direct-Models"
   },
-  "endpointRouterType": "WeightedRandom",
+  "endpointRouterType": "FeedbackWeightedRandom",
   "endpoints": [
     {
       "id": "gpt-4o-open-ai",
-      "weight": 50,
       "uri": "https://api.openai.com/v1/chat/completions",
       "apikey": "sk-proj-8CrC"
     },
     {
       "id": "gpt-4o-mini-eastus",
-      "weight": 50,
       "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
       "apikey": "9eca9ec12e1e",
       "budget": {

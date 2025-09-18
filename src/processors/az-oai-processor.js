@@ -55,7 +55,8 @@
  * ID08272025: ganrad: v2.5.0: (Refactored code) Move the function to set AI Foundry API call request headers to 'helper-funcs.js'.
  * ID08292025: ganrad: v2.5.0: (Enhancement) Introduced BudgetAwareRouter implementation.
  * ID09022025: ganrad: v2.5.0: (Enhancement) Introduced AdaptiveBudgetAwareRouter implementation.
- * 
+ * ID09162025: ganrad: v2.6.0: (Enhancement) Introduced user feedback capture for models/agents deployed on Azure AI Foundry.
+ * ID09172025: ganrad: v2.6.0: (Bugfix) Generate unique uri's for indexing endpoint metrics object.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -75,12 +76,13 @@ const {
   CustomRequestHeaders,
   EndpointRouterTypes, // ID06162025.n
   OpenAIChatCompletionMsgRoleTypes, // ID08202025.n
+  EndpointMiscConstants // ID09162025.n
 } = require("../utilities/app-gtwy-constants.js"); // ID05062024.n; ID06162025.n
 // const { randomUUID } = require('node:crypto'); // ID05062024.n; ID07312025.o
 
 const { encode } = require('gpt-tokenizer'); // ID02212025.n
 const { getExtractionPrompt, updateSystemMessage, storeUserFacts } = require("../utilities/lt-mem-manager.js"); // ID05142025.n
-const { getOpenAICallMetadata, callAiAppEndpoint } = require("../utilities/helper-funcs.js"); // ID05142025.n
+const { getOpenAICallMetadata, callAiAppEndpoint, retrieveUniqueURI } = require("../utilities/helper-funcs.js"); // ID05142025.n, ID09172025.n
 
 class AzOaiProcessor {
 
@@ -691,6 +693,7 @@ class AzOaiProcessor {
     if (useCache && req.query.use_cache)
       useCache = req.query.use_cache === 'false' ? false : useCache;
 
+    let stTime;
     let vecEndpoints = null;
     let embeddedPrompt = null;
     let cacheDao = null;
@@ -710,7 +713,7 @@ class AzOaiProcessor {
       // if ( cacheConfig.cacheResults && useCache ) { // Is caching enabled?; ID03142025.o
       if (cacheConfig.cacheResults && useCache && ((!req.body.tools) && this.#toolsMessagesNotPresent(req.body.messages))) { // Is caching enabled?; ID03142025.n;
         for (const application of apps.applications) {
-          if (application.appId == cacheConfig.embeddApp) {
+          if (application.appId === cacheConfig.embeddApp) {
             vecEndpoints = application.endpoints;
 
             break;
@@ -731,6 +734,7 @@ class AzOaiProcessor {
           // console.log(`***** Updated request body *****\n${JSON.stringify(req.body,null,2)}\n************`);
         // ID05142025.en */
 
+        stTime = Date.now(); // ID09162025.n
         // Perform semantic search using input prompt
         cacheDao = new CacheDao(
           appConnections.getConnection(cacheConfig.embeddApp),
@@ -757,7 +761,8 @@ class AzOaiProcessor {
 
             // When response is served from the cache and state mgmt is turned on, update the thread count of the first end-point
             for (const element of config.appEndpoints) { // ID04302025.n
-              let metricsObj = epdata.get(element.uri);
+              // let metricsObj = epdata.get(element.uri); ID09172025.o
+              let metricsObj = epdata.get(retrieveUniqueURI(element.uri,config.appType,element.id)); // ID09172025.n
               metricsObj.updateUserThreads();
 
               break;
@@ -771,6 +776,31 @@ class AzOaiProcessor {
               cached: true,
               data: completion
             };
+
+          // ID09162025.sn - Insert cached response in prompts table. This record is required to collect user feedback.
+          let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
+          if (persistPrompts) { // Persist prompt and completion ?
+            promptDao = new PersistDao(persistdb, TblNames.Prompts);
+            values = [
+              req.id,
+              instanceName,
+              config.appId,
+              req.body,
+              completion,
+              {},
+              req.body.user,
+              (Date.now() - stTime) / 1000,
+              EndpointMiscConstants.IdCached // Use '-cached-' as endpoint ID since this is a cached response
+            ];
+            if ( threadId ) {
+              values.splice(5,1);
+              values.unshift(threadId);
+            };
+
+            // console.log(`**** Values dump:\n${JSON.stringify(values, null, 2)}`);
+            (threadId) ? await promptDao.storeEntity(req.id, 2, values) : await promptDao.storeEntity(req.id, 0, values);
+          };
+          // ID09162025.en
 
           if (req.body.messages && manageState && memoryConfig && memoryConfig.useMemory) { // Manage state for this AI application?
             respMessage.threadId = threadId;
@@ -891,7 +921,6 @@ class AzOaiProcessor {
     let response;
     let retryAfter = 0;
     let data;
-    let stTime;
     do { // ID06162025.n
 
       uriIdx = 0;  // Initialize the endpoint index!
@@ -924,7 +953,8 @@ class AzOaiProcessor {
 
         uriIdx++;
 
-        let metricsObj = epdata.get(element.uri);
+        // let metricsObj = epdata.get(element.uri); ID09172025.o
+        let metricsObj = epdata.get(retrieveUniqueURI(element.uri, config.appType, element.id)); // ID09172025.n
         let healthArr = metricsObj.isEndpointHealthy(req.id); // ID05082025.n
         // console.log(`******isAvailable=${healthArr[0]}; retryAfter=${healthArr[1]}`);
         if (!healthArr[0]) {
@@ -1022,7 +1052,7 @@ class AzOaiProcessor {
                 allHeaders, // ID02112025.n
                 req.body.user, // ID04112024.n
                 respTime / 1000, // ID11082024.n
-                (element.id) ? element.id : "index-" + (uriIdx - 1) // ID05082025.n
+                (element.id) ? element.id : EndpointMiscConstants.IdIndexPrefix + (uriIdx - 1) // ID05082025.n, ID09162025.n
               ];
 
               await promptDao.storeEntity(
@@ -1034,10 +1064,10 @@ class AzOaiProcessor {
             // ID03012024.en
 
             // ID06162025.sn
-            if ( routerInstance )
+            if (routerInstance)
               if (routerInstance.routerType === EndpointRouterTypes.WeightedDynamicRouter)
                 routerInstance.updateWeightsBasedOnLatency(uriIdx - 1, respTime);
-              else if ( (routerInstance.routerType === EndpointRouterTypes.BudgetAwareRouter) || (routerInstance.routerType === EndpointRouterTypes.AdaptiveBudgetAwareRouter) ) // ID08292025.n, ID09022025.n
+              else if ((routerInstance.routerType === EndpointRouterTypes.BudgetAwareRouter) || (routerInstance.routerType === EndpointRouterTypes.AdaptiveBudgetAwareRouter)) // ID08292025.n, ID09022025.n
                 routerInstance.updateActualCost(req.id, uriIdx - 1, data.usage);
             // ID06162025.en
 
@@ -1087,7 +1117,7 @@ class AzOaiProcessor {
                 allHeaders, // ID02112025.n
                 req.body.user, // ID04112024.n
                 (Date.now() - stTime) / 1000, // ID11082024.n
-                (element.id) ? element.id : "index-" + (uriIdx - 1) // ID05082025.n
+                (element.id) ? element.id : EndpointMiscConstants.IdIndexPrefix + (uriIdx - 1) // ID05082025.n, ID09162025.n
               ];
 
               await promptDao.storeEntity(
