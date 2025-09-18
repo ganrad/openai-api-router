@@ -1,6 +1,6 @@
 /**
  * Name: AzOaiEpMetrics
- * Description: This class collects OAI API endpoint metrics and stores them in a rolling 
+ * Description: This class collects Az AI Foundry model/agent API endpoint metrics and stores them in an in-memory rolling 
  * light-weight data structure (~ Queue).
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
@@ -17,7 +17,8 @@
  * ID05122025: ganrad: v2.3.6: (Enhancement) Introduced endpoint health policy feature for AOAI and AI Model Inf. API calls
  * ID07302025: ganrad: v2.4.0: (Enhancement) Updated health policy feature to mark endpoint as unhealthy when multiple (configured)
  * consecutive api calls return > 500 http status.
- * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
+ * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models/agents deployed on Azure AI Foundry.
+ * iD)9152025: ganrad: v2.6.0: (Enhancement) Introduced user feedback capture for models/agents deployed on Azure AI Foundry.
  * 
 */
 const path = require('path');
@@ -33,7 +34,7 @@ class AzOaiEpMetrics {
   // constructor(endpoint, interval, count, rpm, id) { // ID04302025.n
   constructor(endpoint, interval, count, rpm, id, healthPolicy, modelInfo) { // ID04302025.n, ID05122025.n, ID08252025.n
     if ( id ) // ID04302025.n
-      this.id = id; // Unique ID assistant to this endpoint
+      this.id = id; // Unique ID assigned to this endpoint
 
     this.modelInfo = modelInfo; // ID08252025.n
 
@@ -53,6 +54,7 @@ class AzOaiEpMetrics {
     this.totalCalls = 0; // Total calls handled by this target endpoint
     this.totalTokens = 0; // Total tokens processed by this target endpoint
     this.totalCost = 0.0; // Total cost of tokens ID08252025.n
+    this.feedback = 0; // No of thumbs up/down collected for this endpoint ~ model ID09152025.n
 
     this.throttledCalls = 0; // Throttled (429) API calls - ID05042024.n
     this.filteredCalls = 0; // Api calls to which content filters (400) were applied - ID05042024.n
@@ -143,7 +145,7 @@ class AzOaiEpMetrics {
     this.#updateMetrics();
 
     const callCost = this.#calculateTokenCost(usage);
-    logger.log({ level: "debug", message: "[%s] %s.updateApiCallsAndTokens():\n  Request ID: %s\n  Usage: %s\n  Token Cost: %d", splat: [scriptName, this.constructor.name, reqid, JSON.stringify(usage, null, 2), callCost] });
+    logger.log({ level: "debug", message: "[%s] %s.updateApiCallsAndTokens():\n  Request ID: %s\n  Usage:\n%s\n  Token Cost: %d", splat: [scriptName, this.constructor.name, reqid, JSON.stringify(usage, null, 2), callCost] });
     const tokens = usage?.total_tokens;
 
     if ( threadStarted ) // ID04302025.n
@@ -202,6 +204,13 @@ class AzOaiEpMetrics {
     // ID07302025.en
   }
 
+  updateFeedbackCount(counter) { // ID09152025.n
+    this.#updateMetrics();
+
+    // Update the feedback counter.  Can be +1 or -1.
+    this.feedback += counter;
+  }
+
   #updateMetrics() {
     let ctime = Date.now();
 
@@ -221,6 +230,7 @@ class AzOaiEpMetrics {
           filteredApiCalls: this.filteredCalls, // ID05042024.n
           totalApiCalls: this.totalCalls,
           totalCost: this.totalCost.toFixed(6), // ID08252025.n
+          feedbackCount: this.feedback, // ID09152025.n
           throughput: {
             kTokensPerWindow: kTokens,
             // requestsPerWindow: (kTokens * 6), ID08252025.o, Not tracked
@@ -230,7 +240,7 @@ class AzOaiEpMetrics {
             requestsPerMinute: (this.apiCalls / this.cInterval) // ID05042024.n
           },
           latency: {
-            avgResponseTimeSec: latency / 1000 // ID08252025.n
+            avgResponseTimeSec: (latency / 1000).toFixed(4) // ID08252025.n
           }
         }
       };
@@ -245,6 +255,7 @@ class AzOaiEpMetrics {
       this.totalTokens = 0;
       this.respTime = 0;
       this.totalCost = 0.0; // ID08252025.n
+      this.feedback = 0; // ID09152025.n
 
       this.startTime = Date.now();
       this.endTime = this.startTime + (this.cInterval * 60 * 1000);
@@ -267,6 +278,7 @@ class AzOaiEpMetrics {
       totalApiCalls: this.totalCalls,
       kInferenceTokens: kTokens,
       totalCost: this.totalCost.toFixed(6), // ID08252025.n
+      feedbackCount: this.feedback, // ID09152025.n
       history: this.historyQueue.queueItems
     };
   }

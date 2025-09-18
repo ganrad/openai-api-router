@@ -31,6 +31,7 @@
  * Service citation url's properly.
  * ID08052025: ganrad: v2.4.0-v1.3.1: (Enhancement) Model name can now be specified by the user (in UI) and passed to the AI App Gateway.
  * ID08282025: ganrad: v2.4.5-v1.3.1: (Bugfix) Az Direct Models such as Llama, Grok do not require a 'system' message.
+ * ID09162025: ganrad: v2.6.0-v1.3.2: (Enhancement) Introduced support for user feedback capture for models/agents deployed on Azure AI Foundry.
 */
 // Adjust the system prompt as needed
 const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // Default prompt
@@ -264,10 +265,10 @@ function setInferenceTarget() {
   document.getElementById("temp_o").value = aiAppObject.model_params.temperature;
   document.getElementById("mtokens").value = aiAppObject.model_params.max_tokens;
   document.getElementById("mtokens_o").value = aiAppObject.model_params.max_tokens;
-  document.getElementById("frequency").value = aiAppObject.model_params.frequency_penalty;
-  document.getElementById("freq_o").value = aiAppObject.model_params.frequency_penalty;
-  document.getElementById("presence").value = aiAppObject.model_params.presence_penalty;
-  document.getElementById("perf_o").value = aiAppObject.model_params.presence_penalty;
+  document.getElementById("frequency").value = aiAppObject.model_params.frequency_penalty ?? 0; // ID08052025.n
+  document.getElementById("freq_o").value = aiAppObject.model_params.frequency_penalty ?? 0;
+  document.getElementById("presence").value = aiAppObject.model_params.presence_penalty ?? 0;
+  document.getElementById("perf_o").value = aiAppObject.model_params.presence_penalty ?? 0;
   document.getElementById("topp").value = aiAppObject.model_params.top_p;
   document.getElementById("topp_o").value = aiAppObject.model_params.top_p;
   document.getElementById("cache").checked = false; // ID10232024.n
@@ -284,9 +285,9 @@ function setInferenceTarget() {
     // stream_options: aiAppObject.model_params.stream ? { include_usage: true } : null,
     temperature: aiAppObject.model_params.temperature,
     top_p: aiAppObject.model_params.top_p,
-    stop: aiAppObject.model_params.stop,
-    presence_penalty: aiAppObject.model_params.presence_penalty,
-    frequency_penalty: aiAppObject.model_params.frequency_penalty
+    stop: aiAppObject.model_params.stop ?? null, // ID08052025.n
+    presence_penalty: aiAppObject.model_params.presence_penalty ?? null,
+    frequency_penalty: aiAppObject.model_params.frequency_penalty ?? null
   };
 
   // Create and populate ai search data source
@@ -402,10 +403,14 @@ function saveContent(configName) {
     // promptObject.max_tokens = Number(document.getElementById("mtokens").value); // ID06052025.o
     promptObject.max_completion_tokens = Number(document.getElementById("mtokens").value); // ID06052025.n
     promptObject.temperature = Number(document.getElementById("temperature").value);
-    promptObject.presence_penalty = Number(document.getElementById("presence").value);
-    promptObject.frequency_penalty = Number(document.getElementById("frequency").value);
-    let value = document.getElementById("stopSequence").value; // ID11082024.n
-    if ((value !== "undefined") && value)
+    let value = Number(document.getElementById("presence").value); // ID08052025.n
+    if ( value > 0 )
+      promptObject.presence_penalty = value;
+    value = Number(document.getElementById("frequency").value);
+    if ( value > 0 )
+      promptObject.frequency_penalty = value;
+    value = document.getElementById("stopSequence").value; // ID11082024.n
+    if ((value !== "undefined") && (value.trim().length > 0))
       promptObject.stop = value;
     value = document.getElementById("modelName").value; // ID08052025.n
     if ((value !== "undefined") && value) // ID08052025.n
@@ -455,7 +460,7 @@ function addJsonToAccordian_0(time, box, cls, accordian, req, res, reqId) { // I
   // box.scrollTop = box.scrollHeight;
 } // ID11122024.eo
 
-async function callAiAppGatewayUri(uri) { // ID11122024.sn
+async function callAiAppGatewayUri(uri, httpMethod, silentMode) { // ID11122024.sn, ID09162025.n
   const headers = new Headers();
   headers.set("Content-Type", "application/json");
   if (isAuthEnabled) {
@@ -467,26 +472,31 @@ async function callAiAppGatewayUri(uri) { // ID11122024.sn
   let status;
   let data;
   try {
-    let response = await fetch(uri, {method: "GET", headers: headers});
+    let response = await fetch(uri, {method: (! httpMethod) ? "GET" : httpMethod, headers: headers});
 
     status = response.status;
     data = await response.json();
   }
   catch (e) {
-    console.warn(`callAiAppGatewayUri(): Status: ${status}, URI: ${uri},\nException: ${e}`);
+    console.warn(`callAiAppGatewayUri():\nStatus: ${status}\nURI: ${uri}\nException:\n${e}`);
   };
   if ( status === 200 ) {
-    // Open a new tab
-    const newTab = window.open();
+    if ( silentMode ) {
+      console.log(`callAiAppGatewayUri():\nStatus: ${status}\nURI: ${uri}\nResponse Message:\n${JSON.stringify(data, null, 2)}`);
+    }
+    else {
+      // Open a new tab
+      const newTab = window.open();
 
-    // Write the data to the new tab
-    newTab.document.write(`<pre>${JSON.stringify(data,null,2)}</pre>`);
+      // Write the data to the new tab
+      newTab.document.write(`<pre>${JSON.stringify(data,null,2)}</pre>`);
 
-    // Close the document to finish loading the content
-    newTab.document.close();
+      // Close the document to finish loading the content
+      newTab.document.close();
+    };
   }
   else
-    console.warn(`callAiAppGatewayUri(): Status: ${status}, URI: ${uri}`);
+    console.warn(`callAiAppGatewayUri():\nStatus: ${status}\nURI: ${uri}\nResponse Message:\n${JSON.stringify(data, null, 2)}`);
 } // ID11122024.en
 
 function addJsonToAccordian(time, box, cls, accordian, req, res, reqId) { // ID11122024.sn
@@ -691,7 +701,7 @@ function addMessageToChatBox_0(box, cls, msg, ctx) { // ID12022024.so (Not used!
   box.scrollTop = box.scrollHeight;
 } // ID12022024.eo
 
-function addRespMsgTitleButtons(element) { // ID03132025.n
+function addRespMsgTitleButtons(element, reqId) { // ID03132025.n, ID09162025.n
   let outerDivElement = document.createElement('div');
 
   const paraElem = document.createElement('p');
@@ -718,12 +728,20 @@ function addRespMsgTitleButtons(element) { // ID03132025.n
   thumbsupBtn.title = "Like";
   thumbsupBtn.className = 'btn btn-light btn-sm mt-1 me-1';
   thumbsupBtn.innerHTML = '<i class="bi bi-hand-thumbs-up"></i>';
+  thumbsupBtn.onclick = async function() { // ID09162025.n
+    const uri = getAiAppGatewayAppReqsUri(aiAppObject.ai_app_name,reqId) + '/up';
+    await callAiAppGatewayUri(uri, "PUT", true);
+  };
 
   const thumbsDownBtn = document.createElement('button'); // Thumbs down / Dislike
   thumbsDownBtn.id = "tdown-btn-" + msgCounter;
   thumbsDownBtn.title = "Dislike";
   thumbsDownBtn.className = 'btn btn-light btn-sm mt-1 me-1';
   thumbsDownBtn.innerHTML = '<i class="bi bi-hand-thumbs-down"></i>';
+  thumbsDownBtn.onclick = async function() { // ID09162025.n
+    const uri = getAiAppGatewayAppReqsUri(aiAppObject.ai_app_name,reqId) + '/down';
+    await callAiAppGatewayUri(uri, "PUT", true);
+  };
 
   const saveBtn = document.createElement('button'); // Save to a file
   saveBtn.id = "save-msg-btn-" + msgCounter;
@@ -750,12 +768,12 @@ function addRespMsgTitleButtons(element) { // ID03132025.n
   return(outerDivElement);
 }
 
-function addMessageToChatBox(box, cls, msg, ctx) { // ID12022024.sn, ID03132025.n
+function addMessageToChatBox(box, cls, msg, ctx, reqid) { // ID12022024.sn, ID03132025.n, ID09162025.n
   const element = document.createElement('div');
   element.className = cls + " user-select-all";
   element.id = "chat-msg-" + msgCounter;
 
-  let outerDivElement = addRespMsgTitleButtons(element);
+  let outerDivElement = addRespMsgTitleButtons(element, reqid); // ID09162025.n
   outerDivElement.appendChild(element);
 
   // console.log(`Message before: ${msg}`);
@@ -912,7 +930,7 @@ async function streamCompletion(serverId, uri, appId, hdrs, box) { // ID02272025
       // element.className = "user-select-all"; // ID03132025.sn; ID05142025.o
       // element.id = "chat-msg-" + msgCounter; ID05142025.o
 
-      let outerDivElement = addRespMsgTitleButtons(divelem); // ID05142025.n
+      let outerDivElement = addRespMsgTitleButtons(divelem, response.headers.get("x-request-id")); // ID05142025.n; ID09162025.n
       outerDivElement.appendChild(divelem);
       box.appendChild(outerDivElement); // ID03132025.en 
       // box.appendChild(divelem); ID03132025.o
@@ -1354,7 +1372,8 @@ async function sendMessage() {
             chatBox,
             'mb-2 rounded bg-light text-dark',
             data.choices[0].message.content,
-            data.choices[0].message.context);
+            data.choices[0].message.context,
+            response.headers.get("x-request-id")); // ID09162025.n
         }
         else {
           if ( status === 401 ) { // ID07102025.n

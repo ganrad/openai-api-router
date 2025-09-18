@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## [v2.6.0](https://github.com/ganrad/openai-api-router/compare/v2.5.0...v2.6.0) - 09/18/2025
+### Functionality changes
+**Azure AI Application Gateway (Server)**
+* **New Features:**
+
+  - **Feedback Analytics:** To enhance user experience and model performance, a feedback analytics feature has been integrated into the AI application gateway, enabling real-time capture of user sentiment through thumbs up/down interactions. This mechanism provides immediate visibility into user satisfaction, helping teams identify friction points and optimize responses. By aggregating feedback trends, it supports data-driven improvements, accelerates iteration cycles, and fosters a more responsive and user-aligned AI experience.
+
+* **Enhancements:**
+  
+  - **New Router Type(s):** Added a new endpoint router type *FeedbackWeightedRandom* which uses user feedback to make endpoint routing decisions.
+
+* **Bug Fixes:**
+
+  - When multiple endpoints were configured for AI Foundry models that support the AI Model Inference API, in-memory metrics data for endpoints were getting corrupted.  This issue has now been resolved.
+  - Multiple other minor bug fixes were applied.
+
+---
+
+### Documentation changes
+* Updated the functional architecture diagram.
+* Made minor updates to the document.
+
 ## [v2.5.0](https://github.com/ganrad/openai-api-router/compare/v2.4.0-beta...v2.5.0) - 09/12/2025
 ### Functionality changes
 **Azure AI Application Gateway (Server)**

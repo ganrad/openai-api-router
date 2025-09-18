@@ -24,6 +24,8 @@
  * ID08222025: ganrad: v2.4.0: Introduced traffic router configuration validation checks. Refactored code.
  * ID08292025: ganrad: v2.5.0: Introduced BudgetAwareRouter implementation.
  * ID09022025: ganrad: v2.5.0: Introduced AdaptiveBudgetAwareRouter implementation.
+ * ID09152025: ganrad: v2.6.0: Updated string literals with constants.
+ * ID09172025: ganrad: v2.6.0: Introduced FeedbackWeightedRandomRouter implementation.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -37,7 +39,8 @@ const {
   ConfigValidationStatus, // ID08222025.n
   ModelFamily,
   OpenAIChatCompletionMsgRoleTypes, // ID08202025.n 
-  RouterBudgetTiers // ID08292025.n
+  RouterBudgetTiers, // ID08292025.n
+  EndpointMiscConstants // ID09152025.n
 } = require("./app-gtwy-constants.js"); // ID08052025.n; ID08082025.n
 
 // Load encodings and encodeChat from gpt-tokenizer; ID08082025.n
@@ -126,6 +129,9 @@ class TrafficRouterFactory { // ID08082025.n
           error = "Attribute 'weight' must be defined for all configured endpoints. Check endpoint configuration. Falling back to default router (Priority) implementation.";
           logger.log({ level: "warn", message: "[%s] TrafficRouterFactory.create():\n  App ID: %s\n  Router Type: %s\n  Error: %s", splat: [scriptName, appId, routerType, error] });
         };
+        break;
+      case EndpointRouterTypes.FeedbackWeightedRandomRouter: // ID09172025.n
+        router = new FeedbackWeightedRandomRouter(appId, routerType, endpointObj);
         break;
       case EndpointRouterTypes.PayloadSizeRouter: // ID08222025.n
         // Loop thru all the endpoints and check if 'payloadThreshold' attribute has been defined.
@@ -284,6 +290,79 @@ class WeightedRandomRouter { // Random Weighted Router.  Uses static weights to 
   getEndpointId(request) {
     const epIdx = this._routingTable[Math.floor(Math.random() * this._routingTable.length)];
     logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint Index: %d", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx] });
+
+    return (epIdx);
+  }
+}
+
+/**
+ * Feedback Weighted Random Router
+ * ID09172025.n
+ * 
+ * Notes/Highlights:
+ * - Weights are proportional to net feedback (with decay).
+ * - Allows for models which received -ve feedback to be available for exploration.  Doesn't kill the endpoint completely. Adjust
+ *   the decay factor (exponential decay) to either increase or decrease the rate of feedback decay over time. Default setting of
+ *   ~ 0.99 decays old feedback very slowly.
+ * - Exploration only comes from the base weight (ensures models with -ve feedback are still routable)
+ * - Limitation: Can be greedy. The alg. doesn't explicitly balance uncertainity vs reward.
+ */
+class FeedbackWeightedRandomRouter { // Feedback Weighted Random Router - ID09172025.n
+
+  static BASE_WEIGHT = 2; // A base weight prevents zero weight.  If net score is -ve, weight will stay >= 1 always!
+  static DECAY_FACTOR = 0.98; // Decay old feedback faster over time ... (Adjust decay according to your needs!)
+
+  constructor(appId, type, endpointObj) {
+    this._backends = endpointObj.map(b => ({ id: b.id, uri: b.uri, score: 0 }));
+    this._baseWeight = FeedbackWeightedRandomRouter.BASE_WEIGHT;
+    this._decayFactor = FeedbackWeightedRandomRouter.DECAY_FACTOR;
+
+    this._appName = appId;
+    this._routerType = type;
+  }
+
+  get routerType() {
+    return this._routerType;
+  }
+
+  recordFeedback(endpointId, delta) {
+    const endpoint = this._backends.find(x => x.id === endpointId);
+    if (!endpoint) return;
+
+    // Apply decay before updating
+    endpoint.score = endpoint.score * this._decayFactor + delta;
+    // console.log(`**** Endpoint object: ${JSON.stringify(endpoint, null, 2)}`);
+  }
+
+  #getBackendWeights() {
+    return this._backends.map(b => ({
+      id: b.id,
+      score: b.score.toFixed(2),
+      weight: Math.max(1, this._baseWeight + b.score)
+    }));
+  }
+
+  getEndpointId(request) {
+    let epIdx = -1;
+
+    const weights = this._backends.map(b => Math.max(1, this._baseWeight + b.score));
+    const total = weights.reduce((a, b) => a + b, 0);
+    const rand = Math.random() * total;
+
+    let running = 0;
+    for (let i = 0; i < this._backends.length; i++) {
+      running += weights[i];
+      if (rand < running) {
+        epIdx = i;
+
+        break;
+      };
+    };
+
+    if ( epIdx === -1 )
+      epIdx = this._backends.length - 1; // Pick the last endpoint
+
+    logger.log({ level: "debug", message: "[%s] %s.getEndpointId():\n  Request ID: %s\n  App ID: %s\n  Endpoint Index: %d\n  Endpoint Table:\n%s", splat: [scriptName, this.constructor.name, request.id, this._appName, epIdx, JSON.stringify(this.#getBackendWeights(), null, 2)] });
 
     return (epIdx);
   }
@@ -766,7 +845,7 @@ class BudgetAwareRouter { // ID08292025.n
         this._backends.push(
           {
             id: index,
-            name: element.id ?? "index-" + index,
+            name: element.id ?? EndpointMiscConstants.IdIndexPrefix + index, // ID09152025.n
             uri: element.uri,
             model: element.budget.modelName,
             defBackend: element.budget.defaultEndpoint ?? false,
@@ -1208,7 +1287,7 @@ class AdaptiveBudgetAwareRouter { // ID09022025.n
       this._backends.push(
         {
           id: index,
-          name: element.id ?? "index-" + index,
+          name: element.id ?? EndpointMiscConstants.IdIndexPrefix + index, // ID09152025.n
           uri: element.uri,
           model: element.budget.modelName,
           defBackend: element.budget.defaultEndpoint ?? false,
