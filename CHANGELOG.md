@@ -11,6 +11,10 @@
   
   - **New Router Type(s):** Added a new endpoint router type *FeedbackWeightedRandom* which uses user feedback to make endpoint routing decisions.
 
+* **Database Updates:**
+
+  - To support user feedback collection and analysis feature, a new field was added to the `apigtwyprompts` database table.
+
 * **Bug Fixes:**
 
   - When multiple endpoints were configured for AI Foundry models that support the AI Model Inference API, in-memory metrics data for endpoints were getting corrupted.  This issue has now been resolved.

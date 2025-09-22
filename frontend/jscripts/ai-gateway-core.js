@@ -32,7 +32,9 @@
  * ID08052025: ganrad: v2.4.0-v1.3.1: (Enhancement) Model name can now be specified by the user (in UI) and passed to the AI App Gateway.
  * ID08282025: ganrad: v2.4.5-v1.3.1: (Bugfix) Az Direct Models such as Llama, Grok do not require a 'system' message.
  * ID09162025: ganrad: v2.6.0-v1.3.2: (Enhancement) Introduced support for user feedback capture for models/agents deployed on Azure AI Foundry.
+ * ID09192025: ganrad: v2.6.0-v1.3.2: (Bugfix) AI Model Inf. API fails if 'stop' parameter is sent with null/"" value.
 */
+
 // Adjust the system prompt as needed
 const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // Default prompt
 const uiUserName = "user-" + Date.now().toString(36) + Math.random().toString(36).substring(2, 8); // ID06062025.n
@@ -260,7 +262,7 @@ function setInferenceTarget() {
   document.getElementById("uid").value = isAuthEnabled ? username : uiUserName; // ID06062025.n
   document.getElementById("stream").checked = aiAppObject.model_params.stream;
   document.getElementById("stopSequence").value = aiAppObject.model_params.stop ?? ''; // ID08052025.n
-  document.getElementById("modelName").value = aiAppObject.model ?? ''; // ID08052025.n
+  document.getElementById("modelName").value = aiAppObject.model_params.model ?? ''; // ID08052025.n
   document.getElementById("temperature").value = aiAppObject.model_params.temperature;
   document.getElementById("temp_o").value = aiAppObject.model_params.temperature;
   document.getElementById("mtokens").value = aiAppObject.model_params.max_tokens;
@@ -275,7 +277,7 @@ function setInferenceTarget() {
 
   // Construct & populate a new prompt object
   promptObject = {
-    model: aiAppObject.model, // ID06162025.n
+    model: aiAppObject.model_params.model, // ID06162025.n
     messages: [],
     // max_tokens: aiAppObject.model_params.max_tokens,  // ID06052025.n
     max_completion_tokens:  aiAppObject.model_params.max_tokens,
@@ -285,10 +287,20 @@ function setInferenceTarget() {
     // stream_options: aiAppObject.model_params.stream ? { include_usage: true } : null,
     temperature: aiAppObject.model_params.temperature,
     top_p: aiAppObject.model_params.top_p,
-    stop: aiAppObject.model_params.stop ?? null, // ID08052025.n
-    presence_penalty: aiAppObject.model_params.presence_penalty ?? null,
-    frequency_penalty: aiAppObject.model_params.frequency_penalty ?? null
+    // stop: aiAppObject.model_params.stop ?? null, // ID08052025.n, ID09192025.o
+    // presence_penalty: aiAppObject.model_params.presence_penalty ?? null, // ID09192025.o
+    // frequency_penalty: aiAppObject.model_params.frequency_penalty ?? null // ID09192025.o
   };
+
+  // presence_penalty and frequency_penalty are not supported by all ADM's.  Hence this unnecessary workaround! ID09192025.n
+  promptObject = {
+    ...promptObject,
+    ...( aiAppObject.model_params.presence_penalty !== undefined && { presence_penalty: aiAppObject.model_params.presence_penalty} ),
+    ...( aiAppObject.model_params.frequency_penalty !== undefined && { frequency_penalty: aiAppObject.model_params.frequency_penalty} )
+  };
+
+  if ( aiAppObject.model_params.stop ) // ID09192025.n
+    promptObject.stop = aiAppObject.model_params.stop;
 
   // Create and populate ai search data source
   let srchParams = aiAppObject.search_params;
@@ -404,10 +416,10 @@ function saveContent(configName) {
     promptObject.max_completion_tokens = Number(document.getElementById("mtokens").value); // ID06052025.n
     promptObject.temperature = Number(document.getElementById("temperature").value);
     let value = Number(document.getElementById("presence").value); // ID08052025.n
-    if ( value > 0 )
+    if ( value !== 0 )
       promptObject.presence_penalty = value;
     value = Number(document.getElementById("frequency").value);
-    if ( value > 0 )
+    if ( value !== 0 )
       promptObject.frequency_penalty = value;
     value = document.getElementById("stopSequence").value; // ID11082024.n
     if ((value !== "undefined") && (value.trim().length > 0))
