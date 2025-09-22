@@ -339,13 +339,13 @@
               <div class="input-group input-group-sm mb-2">
                 <span class="input-group-text">Frequency Penalty</span>
                 <input id="frequency" type="range" aria-label="Frequency Penalty" class="form-range" value="0"
-                  step="0.1" min="0" max="2" oninput="this.nextElementSibling.value = this.value" /><output
+                  step="0.01" min="-2" max="2" oninput="this.nextElementSibling.value = this.value" /><output
                   id="freq_o"></output>
               </div>
               <div class="input-group input-group-sm mb-2">
                 <span class="input-group-text">Presence Penalty</span>
-                <input id="presence" type="range" aria-label="Presence Penalty" class="form-range" value="0" step="0.1"
-                  min="0" max="2" oninput="this.nextElementSibling.value = this.value" /><output id="perf_o"></output>
+                <input id="presence" type="range" aria-label="Presence Penalty" class="form-range" value="0" step="0.01"
+                  min="-2" max="2" oninput="this.nextElementSibling.value = this.value" /><output id="perf_o"></output>
               </div>
             </div>
           </div>
@@ -506,12 +506,13 @@
                 <div class="col">
                   <div class="form-floating mb-1">
                     <select class="form-select form-select-sm" id="appType" name="appType" required>
+                      <option value="azure_oai" selected>Azure OpenAI</option>
+                      <option value="azure_aimodel_inf">Azure AI Model Inference</option>
+                      <option value="azure_ai_agent">AI Foundry Agent</option>
                       <option value="azure_language">Azure Language</option>
                       <option value="azure_translator">Azure Translator</option>
                       <option value="azure_content_safety">Azure Content Safety</option>
                       <option value="azure_search">Azure Search</option>
-                      <option value="azure_oai" selected>Azure OAI</option>
-                      <option value="azure_aimodel_inf">Azure AI Model Inf</option>
                     </select>
                     <label class="form-label" for="appType">Type of AI Application</label>
                   </div>
@@ -728,7 +729,7 @@
               <div class="col">
                 <div class="form-floating mb-1">
                   <input class="form-control form-control-sm" id="epId" name="epId" type="text"
-                    placeholder="Unique Endpoint ID" />
+                    placeholder="Unique Endpoint/Agent ID" />
                   <label class="form-label" for="uri">Unique Endpoint ID</label>
                 </div>
               </div>

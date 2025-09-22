@@ -8,6 +8,9 @@
  * Notes:
  * ID04302025: ganrad: v2.3.2-v1.3.0: Introduced new fields - applyAffinity and endpoint id.
  * ID05142025: ganrad: v2.3.8-v1.3.0: Introduced fields for personalization / long term user memory feature.
+ * ID09192025: ganrad: v2.6.0-v1.3.2: (Bugfix) 1) When defining a new AI App., AI Model Inf. API fails if 'stop' parameter contains an 
+ * empty string.  Hence commented out stop parameter. Same with presence and frequency penalty. 2) Search distance value was being sent as-is (0 - 100).  Value is now converted 
+ * into a decimal value between 0.0 & 1.0 before the AI App definition is sent to the server.
  */
 let priorityCounter = 0; // Endpoint uri priority counter
 
@@ -140,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     const epid = document.getElementById('epId').value; // ID04302025.n
 
-    const rpm = document.getElementById('rpm').value;
+    const rpm = document.getElementById('rpm').value || 0;
 
     const tbody = table.querySelector('tbody');
     const newRow = document.createElement('tr');
@@ -197,6 +200,8 @@ async function callAiAppGatewayApi(appObject) { // private
     requestHdrs.append('Authorization', bearer);
   };
 
+  console.log(`callAiAppGatewayApi(): AI App Payload:\n${JSON.stringify(appObject, null, 2)}`);
+
   let respJson;
   const tstatus = document.getElementById('toastStatus');
   try {
@@ -227,7 +232,7 @@ async function callAiAppGatewayApi(appObject) { // private
       }
     };
     tstatus.innerHTML = "<span class='text-danger'>" + "FAILED" + "</span>";
-    console.log(`callAiAppGatwayApi(): Encountered exception\n  ${respJson}`);
+    console.log(`callAiAppGatwayApi(): Encountered exception\n${respJson}`);
   };
 
   return(respJson);
@@ -274,7 +279,7 @@ async function registerAiAppInServer(payload) { // private
       console.log(`registerAiAppInServer(): Encountered exception while registering AI App in Frontend server.  Check server logs.\n  ${data}`);
   }
   catch (error) {
-    console.log(`registerAiAppInServer(): Encountered exception. Check server logs.\n  ${error}`);
+    console.log(`registerAiAppInServer(): Encountered exception. Check server logs.\n${error}`);
   };
 
   return(ret_val);
@@ -299,13 +304,13 @@ async function registerAiApp(appId,desc) { // private
           max_tokens: 1000,
           top_p: 0.1,
           stream: false,
-          stop: "",
-          frequency_penalty: 0,
-          presence_penalty: 0
+          // stop: "", ID09192025.o
+          // frequency_penalty: 0,
+          // presence_penalty: 0
         }
       }
     };
-    console.log(`Sending Payload:\n ${JSON.stringify(req_body,null,2)}`);
+    console.log(`registerAiApp(): Sending Payload:\n${JSON.stringify(req_body,null,2)}`);
 
     // Register Ai App in frontend (UI) server
     const st = await registerAiAppInServer(req_body);
@@ -353,7 +358,7 @@ async function deployAiApplication() {
       cacheObject.useCache = true;
       const srchTypeElem = document.getElementById('searchType');
       cacheObject.searchType = srchTypeElem.options[srchTypeElem.selectedIndex].value;
-      cacheObject.searchDistance = parseInt(document.getElementById('searchDistance').value);
+      cacheObject.searchDistance = parseInt(document.getElementById('searchDistance').value) / 100; // ID09192025.n
       const srchContentObject = new Object();
       const srchTermElem = document.getElementById('term');
       srchContentObject.term = srchTermElem.options[srchTermElem.selectedIndex].value;
@@ -388,6 +393,8 @@ async function deployAiApplication() {
       longTermMemObject.generateFollowupMsgs = followups.checked;
 
       longTermMemObject.userFactsAppName = document.getElementById('factsAppName').value;
+      const extRoleElem = document.getElementById('extractRoles');
+      longTermMemObject.extractRoleValues = extRoleElem.options[extRoleElem.selectedIndex].value;
       longTermMemObject.extractionPrompt = document.getElementById('extractionPrompt').value;
       longTermMemObject.followupPrompt = document.getElementById('followUpPrompt').value;
     }
@@ -402,12 +409,13 @@ async function deployAiApplication() {
 
       const cells = row.querySelectorAll('td');
       endpointObj.id = cells[1].textContent; // ID04302025.n
-      endpointObj.rpm = parseInt(cells[2].textContent);
+      // endpointObj.rpm = parseInt(cells[2].textContent, 10;  // ID09192025.o
       endpointObj.uri = cells[3].textContent;
       endpointObj.apikey = cells[4].textContent;
       // console.log(`Priority: ${rowIndex}, Uri: ${endpointObj.uri}`);
       
-      endpointsArray.push(endpointObj);
+      // Use conditional short-circuiting to add the rpm attribute)
+      endpointsArray.push( { ...endpointObj, ...(parseInt(cells[2].textContent, 10) > 0 && { rpm: parseInt(cells[2].textContent, 10)}) }); // ID09192025.n
     });
 
     let aiAppObj = {
@@ -420,11 +428,11 @@ async function deployAiApplication() {
       personalizationSettings: longTermMemObject, // ID05142025.n
       endpoints: endpointsArray
     };
-    console.log(`AI Application:\n ${JSON.stringify(aiAppObj, null, 2)}`);
+    // console.log(`AI Application:\n ${JSON.stringify(aiAppObj, null, 2)}`);
 
     // 2. Call Ai App Gateway CP API to post the new Ai App definition
     const responseObj = await callAiAppGatewayApi(aiAppObj);
-    console.log(`AI App Gateway Response:\n ${JSON.stringify(responseObj, null, 2)}`);
+    console.log(`deployAiApplication(): AI App Gateway Response:\n${JSON.stringify(responseObj, null, 2)}`);
     // spinnerOverlay.classList.add('d-none'); // Hide the spinner overlay (busy icon)
 
     // 3. Register Ai App Definition with Frontend (UI) server

@@ -1,18 +1,18 @@
 # AI Application Gateway Console (Single Page Application/Frontend)
 
-This AI Gateway console application provides a thin client (browser) based user interface for interacting with AI Applications deployed on Azure AI Application Gateway's. It's meant to be a starting point, and you're welcome to use it as is or customize and integrate the user interface components into your own web applications.
+The AI Gateway console application provides a thin client (browser) based user interface for interacting with AI Applications deployed on Azure AI Application Gateway's. It's meant to be a starting point, and you're welcome to use it as is or customize and integrate the user interface components into your own web applications.
 
 The gateway console application can be used for completing the following tasks -
 1. Define and deploy new AI Applications on local/remote AI Application Gateway instances.  These instances could be distributed and running on disparate hosts within the Azure network.
 2. Interact with deployed AI Applications using the chat user interface
-3. Evaluate and explore value add features supported by the AI Application Gateway such as caching, state management, observability, intelligent traffic management, LLM response streaming, A/B testing of LLM's ... other features.
+3. Evaluate and explore value add features supported by the AI Application Gateway such as caching, state management, long term memory, cost tracking, observability, intelligent traffic management, user feedback tracking, LLM response streaming, A/B testing of LLM's ... other features.
 
 The sections below detail the following steps -
 
 1. Running the AI Gateway Console application on a Azure Linux virtual machine (Standalone server)
-2. Containerizing the console application and running it on a Azure Linux VM
-3. Using the gateway console to define and deploy an AI Application on a running AI Application Gateway instance
-3. Deploying and running the gateway console application as a containerized microservice on Kubernetes (AKS)
+2. Using the gateway console to define and deploy an AI Application on a AI Application Gateway instance
+3. Containerizing the console application and running it on a Azure Linux VM
+4. Deploying and running the gateway console application as a containerized microservice on Kubernetes (AKS)
 
 Containerized deployment of AI Application Gateway Console is highly recommended for production deployments.
 
@@ -40,7 +40,7 @@ Containerized deployment of AI Application Gateway Console is highly recommended
 
 3. Configure AI Application Gateway's and AI Applications.
 
-   The AI Application Gateway Console can be used to interact with AI Applications which have been configured with one or more AI Application Gateway's (a.k.a backends).
+   The AI Application Gateway Console can be used to interact with AI Applications which are hosted on one or more AI Application Gateway instances (a.k.a backends).
 
    Update default parameter values in the provided sample gateway console configuration file - `app-config.json`. Configure AI Application Gateways and AI Applications as per your requirements.
 
@@ -50,7 +50,7 @@ Containerized deployment of AI Application Gateway Console is highly recommended
    -------------- | ----------------- | ----------- |
    name | Yes | Name of the AI Application Gateway.  This can be any name which uniquely identifies the backend AI Application Gateway server/instance.
    type | Yes | Type of the AI Application Gateway.  Currently, two gateway types are supported 1) **Single domain** & 2) **Multi domain**<br>`type` should be set to one of these values - `single-domain`, `multi-domain`
-   uri | Yes | AI Application Gateway URI. Should be in the format:<br> http://[host:port]/api/v1/[env]/apirouter<br>Make sure there are no trailing slashes!
+   uri | Yes | AI Application Gateway URI. Should be in the format:<br> http://[host:port]/api/v1/[env]/apirouter<br>**IMP:** Make sure there are no trailing slashes!
    ai_apps | Yes | An array of AI Applications that have been configured in the respective AI Application Gateway.  Refer to the next section for details.
 
    For each AI application, specify correct values for all required parameters.  Many of the application parameters are identical to parameters exposed by Azure OpenAI Chat Completion REST API.  Hence refer to the [Azure OpenAI API documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference) for description and usage information on *model_params* and *search_params*.
@@ -84,12 +84,12 @@ Containerized deployment of AI Application Gateway Console is highly recommended
    You will see the application server startup message as shown in the snippet below.
 
    ```bash
-   > ai-chatbot-frontend@1.2.0 start
+   > ai-chatbot-frontend@1.3.2 start
    > node ./src/server.js
 
-   [2025/03/21 09:46:00.524] [LOG] Server(): Server configuration file: [./app-config.json]
-   [2025/03/21 09:46:00.526] [LOG] Server(): Azure AI Application Gateway API security: [true]
-   [2025/03/21 09:46:00.587] [LOG] Server(): AI Chatbot Application server is listening on localhost:8000.
+   [2025/09/18 19:21:36.670] [LOG] Server(): Server configuration file: [./app-config.json]
+   [2025/09/18 19:21:36.674] [LOG] Server(): Azure AI Application Gateway API security: [true]
+   [2025/09/18 19:21:36.797] [LOG] Server(): AI Chatbot Application server is listening on localhost:8000.
    ```
 
    Leave this terminal window open.
@@ -107,10 +107,12 @@ Containerized deployment of AI Application Gateway Console is highly recommended
    First select the AI Application Gateway in the **AI App Gateway** dropdown field. The **Gateway Type** field will be auto populated.
 
    Use the **AI Application** dropdown field to select an AI Application.  This will populate the description field and default parameter values for the selected AI Application as per the values specified in the gateway console configuration file.  You can update the model and search parameter values displayed in the right panel (**Model Config / Search Config**).
-   
-   **NOTE:** Remember to save the model and search configuration parameter values before proceeding.
 
-   Use the **Message Type** dropdown field to select the appropriate message type (role). This message is usually used to provide a set of instructions to the LLM.  Leave the default value **System** for all gpt and open source LLM's.  For advanced reasoning models such as o1 or o1-mini, the type should be set to **Developer**.  Update the system prompt.
+   If the AI Foundry model you are targeting expects a *model* parameter value in the request payload, input the same in the **Model Name** field under the *Model Config* panel on the right.
+   
+   > **NOTE:** Remember to save the model and search configuration parameter values before proceeding.
+
+   Use the **Message Type** dropdown field to select the appropriate message type (role). This message is usually used to provide a set of instructions to the LLM.  Leave the default value **System** for most if not all gpt models.  For advanced reasoning models such as o1 or o1-mini, the type should be set to **Developer**.  For some LLM's such as *Grok*, where system prompt is not available, select **None**.  Update the system prompt.
    
    Lastly, input the *Prompt* in the field located at the bottom of the middle column.  Hit **Send**.  You should be able to view the results in the content panel right above the Prompt field.  See screenshot below.
 
@@ -124,9 +126,9 @@ Containerized deployment of AI Application Gateway Console is highly recommended
 
    Click on the **Thread ID** (column = `Thread_id`) to view the requests associated with this user session/thread.  You can also clear the current chat session by clicking on **Clear chat** button in the **Chat** tab.
    
-   You can update the model and search parameters on the right panel.  Remember to save the values prior to starting a chat session. See screenshots below.
+   You can update the model and search parameters on the right panel.  Remember to **Save** the values prior to starting a chat session. See screenshots below.
 
-   Model Params | AI Search Params (Only used for Azure OpenAI OYD calls) |
+   Model Params | AI Search Params (Only used for Azure AI Foundry OYD calls) |
    ------------ | ---------------------------------------------------- |
    ![alt tag](./images/ai-chat-application-06.PNG) | ![alt tag](./images/ai-chat-application-07.PNG)
    
@@ -135,11 +137,15 @@ Containerized deployment of AI Application Gateway Console is highly recommended
  
    ![alt tag](./images/ai-chat-application-04.PNG)
 
+   Click on the **View call metrics** button beside the *AI Application* dropdown field, to view the API metrics information as shown in the screenshot below.
+
+   ![alt tag](./images/ai-chat-application-13.PNG)
+
    Lastly, you can review any errors returned by the AI Application Gateway in the **Exceptions** tab.  See screenshot below.
 
    ![alt tag](./images/ai-chat-application-05.PNG)
 
-### C. Define and deploy an AI Application on AI Application Gateway instance
+### C. Define and deploy an *AI Application* on a AI Application Gateway instance
 
 1. Define the AI Application configuration parameters
 
@@ -147,9 +153,15 @@ Containerized deployment of AI Application Gateway Console is highly recommended
 
    ![alt tag](./images/ai-chat-application-08.PNG) 
    
-   This action will open the **Single Domain AI Application** modal dialog.  Give the AI Application a suitable **name** and **description**.  Select the **AI Application Type**.  Specify correct values for configuration parameters for semantic cache, state management (memory) and API traffic routing features.  See Screenshots below.
+   This action will open the **Single Domain AI Application** modal dialog.  Give the AI Application a suitable **name** and **description**.  Select the **AI Application Type**.  Specify correct configuration parameter values for Semantic cache, State management (memory) & Long term memory (Personalization) features.  See Screenshots below.
 
-   ![alt tag](./images/ai-chat-application-09.PNG) 
+   | Semantic Cache | State Management | Long-term Memory |
+   | -------------- | ---------------- | ---------------- |
+   | ![alt tag](./images/ai-chat-application-09-a.PNG) | ![alt tag](./images/ai-chat-application-09-b.PNG) | ![alt tag](./images/ai-chat-application-09-c.PNG) |
+
+   Under section **Traffic Routing**, specify AI Foundry model deployment endpoints, API keys and RPM limits.  See screenshot below.
+
+   ![alt tag](./images/ai-chat-application-09-d.PNG)
 
 2. Deploy the AI Application
 
