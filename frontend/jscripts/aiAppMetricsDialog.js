@@ -7,6 +7,8 @@
  * Version (Introduced): v2.3.2:v1.3.0
  * Notes:
  * ID09162025: ganrad: v2.6.0-1.3.2: (Enhancements + Bugfixes) Introduced minor enhancements and made a few display related bug fixes.
+ * ID09232025: ganrad: v2.6.0-1.3.2: (Bugfix) When AI App is switched by user, cache metrics were not reset properly. This issue has 
+ * been fixed.
  */
 
 // Reset dialog fields when the modal is hidden (dialog is closed)
@@ -76,6 +78,10 @@ function populateMetricsDialog(data) { // private
   if ( data.cacheMetrics ) { // If metrics object is not empty
     document.getElementById('m_cachehc').textContent = data.cacheMetrics.hitCount;
     document.getElementById('m_cacheavgscore').textContent = data.cacheMetrics.avgScore.toFixed(4); // ID09162025.n
+  }
+  else { // ID09232025.n
+    document.getElementById('m_cachehc').textContent = 0;
+    document.getElementById('m_cacheavgscore').textContent = 0.0;
   };
 
   const tabs = document.getElementById('m_endpointMetricsTabs');
