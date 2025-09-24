@@ -9,7 +9,7 @@ Release | Date | Production Ready | Notes
 **v2.3.9** | 08/09/2025 | Yes | This is the last stable release & has gone thru end to end regression tests.  However, this release may lack some critical features introduced in later releases.
 
 ### Release Notes
-Refer to [Changelog document](./CHANGELOG.md) for details on new features, enhancements and bugfixes introduced in **v2.5.0** release.
+Refer to [Changelog document](./CHANGELOG.md) for details on new features, enhancements and bugfixes introduced in **v2.6.0** release.
 
 ### Overview
 If you're seeking the essential components for rapid implementation and deployment of **AI Information Assistants (AI Chatbots)** on Azure or  advanced AI Solutions that expose a conversational interface, the *AI Application Gateway* is your go-to resource to expedite the development process and transition smoothly from pilot phase to full-scale production.
