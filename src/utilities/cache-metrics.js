@@ -6,16 +6,16 @@
  * Date: 02-27-2024
  *
  * Notes:
- * 
+ * ID09232025: ganrad: v2.6.0: (Bug Fixes) Minor bug fixes - missing semicolon, unnecessary initialization ...
 */
 
 class AiApplication {
-  #totalScore = 0;
+  #totalScore; // ID09232025.n
 
   constructor() {
     this.hitCount = 0; // cache hit count
     this.#totalScore = 0.0; // total score
-    this.avgScore = 0.0 // average score
+    this.avgScore = 0.0; // average score ID09232025.n
   }
 
   updateCacheHitCount(score) {
@@ -35,10 +35,12 @@ class AppCacheMetrics {
     let aiApplication = new AiApplication();
 
     this.cacheMetrics.set(aiapp,aiApplication);
+    // console.log(`**** ADD: AI App: ${aiapp}, Metrics Map:\n${[...this.cacheMetrics.keys()]}`);
   }
 
   updateCacheMetrics(aiapp, score) {
     this.cacheMetrics.get(aiapp).updateCacheHitCount(score);
+    // console.log(`**** UPDATE: AI App: ${aiapp}, Metrics Map:\n${[...this.cacheMetrics.keys()]}`);
   }
 
   /**
@@ -48,6 +50,7 @@ class AppCacheMetrics {
   */
 
   getCacheMetrics(aiapp) {
+    // console.log(`**** GET: AI App: ${aiapp}, Metrics Map:\n${[...this.cacheMetrics.keys()]}`);
     return this.cacheMetrics.get(aiapp);
   }
 }
