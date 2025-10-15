@@ -2,6 +2,7 @@
   "appId": "ai-chatbot-v2.3.8-gpt4o-mini",
   "description": "An AI Application that uses personalization & budgeting (cost tracking) feature introduced in RAPID v2.3.8 & v2.4.0.",
   "appType": "azure_oai",
+  "isActive": true,
   "searchAiApp": "",
   "cacheSettings": {
     "useCache": true,

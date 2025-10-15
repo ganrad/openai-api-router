@@ -8,6 +8,9 @@
  *
  * Notes:
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
+ * ID10132025: ganrad: v2.7.0: (Enhancement) An AI Application can be enabled (active) or disabled.  In the disabled state, the AI gateway will
+ * not accept inference requests and will return an exception.
+ * ID10142025: ganrad: v2.7.0: (Enhancement) Introduced new feature to support normalization of AOAI output.
  *
 */
 const path = require('path');
@@ -58,8 +61,11 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
         appeps.set("applicationId", aiapp.appId);
         appeps.set("description", aiapp.description);
         appeps.set("type", aiapp.appType);
+        appeps.set("isActive", aiapp.isActive); // ID10132025.n
         if (aiapp.searchAiApp)
           appeps.set("searchAiApp", aiapp.searchAiApp);
+        if (aiapp.normalizeOutput) // ID10142025.n
+          appeps.set("normalizeOutput", aiapp.normalizeOutput); 
         appeps.set("cacheSettings", {
           useCache: aiapp.cacheSettings.useCache,
           searchType: aiapp.cacheSettings.searchType,

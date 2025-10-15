@@ -26,6 +26,13 @@
 			"items": { "$ref": "./sd-ai-app-schema.json" },
 			"minItems": 1,
 			"uniqueItems": true
+		},
+		"mcpServerConfig": {
+			"description": "List of MCP servers",
+			"type": "array",
+			"items": { "$ref": "./gtwy-mcp-servers-schema.json" },
+			"minItems": 1,
+			"uniqueItems": true
 		}
 	},
 	"required": ["serverId", "serverType", "applications"],

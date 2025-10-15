@@ -6,6 +6,7 @@
       "appId": "language-app",
       "description": "Azure AI Language Service test application",
       "appType": "azure_language",
+      "isActive": true,
       "cacheSettings": {
         "useCache": false
       },
@@ -20,6 +21,7 @@
       "appId": "translate-app",
       "description": "Azure AI Translator Service test application",
       "appType": "azure_translator",
+      "isActive": true,
       "cacheSettings": {
         "useCache": false
       },
@@ -34,6 +36,7 @@
       "appId": "content-safety-app",
       "description": "Azure AI Content Safety Service text analyze application",
       "appType": "azure_content_safety",
+      "isActive": true,
       "cacheSettings": {
         "useCache": false
       },
@@ -48,6 +51,7 @@
       "appId": "search-garmin-docs",
       "description": "AI application to search Garmin GPS manuals",
       "appType": "azure_search",
+      "isActive": true,
       "cacheSettings": {
         "useCache": false
       },
@@ -62,6 +66,7 @@
       "appId": "vectorizedata",
       "description": "Application that uses OAI model to generate data embeddings/vectors",
       "appType": "azure_oai",
+      "isActive": true,
       "cacheSettings": {
         "useCache": false
       },
@@ -79,6 +84,7 @@
       "appId": "classify-intent",
       "description": "This is a FT LLM model that classifes the user's query as SQL or Document.",
       "appType": "azure_oai",
+      "isActive": true,
       "cacheSettings": {
         "useCache": true,
         "searchType": "CosineSimilarity",
@@ -104,6 +110,7 @@
       "appId": "ai-chatbot-phi-3-small-8k",
       "description": "An AI Assistant / Chatbot application which uses MSFT phi-3-small-8k-instruct model for answering GK questions.",
       "appType": "azure_aimodel_inf",
+      "isActive": true,
       "cacheSettings": {
         "useCache": true,
         "searchType": "CosineSimilarity",
@@ -132,6 +139,7 @@
       "appId": "ai-chatbot-phi-3.5-MoE",
       "description": "An AI Assistant / Chatbot application which uses MSFT PHI-3.5-MoE-Instruct model for answering questions.",
       "appType": "azure_aimodel_inf",
+      "isActive": true,
       "cacheSettings": {
         "useCache": true,
         "searchType": "CosineSimilarity",
@@ -160,6 +168,7 @@
       "appId": "ai-chatbot-gpt4o",
       "description": "An AI Assistant / Chatbot application which uses gpt-4o (/ Omni) mini model for answering GK questions.",
       "appType": "azure_oai",
+      "isActive": true,
       "cacheSettings": {
         "useCache": true,
         "searchType": "CosineSimilarity",
@@ -198,6 +207,7 @@
       "appId": "ai-chatbot-v2.3.8-gpt4o-mini",
       "description": "An AI Application that uses personalization feature introduced in RAPID v2.3.8.",
       "appType": "azure_oai",
+      "isActive": true,
       "searchAiApp": "",
       "cacheSettings": {
         "useCache": true,
@@ -242,6 +252,7 @@
       "appId": "ai-chatbot-v2.3.9-gpt4o-mini-w",
       "description": "A sample AI Application that uses a) Unique ID's for backend endpoints b) Random weighted endpoint traffic router c) Combination of OAI and AOAI backend endpoints and d) Endpoint Health Policy.  These features were introduced in RAPID v2.3.9.",
       "appType": "azure_oai",
+      "isActive": true,
       "searchAiApp": "",
       "cacheSettings": {
         "useCache": false

@@ -16,7 +16,8 @@
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
  * ID08272025: ganrad: v2.5.0: (Refactoring) Added function to set request headers for AI Foundry + OAI model API calls.
  * ID09162025: ganrad: v2.6.0: (Refactoring) Updated 'getOpenAICallMetadata()' function to set headers for AOAI + AI Foundry + OAI model API Calls.
- * ID09172025: ganrad: v2.6.0: (Refactoring) Introduced a new method to retrieve unique URI for endpoint metrics object based on the application type. 
+ * ID09172025: ganrad: v2.6.0: (Refactoring) Introduced a new method to retrieve unique URI for endpoint metrics object based on the application type.
+ * ID10142025: ganrad: v2.7.0: (Enhancement) Introduced new feature to support normalization of AOAI output.
  *
 */
 const path = require('path');
@@ -319,11 +320,25 @@ function retrieveUniqueURI(baseUri, appType, suffix) {
 }
 // ID09172025.en
 
+// ID10142025.sn
+function normalizeAiOutput(fullJsonOutput) {
+  const { prompt_filter_results, ...rest } = fullJsonOutput;
+  return {
+    ...rest,
+    choices: fullJsonOutput.choices.map(choice => {
+      const { content_filter_results, ...choiceRest } = choice;
+      return choiceRest;
+    })
+  };
+}
+// ID10142025.en
+
 module.exports = {
   getOpenAICallMetadata, // ID08272025.n
   prepareTextToEmbedd,
   // callRestApi ID03052025.o
   vectorizeQuery, // ID03052025.n
   callAiAppEndpoint, // ID05142025.n
-  retrieveUniqueURI // ID09172025.n
+  retrieveUniqueURI, // ID09172025.n
+  normalizeAiOutput // ID10142025.n
 }

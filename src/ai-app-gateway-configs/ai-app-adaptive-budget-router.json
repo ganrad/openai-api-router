@@ -2,6 +2,7 @@
   "appId": "Adaptive-Budget-Aware-App",
   "description": "An AI App which uses Adaptive Budget Aware endpoint routing algorithm to route requests to backend models.",
   "appType": "azure_oai",
+  "isActive": true,
   "searchAiApp": "",
   "cacheSettings": {
     "useCache": true,

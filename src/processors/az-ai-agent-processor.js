@@ -7,7 +7,7 @@
  * Version (Introduced): v2.4.0
  *
  * Notes:
- * 
+ * ID10082025: ganrad: v2.7.0: (Enhancement) Added support for A2A protocol.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -27,7 +27,8 @@ const {
   EndpointRouterTypes,
   OpenAIChatCompletionMsgRoleTypes,
   AzureResourceUris,
-  EndpointMiscConstants
+  EndpointMiscConstants,
+  AiGatewayInboundReqApiType // ID10082025.n
 } = require("../utilities/app-gtwy-constants.js");
 
 const { getAccessToken } = require("../auth/bootstrap-auth.js");
@@ -42,6 +43,8 @@ class AzAiAgentProcessor {
 
   constructor() {
     this.streamed_response_sent = false;  // When streaming mode is on, send the http headers only once.
+    this.inboundApiType = AiGatewayInboundReqApiType.OpenAI; // Inbound Request API type - OpenAI / A2A
+    this.a2aReqId = 0; // A2A Request id
   }
 
   #retrieveCitations(annotations) {
@@ -176,10 +179,11 @@ class AzAiAgentProcessor {
       }
       else {
         data = await response.text(); // json();
+        const emsg = `createAgentThread(): AI Agent Service Thread endpoint returned exception. Status: ${response.status}, Text: ${response.statusText}, Message: ${data}.`; // ID10082025.n
         err_msg = {
           error: {
             target: threadUri,
-            message: `createAgentThread(): AI Agent Service Thread endpoint returned exception. Status: ${response.status}, Text: ${response.statusText}, Message: ${data}.`,
+            message: emsg,
             code: "serviceError"
           }
         };
@@ -188,15 +192,21 @@ class AzAiAgentProcessor {
         respMessage = {
           http_code: status,
           status_text: response.statusText,
-          data: err_msg
+          data: (this.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+            {
+              jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+              id: this.a2aReqId,
+              error: { code: -32603, message: emsg } // Internal JSON-RPC error
+            }
         };
       }
     }
     catch (error) {
+      const emsg = `createAgentThread(): AI Application Gateway encountered exception: [${error}].`; // ID10082025.n
       err_msg = {
         error: {
           target: threadUri,
-          message: `createAgentThread(): AI Application Gateway encountered exception: [${error}].`,
+          message: emsg,
           code: "internalFailure"
         }
       };
@@ -204,7 +214,12 @@ class AzAiAgentProcessor {
 
       respMessage = {
         http_code: 500,
-        data: err_msg
+        data: (this.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+          {
+            jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+            id: this.a2aReqId,
+            error: { code: -32603, message: emsg } // Internal JSON-RPC error
+          }
       };
     };
 
@@ -250,10 +265,11 @@ class AzAiAgentProcessor {
       }
       else {
         data = await response.text(); // Unauthorized 401 error doesn't return a JSON!
+        const emsg = `createAndAttachMessageToThread(): AI Agent Service Thread endpoint returned exception. Status: ${response.status}, Text: ${response.statusText}, Message: ${data}.`; // ID10082025.n
         err_msg = {
           error: {
             target: threadUri,
-            message: `createAndAttachMessageToThread(): AI Agent Service Thread endpoint returned exception. Status: ${response.status}, Text: ${response.statusText}, Message: ${data}.`,
+            message: emsg,
             code: "serviceError"
           }
         };
@@ -262,15 +278,21 @@ class AzAiAgentProcessor {
         respMessage = {
           http_code: status,
           status_text: response.statusText,
-          data: err_msg
+          data: (this.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+            {
+              jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+              id: this.a2aReqId,
+              error: { code: -32603, message: emsg } // Internal JSON-RPC error
+            }
         };
       }
     }
     catch (error) {
+      const emsg = `createAndAttachMessageToThread(): AI Application Gateway encountered exception: [${error}].`; // ID10082025.n
       err_msg = {
         error: {
           target: threadUri,
-          message: `createAndAttachMessageToThread(): AI Application Gateway encountered exception: [${error}].`,
+          message: emsg,
           code: "internalFailure"
         }
       };
@@ -278,7 +300,12 @@ class AzAiAgentProcessor {
 
       respMessage = {
         http_code: 500,
-        data: err_msg
+        data: (this.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+          {
+            jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+            id: this.a2aReqId,
+            error: { code: -32603, message: emsg } // Internal JSON-RPC error
+          }
       };
     };
 
@@ -512,10 +539,11 @@ class AzAiAgentProcessor {
       }
       else {
         data = await response.text();
+        const emsg = `runAgentThread(): AI Agent Service Thread endpoint returned exception. Status: ${response.status}, Text: ${response.statusText}, Message: ${data}.`; // ID10082025.n
         err_msg = {
           error: {
             target: threadUri,
-            message: `runAgentThread(): AI Agent Service Thread endpoint returned exception. Status: ${response.status}, Text: ${response.statusText}, Message: ${data}.`,
+            message: emsg,
             code: "serviceError"
           }
         };
@@ -524,15 +552,21 @@ class AzAiAgentProcessor {
         respMessage = {
           http_code: status,
           status_text: response.statusText,
-          data: err_msg
+          data: (this.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+            {
+              jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+              id: this.a2aReqId,
+              error: { code: -32603, message: emsg } // Internal JSON-RPC error
+            }
         };
       }
     }
     catch (error) {
+      const emsg = `runAgentThread(): AI Application Gateway encountered exception: [${error}].`; // ID10082025.n
       err_msg = {
         error: {
           target: threadUri,
-          message: `runAgentThread(): AI Application Gateway encountered exception: [${error}].`,
+          message: emsg,
           code: "internalFailure"
         }
       };
@@ -540,7 +574,12 @@ class AzAiAgentProcessor {
 
       respMessage = {
         http_code: 500,
-        data: err_msg
+        data: (this.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+          {
+            jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+            id: this.a2aReqId,
+            error: { code: -32603, message: emsg } // Internal JSON-RPC error
+          }
       };
     };
 
@@ -594,10 +633,11 @@ class AzAiAgentProcessor {
       }
       else {
         data = await response.text();
+        const emsg = `checkRunStatus(): AI Agent Service Thread endpoint returned exception. Status: ${response.status}, Text: ${response.statusText}, Message: ${data}.`; // ID10082025.n
         err_msg = {
           error: {
             target: threadUri,
-            message: `checkRunStatus(): AI Agent Service Thread endpoint returned exception. Status: ${response.status}, Text: ${response.statusText}, Message: ${data}.`,
+            message: emsg,
             code: "serviceError"
           }
         };
@@ -606,15 +646,21 @@ class AzAiAgentProcessor {
         respMessage = {
           http_code: status,
           status_text: response.statusText,
-          data: err_msg
+          data: (this.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+            {
+              jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+              id: this.a2aReqId,
+              error: { code: -32603, message: emsg } // Internal JSON-RPC error
+            }
         };
       }
     }
     catch (error) {
+      const emsg = `checkRunStatus(): AI Application Gateway encountered exception: [${error}].`; // ID10082025.n
       err_msg = {
         error: {
           target: threadUri,
-          message: `checkRunStatus(): AI Application Gateway encountered exception: [${error}].`,
+          message: emsg,
           code: "internalFailure"
         }
       };
@@ -622,7 +668,12 @@ class AzAiAgentProcessor {
 
       respMessage = {
         http_code: 500,
-        data: err_msg
+        data: (this.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+          {
+            jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+            id: this.a2aReqId,
+            error: { code: -32603, message: emsg } // Internal JSON-RPC error
+          }
       };
     };
 
@@ -670,10 +721,11 @@ class AzAiAgentProcessor {
       }
       else {
         data = await response.text();
+        const emsg = `retrieveAgentResponse(): AI Agent Service Thread endpoint returned exception. Status: ${response.status}, Text: ${response.statusText}, Message: ${data}.`; // ID10082025.n
         err_msg = {
           error: {
             target: threadUri,
-            message: `retrieveAgentResponse(): AI Agent Service Thread endpoint returned exception. Status: ${response.status}, Text: ${response.statusText}, Message: ${data}.`,
+            message: emsg,
             code: "serviceError"
           }
         };
@@ -682,15 +734,21 @@ class AzAiAgentProcessor {
         respMessage = {
           http_code: status,
           status_text: response.statusText,
-          data: err_msg
+          data: (this.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+            {
+              jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+              id: this.a2aReqId,
+              error: { code: -32603, message: emsg } // Internal JSON-RPC error
+            }
         };
       }
     }
     catch (error) {
+      const emsg = `retrieveAgentResponse(): AI Application Gateway encountered exception: [${error}].`; // ID10082025.n
       err_msg = {
         error: {
           target: threadUri,
-          message: `retrieveAgentResponse(): AI Application Gateway encountered exception: [${error}].`,
+          message: emsg,
           code: "internalFailure"
         }
       };
@@ -698,7 +756,12 @@ class AzAiAgentProcessor {
 
       respMessage = {
         http_code: 500,
-        data: err_msg
+        data: (this.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+          {
+            jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+            id: this.a2aReqId,
+            error: { code: -32603, message: emsg } // Internal JSON-RPC error
+          }
       };
     };
 
@@ -717,6 +780,9 @@ class AzAiAgentProcessor {
     let cacheMetrics = arguments[5]; // Cache hit metrics obj for all apps
     const routerInstance = arguments[7]; // Router instance
     let instanceName = (process.env.POD_NAME) ? apps.serverId + '-' + process.env.POD_NAME : apps.serverId; // Server instance name
+
+    this.inboundApiType = req.inboundApiType; // ID10082025.n
+    this.a2aReqId = req.a2aReqId;
 
     // Get agent thread ID from request header
     let threadId = memoryConfig?.useMemory ? req.get(CustomRequestHeaders.ThreadId) : null;
@@ -870,11 +936,11 @@ class AzAiAgentProcessor {
                 waitIdx++;
               else {
                 runError = true;
-
+                const emsg = `Retry attempts [${waitIdx}:${waitIdx * AiAgentProcessorConstants.SleepTime}] exceeded.`; // ID10082025.n
                 err_msg = {
                   error: {
                     target: endpoint.uri + '/threads/' + threadId + '/runs/' + runId + '?api-version=' + AzureApiVersions.AiAgentService,
-                    message: `Retry attempts [${waitIdx}:${waitIdx * AiAgentProcessorConstants.SleepTime}] exceeded.`,
+                    message: emsg,
                     code: "internalFailure"
                   }
                 };
@@ -883,7 +949,12 @@ class AzAiAgentProcessor {
                 respMessage = {
                   http_code: 500,
                   uri_idx: uriIdx - 1,
-                  data: err_msg
+                  data: (this.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+                    {
+                      jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+                      id: this.a2aReqId,
+                      error: { code: -32603, message: emsg } // Internal JSON-RPC error
+                    }
                 };
 
                 break;
@@ -932,10 +1003,11 @@ class AzAiAgentProcessor {
           break; // Completed request; break!
         }
         catch (error) {
+          const emsg = `AI Application Gateway encountered exception: [${error}].`; // ID10082025.n
           err_msg = {
             error: {
               target: req.originalUrl,
-              message: `AI Application Gateway encountered exception: [${error}].`,
+              message: emsg,
               code: "internalFailure"
             }
           };
@@ -943,7 +1015,12 @@ class AzAiAgentProcessor {
 
           respMessage = {
             http_code: 500,
-            data: err_msg
+            data: (this.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+              {
+                jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+                id: this.a2aReqId,
+                error: { code: -32603, message: emsg } // Internal JSON-RPC error
+              }
           };
         }
         finally {
@@ -955,17 +1032,23 @@ class AzAiAgentProcessor {
     while (((retryAfter > 0) || (respMessage.http_code !== 200)) && triedEps.some(val => val === false));
 
     if ((retryAfter > 0) && (respMessage == null)) { // When all endpoints have hit RPM limit | Backends latency is high
+      const emsg = `All backend AI Agents have either a) Hit the configured RPM limits or b) Surpassed the configured latency threshold! Retry after [${retryAfter}] seconds ...`;// ID10082025.n
       err_msg = {
         error: {
           target: req.originalUrl,
-          message: `All backend AI Agents have either a) Hit the configured RPM limits or b) Surpassed the configured latency threshold! Retry after [${retryAfter}] seconds ...`,
+          message: emsg,
           code: "tooManyRequests"
         }
       };
 
       respMessage = {
         http_code: 429, // Too many requests, retry later!
-        data: err_msg,
+        data: (this.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+          {
+            jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+            id: this.a2aReqId,
+            error: { code: -32002, message: emsg } // Too many requests
+          },
         retry_after: retryAfter
       };
     };

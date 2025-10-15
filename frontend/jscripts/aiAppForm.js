@@ -11,6 +11,8 @@
  * ID09192025: ganrad: v2.6.0-v1.3.2: (Bugfix) 1) When defining a new AI App., AI Model Inf. API fails if 'stop' parameter contains an 
  * empty string.  Hence commented out stop parameter. Same with presence and frequency penalty. 2) Search distance value was being sent as-is (0 - 100).  Value is now converted 
  * into a decimal value between 0.0 & 1.0 before the AI App definition is sent to the server.
+ * ID10132025: ganrad: v2.7.0-v1.3.2: (Enhancement) An AI Application can be enabled (active) or disabled.  In the disabled state, the AI gateway will
+ * not accept inference requests and will return an exception. 
  */
 let priorityCounter = 0; // Endpoint uri priority counter
 
@@ -422,6 +424,7 @@ async function deployAiApplication() {
       appId: document.getElementById('appId').value,
       description: document.getElementById('description').value,
       appType: aiAppType,
+      isActive: true, // ID10132025.n
       searchAiApp: document.getElementById('searchAiApp').value,
       cacheSettings: cacheObject,
       memorySettings: memoryObject,

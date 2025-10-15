@@ -2,6 +2,7 @@
   "appId": "ai-chatbot-v2.3.9-gpt4o-mini-l",
   "description": "An AI Application which uses Latency weighted endpoint routing algorithm introduced in RAPID v2.3.9.",
   "appType": "azure_oai",
+  "isActive": true,
   "searchAiApp": "",
   "cacheSettings": {
     "useCache": false

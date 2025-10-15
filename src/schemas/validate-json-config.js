@@ -11,6 +11,7 @@
  * ID01242025: ganrad: v2.2.0: Switched to AJV Json Schema parser and validator.
  * ID08252025: ganrad: v2.5.0: Added new schema contained within single domain App schema.  This schema contains elements for tracking costs (budgeting)
  * for API calls made by single domain AI Apps.
+ * ID09272025: ganrad: v2.7.0: Added new schema to support integration with MCP servers.
 */
 
 const path = require('path');
@@ -25,22 +26,25 @@ const fs = require("fs");
 const sdSchemaFile = "/single-domain-gtwy-schema.json";
 const sdAiAppSchemaFile = "/sd-ai-app-schema.json";
 const sdAiAppBudgetSchemaFile = "/gtwy-budget-schema.json"; // ID08252025.n
+const sdAiAppMcpServersSchemaFile = "/gtwy-mcp-servers-schema.json"; // ID09272025.n
 const singleDomainAgentSchema = JSON.parse(fs.readFileSync(__dirname + sdSchemaFile));
 const sdAiAppSchema = JSON.parse(fs.readFileSync(__dirname + sdAiAppSchemaFile));
 const sdAiAppBudgetSchema = JSON.parse(fs.readFileSync(__dirname + sdAiAppBudgetSchemaFile)); // ID08252025.n
+const sdAiAppMcpServersSchema = JSON.parse(fs.readFileSync(__dirname + sdAiAppMcpServersSchemaFile)); // ID09272025.n
 
 const mdSchemaFile = "/multi-domain-gtwy-schema.json";
 const mdAiAppSchemaFile = "/md-ai-app-schema.json";
 const multiDomainAgentSchema = JSON.parse(fs.readFileSync(__dirname + mdSchemaFile));
 const mdAiAppSchema = JSON.parse(fs.readFileSync(__dirname + mdAiAppSchemaFile));
 
-const ajvAiServer = new Ajv({schemas: [singleDomainAgentSchema, sdAiAppSchema, sdAiAppBudgetSchema, multiDomainAgentSchema, mdAiAppSchema], allErrors: true, strictSchema: false}); // ID08252025.n
+const ajvAiServer = new Ajv({schemas: [singleDomainAgentSchema, sdAiAppSchema, sdAiAppBudgetSchema, sdAiAppMcpServersSchema, multiDomainAgentSchema, mdAiAppSchema], allErrors: true, strictSchema: false}); // ID08252025.n, ID09272025.n
 const ajvAiApps = new Ajv({schemas: [sdAiAppSchema,mdAiAppSchema], allErrors: true, strictSchema: false});
 
 module.exports = {
 	singleDomainAgentSchema,
 	sdAiAppSchema,
 	sdAiAppBudgetSchema, // ID08252025.n
+	sdAiAppMcpServersSchema, // ID09272025.n
 	multiDomainAgentSchema,
 	mdAiAppSchema,
 	validateAiServerSchema: (srvConfig) => {

@@ -1,0 +1,70 @@
+{
+    "$id": "https://github.com/ganrad/rapid/schemas/gtwy-mcp-servers-schema.json",
+    "$comment": "ID09262025: ganrad: v2.7.0: Introduced support for executing MCP server tools as part of the single domain agent inferencing pipeline.",
+    "title": "McpServerTools",
+    "description": "This schema defines attributes used for connecting to MCP servers",
+    "type": "object",
+    "properties": {
+        "id": {
+            "description": "Unique name of the MCP server",
+            "type": "string",
+            "unique": true
+        },
+        "description": {
+            "description": "Description of the MCP server",
+            "type": "string",
+            "minLength": 1
+        },
+        "uri": {
+            "description": "URI of the MCP server",
+            "type": "string",
+            "minLength": 1
+        },
+        "tags": {
+            "description": "Unique tags associated with the mcp server tools",
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        },
+        "serverCacheTTL": {
+            "description": "Time to refresh server cache in seconds.  Minimum 60 mins.",
+            "type": "integer",
+            "exclusiveMinimum": 3600
+        },
+        "auth": {
+            "description": "Authentication scheme",
+            "type": "object",
+            "properties": {
+                "clientId": {
+                    "description": "Unique identity of the client application",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "tenantId": {
+                    "description": "Identity of the MSFT Entra ID tenant",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "clientSecret": {
+                    "description": "Client secret for OAuth credentials flow",
+                    "type": "string",
+                    "minLength": 1
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "clientId",
+                "tenantId",
+                "clientSecret"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "uri"
+    ],
+    "additionalProperties": false
+}

@@ -1,0 +1,154 @@
+### Author: Ganesh Radhakrishnan (ganrad)
+### Dated: 10-03-2025
+### Description: Use this script to test the A2A Router
+
+@baseUrl = http://localhost:8080/api/v1/dev/aigateway/agents
+@contentType = application/json
+@AcceptType = text/event-stream
+
+### Get list of all agent cards from the AI App Gateway Server
+GET {{baseUrl}}/.well-known/agents.json
+
+### Get a specific agent card
+GET {{baseUrl}}/.well-known/ai-gk-chatbot.json
+
+### Get an AI Foundry Agent card
+GET {{baseUrl}}/.well-known/Router-AI-Agent.json
+
+### (Streaming) Invoke an chat completion model on AI Foundry
+POST {{baseUrl}}/ai-gk-chatbot/invoke
+Content-Type: {{contentType}}
+Accept: {{AcceptType}}
+
+{
+  "jsonrpc": "2.0",
+  "method": "message/stream",
+  "params": {
+    "message": {
+      "kind": "message",
+      "role": "user",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "Top 5 beaches in NY?"
+        }
+      ],
+      "messageId": "msg-12345",
+      "metadata": {
+        "modelParams": {
+          "max_completion_tokens": 1800,
+          "user": "user-rapid7",
+          "stream": true,
+          "temperature": 0.1,
+          "top_p": 0.1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0
+        }
+      }
+    }
+  },
+  "id": 43
+}
+
+### (Non-streaming) Invoke an chat completion model on AI Foundry
+POST {{baseUrl}}/ai-gk-chatbot/invoke
+Content-Type: {{contentType}}
+
+{
+  "jsonrpc": "2.0",
+  "method": "message/send",
+  "params": {
+    "message": {
+      "kind": "message",
+      "role": "user",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "Top 5 programming languages for writing highly performant web api's?"
+        }
+      ],
+      "messageId": "msg-12345",
+      "metadata": {
+        "modelParams": {
+          "max_completion_tokens": 1800,
+          "user": "user-rapid4",
+          "stream": false,
+          "temperature": 0.1,
+          "top_p": 0.1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0
+        }
+      }
+    }
+  },
+  "id": 44
+}
+
+### (Non-streaming) Invoke an chat completion model on AI Foundry - Ask a follow on question
+POST {{baseUrl}}/ai-gk-chatbot/invoke
+Content-Type: {{contentType}}
+
+{
+  "jsonrpc": "2.0",
+  "method": "message/send",
+  "params": {
+    "message": {
+      "kind": "message",
+      "role": "user",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "Give me tools"
+        }
+      ],
+      "messageId": "msg-12346",
+      "contextId": "thr_05e18b21-3f2b-47fa-af95-efab7f11efb7",
+      "metadata": {
+        "modelParams": {
+          "max_completion_tokens": 1800,
+          "user": "user-rapid4",
+          "stream": false,
+          "temperature": 0.1,
+          "top_p": 0.1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0
+        }
+      }
+    }
+  },
+  "id": 45
+}
+
+### Invoke an agent on AI Foundry
+POST {{baseUrl}}/Router-AI-Agent/invoke
+Content-Type: {{contentType}}
+
+{
+  "jsonrpc": "2.0",
+  "method": "message/send",
+  "params": {
+    "message": {
+      "kind": "message",
+      "role": "user",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "How is the weather in Seattle today? Give me the forecast for the next 5 days.  Include the dates please."
+        }
+      ],
+      "messageId": "msg-12345",
+      "metadata": {
+        "modelParams": {
+          "max_completion_tokens": 1800,
+          "user": "user-rapid1",
+          "stream": false,
+          "temperature": 0.1,
+          "top_p": 0.1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0
+        }
+      }
+    }
+  },
+  "id": 46
+}
