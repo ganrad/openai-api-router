@@ -5,18 +5,19 @@
 ### Release Info
 Release | Date | Production Ready | Notes
 ------- | ---- | -------------------- | -----
-**v2.6.0** | 09/18/2025 | Yes | This latest release includes new features, enhancements and several bug fixes. This release also includes preview features which have not been fully tested.
-**v2.3.9** | 08/09/2025 | Yes | This is the last stable release & has gone thru end to end regression tests.  However, this release may lack some critical features introduced in later releases.
+**v2.7.0** | 10/14/2025 | Yes | This latest release includes support for Agent to Agent (A2A) protocol v0.3.0 & a few other feature enhancements.
+**v2.6.0** | 09/18/2025 | Yes | This stable release includes new features, enhancements and several bug fixes. This release also includes preview features which have not been fully tested.
+**v2.3.9** | 08/09/2025 | Yes | This stable release & has gone thru end to end regression tests.  However, this release may lack critical features introduced in later releases.
 
 ### Release Notes
-Refer to [Changelog document](./CHANGELOG.md) for details on new features, enhancements and bugfixes introduced in **v2.6.0** release.
+Refer to [Changelog document](./CHANGELOG.md) for details on new features, enhancements and bugfixes introduced in each release.
 
 ### Overview
 If you're seeking the essential components for rapid implementation and deployment of **AI Information Assistants (AI Chatbots)** on Azure or  advanced AI Solutions that expose a conversational interface, the *AI Application Gateway* is your go-to resource to expedite the development process and transition smoothly from pilot phase to full-scale production.
 
 This *solution accelerator* is designed to deliver 80-90% of the core functionality essential for constructing and deploying AI Solutions, essentially Information Chatbots. Most notably, it accelerates the smooth roll out of numerous AI Solutions on a shared, minimal set of infrastructure components/services.
 
-### Functional Architecture
+### Functional Architecture (v2.7.0)
 ![alt tag](./images/ai-chatbot-usecase-gh.PNG)
 
 Recipe | Components
@@ -43,7 +44,7 @@ Recipe | Components
 | **Streaming API Responses** | Azure AI Foundry Models (Chat Completions API only) | The AI Application Gateway fully supports the response *streaming* feature provided by Azure OpenAI Chat Completions API.  This function is seamlessly integrated with semantic caching, state management and traffic routing features. |
 | **Secure by Design** | All | The API's exposed by the AI Application Gateway can be easily secured using Microsoft Entra ID (Default). This feature ensures only authenticated users or client applications are able to access the API endpoints. |
 | **Observability and Traceability** | All | The AI Application Gateway uses the Azure Application Insights SDK to collect and send detailed telemetry on Azure OpenAI and dependent services to Azure Monitor. |
-| **Client SDK's and AI Application (LLM) Frameworks** | Azure AI Foundry Models | The AI Application Gateway server supports [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints) Client SDK.  The gateway has also been tested to work with [Prompt Flow](https://github.com/microsoft/promptflow) and [Langchain](https://python.langchain.com/docs/integrations/llms/azure_openai/) LLM frameworks. |
+| **SDK's and AI Application (LLM) Frameworks** | Azure AI Foundry Models | The AI Application Gateway server has been tested to work with the following API's/SDK's:<br>1) [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints)<br>2) [Agent 2 Agent Protocol v0.3.0](https://a2a-protocol.org/latest/)<br>3) [Prompt Flow](https://github.com/microsoft/promptflow)<br>4) [Langchain](https://python.langchain.com/docs/integrations/llms/azure_openai/)<br> Refer to the [Samples directory](./samples) for usage. |
 | **Robust Runtime** | All | The AI Application Gateway, powered by the Node.js runtime and Chrome V8 engine, uses a single-threaded event loop for asynchronous request handling. It is highly performant and can scale to manage thousands of concurrent requests. |
 
 ### Usage scenarios
@@ -257,6 +258,10 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      azure_content_safety | This value denotes Azure AI Content Safety service
      azure_search | This value denotes Azure AI Search service
 
+   - Use *isActive* attribute to specify if the AI Application is active or not (true/false).
+   
+     > **NOTE:** The AI App Gateway will not serve any requests for in-active (disabled) AI Applications.
+
    - Optionally, specify the backend endpoint router type *endpointRouterType*.
 
      > **NOTE:** Sample AI Application configuration files using different endpoint router types can be found in directory [ai-app-gateway-configs](./src/ai-app-gateway-configs). 
@@ -404,36 +409,26 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    You will see the API Gateway server start up message in the terminal window as shown in the snippet below.
 
    ```bash
-   > openai-api-router@2.6.0 start
+   > ai-app-gateway@2.7.0 start
    > node ./src/server.js
 
-   12-Sep-2025 18:18:36 [info] [server.js] Starting initialization of AI Application Gateway ...
-   12-Sep-2025 18:18:36 [info] [server.js] Azure Application Monitor OpenTelemetry configured.
-   12-Sep-2025 18:18:37 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
-   12-Sep-2025 18:18:37 [info] [server.js] Completions will be cached
-   12-Sep-2025 18:18:37 [info] [server.js] Prompts will be persisted
-   12-Sep-2025 18:18:37 [info] [server.js] Conversational state will be managed
-   12-Sep-2025 18:18:37 [info] [validate-json-config.js] validateAiServerSchema():
+   14-Oct-2025 19:53:23 [info] [server.js] Starting initialization of AI Application Gateway ...
+   14-Oct-2025 19:53:24 [info] [server.js] Azure Application Monitor OpenTelemetry configured.
+   14-Oct-2025 19:53:24 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
+   14-Oct-2025 19:53:24 [info] [server.js] Completions will be cached
+   14-Oct-2025 19:53:24 [info] [server.js] Prompts will be persisted
+   14-Oct-2025 19:53:24 [info] [server.js] Conversational state will be managed
+   14-Oct-2025 19:53:24 [info] [validate-json-config.js] validateAiServerSchema():
    Result:
    {
    "schema_compliant": true,
    "errors": "None"
    }
-   12-Sep-2025 18:18:37 [info] [server.js] Listing AI Applications:
-
-   Application ID: ai-chatbot-phi-4
-   Type: azure_aimodel_inf
-   Config:
-      useCache=true
-      useMemory=true
-      personalization=false
-      budgeting=false
-   Endpoint Router Type: Priority
-   Endpoints:
-      Priority: 0 Uri: https://Phi-4-011625.eastus2.models.ai.azure.com/v1/chat/completions?api-version=2024-06-01
+   14-Oct-2025 19:53:24 [info] [server.js] Listing AI Applications:
 
    Application ID: vectorizedata
    Type: azure_oai
+   Active: true
    Config:
       useCache=false
       useMemory=false
@@ -443,41 +438,50 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    Endpoints:
       Priority: 0 Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15
 
-   Application ID: AIF-Proj-Model-gpt-4.1
+   Application ID: vec-data-text-embedding-3-small
    Type: azure_oai
+   Active: true
+   Config:
+      useCache=false
+      useMemory=false
+      personalization=false
+      budgeting=true
+   Endpoint Router Type: Priority
+   Endpoints:
+      Priority: 0 Uri: https://aif-project-westus3-072-resource.cognitiveservices.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2023-05-15
+
+   Application ID: ai-gk-chatbot
+   Type: azure_oai
+   Active: true
    Config:
       useCache=true
       useMemory=true
       personalization=false
       budgeting=true
-   Endpoint Router Type: Priority
-   Endpoints:
-      Priority: 0 Uri: https://aif-project-westus3-072-resource.cognitiveservices.azure.com/openai/deployments/gpt-4.1-mini/chat/completions?api-version=2025-01-01-preview
-
-   Application ID: ai-chatbot-v2.3.8-gpt4o-mini
-   Type: azure_oai
-   Config:
-      useCache=true
-      useMemory=true
-      personalization=true
-      budgeting=false
-   Endpoint Router Type: Priority
+   Endpoint Router Type: FeedbackWeightedRandom
    Endpoints:
       Priority: 0 Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01
-      Priority: 1 Uri: https://oai-gr-dev-wus3.openai.azure.com/openai/deployments/gpt-4o-wus3/chat/completions?api-version=2025-01-01-preview
-   12-Sep-2025 18:18:37 [info] [server.js] Cache entry invalidate run schedule (Cron) - */2 * * * *
-   12-Sep-2025 18:18:37 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */4 * * * *
-   12-Sep-2025 18:18:37 [warn] [server.js] AI Application Gateway endpoints are not secured by Microsoft Entra ID!
-   12-Sep-2025 18:18:37 [info] [server.js] Server(): Azure AI Application Gateway started successfully.
+      Priority: 1 Uri: https://aif-project-westus3-072-resource.cognitiveservices.azure.com/openai/deployments/gpt-4.1-mini/chat/completions?api-version=2025-01-01-preview
+
+   Application ID: Router-AI-Agent
+   Type: azure_ai_agent
+   Active: true
+   Endpoint Router Type: Priority
+   Endpoints:
+      Priority: 0 Uri: https://aif-project-westus3-072-resource.services.ai.azure.com/api/projects/aif-project-westus3-072225/asst_gF3beiYNZVR4WslMyqYQCQvm
+   14-Oct-2025 19:53:24 [info] [server.js] Cache entry invalidate run schedule (Cron) - */2 * * * *
+   14-Oct-2025 19:53:24 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */4 * * * *
+   14-Oct-2025 19:53:24 [warn] [server.js] AI Application Gateway endpoints are not secured by Microsoft Entra ID!
+   14-Oct-2025 19:53:24 [info] [server.js] Server(): Azure AI Application Gateway started successfully.
    -----
    Details:
-   Server Name: Ai-App-Gateway-Local
+   Server Name: RAPID-CSA-Summit-Demo
    Server Type: single-domain
-   Version: 2.6.0
+   Version: 2.7.0
    Config. Provider Type: File
-   Endpoint URI: http://localhost:8080/api/v1/dev/apirouter
+   Endpoint URI: http://localhost:8080/api/v1/dev/aigateway
    Status: Running
-   Start Date: 9/12/2025, 6:18:37 PM
+   Start Date: 10/14/2025, 7:53:24 PM
    -----
    ```
 
@@ -487,17 +491,42 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
 
    Use a web browser to access the AI Application Gateway *info* endpoint - `/instanceinfo`. Specify correct values for the gateway listen port and environment. See below.
 
-   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/instanceinfo
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/aigateway/instanceinfo
 
-8. Access the AI Application Gateway load balancer/router (/lb) endpoint
+8. Access the AI Application Gateway inference endpoints
 
-   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* endpoint - `/lb`.  Remember to substitute the correct value for *AI_APPLICATION_ID* in the URL below.  The AI Application ID value should be one of the unique *appId* values specified in Gateway configuration file `./api-router-config.json`.
+   The AI Application inference endpoints exposed by the gateway are listed below.
 
-   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/lb/{AI_APPLICATION_ID}
+   - **Load balancer/Router Endpoint:** Expects Azure OpenAI / OpenAI payload
 
-   Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
+     http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/aigateway/lb/{AI_APPLICATION_ID}
+
+   - **Agent to Agent Protocol Endpoints:** Expects A2A v0.3.0 (JSONRPC 2.0) payload
+
+     *Agent Registry* endpoint:
+
+     http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/aigateway/agents/.well-known/agents.json
+
+     *Agent Card* endpoint:
+
+     http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/aigateway/agents/.well-known/{AI_APPLICATION_ID}.json
+
+     *Agent Invokation* endpoint:
+
+     http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/aigateway/agents/{AI_APPLICATION_ID}/invoke
+
+   Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server endpoint. Remember to substitute the correct value for *AI_APPLICATION_ID* in the URL's above.  The AI Application ID should correspond to one of the unique *appId* values defined in Gateway configuration file `./api-router-config.json`.
+
+   Review the response and log lines output by the gateway server in the respective terminal windows.
 
 **IMPORTANT**:
+
+- Review the following prior to using the A2A application inference endpoints.
+  - AI Application Gateway supports the latest A2A specification **v0.3.0**.
+  - Currently, the AI Application gateway only supports the **JSONRPC 2.0** transport.
+  - All AI Application Gateway features are supported with the exception of the following.
+    - AI Agents deployed on Azure AI Foundry Service
+    - Azure OpenAI Chat Completions On Your Data (OYD) API
 
 - For invoking the model deployment endpoints exposed by AI Application Gateway from a ***LangChain*** LLM application (/framework), two environment variables must be set. See below.
   - _AZURE_OPENAI_BASE_PATH_: Set the value of this variable to the Gateway load balancer / router endpoint URI (/lb). This URI can also be specified as part of the OpenAI configuration object (in code).
@@ -541,7 +570,7 @@ Before getting started with this section, make sure you have installed a contain
 
    Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* endpoint - `/lb`.  See URL below.
 
-   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/lb/{AI_APPLICATION_ID}
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/aigateway/lb/{AI_APPLICATION_ID}
 
    Review the OpenAI API response and log lines output by the gateway server in the respective terminal windows.
 
@@ -554,7 +583,7 @@ Before getting started with this section, make sure you have installed a contain
 
    Use a web browser and access the Gateway *metrics* endpoint to retrieve the backend API metrics information.  The metrics endpoint URL - `/metrics`, is listed below.
 
-   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/metrics
+   http://localhost:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/aigateway/metrics
 
    Azure AI Service endpoint metrics collected by the Gateway server across all AI Applications is described in the table below.
 
@@ -595,9 +624,7 @@ Before getting started with this section, make sure you have installed a contain
    throttledAPICalls | Number of OpenAI API calls that were throttled (Service returned status = 429)
    filteredAPICalls | Number of OpenAI API calls that were filtered due to harmful content or bad request (Service status = 400)
    throughput.kTokensPerWindow | Total tokens (K) processed/handled by this OpenAI backend 
-   throughput.requestsPerWindow | Total number of requests processed/handled by this OpenAI endpoint 
    throughput.avgTokensPerCall | Average tokens (K) processed by this OpenAI backend per API call
-   throughput.avgRequestsPerCall | Average requests processed by this OpenAI backend per API call (PTU only)
    throughput.tokensPerMinute | Number of tokens processed by this endpoint per minute
    throughput.requestsPerMinute | Number of OpenAI API calls handled by this endpoint per minute
    latency.avgResponseTimeMsec | Average response time of OpenAI backend API call
@@ -630,13 +657,13 @@ In standalone mode (single instance), the AI Application Gateway configuration c
    - Reload the AI Application Gateway configuration.
      Use **Curl** command in a terminal window or a web browser to access the gateway *reconfiguration* endpoint - `/reconfig`.  See URL below.The **private key** of the Gateway is required to reload the gateway configuration.
 
-     http://{API_GATEWAY_HOST}:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/reconfig/{API_GATEWAY_KEY}
+     http://{API_GATEWAY_HOST}:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/aigateway/reconfig/{API_GATEWAY_KEY}
 2. Use the AI Application Gateway *control plane* (`/cp`) API endpoint.
    - Use `curl` or any other HTTP client to update AI Application Gateway resources.  The control plane API endpoint is listed below. Substitute correct values for AI resource types and names.  Refer to the table below.
 
      **AI Application Gateway Control Plane API**
 
-     http://{API_GATEWAY_HOST}:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/apirouter/cp/{AI_RESOURCE_TYPE}/{AI_RESOURCE_NAME}/{ACTION}
+     http://{API_GATEWAY_HOST}:{API_GATEWAY_PORT}/api/v1/{API_GATEWAY_ENV}/aigateway/cp/{AI_RESOURCE_TYPE}/{AI_RESOURCE_NAME}/{ACTION}
 
      Gateway Resource Type | Action(s)/HTTP Method | Description |
      --------------------- | --------------------- | ----------- |
@@ -778,11 +805,11 @@ Additionally, the following resources should be deployed/configured.
 
    Use a web browser to access the Gateway Server *instance information* endpoint (/instanceinfo). Substitute the public IP of the Nginx ingress controller which you copied in the previous step.  See below.
 
-   http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV}/apirouter/instanceinfo
+   http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV}/aigateway/instanceinfo
 
    Use **Curl** or **Postman** to send a few completion / chat completion API requests to the gateway server *load balancer* endpoint - `/lb`.  See URL below.
 
-   http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV}/apirouter/lb/{AI_APPLICATION_ID}
+   http://{NGINX_PUBLIC_IP}/api/v1/{API_GATEWAY_ENV}/aigateway/lb/{AI_APPLICATION_ID}
 
    **IMPORTANT**:
 

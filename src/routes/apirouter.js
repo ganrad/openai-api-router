@@ -57,6 +57,9 @@
  * ID09162025: ganrad: v2.6.0: (Bugfix) Load the cache metrics object for an AI App only when caching is enabled for this app.
  * ID09172025: ganrad: v2.6.0: (Bugfix) Generate unique uri's for indexing endpoint metrics object.
  * ID09172025: ganrad: v2.6.0: Introduced FeedbackWeightedRandomRouter implementation.
+ * ID10032025: ganrad: v2.7.0: (Enhancement) Added support for A2A protocol.
+ * ID10132025: ganrad: v2.7.0: (Enhancement) An AI Application can be enabled (active) or disabled.  In the disabled state, the AI gateway will
+ * not accept inference requests and will return an exception. 
 */
 
 const path = require('path');
@@ -66,10 +69,13 @@ const express = require("express");
 const EndpointMetricsFactory = require("../utilities/ep-metrics-factory.js"); // ID04222024.n
 const AppConnections = require("../utilities/app-connection.js");
 const AppCacheMetrics = require("../utilities/cache-metrics.js"); // ID02202024.n
-const { 
-  AzAiServices, 
-  CustomRequestHeaders, 
-  AppResourceTypes, 
+const {
+  AzAiServices,
+  CustomRequestHeaders,
+  AppResourceTypes,
+  A2AProtocolAttributes, // ID10032025.n
+  AiGatewayInboundReqApiType, // ID10032025.n
+  OpenAIChatCompletionMsgRoleTypes, // ID10032025.n
   GatewayRouterEndpoints,
   EndpointMiscConstants, // ID09152025.n
   EndpointRouterTypes // ID09172025.n 
@@ -79,6 +85,7 @@ const AiProcessorFactory = require("../processors/ai-processor-factory.js"); // 
 const { TrafficRouterFactory } = require("../utilities/endpoint-routers.js"); // ID08222025.n
 const ResourceHandlerFactory = require("../handlers/res-handler-factory.js"); // ID07242025.n
 const logger = require("../utilities/logger.js"); // ID04272024.n
+const { transformOpenAIToA2AResult } = require('../utilities/a2a-helper-funcs.js');
 const router = express.Router();
 
 // const { TblNames, PersistDao } = require("../utilities/persist-dao.js"); // ID11042024.n, ID07242025.o
@@ -173,16 +180,16 @@ router.put([GatewayRouterEndpoints.RequestsEndpoint + "/:app_id/:request_id/:fee
       const epId = application.endpoints[endpointIdx].id ?? ''; // Ensure endpoint id is specified for AI Foundry models!
       const appEpMetricsObj = appConnections.getConnection(appId);
       if (appEpMetricsObj) { // Update the in-memory ep metrics object only if it is loaded!
-        const epMetricsObj = appEpMetricsObj.get(retrieveUniqueURI(uri,application.appType,epId));
+        const epMetricsObj = appEpMetricsObj.get(retrieveUniqueURI(uri, application.appType, epId));
 
-        if ( epMetricsObj ) // If empty, don't throw a runtime exception. Exit the server and continue (just in case)...
+        if (epMetricsObj) // If empty, don't throw a runtime exception. Exit the server and continue (just in case)...
           epMetricsObj.updateFeedbackCount(response.feedback);
       };
 
       // Check if endpoint router configured for this AI App is feedback weighted random.  If so, record the feedback with the router
       // so it can adjust routing weights accordingly.
       const epRouter = appRouters.get(appId);
-      if ( epRouter && (epRouter.routerType === EndpointRouterTypes.FeedbackWeightedRandomRouter) )
+      if (epRouter && (epRouter.routerType === EndpointRouterTypes.FeedbackWeightedRandomRouter))
         epRouter.recordFeedback(epId, response.feedback);
     }
   };
@@ -226,305 +233,424 @@ function getAiSearchAppApikey(ctx, appName) {
 //   app_id: AI Application ID
 // router.post("/lb/:app_id", async (req, res) => { // ID03192024.o
 // router.post(["/lb/:app_id","/lb/:app_id/*"], async (req, res) => { // ID03192024.n, ID04102024.o
-router.post([GatewayRouterEndpoints.InferenceEndpoint + "/:app_id", GatewayRouterEndpoints.InferenceEndpoint + "/openai/deployments/:app_id/*", GatewayRouterEndpoints.InferenceEndpoint + "/:app_id/*"], async (req, res) => { // ID04102024.n, ID07252025.n
-  const eps = req.targeturis; // AI application configuration
-  const cdb = req.cacheconfig; // Global cache configuration
-  const appTypes = [AzAiServices.OAI, AzAiServices.AzAiModelInfApi, AzAiServices.AzAiAgent]; // ID11052024.n; ID03242025.n
+router.post(
+  [
+    GatewayRouterEndpoints.InferenceEndpoint + "/:app_id",
+    GatewayRouterEndpoints.InferenceEndpoint + "/openai/deployments/:app_id/*",
+    GatewayRouterEndpoints.InferenceEndpoint + "/:app_id/*",
+    GatewayRouterEndpoints.A2AEndpoint + "/:app_id/invoke" // ID10032025.n
+  ], async (req, res) => { // ID04102024.n, ID07252025.n
+    const eps = req.targeturis; // AI application configuration
+    const cdb = req.cacheconfig; // Global cache configuration
+    const appTypes = [AzAiServices.OAI, AzAiServices.AzAiModelInfApi, AzAiServices.AzAiAgent]; // ID11052024.n; ID03242025.n
+    const inboundApiType =
+      req.originalUrl.includes(GatewayRouterEndpoints.A2AEndpoint) ? AiGatewayInboundReqApiType.Agent2Agent : AiGatewayInboundReqApiType.OpenAI; // ID10032025.n
+    req.inboundApiType = inboundApiType; // ID10032025.n
+    const a2aReqId = req.body.id || null; // ID10032025.n
+    if ( a2aReqId ) // ID10032025.n
+      req.a2aReqId = a2aReqId;
 
-  let err_obj = null;
-  let appId = req.params.app_id; // The AI Application ID
-  let application = (eps.applications) ? eps.applications.find(app => app.appId === appId) : null;
+    let err_obj = null;
+    let appId = req.params.app_id; // The AI Application ID
+    let application = (eps.applications) ? eps.applications.find(app => app.appId === appId) : null;
 
-  // Check if AI Application loaded in app context
-  if (!application) {
-    err_obj = {
-      http_code: 404, // Resource not found!
-      data: {
+    // Check if AI Application loaded in app context
+    if (!application) {
+      err_obj = {
+        http_code: 404, // Resource not found!
+        data: (inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? { // ID10032025.n
+          error: {
+            target: req.originalUrl,
+            message: `AI Application [ID=${appId}] not found. Unable to process request.`,
+            code: "invalidPayload"
+          }
+        } : {
+          jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+          id: a2aReqId,
+          error: { code: -32602, message: `AI Agent [ID=${appId}] not found. Unable to process request.` }
+        }
+      };
+
+      res.status(err_obj.http_code).json(err_obj.data);
+      return;
+    };
+
+    // ID10132025.sn
+    // Check if AI Application is active
+    if ( ! application.isActive ) {
+       err_obj = {
+        http_code: 400, // Bad request
+        data: (inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? {
+          error: {
+            target: req.originalUrl,
+            message: `AI Application [ID=${appId}] is currently in-active (in disabled state). Unable to process request.`,
+            code: "invalidPayload"
+          }
+        } : {
+          jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+          id: a2aReqId,
+          error: { code: -32602, message: `AI Agent [ID=${appId}] is currently in-active (in disabled state). Unable to process request.` }
+        }
+      };
+
+      res.status(err_obj.http_code).json(err_obj.data);
+      return;
+    };
+    // ID10132025.en
+
+    // let r_stream = req.body.stream; ID03242025.o
+    // if (r_stream && req.body.prompt) { // no streaming support for Completions API!
+    if (req.body.stream && req.body.prompt) { // no streaming support for Completions API!; ID03242025.n
+      /* ID06132024.so
+        err_obj = {
+        endpointUri: req.originalUrl,
+        currentDate: new Date().toLocaleString(),
+        errorMessage: "Stream mode is not yet supported! Unable to process request."
+      }; ID06132024.eo */
+      // ID06132024.sn
+      err_obj = {
         error: {
           target: req.originalUrl,
-          message: `AI Application ID [${appId}] not found. Unable to process request.`,
+          message: "Stream mode is not yet supported for 'Completions API'! Unable to process request.",
           code: "invalidPayload"
         }
-      }
+      };
+      // ID06132024.en
+
+      res.status(400).json(err_obj); // 400 = Bad request
+      return;
     };
 
-    res.status(err_obj.http_code).json(err_obj.data);
-    return;
-  };
+    req.normalizeOutput = application.normalizeOutput ? true : false; // ID10142025.n
 
-  // let r_stream = req.body.stream; ID03242025.o
-  // if (r_stream && req.body.prompt) { // no streaming support for Completions API!
-  if (req.body.stream && req.body.prompt) { // no streaming support for Completions API!; ID03242025.n
-    /* ID06132024.so
-      err_obj = {
-      endpointUri: req.originalUrl,
-      currentDate: new Date().toLocaleString(),
-      errorMessage: "Stream mode is not yet supported! Unable to process request."
-    }; ID06132024.eo */
-    // ID06132024.sn
-    err_obj = {
-      error: {
-        target: req.originalUrl,
-        message: "Stream mode is not yet supported for 'Completions API'! Unable to process request.",
-        code: "invalidPayload"
-      }
+    // ID10032025.sn
+    // If A2A inference request, transform request body
+    let rpcParams = null;
+    if (inboundApiType === AiGatewayInboundReqApiType.Agent2Agent) {
+      const { jsonrpc, method } = req.body;
+      rpcParams = req.body.params;
+
+      if (jsonrpc !== A2AProtocolAttributes.JsonRpcVersion ||
+        (method !== A2AProtocolAttributes.MessageSend && method !== A2AProtocolAttributes.MessageStream)) {
+        err_obj = {
+          http_code: 400, // Bad request
+          data: {
+            jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+            id: a2aReqId,
+            error: { code: -32600, message: 'Invalid Request (must use jsonrpc=2.0, method message/send or message/stream)' }
+          }
+        };
+
+        res.status(err_obj.http_code).json(err_obj.data);
+        return;
+      };
+
+      const { message, configuration } = rpcParams;
+      if (!message || !message.parts) {
+        err_obj = {
+          http_code: 400, // Bad request
+          data: {
+            jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+            id: a2aReqId,
+            error: { code: -32600, message: 'Invalid Request (message is empty or null)' }
+          }
+        };
+
+        res.status(err_obj.http_code).json(err_obj.data);
+        return;
+      };
+
+      // Extract text content from parts
+      const textParts = message.parts.filter(part => part.kind === A2AProtocolAttributes.MessagePartKindText).map(part => part.text).join('\n');
+
+      // Extract model parameters from metadata (allows passing LLM params)
+      const modelParams = message.metadata?.modelParams ||
+      { // default model params
+        max_completion_tokens: 500,
+        temperature: 0.7,
+        stream: false
+      };
+      if ( modelParams.stream )
+        modelParams.stream = (method === A2AProtocolAttributes.MessageStream) ?? false;
+
+      // Transform a2a message to OpenAI format
+      const openaiMessages = [{ role: OpenAIChatCompletionMsgRoleTypes.UserMessage, content: textParts }];
+
+      // Create OAI model compatible request body structure
+      const reqForBackend = {
+        threadId: message.contextId || null,
+        messages: openaiMessages,
+        ...modelParams
+      };
+
+      // Update the request body
+      req.body = reqForBackend;
     };
-    // ID06132024.en
+    // ID10032025.en
 
-    res.status(400).json(err_obj); // 400 = Bad request
-    return;
-  };
+    // Check embedding app and load the endpoint info. (if not already loaded!)
+    if (cdb.cacheResults && (!appConnections.getAllConnections().has(cdb.embeddApp))) {
+      const embeddApp = (eps.applications) ? eps.applications.find(app => app.appId === cdb.embeddApp) : null;
+      if (embeddApp) {
 
-  // Check embedding app and load the endpoint info. (if not already loaded!)
-  if (cdb.cacheResults && (!appConnections.getAllConnections().has(cdb.embeddApp))) {
-    const embeddApp = (eps.applications) ? eps.applications.find(app => app.appId === cdb.embeddApp) : null;
-    if (embeddApp) {
+        // ID08252025.sn
+        let budgetConfig = null;
+        if (embeddApp.budgetSettings?.useBudget && eps.budgetConfig)
+          budgetConfig = eps.budgetConfig.find(budget => budget.budgetName === embeddApp.budgetSettings.budgetName);
+        // ID08252025.en
+
+        logger.log({ level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName, embeddApp.appId, embeddApp.description, embeddApp.appType] });
+        let epinfo = new Map();
+        let epmetrics = null;
+        for (const element of embeddApp.endpoints) {
+
+          // ID08252025.sn
+          let modelInfo = null;
+          if (budgetConfig && element.budget?.modelName)
+            modelInfo = budgetConfig.models.find(model => model.modelName === element.budget.modelName);
+          // ID08252025.en
+
+          // epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm); ID04302025.o
+          // epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm, element.id); // ID04302025.n
+          epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm, element.id, element.healthPolicy, modelInfo); // ID04302025.n, ID05122025.n, ID08252025.n
+
+          epinfo.set(element.uri, epmetrics);
+        };
+        appConnections.addConnection(embeddApp.appId, epinfo);
+      };
+    };
+
+    let appModelCostCatalog = null; // ID08292025.n
+    // For each AI App, initialize app connection/endpoint info. & associated cache metrics the FIRST time it is accessed (Lazy loading)
+    if (!appConnections.getAllConnections().has(appId)) {
 
       // ID08252025.sn
       let budgetConfig = null;
-      if (embeddApp.budgetSettings?.useBudget && eps.budgetConfig)
-        budgetConfig = eps.budgetConfig.find(budget => budget.budgetName === embeddApp.budgetSettings.budgetName);
+      if (application.budgetSettings?.useBudget)
+        budgetConfig = eps.budgetConfig.find(budget => budget.budgetName === application.budgetSettings.budgetName);
       // ID08252025.en
 
-      logger.log({ level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName, embeddApp.appId, embeddApp.description, embeddApp.appType] });
+      logger.log({ level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName, appId, application.description, application.appType] });
       let epinfo = new Map();
       let epmetrics = null;
-      for (const element of embeddApp.endpoints) {
+      for (const element of application.endpoints) {
 
         // ID08252025.sn
         let modelInfo = null;
-        if (budgetConfig && element.budget?.modelName)
+        if (budgetConfig && element.budget?.modelName) {
           modelInfo = budgetConfig.models.find(model => model.modelName === element.budget.modelName);
+          if (element.budget.costBudgets) { // ID08292025.n
+            if (!appModelCostCatalog)
+              appModelCostCatalog = []; // Init cost catalog array
+
+            appModelCostCatalog.push(modelInfo);
+          };
+
+        };
         // ID08252025.en
 
-        // epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm); ID04302025.o
-        // epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm, element.id); // ID04302025.n
-        epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm, element.id, element.healthPolicy, modelInfo); // ID04302025.n, ID05122025.n, ID08252025.n
+        // epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm); ID04302025.o
+        epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm, element.id, element.healthPolicy, modelInfo); // ID04302025.n, ID05122025.n, ID08252025.n
 
-        epinfo.set(element.uri, epmetrics);
+        /** ID09172025.so
+        if (application.appType === AzAiServices.AzAiAgent) // ID08212025.n
+          epinfo.set(element.uri + "/" + element.id, epmetrics);
+        else
+          epinfo.set(element.uri, epmetrics);
+        ID09172025.eo */
+        epinfo.set(retrieveUniqueURI(element.uri, application.appType, element.id), epmetrics); // ID09172025.n
       };
-      appConnections.addConnection(embeddApp.appId, epinfo);
+      appConnections.addConnection(application.appId, epinfo);
+      if (cdb.cacheResults && (application.appId !== cdb.embeddApp) && (appTypes.includes(application.appType)))
+        if (application.cacheSettings.useCache) // ID09162025.n Init the cacheMetrics obj. only when caching is enabled for this AI App! 
+          cacheMetrics.addAiApplication(application.appId);
     };
-  };
 
-  let appModelCostCatalog = null; // ID08292025.n
-  // For each AI App, initialize app connection/endpoint info. & associated cache metrics the FIRST time it is accessed (Lazy loading)
-  if (!appConnections.getAllConnections().has(appId)) {
+    instanceCalls++;
 
-    // ID08252025.sn
-    let budgetConfig = null;
-    if (application.budgetSettings?.useBudget)
-      budgetConfig = eps.budgetConfig.find(budget => budget.budgetName === application.budgetSettings.budgetName);
-    // ID08252025.en
+    let appConfig = null;
+    let memoryConfig = null;
+    let userMemConfig = null; // ID05142025.n
+    let routerInstance = null; // ID06162025.n
+    if (appTypes.includes(application.appType)) {
+      if (req.body.data_sources && (req.body.data_sources[0].parameters.authentication.type === "api_key"))
+        if (application.searchAiApp === req.body.data_sources[0].parameters.authentication.key)
+          req.body.data_sources[0].parameters.authentication.key = getAiSearchAppApikey(eps, application.searchAiApp);
 
-    logger.log({ level: "info", message: "[%s] apirouter():\n  AI Application: %s\n  Description: %s\n  App Type: %s", splat: [scriptName, appId, application.description, application.appType] });
-    let epinfo = new Map();
-    let epmetrics = null;
-    for (const element of application.endpoints) {
+      appConfig = {
+        appId: application.appId,
+        appType: application.appType,
+        appEndpoints: application.endpoints,
+        useCache: application.cacheSettings.useCache,
+        srchType: application.cacheSettings.searchType,
+        srchDistance: application.cacheSettings.searchDistance,
+        srchContent: application.cacheSettings.searchContent
+      };
 
-      // ID08252025.sn
-      let modelInfo = null;
-      if (budgetConfig && element.budget?.modelName) {
-        modelInfo = budgetConfig.models.find(model => model.modelName === element.budget.modelName);
-        if (element.budget.costBudgets) { // ID08292025.n
-          if (!appModelCostCatalog)
-            appModelCostCatalog = []; // Init cost catalog array
-
-          appModelCostCatalog.push(modelInfo);
+      if (application?.memorySettings?.useMemory) // ID05062024.n
+        memoryConfig = {
+          affinity: application.memorySettings.affinity, // ID05082025.n
+          useMemory: application.memorySettings.useMemory,
+          msgCount: application.memorySettings.msgCount
         };
 
-      };
-      // ID08252025.en
+      /**
+       * ID05142025.sn - Check if long term memory obj. has to be populated.
+       */
+      if (application.personalizationSettings?.userMemory)
+        userMemConfig = {
+          genFollowupMsgs: application.personalizationSettings.generateFollowupMsgs,
+          aiAppName: application.personalizationSettings.userFactsAppName,
+          extractRoles: application.personalizationSettings.extractRoleValues,
+          extractionPrompt: application.personalizationSettings.extractionPrompt,
+          followupPrompt: application.personalizationSettings.followupPrompt
+        };
+      // ID05142025.en
 
-      // epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm); ID04302025.o
-      epmetrics = new EndpointMetricsFactory().getMetricsObject(application.appType, element.uri, element.rpm, element.id, element.healthPolicy, modelInfo); // ID04302025.n, ID05122025.n, ID08252025.n
+      /**
+       * ID06162025.sn - Populate the endpoint router instance
+       */
+      if (!appRouters.has(appId)) {
+        routerInstance = application.endpointRouterType ?
+          TrafficRouterFactory.create(
+            application.appId,
+            application.endpointRouterType,
+            application.endpoints,
+            application.adaptiveRouterSettings, // ID09022025.n
+            appModelCostCatalog) : null; // ID08222025.n, ID08292025.n
 
-      /** ID09172025.so
-      if (application.appType === AzAiServices.AzAiAgent) // ID08212025.n
-        epinfo.set(element.uri + "/" + element.id, epmetrics);
+        if (routerInstance)
+          appRouters.set(appId, routerInstance);  // A single router instance per AI App!
+      }
       else
-        epinfo.set(element.uri, epmetrics);
-      ID09172025.eo */
-      epinfo.set(retrieveUniqueURI(element.uri,application.appType,element.id), epmetrics); // ID09172025.n
-    };
-    appConnections.addConnection(application.appId, epinfo);
-    if (cdb.cacheResults && (application.appId !== cdb.embeddApp) && (appTypes.includes(application.appType)))
-      if (application.cacheSettings.useCache) // ID09162025.n Init the cacheMetrics obj. only when caching is enabled for this AI App! 
-        cacheMetrics.addAiApplication(application.appId);
-  };
-
-  instanceCalls++;
-
-  let appConfig = null;
-  let memoryConfig = null;
-  let userMemConfig = null; // ID05142025.n
-  let routerInstance = null; // ID06162025.n
-  if (appTypes.includes(application.appType)) {
-    if (req.body.data_sources && (req.body.data_sources[0].parameters.authentication.type === "api_key"))
-      if (application.searchAiApp === req.body.data_sources[0].parameters.authentication.key)
-        req.body.data_sources[0].parameters.authentication.key = getAiSearchAppApikey(eps, application.searchAiApp);
-
-    appConfig = {
-      appId: application.appId,
-      appType: application.appType,
-      appEndpoints: application.endpoints,
-      useCache: application.cacheSettings.useCache,
-      srchType: application.cacheSettings.searchType,
-      srchDistance: application.cacheSettings.searchDistance,
-      srchContent: application.cacheSettings.searchContent
-    };
-
-    if (application?.memorySettings?.useMemory) // ID05062024.n
-      memoryConfig = {
-        affinity: application.memorySettings.affinity, // ID05082025.n
-        useMemory: application.memorySettings.useMemory,
-        msgCount: application.memorySettings.msgCount
-      };
-
-    /**
-     * ID05142025.sn - Check if long term memory obj. has to be populated.
-     */
-    if (application.personalizationSettings?.userMemory)
-      userMemConfig = {
-        genFollowupMsgs: application.personalizationSettings.generateFollowupMsgs,
-        aiAppName: application.personalizationSettings.userFactsAppName,
-        extractRoles: application.personalizationSettings.extractRoleValues,
-        extractionPrompt: application.personalizationSettings.extractionPrompt,
-        followupPrompt: application.personalizationSettings.followupPrompt
-      };
-    // ID05142025.en
-
-    /**
-     * ID06162025.sn - Populate the endpoint router instance
-     */
-    if (!appRouters.has(appId)) {
-      routerInstance = application.endpointRouterType ?
-        TrafficRouterFactory.create(
-          application.appId,
-          application.endpointRouterType,
-          application.endpoints,
-          application.adaptiveRouterSettings, // ID09022025.n
-          appModelCostCatalog) : null; // ID08222025.n, ID08292025.n
-
-      if (routerInstance)
-        appRouters.set(appId, routerInstance);  // A single router instance per AI App!
+        routerInstance = appRouters.get(appId);
+      // ID06162025.en
     }
     else
-      routerInstance = appRouters.get(appId);
-    // ID06162025.en
-  }
-  else
-    appConfig = {
-      appId: application.appId,
-      appType: application.appType,
-      appEndpoints: application.endpoints
-    };
-
-  let response;
-  let processor = new AiProcessorFactory().getProcessor(appConfig.appType);
-  if (processor) {
-    switch (appConfig.appType) {
-      case AzAiServices.OAI:
-      case AzAiServices.AzAiModelInfApi: // ID11052024.n
-      case AzAiServices.AzAiAgent: // ID07102025.n
-        response = await processor.processRequest(
-          req,
-          res, // ID06052024.n
-          appConfig,
-          memoryConfig, // ID05062024.n
-          appConnections,
-          cacheMetrics,
-          userMemConfig, // ID05142025.n
-          routerInstance // ID06162025.n
-        );
-        break;
-      case AzAiServices.AiSearch:
-      case AzAiServices.Language:
-      case AzAiServices.Translator:
-      case AzAiServices.ContentSafety:
-        response = await processor.processRequest(
-          req,
-          appConfig,
-          appConnections);
-        break;
-    };
-  }
-  else {
-    /* ID06132024.so
-     err_obj = {
-       endpointUri: req.originalUrl,
-       currentDate: new Date().toLocaleString(),
-       errorMessage: `Application type [${appConfig.appType}] is not yet supported. Check the router configuration for AI Application [${appId}].`
-    };
-    ID06132024.eo */
-    // ID06132024.sn
-    err_obj = {
-      error: {
-        target: req.originalUrl,
-        message: `Application type [${appConfig.appType}] is incorrect and not supported. Review the router configuration for AI Application [${appId}] and specify correct value for "application type".`,
-        code: "notFound"
-      }
-    };
-    // ID06132024.en
-
-    response = {
-      http_code: 400,
-      data: err_obj
-    };
-  };
-
-  if (response.cached)
-    cachedCalls++;
-
-  if (response.http_code !== 200)
-    instanceFailedCalls++;
-
-  /* let res_hdrs = CustomRequestHeaders.RequestId; // ID06212024.so
-  if ( response.http_code !== 200 ) {
-    instanceFailedCalls++;
-
-    if ( response.http_code === 429 ) {
-      res_hdrs += ', retry-after';
-      // res.set("Access-Control-Expose-Headers", 'retry-after'); // ID05302024.n
-      res.set('retry-after', response.retry_after); // Set the retry-after response header
-    };
-  }
-  else {
-    if ( !req.body.stream ) { // ID06052024.n
-      if ( response.threadId ) {
-  res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
-        res.set(CustomRequestHeaders.ThreadId, response.threadId);
+      appConfig = {
+        appId: application.appId,
+        appType: application.appType,
+        appEndpoints: application.endpoints
       };
-      // res.set(CustomRequestHeaders.RequestId, req.id);
-    };
-  };
-  if ( !req.body.stream || response.http_code === 429 ) { // ID06052024.n
-    res.set(CustomRequestHeaders.RequestId, req.id);
-    res.set("Access-Control-Expose-Headers", res_hdrs);
-  }; ID06212024.eo */
 
-  logger.log({ level: "info", message: "[%s] apirouter(): Request ID=[%s] completed.\n  App. ID: %s\n  Backend URI Index: %d\n  HTTP Status: %d", splat: [scriptName, req.id, appId, response.uri_idx ?? -1, response.http_code] });
+    let response;
+    let processor = new AiProcessorFactory().getProcessor(appConfig.appType);
+    if (processor) {
+      switch (appConfig.appType) {
+        case AzAiServices.OAI:
+        case AzAiServices.AzAiModelInfApi: // ID11052024.n
+        case AzAiServices.AzAiAgent: // ID07102025.n
+          response = await processor.processRequest(
+            req,
+            res, // ID06052024.n
+            appConfig,
+            memoryConfig, // ID05062024.n
+            appConnections,
+            cacheMetrics,
+            userMemConfig, // ID05142025.n
+            routerInstance // ID06162025.n
+          );
+          break;
+        case AzAiServices.AiSearch:
+        case AzAiServices.Language:
+        case AzAiServices.Translator:
+        case AzAiServices.ContentSafety:
+          response = await processor.processRequest(
+            req,
+            appConfig,
+            appConnections);
+          break;
+      };
+    }
+    else {
+      /* ID06132024.so
+       err_obj = {
+         endpointUri: req.originalUrl,
+         currentDate: new Date().toLocaleString(),
+         errorMessage: `Application type [${appConfig.appType}] is not yet supported. Check the router configuration for AI Application [${appId}].`
+      };
+      ID06132024.eo */
+      // ID06132024.sn
+      const errMsg = `Application type [${appConfig.appType}] is not supported. Review the router configuration for AI Application [${appId}] and specify correct value for "application type".`; // ID10032025.n
+      err_obj = {
+        error: (inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? {
+          target: req.originalUrl,
+          message: errMsg,
+          code: "notFound"
+        } : {
+          code: -32600,
+          message: errMsg
+        }
+      };
+      // ID06132024.en
 
-  // ID06052024.sn, ID06212024.sn
-  if (req.body.stream && // All headers have been sent; close/end the connection
-    ((response.http_code === 200) || (response.http_code === 500)))
-    res.end();
-  else {
-    let res_hdrs = CustomRequestHeaders.RequestId;
-    res.set(CustomRequestHeaders.RequestId, req.id); // Set the request id header
-    if (response.http_code === 429) {
-      res_hdrs += ', retry-after';
-      res.set('retry-after', response.retry_after); // Set the retry-after response header
+      response = {
+        http_code: 400,
+        data: (inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_obj :
+          {
+            jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+            id: a2aReqId,
+            error: err_obj.error
+          }
+      };
     };
-    if (response.threadId) {
-      res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
-      res.set(CustomRequestHeaders.ThreadId, response.threadId); // Set the thread/session id header
+
+    if (response.cached)
+      cachedCalls++;
+
+    if (response.http_code !== 200)
+      instanceFailedCalls++;
+
+    /* let res_hdrs = CustomRequestHeaders.RequestId; // ID06212024.so
+    if ( response.http_code !== 200 ) {
+      instanceFailedCalls++;
+     
+      if ( response.http_code === 429 ) {
+        res_hdrs += ', retry-after';
+        // res.set("Access-Control-Expose-Headers", 'retry-after'); // ID05302024.n
+        res.set('retry-after', response.retry_after); // Set the retry-after response header
+      };
+    }
+    else {
+      if ( !req.body.stream ) { // ID06052024.n
+        if ( response.threadId ) {
+    res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
+          res.set(CustomRequestHeaders.ThreadId, response.threadId);
+        };
+        // res.set(CustomRequestHeaders.RequestId, req.id);
+      };
     };
-    res.set("Access-Control-Expose-Headers", res_hdrs);
-    // ID06052024.en
-    res.status(response.http_code).json(response.data);
-  }; // ID06212024.en
-});
+    if ( !req.body.stream || response.http_code === 429 ) { // ID06052024.n
+      res.set(CustomRequestHeaders.RequestId, req.id);
+      res.set("Access-Control-Expose-Headers", res_hdrs);
+    }; ID06212024.eo */
+
+    // ID06052024.sn, ID06212024.sn
+    if (req.body.stream && // All headers have been sent; close/end the connection
+      ((response.http_code === 200) || (response.http_code === 500)))
+      res.end();
+    else { // Non-streaming mode
+      let res_hdrs = CustomRequestHeaders.RequestId;
+      res.set(CustomRequestHeaders.RequestId, req.id); // Set the request id header
+      if (response.http_code === 429) {
+        res_hdrs += ', retry-after';
+        res.set('retry-after', response.retry_after); // Set the retry-after response header
+      };
+      if (response.threadId) {
+        res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
+        res.set(CustomRequestHeaders.ThreadId, response.threadId); // Set the thread/session id header
+      };
+      res.set("Access-Control-Expose-Headers", res_hdrs);
+      // ID06052024.en
+
+      if (inboundApiType === AiGatewayInboundReqApiType.Agent2Agent) // ID10032025.n
+        response = await transformOpenAIToA2AResult(req, rpcParams, response);
+
+      res.status(response.http_code).json(response.data);
+    }; // ID06212024.en
+
+    logger.log({ level: "info", message: "[%s] apirouter(): Request ID=[%s] completed.\n  App. ID: %s\n  Backend URI Index: %d\n  HTTP Status: %d", splat: [scriptName, req.id, appId, response.uri_idx ?? -1, response.http_code] }); // ID10032025.n
+  });
 
 module.exports = { // ID01292025.n
   apirouter: router,

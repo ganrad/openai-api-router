@@ -41,11 +41,12 @@
  * ID09152025: ganrad: v2.6.0: Added new constant type for user feedback ~ UserFeedback.
  * ID09162025: ganrad: v2.6.0: Added new constant type for misc endpoint constants.
  * ID09172025: ganrad: v2.6.0: Added new literal/constant for Feedback weighted random endpoint router.
+ * ID10032025: ganrad: v2.7.0: Added support for A2A protocol.
 */
 const { randomUUID } = require('node:crypto'); // ID07312025.n
 
 const DefaultAiGatewayUri = "http://localhost:8080/api/v1/dev/apirouter/lb"; // ID02102025.n
-const DefaultJsonParserCharLimit = "600kb"; // ID02202025.n
+const DefaultJsonParserCharLimit = "2mb"; // 600kb"; // ID02202025.n, ID10032025.n
 const DefEmbeddingModelTokenLimit = 8192; // ID02212025.n
 const OpenAIBaseUri = "api.openai.com"; // ID06162025.n
 const DefaultEndpointLatency = 5000; // ID06162025.n; 5 seconds
@@ -56,14 +57,23 @@ function generateGUID(prefix) { // ID07312025.n
   return(idPrefix.slice(0,3) + "_" + randomUUID());
 }
 
+
+async function generateUUID() { // ID10032025.n
+  const { v4: uuidv4 } = await import('uuid');
+
+  return uuidv4();
+}
+
 // ID07252025.sn
 const AiAppGateway = {
-  Version: "2.6.0",
+  Version: "2.7.0",
   ApiVersion: "/api/v1/",
-  RouterContextPath: "/apirouter"
+  // RouterContextPath: "/apirouter" ID10032025.o
+  RouterContextPath: "/aigateway" // ID10032025.n
 };
 
 const GatewayRouterEndpoints = {
+  A2AEndpoint: "/agents", // ID10032025.n
   ControlPlaneEndpoint: "/cp",
   InstanceInfoEndpoint: "/instanceinfo",
   HealthEndpoint: "/healthz",
@@ -74,6 +84,43 @@ const GatewayRouterEndpoints = {
   InferenceEndpoint: "/lb"
 };
 // ID07252025.en
+
+const AiGatewayInboundReqApiType = { // ID10032025.n
+  OpenAI: "OpenAI",
+  Agent2Agent: "Agent2Agent"
+};
+
+const A2AProtocolAttributes = { // ID10032025.n
+  Version: "0.3.0",
+  DefaultTransport: "JSONRPC", // JSON-RPC 2.0 over HTTP (mandatory)
+  JsonRpcVersion: "2.0",
+  MethodInvoke: 'invoke',
+  MessageSend: 'message/send',
+  MessageStream: 'message/stream',
+  RoleUser: "user",
+  RoleAgent: "agent",
+  MessagePartKindData: "data",
+  MessagePartKindText: "text",
+  MessagePartKindFile: "file"
+};
+
+const A2AErrorCodes = { // ID10032025.n
+  AuthError: -32001, // Authentication/Authorization error
+  TooManyRequests: -32002 // Too many requests, server is busy
+}
+
+const A2ATaskStatus = { // ID10032025.n
+  Submitted: "submitted",
+  Running: "Running",
+  Completed: "Completed"
+}
+
+const A2AObjectKind = { // ID10082025.n
+  Artifact: "artifact",
+  Task: "task",
+  StatusUpdate: "status-update",
+  ArtifactUpdate: "artifact-update"
+}
 
 const AzureApiVersions = { // ID03242025.n
   AiAgentService: '2025-05-01' // ID07102025.n
@@ -312,7 +359,13 @@ const UserFeedback = { // ID09152025.n
 
 module.exports = {
   generateGUID, // ID07312025.n
+  generateUUID, // ID10032025.n
+  AiGatewayInboundReqApiType, // ID10032025.n
   AiAppGateway, // ID07252025.n
+  A2AProtocolAttributes, // ID10032025.n
+  A2AErrorCodes, // ID10032025.n
+  A2ATaskStatus, // ID10032025.n
+  A2AObjectKind, // ID10032025.n
   GatewayRouterEndpoints, // ID07252025.n
   DefaultAiGatewayUri, // ID02102025.n
   DefaultJsonParserCharLimit, // ID02202025.n

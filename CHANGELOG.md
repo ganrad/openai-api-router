@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## [v2.7.0](https://github.com/ganrad/openai-api-router/compare/v2.6.0...v2.7.0) - 10/14/2025
+### Functionality changes
+**Azure AI Application Gateway (Server)**
+* **New Features:**
+
+  - **Agent to Agent Protocol:** This release introduces support for invoking AI applications deployed on the gateway using the Agent-to-Agent (A2A) SDK, now compatible with the latest A2A specification (v0.3.0). This feature enhances interoperability and flexibility by enabling seamless communication between AI agents using the latest A2A specification, supporting both real-time (streaming) and batch (non-streaming) inference scenarios.
+
+  **Enhancements:**
+
+  - **Disabling AI Applications:** This feature enables AI applications to be dynamically enabled or disabled via the control plane API while the gateway is running. When an application is in a disabled or inactive state, the gateway will skip inference execution and return an exception.  This capability provides operational flexibility by allowing administrators to control AI application availability in real time, helping manage resources and prevent unintended inference execution.
+
+  - **Normalize AI Gateway Inference Output:** This feature enables the normalization of inference outputs from the AI Gateway to match the format of OpenAI responses. As a result, client applications designed to process OpenAI responses can now seamlessly use this feature to run inferences on models hosted by Azure AI Foundry.
+
+---
+
+### Documentation changes
+* Updated the functional architecture diagram.
+* Made minor updates to the document.
+
 ## [v2.6.0](https://github.com/ganrad/openai-api-router/compare/v2.5.0...v2.6.0) - 09/18/2025
 ### Functionality changes
 **Azure AI Application Gateway (Server)**

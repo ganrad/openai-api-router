@@ -57,6 +57,8 @@
  * ID09022025: ganrad: v2.5.0: (Enhancement) Introduced AdaptiveBudgetAwareRouter implementation.
  * ID09162025: ganrad: v2.6.0: (Enhancement) Introduced user feedback capture for models/agents deployed on Azure AI Foundry.
  * ID09172025: ganrad: v2.6.0: (Bugfix) Generate unique uri's for indexing endpoint metrics object.
+ * ID10082025: ganrad: v2.7.0: (Enhancement) Added support for Agent to Agent (A2A) protocol.
+ * ID10142025: ganrad: v2.7.0: (Enhancement) Introduced new feature to support normalization of AOAI output. 
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -76,18 +78,23 @@ const {
   CustomRequestHeaders,
   EndpointRouterTypes, // ID06162025.n
   OpenAIChatCompletionMsgRoleTypes, // ID08202025.n
-  EndpointMiscConstants // ID09162025.n
+  EndpointMiscConstants, // ID09162025.n
+  AiGatewayInboundReqApiType, // ID10082025.n
+  A2AProtocolAttributes, // ID10082025.n
+  A2AErrorCodes // ID10082025.n
 } = require("../utilities/app-gtwy-constants.js"); // ID05062024.n; ID06162025.n
 // const { randomUUID } = require('node:crypto'); // ID05062024.n; ID07312025.o
 
 const { encode } = require('gpt-tokenizer'); // ID02212025.n
 const { getExtractionPrompt, updateSystemMessage, storeUserFacts } = require("../utilities/lt-mem-manager.js"); // ID05142025.n
-const { getOpenAICallMetadata, callAiAppEndpoint, retrieveUniqueURI } = require("../utilities/helper-funcs.js"); // ID05142025.n, ID09172025.n
+const { getOpenAICallMetadata, callAiAppEndpoint, retrieveUniqueURI, normalizeAiOutput } = require("../utilities/helper-funcs.js"); // ID05142025.n, ID09172025.n, ID10142025.n
+const { streamA2AResponse } = require("../utilities/a2a-helper-funcs.js"); // ID10082025.n
 
 class AzOaiProcessor {
 
   constructor() {
     this.streamed_response_sent = false;  // ID08202025.n
+    this.request = null;  // ID10082025.n; Initialize with null
   }
 
   #tokensWithinLimit(req) { // ID02212025.n
@@ -176,7 +183,7 @@ class AzOaiProcessor {
         choices: [
           {
             message: {
-              role: "assistant",
+              role: OpenAIChatCompletionMsgRoleTypes.Assistant,
               content: completion,
               context: {
                 citations: citsObj.choices[0].delta.context.citations,
@@ -200,7 +207,7 @@ class AzOaiProcessor {
         choices: [
           {
             message: {
-              role: "assistant",
+              role: OpenAIChatCompletionMsgRoleTypes.Assistant,
               content: completion,
             },
             finish_reason: "stop",
@@ -245,7 +252,7 @@ class AzOaiProcessor {
           {
             index: 0,
             delta: {
-              role: "assistant",
+              role: OpenAIChatCompletionMsgRoleTypes.Assistant,
               context: {
                 citations: completion.choices[0].message.context.citations,
                 intent: completion.choices[0].message.context.intent
@@ -301,6 +308,7 @@ class AzOaiProcessor {
         router_res.set(CustomRequestHeaders.ThreadId, t_id);
       };
       router_res.set("Access-Control-Expose-Headers", res_hdrs);
+      router_res.set("X-Accel-Buffering", "no"); // ID10082025.n; Tell Nginx servers (if present as reverse proxy) to not buffer SSE events 
       router_res.flushHeaders();
 
       this.streamed_response_sent = true; // ID08202025.n
@@ -309,28 +317,50 @@ class AzOaiProcessor {
     let chkPart = null;
     let recv_data = '';
     let call_data = null;
-    while (true) {
+
+    // ID10082025.sn
+    let streamOAIResponse = true;
+    if (this.request.inboundApiType === AiGatewayInboundReqApiType.Agent2Agent) {
+      streamOAIResponse = false;
+
+      const a2aRequest = {
+        requestId: req_id,
+        threadId: t_id,
+        appId: app_id,
+        inputMessage: this.request.body,
+        responseStream: router_res,
+        oaiReader: reader,
+        a2aReqId: this.request.a2aReqId
+      };
+
+      const a2aResponse = await streamA2AResponse(a2aRequest, false);
+      recv_data = a2aResponse.recv_data;
+      call_data = a2aResponse.call_data;
+    };
+    // ID10082025.en
+
+    const decoder = new TextDecoder("utf-8");
+    while (streamOAIResponse) { // ID10082025.n
       const { done, value } = await reader.read();
-      if (done) {
+      if (done)
         // 1. Debugging start - Finished
         // console.log("**** FINISHED ****");
         break;
-      };
 
-      router_res.write(value); // write the value out to router response/output stream
+      if (!this.request.normalizeOutput) // ID10142025.n
+        router_res.write(value); // write the value out to router response/output stream
 
-      const decoder = new TextDecoder("utf-8");
       const chunk = decoder.decode(value);
-
       const arr = chunk.split('\n'); // ID09242024.sn
-      // arr.forEach((data) => {
+
       for (const data of arr) {
-        // if (data.length === 0) return; // ignore empty message
         if (data.length === 0) continue; // ignore empty message
 
-        if (data === 'data: [DONE]')
-          // return;
+        if (data === 'data: [DONE]') {
+          if (this.request.normalizeOutput)
+            router_res.write('data: [DONE]\n\n');
           break;
+        };
 
         // 2. Line data
         // console.log(`**** DATA ****: ${data}`);
@@ -356,6 +386,21 @@ class AzOaiProcessor {
           // console.log(`**** P-DATA ****: ${pdata}`);
           chkPart = null;
 
+          if (this.request.normalizeOutput) { // ID10142025.n
+            // Remove 'prompt_filter_results' and 'content_filter_results'
+            delete jsonMsg.prompt_filter_results;
+            if (jsonMsg.choices) {
+              for (const choice of jsonMsg.choices)
+                delete choice.content_filter_results;
+            };
+
+            // Re-serialize and write cleaned data
+            const cleanedData = `data: ${JSON.stringify(jsonMsg)}\n\n`;
+
+            router_res.write(cleanedData);
+          };
+
+          // Accumulate content and metadata
           if (!jsonMsg.choices || jsonMsg.choices.length === 0) {
             console.log("streamCompletion(): Skipping this line");
 
@@ -367,7 +412,6 @@ class AzOaiProcessor {
           else {
             let content = jsonMsg.choices[0].delta.content;
             if (content)
-              // recv_data += jsonMsg.choices[0].delta.content;
               recv_data = recv_data.concat(content);
 
             if (!call_data && (jsonMsg.created > 0))
@@ -381,74 +425,13 @@ class AzOaiProcessor {
           };
         }
         catch (error) {
-          // let chkdata = ( chkPart) ? chkPart.concat(pdata) : pdata;
-          // chkPart = chkdata;
+          // Incomplete JSON, save for next chunk
           chkPart = pdata;
+
           // 4.b Partial data
           // console.log(`**** ChkPart ****: ${chkPart}`);
         };
-
-        /**
-              if ( pdata.startsWith("{") && pdata.endsWith("}") && this.#checkIfMessageIsComplete(pdata) ) {
-                // 4. Parsed data
-          console.log(`**** P-DATA ****: ${pdata}`);
-                chkPart = '';
-      
-                const jsonMsg = JSON.parse(pdata);
-      
-                if (!jsonMsg.choices || jsonMsg.choices.length === 0)
-            console.log("streamCompletion(): Skipping this line");
-                else {
-            let content = jsonMsg.choices[0].delta.content;
-            if ( content ) 
-              // recv_data += jsonMsg.choices[0].delta.content;
-              recv_data = recv_data.concat(content);
-      
-                  if ( ! call_data && (jsonMsg.created > 0) )
-              call_data = {
-                id: jsonMsg.id,
-                object: jsonMsg.object,
-                created: jsonMsg.created,
-                model: jsonMsg.model,
-                system_fingerprint: jsonMsg.system_fingerprint
-              };
-                };
-              }
-              else {
-          let chkdata = chkPart + pdata;
-                chkPart = chkdata;
-        };
-        */
-      }; // ID09242024.en
-      // });
-
-      /* for ( const message of this.#processChunk(chunk) ) { // ID09242024.so
-        try {
-    msg += message;
-          console.log(`MESSAGE: ${msg}`);
-
-      if ( msg.startsWith("{") && msg.endsWith("}") && this.#checkIfMessageIsComplete(msg) ) {
-            // console.log(`MESSAGE: ${msg}`);
-
-            const jsonMsg = JSON.parse(msg);
-      if ( (jsonMsg.choices.length > 0) && jsonMsg.choices[0].delta.content )
-        recv_data += jsonMsg.choices[0].delta.content;
-
-            if ( ! call_data && (jsonMsg.created > 0) )
-        call_data = {
-          id: jsonMsg.id,
-          object: jsonMsg.object,
-          created: jsonMsg.created,
-          model: jsonMsg.model,
-          system_fingerprint: jsonMsg.system_fingerprint
-        };
-      msg = '';
-    };
-        }
-        catch (error) {
-          logger.log({level: "warn", message: "[%s] %s.streamChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Message:\n  %s\n Error:\n  %s", splat: [scriptName,this.constructor.name,req_id,t_id,app_id,message,error]});
-        }
-      }; ID09242024.eo */
+      }; // ID09242024.en; End of for loop
     }; // end of while
     // 5. Check if chunk part was not processed!
     // console.log(`ChkPart: ${chkPart}`);
@@ -462,6 +445,7 @@ class AzOaiProcessor {
     return resp_data;
   }
 
+  // Currently, streaming OYD output is not supported with A2A protocol - ID10142025.n
   async #streamChatCompletionOyd(req_id, t_id, app_id, router_res, oai_res) {
     const reader = oai_res.body.getReader();
 
@@ -560,7 +544,29 @@ class AzOaiProcessor {
       router_res.set(CustomRequestHeaders.ThreadId, t_id);
     };
     router_res.set("Access-Control-Expose-Headers", res_hdrs);
+    router_res.set("X-Accel-Buffering", "no"); // ID10082025.n; Tell Nginx servers (if present as reverse proxy) to not buffer SSE events
     router_res.flushHeaders();
+
+    // ID10082025.sn
+    if (this.request.inboundApiType === AiGatewayInboundReqApiType.Agent2Agent) {
+      const a2aRequest = {
+        requestId: req_id,
+        threadId: t_id,
+        appId: app_id,
+        inputMessage: this.request.body,
+        responseStream: router_res,
+        responsePayload: res_payload.choices[0].message.content,
+        a2aReqId: this.request.a2aReqId
+      };
+
+      await streamA2AResponse(a2aRequest, true);
+
+      return {
+        http_code: 200, // All ok. Serving completion from cache.
+        cached: true
+      };
+    };
+    // ID10082025.n
 
     let msgChunk = this.#constructCompletionStreamMessage(res_payload)
     // console.log(`***** CACHED MESSAGE:\n${JSON.stringify(msgChunk)}`);
@@ -571,39 +577,41 @@ class AzOaiProcessor {
       });
     };
 
-    const value0 = "data: " + JSON.stringify({
-      choices: [],
-      created: 0,
-      id: "",
-      model: "",
-      object: "",
-      prompt_filter_results: [  // Safe to return 'safe sev' for all harm categories as this is a cached response!
-        {
-          prompt_index: 0,
-          content_filter_results: {
-            hate: {
-              filtered: false,
-              severity: "safe",
-            },
-            self_harm: {
-              filtered: false,
-              severity: "safe",
-            },
-            sexual: {
-              filtered: false,
-              severity: "safe",
-            },
-            violence: {
-              filtered: false,
-              severity: "safe",
+    if (!this.request.normalizeOutput) { // ID10142025.sn
+      const value0 = "data: " + JSON.stringify({
+        choices: [],
+        created: 0,
+        id: "",
+        model: "",
+        object: "",
+        prompt_filter_results: [  // Safe to return 'safe sev' for all harm categories as this is a cached response!
+          {
+            prompt_index: 0,
+            content_filter_results: {
+              hate: {
+                filtered: false,
+                severity: "safe",
+              },
+              self_harm: {
+                filtered: false,
+                severity: "safe",
+              },
+              sexual: {
+                filtered: false,
+                severity: "safe",
+              },
+              violence: {
+                filtered: false,
+                severity: "safe",
+              }
             }
           }
-        }
-      ]
-    }) + "\n\n";
-    router_res.write(value0, 'utf8', () => {
-      logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Prompt-Filter:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, value0] });
-    });
+        ]
+      }) + "\n\n";
+      router_res.write(value0, 'utf8', () => {
+        logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Prompt-Filter:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, value0] });
+      });
+    }; // ID10142025.en
 
     const value1 = "data: " + JSON.stringify(msgChunk.completion) + "\n\n";
     router_res.write(value1, 'utf8', () => {
@@ -613,7 +621,7 @@ class AzOaiProcessor {
     const value2 = "data: " + JSON.stringify({
       choices: [
         {
-          content_filter_results: {},
+          ...(!this.request.normalizeOutput && {content_filter_results: {}}), // ID10142025.n
           delta: {},
           finish_reason: "stop",
           index: 0
@@ -622,8 +630,7 @@ class AzOaiProcessor {
       created: msgChunk.completion.created,
       id: msgChunk.completion.id,
       model: msgChunk.completion.model,
-      object: msgChunk.completion.object,
-      system_fingerprint: null
+      object: msgChunk.completion.object
     }) + "\n\n";
     router_res.write(value2, 'utf8', () => {
       logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Stop:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, value2] });
@@ -668,6 +675,7 @@ class AzOaiProcessor {
     const routerInstance = arguments[7]; // ID06162025.n; AI App specific endpoint router instance
     let manageState = (process.env.API_GATEWAY_STATE_MGMT === 'true') ? true : false
     let instanceName = (process.env.POD_NAME) ? apps.serverId + '-' + process.env.POD_NAME : apps.serverId; // Server instance name ID11112024.n
+    this.request = req; // ID10082025.n; Initialize the request object
 
     // State management is only supported for chat completion API!
     if (memoryConfig && (!req.body.messages)) // If the request is not of type == chat completion
@@ -678,11 +686,19 @@ class AzOaiProcessor {
       userMemConfig = null;
 
     // 1. Get thread ID in request header
-    let threadId = req.get(CustomRequestHeaders.ThreadId);
+    // let threadId = req.get(CustomRequestHeaders.ThreadId); ID10082025.o
+    let threadId = null; // ID10082025.n
+    if (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) // ID10082025.n
+      threadId = req.get(CustomRequestHeaders.ThreadId)
+    else {
+      threadId = req.body.threadId;
+      delete req.body.threadId;
+    };
+
     let threadStarted = false; // ID04302025.n
 
     // console.log(`*****\nAzOaiProcessor.processRequest():\n  URI: ${req.originalUrl}\n  Request ID: ${req.id}\n  Application ID: ${config.appId}\n  Type: ${config.appType}`);
-    logger.log({ level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n  Request Payload:\n  %s", splat: [scriptName, this.constructor.name, req.id, req.originalUrl, req.user?.name, threadId, config.appId, config.appType, JSON.stringify(req.body, null, 2)] }); // ID07292024.n
+    logger.log({ level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  API Type: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n  Request Payload:\n  %s", splat: [scriptName, this.constructor.name, req.id, req.inboundApiType, req.originalUrl, req.user?.name, threadId, config.appId, config.appType, JSON.stringify(req.body, null, 2)] }); // ID07292024.n
 
     let respMessage = null; // IMPORTANT: Populate this var before returning!
 
@@ -762,7 +778,7 @@ class AzOaiProcessor {
             // When response is served from the cache and state mgmt is turned on, update the thread count of the first end-point
             for (const element of config.appEndpoints) { // ID04302025.n
               // let metricsObj = epdata.get(element.uri); ID09172025.o
-              let metricsObj = epdata.get(retrieveUniqueURI(element.uri,config.appType,element.id)); // ID09172025.n
+              let metricsObj = epdata.get(retrieveUniqueURI(element.uri, config.appType, element.id)); // ID09172025.n
               metricsObj.updateUserThreads();
 
               break;
@@ -792,8 +808,8 @@ class AzOaiProcessor {
               (Date.now() - stTime) / 1000,
               EndpointMiscConstants.IdCached // Use '-cached-' as endpoint ID since this is a cached response
             ];
-            if ( threadId ) {
-              values.splice(5,1);
+            if (threadId) {
+              values.splice(5, 1);
               values.unshift(threadId);
             };
 
@@ -866,11 +882,12 @@ class AzOaiProcessor {
                 errorMessage: `The user session associated with Thread ID=[${threadId}] has either expired or is invalid! Start a new user session.`
               };
         ID06132024.eo */
-        // ID06132024.sn  
+        // ID06132024.sn
+        const emsg = `The user session associated with Thread ID=[${threadId}] has either expired or is invalid! Start a new user session.`; // ID10082025.n
         err_msg = {
           error: {
             target: req.originalUrl,
-            message: `The user session associated with Thread ID=[${threadId}] has either expired or is invalid! Start a new user session.`,
+            message: emsg,
             code: "invalidPayload"
           }
         };
@@ -878,7 +895,12 @@ class AzOaiProcessor {
 
         respMessage = {
           http_code: 400, // Bad request
-          data: err_msg
+          data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+            {
+              jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+              id: req.a2aReqId,
+              error: { code: -32602, message: emsg } // Invalid method parameters
+            }
         };
 
         return (respMessage);
@@ -1018,7 +1040,8 @@ class AzOaiProcessor {
                 config.appId,
                 prompt,
                 pgvector.toSql(embeddedPrompt),
-                data
+                // data ID10142025.o
+                (req.normalizeOutput) ? normalizeAiOutput(data) : data // ID10142025.n
               ];
 
               await cacheDao.storeEntity(
@@ -1075,7 +1098,8 @@ class AzOaiProcessor {
               http_code: status,
               uri_idx: (uriIdx - 1),
               cached: false,
-              data: data
+              // data ID10142025.o
+              data: (req.normalizeOutput) ? normalizeAiOutput(data) : data // ID10142025.n
             };
 
             retryAfter = 0;  // ID05282024.n (Bugfix; Set the retry after var to zero!!)
@@ -1136,7 +1160,12 @@ class AzOaiProcessor {
               http_code: status,
               uri_idx: (uriIdx - 1), // ID03262025.n
               status_text: response.statusText,
-              data: data
+              data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? data : // ID10082025.n
+                {
+                  jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+                  id: req.a2aReqId,
+                  error: { code: -32600, message: "AI Service endpoint returned an exception.", data } // Invalid request
+                }
             };
 
             break;
@@ -1161,10 +1190,11 @@ class AzOaiProcessor {
                   };
             ID06132024.eo */
             // ID06132024.sn
+            const emsg = `AI Service endpoint returned exception: [${data}].`; // ID10082025.n
             err_msg = {
               error: {
                 target: element.uri,
-                message: `AI Service endpoint returned exception: [${data}].`,
+                message: emsg,
                 code: "unauthorized"
               }
             };
@@ -1173,7 +1203,12 @@ class AzOaiProcessor {
             respMessage = {
               http_code: status,
               uri_idx: (uriIdx - 1), // ID03262025.n
-              data: err_msg
+              data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+                {
+                  jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+                  id: req.a2aReqId,
+                  error: { code: A2AErrorCodes.AuthError, message: "AI Service endpoint returned an exception.", data } // Authentication error
+                }
             };
 
             retryAfter = 1; // ID06162025.n; Log the failed call in the endpoint metrics object, try other available endpoints (if any)
@@ -1190,10 +1225,11 @@ class AzOaiProcessor {
           };
           ID06132024.eo */
           // ID06132024.sn
+          const emsg = `AI Services Gateway encountered exception: [${error}].`; // ID10082025.n
           err_msg = {
             error: {
               target: element.uri,
-              message: `AI Services Gateway encountered exception: [${error}].`,
+              message: emsg,
               code: "internalFailure"
             }
           };
@@ -1204,7 +1240,12 @@ class AzOaiProcessor {
           respMessage = {
             http_code: 500,
             uri_idx: (uriIdx - 1), // ID03262025.n
-            data: err_msg
+            data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+              {
+                jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+                id: req.a2aReqId,
+                error: { code: -32603, message: emsg } // Internal JSON-RPC error
+              }
           };
 
           // break; // ID04172024.n; ID06162025.o
@@ -1230,11 +1271,12 @@ class AzOaiProcessor {
       };
       ID06132024.eo */
       if (respMessage == null) { // ID06162025.n
+        const emsg = `All backend Azure OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`; // ID10082025.n
         // ID06132024.sn
         err_msg = {
           error: {
             target: req.originalUrl,
-            message: `All backend Azure OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`,
+            message: emsg,
             code: "tooManyRequests"
           }
         };
@@ -1244,7 +1286,12 @@ class AzOaiProcessor {
         respMessage = {
           http_code: 429, // Server is busy, retry later!
           uri_idx: (uriIdx - 1), // ID05082025.n
-          data: err_msg,
+          data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+            {
+              jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+              id: req.a2aReqId,
+              error: { code: -32002, message: emsg } // Too many requests, server is busy
+            },
           retry_after: retryAfter
         };
       };  // ID06162025.n
@@ -1258,11 +1305,12 @@ class AzOaiProcessor {
                 errorMessage: "Internal server error. Unable to process request. Check server logs."
               };
         ID06132024.eo */
+        const emsg = "Internal server error. Unable to process request. Please check server logs."; // ID10082025.n
         // ID06132024.sn
         err_msg = {
           error: {
             target: req.originalUrl,
-            message: "Internal server error. Unable to process request. Please check server logs.",
+            message: emsg,
             code: "internalFailure"
           }
         };
@@ -1270,7 +1318,12 @@ class AzOaiProcessor {
 
         respMessage = {
           http_code: 500, // Internal API Gateway server error!
-          data: err_msg
+          data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+            {
+              jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+              id: req.a2aReqId,
+              error: { code: -32603, message: emsg } // Internal JSON-RPC error
+            }
         };
 
         logger.log({ level: "error", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Exception:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, JSON.stringify(respMessage, null, 2)] }); // ID05082025.n

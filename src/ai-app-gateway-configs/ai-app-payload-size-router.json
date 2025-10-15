@@ -2,6 +2,7 @@
   "appId": "ai-chatbot-v2.4.0-gpt4o-mini-payload",
   "description": "An AI Application which uses Payload Switch endpoint routing algorithm introduced in RAPID v2.4.0.",
   "appType": "azure_oai",
+  "isActive": true,
   "searchAiApp": "",
   "cacheSettings": {
     "useCache": false

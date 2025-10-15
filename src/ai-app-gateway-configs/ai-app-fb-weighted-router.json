@@ -2,6 +2,7 @@
   "appId": "ai-chatbot-v2.6.0-gpt4o-mini-fwr",
   "description": "An AI Application which uses Feedback weighted random endpoint routing algorithm introduced in RAPID v2.6.0.",
   "appType": "azure_oai",
+  "isActive": true,
   "searchAiApp": "",
   "cacheSettings": {
     "useCache": false

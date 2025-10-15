@@ -58,6 +58,9 @@
  * ID07312025: ganrad: v2.4.0: (Refactored code) Globally unique ID's are generated using a single function defined in module ~ app-gtwy-constants.js.
  * ID08212025: ganrad: v2.4.0: (Enhancement) Updated code to support AI Foundry Service Agents.
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
+ * ID10032025: ganrad: v2.7.0: (Enhancement) Added support for A2A protocol.
+ * ID10132025: ganrad: v2.7.0: (Enhancement) An AI Application can be enabled (active) or disabled.  In the disabled state, the AI gateway will
+ * not accept inference requests and will return an exception. 
 */
 
 // ID04272024.sn
@@ -104,6 +107,7 @@ const express = require("express");
 const cors = require("cors"); // ID05222024.n
 const { apirouter, reconfigEndpoints } = require("./routes/apirouter"); // Single domain AI App Gateway
 const { mdapirouter, reconfigAppMetrics } = require("./routes/md-apirouter"); // ID09042024.n; Multi domain distributed AI App Engine
+const { createA2AGatewayRouter } = require("./routes/a2a-router.js"); // ID10032025.n
 const cprouter = require("./routes/control-plane.js"); // ID01232025.n; AI App Gateway control plane route
 const pgdb = require("./services/cp-pg.js");
 const CacheConfig = require("./utilities/cache-config");
@@ -398,9 +402,9 @@ async function readAiAppGatewayConfig() { // ID01292025.n
       context.applications?.forEach((app) => {
         let pidx = 0;
         if ((app.appType === AzAiServices.OAI) || (app.appType === AzAiServices.AzAiModelInfApi))
-          console.log(`\nApplication ID: ${app.appId}\n  Type: ${app.appType}\n  Config:\n    useCache=${app?.cacheSettings?.useCache ?? false}\n    useMemory=${app?.memorySettings?.useMemory ?? false}\n    personalization=${app?.personalizationSettings?.userMemory ?? false}\n    budgeting=${app?.budgetSettings?.useBudget ?? false}`); // ID05142025.n; ID08252025.n
+          console.log(`\nApplication ID: ${app.appId}\n  Type: ${app.appType}\n  Active: ${app.isActive}\n  Config:\n    useCache=${app?.cacheSettings?.useCache ?? false}\n    useMemory=${app?.memorySettings?.useMemory ?? false}\n    personalization=${app?.personalizationSettings?.userMemory ?? false}\n    budgeting=${app?.budgetSettings?.useBudget ?? false}`); // ID05142025.n; ID08252025.n
         else
-          console.log(`\nApplication ID: ${app.appId}\n  Type: ${app.appType}`);
+          console.log(`\nApplication ID: ${app.appId}\n  Type: ${app.appType}\n  Active: ${app.isActive}`);
 
         if ((cacheConfig.cacheResults) && (app.appId === cacheConfig.embeddApp))
           vectorAppFound = true;
@@ -683,6 +687,7 @@ initServer().then(() => { // ID01302025.n
     next();
   }, (context.serverType === ServerTypes.SingleDomain) ? apirouter : mdapirouter);
 
+  app.use(endpoint, createA2AGatewayRouter(context.applications)); // ID10032025.n
   
   app.listen(port, () => {
     wlogger.log({

@@ -9,6 +9,7 @@
  * Notes:
  * ID03102025: ganrad: v2.3.0: (Enhancement) Added http method to 'operations' API
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
+ * 
 */
 
 const path = require('path');
@@ -25,7 +26,7 @@ const {
   AppResourceActions, 
   ResourceDBActions, 
   ConfigProviderType } = require("../utilities/app-gtwy-constants.js");
-const { validateAiAppSchema, sdAiAppSchema, sdAiAppBudgetSchema, mdAiAppSchema } = require("../schemas/validate-json-config.js"); // ID08252025.n
+const { validateAiAppSchema, sdAiAppSchema, mdAiAppSchema } = require("../schemas/validate-json-config.js"); // ID08252025.n
 const { reinitAppConnection } = require("../routes/apirouter.js");
 const { reconfigAppMetrics } = require("../routes/md-apirouter.js");
 
