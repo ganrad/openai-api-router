@@ -91,8 +91,6 @@ function createA2AGatewayRouter(applications = []) {
       name: application.name || application.appId,
       description: application.description,
       url: `${req.protocol}://${req.srvctx.host}:${req.srvctx.port}${req.srvctx.endpoint}${GatewayRouterEndpoints.A2AEndpoint}/${application.appId}/${A2AProtocolAttributes.MethodInvoke}`,
-      // url: `${req.protocol}://${req.srvctx.host}:${req.srvctx.port}/`, // /${A2AProtocolAttributes.MethodInvoke}`,
-      // url: `${application.appId}`, // /${A2AProtocolAttributes.MethodInvoke}`,
       preferredTransport: A2AProtocolAttributes.DefaultTransport,
       provider: {
         organization: "AI Application Gateway",

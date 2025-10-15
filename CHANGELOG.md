@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [v2.7.0](https://github.com/ganrad/openai-api-router/compare/v2.5.0...v2.6.0) - 10/14/2025
+## [v2.7.0](https://github.com/ganrad/openai-api-router/compare/v2.6.0...v2.7.0) - 10/14/2025
 ### Functionality changes
 **Azure AI Application Gateway (Server)**
 * **New Features:**
@@ -10,6 +10,8 @@
   **Enhancements:**
 
   - **Disabling AI Applications:** This feature enables AI applications to be dynamically enabled or disabled via the control plane API while the gateway is running. When an application is in a disabled or inactive state, the gateway will skip inference execution and return an exception.  This capability provides operational flexibility by allowing administrators to control AI application availability in real time, helping manage resources and prevent unintended inference execution.
+
+  - **Normalize AI Gateway Inference Output:** This feature enables the normalization of inference outputs from the AI Gateway to match the format of OpenAI responses. As a result, client applications designed to process OpenAI responses can now seamlessly use this feature to run inferences on models hosted by Azure OpenAI.
 
 ---
 
