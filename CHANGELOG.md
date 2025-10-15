@@ -11,7 +11,7 @@
 
   - **Disabling AI Applications:** This feature enables AI applications to be dynamically enabled or disabled via the control plane API while the gateway is running. When an application is in a disabled or inactive state, the gateway will skip inference execution and return an exception.  This capability provides operational flexibility by allowing administrators to control AI application availability in real time, helping manage resources and prevent unintended inference execution.
 
-  - **Normalize AI Gateway Inference Output:** This feature enables the normalization of inference outputs from the AI Gateway to match the format of OpenAI responses. As a result, client applications designed to process OpenAI responses can now seamlessly use this feature to run inferences on models hosted by Azure OpenAI.
+  - **Normalize AI Gateway Inference Output:** This feature enables the normalization of inference outputs from the AI Gateway to match the format of OpenAI responses. As a result, client applications designed to process OpenAI responses can now seamlessly use this feature to run inferences on models hosted by Azure AI Foundry.
 
 ---
 
