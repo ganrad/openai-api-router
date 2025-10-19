@@ -10,7 +10,7 @@ async def main():
       resolver = A2ACardResolver(httpx_client=http_client, base_url="http://localhost:8080/api/v1/dev/aigateway/agents")
 
       # Get agent card from the well-known location
-      agent_card = await resolver.get_agent_card(relative_card_path="/.well-known/ai-gk-chatbot.json")
+      agent_card = await resolver.get_agent_card(relative_card_path="/.well-known/{agent-name}.json")
 
       # Create A2A agent instance
       agent = A2AAgent(

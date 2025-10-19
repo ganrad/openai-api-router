@@ -8,7 +8,7 @@ async def main():
 
     agent = AzureOpenAIChatClient(
         base_url="https://{host}:{port}/api/v1/dev/aigateway/lb",
-        deployment_name="ai-gk-chatbot",
+        deployment_name="{model-deployment-name}",
         credential=AzureCliCredential()
     ).create_agent(
         instructions="You are good at telling great stories.",

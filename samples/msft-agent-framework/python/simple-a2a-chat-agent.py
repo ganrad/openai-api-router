@@ -11,7 +11,7 @@ async def main():
    agent = A2AAgent(
       name="test-agent",
       description="test-agent-description",
-      url="http://localhost:8080/api/v1/dev/aigateway/agents/ai-gk-chatbot/invoke"
+      url="http://localhost:8080/api/v1/dev/aigateway/agents/{agent-name}/invoke"
    )
 
    result = await agent.run(messages=user_msg)

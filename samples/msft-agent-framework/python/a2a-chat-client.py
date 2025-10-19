@@ -44,7 +44,7 @@ async def main() -> None:
                 f'Attempting to fetch public agent card from: {base_url}{AGENT_CARD_WELL_KNOWN_PATH}'
             )
             _public_card = (
-                await resolver.get_agent_card(relative_card_path="/.well-known/ai-gk-chatbot.json")
+                await resolver.get_agent_card(relative_card_path="/.well-known/{agent-card}.json")
             )  # Fetches from default public path
             logger.info('Successfully fetched public agent card:')
             logger.info(
