@@ -544,7 +544,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
   - MAF Client requires a secure backend endpoint URI. Hence use a secure (*HTTPS*) AI Application Gateway endpoint/URI in order to try out the included sample applications. 
   - Use the *Load Balancer URI* (base_url) for invoking AI Applications backed by Azure AI Foundry Model endpoints.  Refer to step no. 8 in this Section.
 
-  Refer to the sample client applications (Python and Javascript) included in the `./samples/msft-agent-framework` directory.
+  Refer to the sample client applications (Python) included in the `./samples/msft-agent-framework` directory.
 
 - For invoking the model deployment endpoints exposed by AI Application Gateway from a ***LangChain*** LLM application (/framework), two environment variables must be set. See below.
   - _AZURE_OPENAI_BASE_PATH_: Set the value of this variable to the Gateway load balancer / router endpoint URI (/lb). This URI can also be specified as part of the OpenAI configuration object (in code).
