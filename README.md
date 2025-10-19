@@ -6,7 +6,7 @@
 Release | Date | Production Ready | Notes
 ------- | ---- | -------------------- | -----
 **v2.7.5** | 10/19/2025 | Yes | This latest release adds support for Microsoft Agent Framework (MAF) and includes multiple bug fixes. Use this release if you intend to use A2A or MAF for building advanced AI agentic workflows and leverage the AI Gateway's built-in features.
-**v2.7.0** | 10/14/2025 | Yes | This release supports Agent to Agent (A2A) protocol v0.3.0 and includes a few other feature enhancements.
+**v2.7.0** | 10/14/2025 | Yes | This release supports Agent to Agent (A2A) protocol v0.3.0 and includes a few other important feature enhancements.
 **v2.6.0** | 09/18/2025 | Yes | This stable release includes new features, enhancements and several bug fixes. This release also includes preview features which have not been fully tested.
 
 ### Release Notes
@@ -44,7 +44,7 @@ Recipe | Components
 | **Streaming API Responses** | Azure AI Foundry Models (Chat Completions API only) | The AI Application Gateway fully supports the response *streaming* feature provided by Azure OpenAI Chat Completions API.  This function is seamlessly integrated with semantic caching, state management and traffic routing features. |
 | **Secure by Design** | All | The API's exposed by the AI Application Gateway can be easily secured using Microsoft Entra ID (Default). This feature ensures only authenticated users or client applications are able to access the API endpoints. |
 | **Observability and Traceability** | All | The AI Application Gateway uses the Azure Application Insights SDK to collect and send detailed telemetry on Azure OpenAI and dependent services to Azure Monitor. |
-| **SDK's and AI Application (LLM) Frameworks** | Azure AI Foundry Models | The AI Application Gateway server has been tested to work with the following API's/SDK's:<br>1) [Azure Open AI](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints)<br>   [Azure AI Foundry Models](https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/foundry-models-overview)<br>2) [Agent to Agent Protocol v0.3.0](https://a2a-protocol.org/latest/)<br>3) [Microsoft Agent Framework](https://learn.microsoft.com/en-us/agent-framework/)<br>4) [Prompt Flow](https://github.com/microsoft/promptflow)<br>5) [Langchain](https://python.langchain.com/docs/integrations/llms/azure_openai/)<br> Refer to the [Samples directory](./samples) for usage. |
+| **SDK's and AI Application (LLM) Frameworks** | Azure AI Foundry Models | The AI Application Gateway server has been tested to work with the following API's/SDK's:<br>1) [Azure Open AI](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/switching-endpoints) and [Azure AI Foundry Models](https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/foundry-models-overview)<br>2) [Agent to Agent Protocol v0.3.0](https://a2a-protocol.org/latest/)<br>3) [Microsoft Agent Framework](https://learn.microsoft.com/en-us/agent-framework/)<br>4) [Prompt Flow](https://github.com/microsoft/promptflow)<br>5) [Langchain](https://python.langchain.com/docs/integrations/llms/azure_openai/)<br> Refer to the [Samples directory](./samples) for usage. |
 | **Robust Runtime** | All | The AI Application Gateway, powered by the Node.js runtime and Chrome V8 engine, uses a single-threaded event loop for asynchronous request handling. It is highly performant and can scale to manage thousands of concurrent requests. |
 
 ### Usage scenarios
