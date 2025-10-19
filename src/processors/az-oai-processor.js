@@ -327,7 +327,7 @@ class AzOaiProcessor {
         requestId: req_id,
         threadId: t_id,
         appId: app_id,
-        inputMessage: this.request.body,
+        inputMessage: this.request.a2aMessage,
         responseStream: router_res,
         oaiReader: reader,
         a2aReqId: this.request.a2aReqId
@@ -553,7 +553,7 @@ class AzOaiProcessor {
         requestId: req_id,
         threadId: t_id,
         appId: app_id,
-        inputMessage: this.request.body,
+        inputMessage: this.request.a2aMessage,
         responseStream: router_res,
         responsePayload: res_payload.choices[0].message.content,
         a2aReqId: this.request.a2aReqId

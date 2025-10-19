@@ -22,6 +22,10 @@ const {
   GatewayRouterEndpoints
 } = require("../utilities/app-gtwy-constants.js");
 
+const agentHost = (req) => {
+  return (process.env.CONTAINER_APP_HOSTNAME ? `https://${process.env.CONTAINER_APP_HOSTNAME}` : `${req.protocol}://${req.srvctx.host}:${req.srvctx.port}`);
+}
+
 function createA2AGatewayRouter(applications = []) {
   const router = express.Router();
   router.use(express.json({ limit: DefaultJsonParserCharLimit }));
@@ -36,8 +40,10 @@ function createA2AGatewayRouter(applications = []) {
       a2a: {
         schema_version: A2AProtocolAttributes.Version,
         endpoints: {
-          card: `${req.protocol}://${req.srvctx.host}:${req.srvctx.port}${req.srvctx.endpoint}${GatewayRouterEndpoints.A2AEndpoint}/.well-known/${app.appId}.json`,
-          url: `${req.protocol}://${req.srvctx.host}:${req.srvctx.port}${req.srvctx.endpoint}${GatewayRouterEndpoints.A2AEndpoint}/${app.appId}/${A2AProtocolAttributes.MethodInvoke}`,
+          // card: `${req.protocol}://${req.srvctx.host}:${req.srvctx.port}${req.srvctx.endpoint}${GatewayRouterEndpoints.A2AEndpoint}/.well-known/${app.appId}.json`,
+          card: `${agentHost(req)}${req.srvctx.endpoint}${GatewayRouterEndpoints.A2AEndpoint}/.well-known/${app.appId}.json`,
+          // url: `${req.protocol}://${req.srvctx.host}:${req.srvctx.port}${req.srvctx.endpoint}${GatewayRouterEndpoints.A2AEndpoint}/${app.appId}/${A2AProtocolAttributes.MethodInvoke}`,
+          url: `${agentHost(req)}${req.srvctx.endpoint}${GatewayRouterEndpoints.A2AEndpoint}/${app.appId}/${A2AProtocolAttributes.MethodInvoke}`
         }
       }
     }));
@@ -90,7 +96,8 @@ function createA2AGatewayRouter(applications = []) {
       protocolVersion: A2AProtocolAttributes.Version,
       name: application.name || application.appId,
       description: application.description,
-      url: `${req.protocol}://${req.srvctx.host}:${req.srvctx.port}${req.srvctx.endpoint}${GatewayRouterEndpoints.A2AEndpoint}/${application.appId}/${A2AProtocolAttributes.MethodInvoke}`,
+      // url: `${req.protocol}://${req.srvctx.host}:${req.srvctx.port}${req.srvctx.endpoint}${GatewayRouterEndpoints.A2AEndpoint}/${application.appId}/${A2AProtocolAttributes.MethodInvoke}`,
+      url: `${agentHost(req)}${req.srvctx.endpoint}${GatewayRouterEndpoints.A2AEndpoint}/${application.appId}/${A2AProtocolAttributes.MethodInvoke}`,
       preferredTransport: A2AProtocolAttributes.DefaultTransport,
       provider: {
         organization: "AI Application Gateway",
@@ -106,7 +113,7 @@ function createA2AGatewayRouter(applications = []) {
         id: application.appId,
         name: application.name || '',
         description: `App Type: ${application.appType}; Enabled Features: Cache=${application?.cacheSettings?.useCache ?? false}, Memory=${application?.memorySettings?.useMemory ?? false}, Personalization=${application?.personalizationSettings?.userMemory ?? false}, Budgeting=${application?.budgetSettings?.useBudget ?? false}`,
-        tags: "chat-completion"
+        tags: ["chat-completion"]
       }],
       /*
       securitySchemes: {

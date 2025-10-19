@@ -7,6 +7,7 @@
  * Version (Introduced): v2.7.0
  *
  * Notes:
+ * ID10182025: ganrad: v2.7.5: (Bugfixes) Made multiple bug fixes.
  */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -19,7 +20,7 @@ const {
   A2AObjectKind
 } = require("./app-gtwy-constants.js");
 
-async function mapOpenAIMessagesToA2ATask(requestId, a2aParams, response) {
+async function mapOpenAIMessagesToA2ATask(requestId, a2aMessage, response) {
   const openaiMessage = response.data;
   const responseContent = openaiMessage.choices[0].message.content;
 
@@ -45,9 +46,19 @@ async function mapOpenAIMessagesToA2ATask(requestId, a2aParams, response) {
     status: {
       state: A2ATaskStatus.Completed, // Set Task Status = Completed
       timestamp: new Date().toISOString(),
-      message: 'Call completed successfully'
+      message: {
+        role: A2AProtocolAttributes.RoleAgent,
+        kind: A2AObjectKind.Message,
+        messageId: a2aMessage.messageId || requestId, // Set the message ID
+        parts: [
+          {
+            kind: A2AProtocolAttributes.MessagePartKindText,
+            text: "Call completed successfully"
+          }
+        ]
+      }
     },
-    history: [a2aParams], // Include the input message
+    history: [a2aMessage], // Include the input message
     artifacts: [artifact],
     metadata: {
       requestId,
@@ -58,7 +69,7 @@ async function mapOpenAIMessagesToA2ATask(requestId, a2aParams, response) {
   return (task);
 }
 
-async function transformOpenAIToA2AResult(req, inpA2aParams, response) {
+async function transformOpenAIToA2AResult(req, response) {
   if (response.data.error)
     return (response);
 
@@ -67,7 +78,7 @@ async function transformOpenAIToA2AResult(req, inpA2aParams, response) {
     data: {
       jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
       id: req.a2aReqId,
-      result: await mapOpenAIMessagesToA2ATask(req.id, inpA2aParams, response)
+      result: await mapOpenAIMessagesToA2ATask(req.id, req.a2aMessage, response)
     }
   };
 
@@ -120,7 +131,23 @@ async function streamA2AResponse(a2aRequest, cached) {
     contextId: a2aRequest.threadId,
     status: {
       state: (cached) ? A2ATaskStatus.Completed : A2ATaskStatus.Submitted,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      message: {
+        role: A2AProtocolAttributes.RoleAgent,
+        kind: A2AObjectKind.Message,
+        messageId: a2aRequest.inputMessage.messageId,
+        parts: (cached) ? [
+          {
+            kind: A2AProtocolAttributes.MessagePartKindText,
+            text: "Call completed successfully"
+          }
+        ] : [
+          {
+            kind: A2AProtocolAttributes.MessagePartKindText,
+            text: "Received streaming request ..."
+          }
+        ]
+      }
     },
     history: [a2aRequest.inputMessage], // Input request message
     artifacts: cached ? await (async () => {
@@ -144,9 +171,10 @@ async function streamA2AResponse(a2aRequest, cached) {
   };
 
   // Send initial full Task
+  // console.log(`++++++++++++++ Step-0: task status=submitted; Message ID=${a2aRequest.a2aReqId} ****************`);
   a2aRequest.responseStream.write(`data: ${JSON.stringify({ jsonrpc: A2AProtocolAttributes.JsonRpcVersion, id: a2aRequest.a2aReqId, result: task })}\n\n`);
 
-  if ( cached )
+  if (cached)
     return;
 
   let recv_data = '';
@@ -154,15 +182,31 @@ async function streamA2AResponse(a2aRequest, cached) {
 
   const taskUpdate = {
     taskId,
-    kind: A2AObjectKind.StatusUpdate,
+    kind: A2AObjectKind.TaskStatusUpdate,
     contextId: a2aRequest.threadId,
-    status: { state: A2ATaskStatus.Running, timestamp: new Date().toISOString() },
+    status: {
+      state: A2ATaskStatus.Working,
+      timestamp: new Date().toISOString(),
+      message: {
+        role: A2AProtocolAttributes.RoleAgent,
+        kind: A2AObjectKind.Message,
+        messageId: a2aRequest.inputMessage.messageId,
+        parts: [
+          {
+            kind: A2AProtocolAttributes.MessagePartKindText,
+            text: "Starting to stream events from backend ..."
+          }
+        ]
+      }
+    },
+    final: false,
     metadata: {
       requestId: a2aRequest.requestId
     }
   };
 
-  // Send task update - Running
+  // Send task update - Working
+  // console.log(`++++++++++++++ Step-1: task status=working ****************`);
   a2aRequest.responseStream.write(`data: ${JSON.stringify({ jsonrpc: A2AProtocolAttributes.JsonRpcVersion, id: a2aRequest.a2aReqId, result: taskUpdate })}\n\n`);
 
   let artifactCount = 0;
@@ -182,18 +226,22 @@ async function streamA2AResponse(a2aRequest, cached) {
 
         const artifactUpdate = {
           taskId,
-          kind: A2AObjectKind.ArtifactUpdate,
+          kind: A2AObjectKind.TaskArtifactUpdate,
           contextId: a2aRequest.threadId,
+          append: (artifactCount) ? true : false,
           artifact: {
             name: `LLM Response Chunk ${++artifactCount}`,
             description: 'Streaming response chunk from LLM inference',
             artifactId,
             parts: [{ kind: A2AProtocolAttributes.MessagePartKindText, text: delta }]
           },
-          append: true
+          metadata: {
+            requestId: a2aRequest.requestId
+          }
         };
 
         // Set artifact update
+        // console.log(`++++++++++++++ Step-2: artifact count=${artifactCount} ****************`);
         a2aRequest.responseStream.write(`data: ${JSON.stringify({ jsonrpc: A2AProtocolAttributes.JsonRpcVersion, id: a2aRequest.a2aReqId, result: artifactUpdate })}\n\n`);
 
         if (!call_data && (chunk.created > 0))
@@ -209,11 +257,26 @@ async function streamA2AResponse(a2aRequest, cached) {
   }
 
   // Finalize Task and mark as completed
+  // console.log(`++++++++++++++ Step-3: final task update ****************`);
   const taskFinalUpdate = {
     taskId,
-    kind: A2AObjectKind.StatusUpdate,
+    kind: A2AObjectKind.TaskStatusUpdate,
     contextId: a2aRequest.threadId,
-    status: { state: A2ATaskStatus.Completed, timestamp: new Date().toISOString() },
+    status: {
+      state: A2ATaskStatus.Completed,
+      timestamp: new Date().toISOString(),
+      message: {
+        role: A2AProtocolAttributes.RoleAgent,
+        kind: A2AObjectKind.Message,
+        messageId: a2aRequest.inputMessage.messageId,
+        parts: [
+          {
+            kind: A2AProtocolAttributes.MessagePartKindText,
+            text: "Streaming call completed successfully"
+          }
+        ]
+      }
+    },
     final: true,
     metadata: {
       requestId: a2aRequest.requestId

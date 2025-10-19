@@ -42,6 +42,7 @@
  * ID09162025: ganrad: v2.6.0: Added new constant type for misc endpoint constants.
  * ID09172025: ganrad: v2.6.0: Added new literal/constant for Feedback weighted random endpoint router.
  * ID10032025: ganrad: v2.7.0: Added support for A2A protocol.
+ * ID10162025: ganrad: v2.7.5: Added a few more constants for A2A protocol.
 */
 const { randomUUID } = require('node:crypto'); // ID07312025.n
 
@@ -66,7 +67,7 @@ async function generateUUID() { // ID10032025.n
 
 // ID07252025.sn
 const AiAppGateway = {
-  Version: "2.7.0",
+  Version: "2.7.5",
   ApiVersion: "/api/v1/",
   // RouterContextPath: "/apirouter" ID10032025.o
   RouterContextPath: "/aigateway" // ID10032025.n
@@ -110,16 +111,23 @@ const A2AErrorCodes = { // ID10032025.n
 }
 
 const A2ATaskStatus = { // ID10032025.n
+  InputRequired: "input-required",
   Submitted: "submitted",
-  Running: "Running",
-  Completed: "Completed"
+  Working: "working",
+  Canceled: "canceled",
+  Failed: "failed",
+  Rejected: "rejected",
+  AuthRequired: "auth-required",
+  Completed: "completed",
+  Unknown: "unknown"
 }
 
-const A2AObjectKind = { // ID10082025.n
+const A2AObjectKind = { // ID10032025.n
   Artifact: "artifact",
+  Message: "message",
   Task: "task",
-  StatusUpdate: "status-update",
-  ArtifactUpdate: "artifact-update"
+  TaskStatusUpdate: "status-update",
+  TaskArtifactUpdate: "artifact-update"
 }
 
 const AzureApiVersions = { // ID03242025.n
