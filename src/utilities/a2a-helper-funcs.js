@@ -7,7 +7,7 @@
  * Version (Introduced): v2.7.0
  *
  * Notes:
- * ID10182025: ganrad: v2.7.5: (Bugfixes) Made multiple bug fixes.
+ * ID10182025: ganrad: v2.7.5: (Bugfixes) Includes multiple bug fixes.
  */
 const path = require('path');
 const scriptName = path.basename(__filename);
