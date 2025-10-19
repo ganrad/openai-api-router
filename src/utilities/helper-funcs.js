@@ -18,6 +18,7 @@
  * ID09162025: ganrad: v2.6.0: (Refactoring) Updated 'getOpenAICallMetadata()' function to set headers for AOAI + AI Foundry + OAI model API Calls.
  * ID09172025: ganrad: v2.6.0: (Refactoring) Introduced a new method to retrieve unique URI for endpoint metrics object based on the application type.
  * ID10142025: ganrad: v2.7.0: (Enhancement) Introduced new feature to support normalization of AOAI output.
+ * ID10182025: ganrad: v2.7.5: (Enhancement) Introduced support for MSFT Agent Framework.
  *
 */
 const path = require('path');
@@ -301,6 +302,12 @@ function prepareTextToEmbedd(
       if (roleArr.includes(element.role))
         if (typeof element.content === "string")
           content += element.content;
+        else if (Array.isArray(element.content)) { // ID10182025.sn
+          element.content.forEach(contentItem => {
+            if (contentItem.type === "text")
+              content += contentItem.text;
+          });
+        }; // ID10182025.en
     };
   };
 

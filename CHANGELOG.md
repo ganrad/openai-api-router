@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## [v2.7.5](https://github.com/ganrad/openai-api-router/compare/v2.6.0...v2.7.5) - 10/19/2025
+### Functionality changes
+**Azure AI Application Gateway (Server)**
+* **New Features:**
+
+  - **Microsoft Agent Framework:** This release adds support for invoking AI applications hosted on the gateway via the Microsoft Agent Framework (MAF) SDK, enabling users to build sophisticated agentic AI solutions while leveraging the gateway’s built-in capabilities.
+
+* **Bugfixes:**
+
+  - Several bug fixes were implemented, and comprehensive regression tests were conducted to ensure the gateway delivers consistent results and provides clear, meaningful error messages in exception scenarios.
+
+---
+
+### Documentation changes
+* Made minor updates to the document.
+
 ## [v2.7.0](https://github.com/ganrad/openai-api-router/compare/v2.6.0...v2.7.0) - 10/14/2025
 ### Functionality changes
 **Azure AI Application Gateway (Server)**
@@ -7,7 +23,7 @@
 
   - **Agent to Agent Protocol:** This release introduces support for invoking AI applications deployed on the gateway using the Agent-to-Agent (A2A) SDK, now compatible with the latest A2A specification (v0.3.0). This feature enhances interoperability and flexibility by enabling seamless communication between AI agents using the latest A2A specification, supporting both real-time (streaming) and batch (non-streaming) inference scenarios.
 
-  **Enhancements:**
+* **Enhancements:**
 
   - **Disabling AI Applications:** This feature enables AI applications to be dynamically enabled or disabled via the control plane API while the gateway is running. When an application is in a disabled or inactive state, the gateway will skip inference execution and return an exception.  This capability provides operational flexibility by allowing administrators to control AI application availability in real time, helping manage resources and prevent unintended inference execution.
 
