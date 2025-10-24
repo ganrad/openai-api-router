@@ -5,26 +5,26 @@
 ### Release Info
 Release | Date | Production Ready | Notes
 ------- | ---- | -------------------- | -----
-**v2.7.5** | 10/19/2025 | Yes | This latest release adds support for Microsoft Agent Framework (MAF) and includes multiple bug fixes. Use this release if you intend to use A2A or MAF for building advanced AI agentic workflows and leverage the AI Gateway's built-in features.
-**v2.7.0** | 10/14/2025 | Yes | This release supports Agent to Agent (A2A) protocol v0.3.0 and includes a few other important feature enhancements.
-**v2.6.0** | 09/18/2025 | Yes | This stable release includes new features, enhancements and several bug fixes. This release also includes preview features which have not been fully tested.
+**v2.8.0** | 10/24/2025 | Yes | This latest release enhances personalization feature (aka Long Term Memory) by introducing support for mulitple user groups and includes other minor improvements.
+**v2.7.5** | 10/19/2025 | Yes | This stable release adds support for Microsoft Agent Framework (MAF) and includes multiple bug fixes. Use this release (or newer releases) if you intend to use A2A or MAF for building advanced AI agentic workflows and leverage the AI Gateway's built-in features.
+**v2.7.0** | 10/14/2025 | Yes | This release adds support for Agent to Agent (A2A) protocol v0.3.0 and includes a few other important feature enhancements.
 
 ### Release Notes
 Refer to [Changelog document](./CHANGELOG.md) for details on new features, enhancements and bugfixes introduced in each release.
 
 ### Overview
-If you're seeking the essential building blocks/components for rapid implementation and deployment of **AI Information Assistants (AI Chatbots)** on Azure or advanced AI Agentic Solutions that expose a conversational interface, the *AI Application Gateway* can expedite the development process and help you transition smoothly from pilot phase to full-scale production.
+If you're seeking the essential building blocks/components for rapid implementation and deployment of **AI Information Assistants (AI Chatbots)** on Azure or advanced **AI Agentic Solutions** that expose a conversational interface, the *AI Application Gateway* can expedite the development process and help you transition smoothly from pilot phase to full-scale production.
 
 This *solution accelerator* is designed to deliver 80-90% of the core functionality essential for constructing and deploying AI Solutions. Most notably, it accelerates the smooth roll out of numerous AI Solutions on a shared, minimal set of infrastructure components/services.
 
-### Functional Architecture (v2.7.0)
+### Functional Architecture (v2.8.0)
 ![alt tag](./images/ai-chatbot-usecase-gh.PNG)
 
-Recipe | Components
------- | ----------
-***AI Information Assistant*** | 1. AI Applications <br> 2. **Semantic Cache** <br> 3. **State Manager** <br> 4. **Long-Term Memory Manager (Personalization)** <br> 5. **Intelligent API Router** <br> 6. **API Cost Tracker (Budgeting)** <br> 7. **Feedback Analyzer** <br> 8. **API Metrics Collector** <br> 9. **Message Logger (Chat History)** <br> 10. Azure AI Foundry Service
+AI Application Types | AI Gateway Components | AI Services
+-------------------- | --------------------- | ------------
+***AI Information Assistant***<br>**Agentic Application** | 1. **AI Gateway Processor/Engine** <br> 2. **Semantic Cache** <br> 3. **State Manager** <br> 4. **Long-Term Memory Manager (Personalization)** <br> 5. **Intelligent API Router** <br> 6. **API Cost Tracker (Budgeting)** <br> 7. **Feedback Analyzer** <br> 8. **API Metrics Collector** <br> 9. **Message Logger (Chat History)** | **Azure AI Foundry Service**
 
-> **Note: Components marked by green circles are out of box features.**
+> **Note: All components marked by green circles are out of box features.**
 
 ### Supported Features At A Glance
 
@@ -87,10 +87,6 @@ Feature/Capability | Configurable (Yes/No) | Azure AI Foundry Models | Azure AI 
 
 ![alt tag](./images/az-openai-api-gateway-ra.PNG)
 
-### AI Application Gateway workflow for Azure OpenAI Service
-
-![alt tag](./images/aoai-api-gtwy-flow-chart.png)
-
 ### Bill Of Materials
 The AI Application Gateway is designed from the grounds up to be a cost-effective solution and has minimal services footprint. For details on the Azure services needed to deploy this solution, please see the accompanying table below.
 
@@ -117,13 +113,15 @@ Readers are advised to refer to the following on-line resources as needed.
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
 - [Creating an Azure Linux VM](https://learn.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-cli)
 - [Docker](https://docs.docker.com/)
-- [Azure OpenAI Service](https://learn.microsoft.com/en-us/azure/ai-services/openai/)
+- [Azure AI Foundry Service](https://learn.microsoft.com/en-us/azure/ai-foundry/)
 - [Azure Database for PostgreSQL](https://learn.microsoft.com/en-us/azure/postgresql/)
 - [Vector Search for PostgreSQL](https://github.com/pgvector/pgvector)
+- [Azure AI Container Apps](https://learn.microsoft.com/en-us/azure/container-apps/)
 - [Azure Kubernetes Service](https://docs.microsoft.com/en-us/azure/aks/)
 - [Azure Container Registry](https://docs.microsoft.com/en-us/azure/container-registry/)
 - [Helm 3.x](https://docs.helm.sh/)
 - [Azure Monitor OpenTelemetry](https://learn.microsoft.com/en-us/azure/azure-monitor/app/opentelemetry-enable?tabs=aspnetcore)
+- [Agent to Agent Protocol](https://a2a-protocol.org/latest/)
 - [Azure Load Testing](https://learn.microsoft.com/en-us/azure/load-testing/)
 
 ## Disclaimer:
@@ -147,7 +145,7 @@ The Sections below describe the steps to configure and deploy the Gateway on Azu
 
 > **IMPORTANT:** Although not necessary, it is advised to quickly go thru the feature details [doc](./docs/Feature-Details.md) prior to proceeding.
 
-The remainder of this Readme describes how to configure/enable specific features and deploy the AI Application Gateway on Azure.
+The remainder of this Readme describes how to configure (enable) specific AI Application features and deploy an instance of the AI Application Gateway on Azure.
 
 ### A. Configure and run the AI Application Gateway on a standalone *Virtual Machine*
 
@@ -342,10 +340,16 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      Attribute Name | Type | Required | Description
      -------------- | ---- | -------- | -----------
      userMemory | Boolean | Yes | Enables or disables long-term user memory, allowing the AI Gateway to retain and use information from previous user interactions for personalization.
-     generateFollowupMessages | Boolean | No | Used to specify whether the AI Gateway should generate follow-up messages based on the current conversation context.
-     userFactsAppName | String | No | Used to specify the name of the AI Application responsible for identifying and extracting user-specific facts. Defaults to value of **API_GATEWAY_VECTOR_AIAPP**.
-     extractionPrompt | String | No | The prompt used to guide the AI Gateway in extracting personal attributes or facts from user input/prompt.
-     followupPrompt | String | No | The prompt used to help the AI Gateway generate relevant follow-up questions based on the model’s response.
+     memoryType | Enum(String) | No | Memory type can be *User* or *Group*.
+     userFactsAppName | String | No | This parameter specifies the name of the AI Application used for identifying and extracting user-specific facts. Defaults to the current AI Application.
+     separatorChar | String | No | Can be specified when memory type is set to *Group*. The default separator character for user group is '-'.
+     searchType | Enum(String) | No | The distance algorithm used to retrieve facts from the underlying vector store. Two algorithms are currently supported. Search type can be *CosineSimilarity* (Default) and *EuclideanDistance*.
+     memoryConfig | Object[] | No | An array containing memory configuration settings for user groups.  When memory type is set to 'User', there should be only one element in this array. All other elements will be ignored.
+     memoryConfig.names | Array[String] | Yes | An array containing the ID's or names of user groups.
+     memoryConfig.extractRoleValues | Enum(String) | No | This parameter specifies the message role type from which facts are extracted. Valid **Role Type** values are *User*, *Assistant* or *UserAssistant* (Default). 
+     memoryConfig.extractionPrompt | String | No | The prompt used to guide the AI Gateway in extracting facts from user input/prompt.
+     memoryConfig.generateFollowupMessages | Boolean | No | Used to specify whether the AI Gateway should generate follow-up messages based on the model's response.
+     memoryConfig.followupPrompt | String | No | The prompt used to guide the AI Gateway generate relevant follow-up questions based on the model’s response.
 
    - To enable cost tracking for an AI Application, specify values for attributes contained within **budgetSettings** attribute.  Refer to the table below and set appropriate values.
 
@@ -409,22 +413,22 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    You will see the API Gateway server start up message in the terminal window as shown in the snippet below.
 
    ```bash
-   > ai-app-gateway@2.7.5 start
+   > ai-app-gateway@2.8.0 start
    > node ./src/server.js
 
-   19-Oct-2025 18:34:41 [info] [server.js] Starting initialization of AI Application Gateway ...
-   19-Oct-2025 18:34:44 [info] [server.js] Azure Application Monitor OpenTelemetry configured.
-   19-Oct-2025 18:34:48 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
-   19-Oct-2025 18:34:48 [info] [server.js] Completions will be cached
-   19-Oct-2025 18:34:48 [info] [server.js] Prompts will be persisted
-   19-Oct-2025 18:34:48 [info] [server.js] Conversational state will be managed
-   19-Oct-2025 18:34:48 [info] [validate-json-config.js] validateAiServerSchema():
+   24-Oct-2025 19:47:15 [info] [server.js] Starting initialization of AI Application Gateway ...
+   24-Oct-2025 19:47:15 [info] [server.js] Azure Application Monitor OpenTelemetry configured.
+   24-Oct-2025 19:47:16 [info] [cp-pg.js] checkDbConnection(): Postgres DB connectivity OK!
+   24-Oct-2025 19:47:16 [info] [server.js] Completions will be cached
+   24-Oct-2025 19:47:16 [info] [server.js] Prompts will be persisted
+   24-Oct-2025 19:47:16 [info] [server.js] Conversational state will be managed
+   24-Oct-2025 19:47:16 [info] [validate-json-config.js] validateAiServerSchema():
    Result:
    {
    "schema_compliant": true,
    "errors": "None"
    }
-   19-Oct-2025 18:34:48 [info] [server.js] Listing AI Applications:
+   24-Oct-2025 19:47:16 [info] [server.js] Listing AI Applications:
 
    Application ID: vectorizedata
    Type: azure_oai
@@ -456,7 +460,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    Config:
       useCache=true
       useMemory=true
-      personalization=false
+      personalization=true
       budgeting=true
    Endpoint Router Type: Priority
    Endpoints:
@@ -469,25 +473,25 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    Config:
       useCache=true
       useMemory=true
-      personalization=false
+      personalization=true
       budgeting=true
    Endpoint Router Type: FeedbackWeightedRandom
    Endpoints:
       Priority: 0 Uri: https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01
       Priority: 1 Uri: https://aif-project-westus3-072-resource.cognitiveservices.azure.com/openai/deployments/gpt-4.1-mini/chat/completions?api-version=2025-01-01-preview
-   19-Oct-2025 18:34:48 [info] [server.js] Cache entry invalidate run schedule (Cron) - */2 * * * *
-   19-Oct-2025 18:34:48 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */4 * * * *
-   19-Oct-2025 18:34:48 [warn] [server.js] AI Application Gateway endpoints are not secured by Microsoft Entra ID!
-   19-Oct-2025 18:34:48 [info] [server.js] Server(): Azure AI Application Gateway started successfully.
+   24-Oct-2025 19:47:16 [info] [server.js] Cache entry invalidate run schedule (Cron) - */2 * * * *
+   24-Oct-2025 19:47:16 [info] [server.js] Memory (State) invalidate run schedule (Cron) - */4 * * * *
+   24-Oct-2025 19:47:16 [warn] [server.js] AI Application Gateway endpoints are not secured by Microsoft Entra ID!
+   24-Oct-2025 19:47:16 [info] [server.js] Server(): Azure AI Application Gateway started successfully.
    -----
    Details:
    Server Name: Ai-App-Gateway-Dev
    Server Type: single-domain
-   Version: 2.7.5
+   Version: 2.8.0
    Config. Provider Type: File
    Endpoint URI: http://localhost:8080/api/v1/dev/aigateway
    Status: Running
-   Start Date: 10/19/2025, 6:34:47 PM
+   Start Date: 10/24/2025, 7:47:15 PM
    -----
    ```
 

@@ -8,14 +8,16 @@
  * Version (Introduced): 2.3.8
  *
  * Notes:
- *
+ * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
+ * 
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('./logger');
-const { MessageRoleTypes } = require('./app-gtwy-constants.js');
+const { DefaultMaxCompletionTokens, MessageRoleTypes, OpenAIChatCompletionMsgRoleTypes } = require('./app-gtwy-constants.js'); // ID10202025.n
 
-const DEF_FOLLOWUP_PROMPT = "\nAfter your response, suggest a couple of relevant questions to keep the conversation alive.";
+const DEF_FOLLOWUP_PROMPT = "\nAfter your response, ask the user a couple of relevant questions on the same or related topics."; // ID10202025.n
+// "\nAfter your response, suggest a couple of relevant questions to keep the conversation alive."; ID10202025.o
 // works: const DEF_EXTRACTION_PROMPT = "Extract pertinent info. or facts about the user's interests from the conversation.";
 
 const DEF_EXTRACTION_PROMPT_USER = 
@@ -54,35 +56,35 @@ function getExtractionPrompt(user, userInput, assistantReply, userMemConfig) {
   switch ( userMemConfig.extractRoles ) {
     case MessageRoleTypes.User:
       systemObject = {
-        role: 'system',
+        role: OpenAIChatCompletionMsgRoleTypes.SystemMessage, // 'system', ID10202025.n
         content: (!extPrompt || extPrompt.trim().length === 0) ? DEF_EXTRACTION_PROMPT_USER + EXTRACTION_PROMPT_SUFFIX : extPrompt + EXTRACTION_PROMPT_SUFFIX
       };
       userObject = 
         {
-          role: 'user',
+          role: OpenAIChatCompletionMsgRoleTypes.UserMessage, // 'user',
           content: `Query: ${userInput}`
         };
       break;
     case MessageRoleTypes.Assistant:
       systemObject = {
-        role: 'system',
+        role: OpenAIChatCompletionMsgRoleTypes.SystemMessage, // 'system',
         content: (!extPrompt || extPrompt.trim().length === 0) ? DEF_EXTRACTION_PROMPT_ASSISTANT + EXTRACTION_PROMPT_SUFFIX : extPrompt + EXTRACTION_PROMPT_SUFFIX
       };
       userObject = 
         {
-          role: 'user',
+          role: OpenAIChatCompletionMsgRoleTypes.UserMessage, // 'user',
           content: `AI Assistant: ${assistantReply}`
         };
       break;
     case MessageRoleTypes.UserAssistant:
     default: // Default - UserAssistant
       systemObject = {
-        role: 'system',
+        role: OpenAIChatCompletionMsgRoleTypes.SystemMessage, // 'system',
         content: (!extPrompt || extPrompt.trim().length === 0) ? DEF_EXTRACTION_PROMPT_UA + EXTRACTION_PROMPT_SUFFIX : extPrompt + EXTRACTION_PROMPT_SUFFIX
       };
       userObject = 
         {
-          role: 'user',
+          role: OpenAIChatCompletionMsgRoleTypes.UserMessage, // 'user',
           content: `Input:\nUser: ${userInput}\nAI Assistant: ${assistantReply}`
         };
       break;
@@ -93,36 +95,36 @@ function getExtractionPrompt(user, userInput, assistantReply, userMemConfig) {
       systemObject,
       userObject
     ],
-    max_tokens: 500,
-    user: user,
+    max_completion_tokens: DefaultMaxCompletionTokens,
+    user
   };
 }
 
 async function updateSystemMessage(req, appId, userMemConfig, userMemDao) {
   // Iterate thru the messages array and retrieve the user's query/prompt
-  let userInput = req.body.messages.find(msg => msg.role === "user")?.content;
+  let userInput = req.body.messages.find(msg => msg.role === OpenAIChatCompletionMsgRoleTypes.UserMessage)?.content;
 
-  const userFacts = await userMemDao.queryUserFactsFromDB(req, appId, userInput);
+  const userFacts = await userMemDao.queryUserFactsFromDB(req, appId, userMemConfig.searchAlg, userInput); // ID10202025.n
   if ( !userFacts || userFacts.errors )
     return;
 
   // Retrieve the system prompt
-  let systemInput = req.body.messages.find(msg => msg.role === "system")?.content;
+  let systemInput = req.body.messages.find(msg => msg.role === OpenAIChatCompletionMsgRoleTypes.SystemMessage)?.content;
   let userPrompt = '';
   if ( userFacts.rCount >= 1 ) {
-    // Retrieve user related facts for this AI Application
+    // Retrieve user / group related facts for this AI Application
     const memory = userFacts.data.map(item => item.content).join('\n');;
-    logger.log({ level: "info", message: "[%s] updateSystemMessage():\n  Request ID: %s\n  Application ID: %s\n  User Facts:\n%s", splat: [scriptName, req.id, appId, memory] });
+    logger.log({ level: "info", message: "[%s] updateSystemMessage():\n  Request ID: %s\n  Application ID: %s\n  Search Alg.: %s\n  User Facts:\n%s", splat: [scriptName, req.id, appId, userMemConfig.searchAlg, memory] });
 
 
     if ( !memory || (memory.length === 0) )
       return;
 
-    // Retrieve the user facts to be added to the system prompt
-    userPrompt = `Here is some background info (facts) about the user:\n${memory}`.trim();
+    // Retrieve the user/group facts to be added to the system prompt
+    userPrompt = `Here is some background info (facts) about the user or the group they are a member of:\n${memory}`.trim();
     userPrompt += "\nUse only the facts that are directly relevant and necessary to provide an accurate and helpful response.";
-    userPrompt += "Do not include or reference any user facts that are unrelated to the query. If no user-specific facts are";
-    userPrompt += " relevant, respond as if you had no access to them. Always prioritize user intent and context over personalization.";
+    userPrompt += "Do not include or reference any facts that are unrelated to the query. If specific facts are not";
+    userPrompt += " relevant, respond as if you had no access to them. Always prioritize intent and context over personalization.";
     userPrompt += "\n\nDo not respond to questions about personal information such as what do you know about me or what have you learnt about me.";
     userPrompt += "Politely say - My apologies but I am not at liberty of sharing personal information about you or others."
   };
@@ -143,13 +145,13 @@ async function updateSystemMessage(req, appId, userMemConfig, userMemDao) {
   };
 
   // Find the index of the system message
-  const systemIndex = req.body.messages.findIndex(msg => msg.role === "system");
+  const systemIndex = req.body.messages.findIndex(msg => msg.role === OpenAIChatCompletionMsgRoleTypes.SystemMessage);
 
-  // Update the content if found
+  // Update the role=system content if found
   if ( systemIndex !== -1 )
     req.body.messages[systemIndex].content = systemInput;
   else
-    req.body.messages.unshift({ role: "system", content: systemInput });
+    req.body.messages.unshift({ role: OpenAIChatCompletionMsgRoleTypes.SystemMessage, content: systemInput });
 
   logger.log({ level: "info", message: "[%s] updateSystemMessage():\n  Request ID: %s\n  Application ID: %s\n  Messages:\n%s", splat: [scriptName, req.id, appId, JSON.stringify(req.body.messages, null, 2)] });
 }

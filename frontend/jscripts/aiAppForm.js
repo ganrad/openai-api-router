@@ -12,7 +12,8 @@
  * empty string.  Hence commented out stop parameter. Same with presence and frequency penalty. 2) Search distance value was being sent as-is (0 - 100).  Value is now converted 
  * into a decimal value between 0.0 & 1.0 before the AI App definition is sent to the server.
  * ID10132025: ganrad: v2.7.0-v1.3.2: (Enhancement) An AI Application can be enabled (active) or disabled.  In the disabled state, the AI gateway will
- * not accept inference requests and will return an exception. 
+ * not accept inference requests and will return an exception.
+ * ID10202025: ganrad: v2.8.0-v1.3.2: (Enhancement) Updated long term memory feature to support multiple user groups. 
  */
 let priorityCounter = 0; // Endpoint uri priority counter
 
@@ -391,14 +392,24 @@ async function deployAiApplication() {
     const useLtMemory = document.getElementById('enableLongTermMemory');
     if (useLtMemory.checked) {
       longTermMemObject.userMemory = true;
-      const followups = document.getElementById('generateFollowups');
-      longTermMemObject.generateFollowupMsgs = followups.checked;
+      longTermMemObject.memoryType = "User"; // ID10202025.n
 
+      const followups = document.getElementById('generateFollowups');
+      // longTermMemObject.generateFollowupMsgs = followups.checked; // ID10202025.o
       longTermMemObject.userFactsAppName = document.getElementById('factsAppName').value;
       const extRoleElem = document.getElementById('extractRoles');
-      longTermMemObject.extractRoleValues = extRoleElem.options[extRoleElem.selectedIndex].value;
-      longTermMemObject.extractionPrompt = document.getElementById('extractionPrompt').value;
-      longTermMemObject.followupPrompt = document.getElementById('followUpPrompt').value;
+      // longTermMemObject.extractRoleValues = extRoleElem.options[extRoleElem.selectedIndex].value; // ID10202025.o
+      // longTermMemObject.extractionPrompt = document.getElementById('extractionPrompt').value;
+      // longTermMemObject.followupPrompt = document.getElementById('followUpPrompt').value;
+
+      longTermMemObject.memoryConfig = [ // ID10202025.n
+        {
+          extractRoleValues: extRoleElem.options[extRoleElem.selectedIndex].value,
+          extractionPrompt: document.getElementById('extractionPrompt').value,
+          followupPrompt: document.getElementById('followUpPrompt').value,
+          generateFollowupMsgs: followups.checked
+        }
+      ];
     }
     else
       longTermMemObject.userMemory = false;

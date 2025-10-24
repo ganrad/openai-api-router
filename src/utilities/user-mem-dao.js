@@ -10,6 +10,7 @@
  * Version (Introduced): v2.3.8
  *
  * Notes:
+ * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
  * 
 */
 const path = require('path');
@@ -18,7 +19,10 @@ const logger = require('./logger');
 
 const pgvector = require('pgvector/pg');
 const helper = require("./helper-funcs");
-const { SearchAlgorithms } = require("./app-gtwy-constants");
+const {
+  SearchAlgorithms,
+  LongTermMemoryTypes,
+  LongTermMemoryConstants } = require("./app-gtwy-constants"); // ID10202025.n
 const { TblNames, PersistDao } = require("./persist-dao.js"); 
 const persistdb = require("../services/pp-pg.js");
 
@@ -29,10 +33,9 @@ class UserMemDao {
 
     this.endPointInfo = epInfo;
     this.endpoints = vectorEndpoints;
-    this.srchType = SearchAlgorithms.EuclideanDistance; // Default ~ EuclideanDistance
   }
 
-  async queryUserFactsFromDB(req, appId, userInput) {
+  async queryUserFactsFromDB(req, appId, srchAlg, userInput) { // ID10202025.n
     const srvId = process.env.API_GATEWAY_ID;
 
     let userFacts;
@@ -70,13 +73,18 @@ class UserMemDao {
         values = [
           srvId,
           appId,
-          req.body.user,
-          pgvector.toSql(apiResp.embedding)
+          // req.body.user, ID10202025.o
+          req.group ?? req.user, // ID10202025.n
+          pgvector.toSql(apiResp.embedding),
+          LongTermMemoryConstants.NoOfRows // ID10202025.n
         ];
+        if ( srchAlg === SearchAlgorithms.CosineSimilarity ) // ID10202025.n
+          values.push(LongTermMemoryConstants.SearchDistance);  // Add the search distance
 
-        userFacts = await userFactsDao.queryTable(req.id, 1, values);
+        userFacts = await userFactsDao.queryTable(req.id, (srchAlg === SearchAlgorithms.CosineSimilarity) ? 2 : 1, values);
       };
-      logger.log({ level: "info", message: "[%s] %s.queryUserFactsFromDB():\n  Request ID: %s\n  Application ID: %s\n  User: %s\n  Execution Time: %s", splat: [scriptName, this.constructor.name, req.id, appId, req.body.user, Date.now() - stTime] });
+      const searchBy = req.group ? LongTermMemoryTypes.GroupType : LongTermMemoryTypes.UserType; // ID10202025.n
+      logger.log({ level: "info", message: "[%s] %s.queryUserFactsFromDB():\n  Request ID: %s\n  Application ID: %s\n  %s: %s\n  Search Alg.: %s\n  Execution Time: %s", splat: [scriptName, this.constructor.name, req.id, appId, searchBy, req.group ?? req.user, srchAlg, Date.now() - stTime] });
     }
     catch (error) {
       let err_msg = { reqId: req.id, appId: appId, body: req.body, cause: error };
@@ -123,13 +131,15 @@ class UserMemDao {
         values = [
           srvId,
           appId,
-          req.body.user,
+          // req.body.user, ID10202025.o
+          req.group ?? req.user, // ID10202025.n
           userFact,
           pgvector.toSql(apiResp.embedding)
         ];
 
         const recId = await userFactsDao.storeEntity(req.id, 0, values);
-        logger.log({ level: "info", message: "[%s] %s.storeUserFactInDB():\n  Request ID: %s\n  Application ID: %s\n  User: %s\n  Record ID: %d\n  Execution Time: %s", splat: [scriptName, this.constructor.name, req.id, appId, req.body.user, recId?.record_id, Date.now() - stTime] });
+        const storeBy = req.group ? LongTermMemoryTypes.GroupType : LongTermMemoryTypes.UserType; // ID10202025.n
+        logger.log({ level: "info", message: "[%s] %s.storeUserFactInDB():\n  Request ID: %s\n  Application ID: %s\n  %s: %s\n  Record ID: %d\n  Execution Time: %s", splat: [scriptName, this.constructor.name, req.id, appId, storeBy, req.group ?? req.user, recId?.record_id, Date.now() - stTime] });
       };
     }
     catch (error) {

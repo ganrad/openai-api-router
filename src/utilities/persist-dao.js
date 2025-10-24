@@ -33,6 +33,7 @@
  * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced table 'userfacts' for long term memory support ~ personalization feature.
  * ID08052025: ganrad: v2.4.0: (Enhancement) Added new insert statement to support AI Agent message persistence in 'apigtwyprompts' table.
  * ID09152025: ganrad: v2.6.0: (Enhancement) Added new update statement to support capturing user feedback in 'apigtwyprompts' table.
+ * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
 */
 
 // const pgvector = require('pgvector/pg');
@@ -116,7 +117,9 @@ const aiAppServersInsertStmts = [ // ID01272025.n
 
 const userFactsQueryStmts = [ // ID05142025.n
   "SELECT * FROM userfacts ORDER BY create_date DESC",
-  "SELECT content FROM userfacts WHERE srv_name = $1 AND aiappname = $2 AND user_id = $3 ORDER BY embedding <-> $4 LIMIT 5"
+  // "SELECT content FROM userfacts WHERE srv_name = $1 AND aiappname = $2 AND user_id = $3 ORDER BY embedding <-> $4 LIMIT 5", ID10202025.o
+  "SELECT content FROM userfacts WHERE srv_name = $1 AND aiappname = $2 AND user_id = $3 ORDER BY embedding <-> $4 LIMIT $5", // ID10202025.n
+  "SELECT content, 1 - (embedding <=> $4) as similarity FROM userfacts WHERE (srv_name LIKE $1 || '%') AND (aiappname = $2) AND user_id = $3 AND 1 - (embedding <=> $4) >= $6 ORDER BY similarity DESC LIMIT $5" // ID10202025.n
 ];
 
 const userFactsInsertStmts = [ // ID05142025.n

@@ -59,6 +59,7 @@
  * ID09172025: ganrad: v2.6.0: (Bugfix) Generate unique uri's for indexing endpoint metrics object.
  * ID10082025: ganrad: v2.7.0: (Enhancement) Added support for Agent to Agent (A2A) protocol.
  * ID10142025: ganrad: v2.7.0: (Enhancement) Introduced new feature to support normalization of AOAI output. 
+ * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -698,6 +699,7 @@ class AzOaiProcessor {
     let threadStarted = false; // ID04302025.n
 
     // console.log(`*****\nAzOaiProcessor.processRequest():\n  URI: ${req.originalUrl}\n  Request ID: ${req.id}\n  Application ID: ${config.appId}\n  Type: ${config.appType}`);
+    // Imp.: User: req.user?.name, refers to the authenticated user's request!
     logger.log({ level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  API Type: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n  Request Payload:\n  %s", splat: [scriptName, this.constructor.name, req.id, req.inboundApiType, req.originalUrl, req.user?.name, threadId, config.appId, config.appType, JSON.stringify(req.body, null, 2)] }); // ID07292024.n
 
     let respMessage = null; // IMPORTANT: Populate this var before returning!
@@ -917,7 +919,7 @@ class AzOaiProcessor {
      * Is user value present in the request payload?
      */
     if (!threadId && userMemConfig && req.body.user)
-      await updateSystemMessage(
+      await updateSystemMessage( // Ignore errors!
         req,
         config.appId,
         userMemConfig,
@@ -1418,17 +1420,17 @@ class AzOaiProcessor {
             break;
           };
         };
-      }
+      };
       if (!aiAppEndpoints || !epMetricsObject) { // Fallback to using current model's metrics obj. and backend endpoints?
         aiAppEndpoints = config.appEndpoints;
         epMetricsObject = epdata;
       };
 
-      // 2) Extract user facts from input query and assistant reply
+      // 2) Extract user / group facts from input query and assistant reply
       const extraction = await callAiAppEndpoint(req, epMetricsObject, aiAppEndpoints, extractionPrompt, config.appType); // ID08272025.n
       if (extraction) {
         const factMsg = extraction.choices[0].message.content;
-        logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Facts: %s", splat: [scriptName, this.constructor.name, req.id, threadId, factMsg] });
+        logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Facts:\n%s", splat: [scriptName, this.constructor.name, req.id, threadId, factMsg] });
         if (!factMsg.startsWith("No extractable facts")) {
           const facts = extraction.choices[0].message.content.split('\n').filter(Boolean);
 

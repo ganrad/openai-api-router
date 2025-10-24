@@ -60,7 +60,9 @@
  * ID10032025: ganrad: v2.7.0: (Enhancement) Added support for A2A protocol.
  * ID10132025: ganrad: v2.7.0: (Enhancement) An AI Application can be enabled (active) or disabled.  In the disabled state, the AI gateway will
  * not accept inference requests and will return an exception.
- * ID10162025: ganrad: v2.7.0: (Enhancement) Added support for Microsoft Agent Framework URI's. 
+ * ID10162025: ganrad: v2.7.0: (Enhancement) Added support for Microsoft Agent Framework URI's.
+ * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
+ *  
 */
 
 const path = require('path');
@@ -71,6 +73,7 @@ const EndpointMetricsFactory = require("../utilities/ep-metrics-factory.js"); //
 const AppConnections = require("../utilities/app-connection.js");
 const AppCacheMetrics = require("../utilities/cache-metrics.js"); // ID02202024.n
 const {
+  DefaultMaxCompletionTokens, // ID10202025.n
   AzAiServices,
   CustomRequestHeaders,
   AppResourceTypes,
@@ -81,7 +84,7 @@ const {
   EndpointMiscConstants, // ID09152025.n
   EndpointRouterTypes // ID09172025.n 
 } = require("../utilities/app-gtwy-constants.js"); // ID07242025.n, ID07252025.n
-const { retrieveUniqueURI } = require("../utilities/helper-funcs.js"); // ID09172025.n
+const { retrieveUniqueURI, retrievePersonalizationConfig } = require("../utilities/helper-funcs.js"); // ID09172025.n, ID10202025.n
 const AiProcessorFactory = require("../processors/ai-processor-factory.js"); // ID04222024.n
 const { TrafficRouterFactory } = require("../utilities/endpoint-routers.js"); // ID08222025.n
 const ResourceHandlerFactory = require("../handlers/res-handler-factory.js"); // ID07242025.n
@@ -249,7 +252,7 @@ router.post(
       req.originalUrl.includes(GatewayRouterEndpoints.A2AEndpoint) ? AiGatewayInboundReqApiType.Agent2Agent : AiGatewayInboundReqApiType.OpenAI; // ID10032025.n
     req.inboundApiType = inboundApiType; // ID10032025.n
     const a2aReqId = req.body.id || null; // ID10032025.n
-    if ( a2aReqId ) // ID10032025.n
+    if (a2aReqId) // ID10032025.n
       req.a2aReqId = a2aReqId;
 
     let err_obj = null;
@@ -279,8 +282,8 @@ router.post(
 
     // ID10132025.sn
     // Check if AI Application is active
-    if ( ! application.isActive ) {
-       err_obj = {
+    if (!application.isActive) {
+      err_obj = {
         http_code: 400, // Bad request
         data: (inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? {
           error: {
@@ -368,11 +371,11 @@ router.post(
       // Extract model parameters from metadata (allows passing LLM params)
       const modelParams = message.metadata?.modelParams ||
       { // default model params
-        max_completion_tokens: 500,
+        max_completion_tokens: DefaultMaxCompletionTokens,
         temperature: 0.7,
         stream: false
       };
-      if ( method === A2AProtocolAttributes.MessageStream ) { // Override method params!
+      if (method === A2AProtocolAttributes.MessageStream) { // Override method params!
         modelParams.stream = true;
         modelParams.stream_options = { include_usage: true };
       }
@@ -502,15 +505,39 @@ router.post(
 
       /**
        * ID05142025.sn - Check if long term memory obj. has to be populated.
+       * ID10202025.sn - Updated logic to support LTM for both individual users and groups
        */
-      if (application.personalizationSettings?.userMemory)
-        userMemConfig = {
-          genFollowupMsgs: application.personalizationSettings.generateFollowupMsgs,
-          aiAppName: application.personalizationSettings.userFactsAppName,
-          extractRoles: application.personalizationSettings.extractRoleValues,
-          extractionPrompt: application.personalizationSettings.extractionPrompt,
-          followupPrompt: application.personalizationSettings.followupPrompt
+      if (req.body.user && application.personalizationSettings?.userMemory) { // ID10202025.n
+        userMemConfig = retrievePersonalizationConfig(req.body.user, application.personalizationSettings);
+        logger.log({ level: "debug", message: "[%s] apirouter():\n  Request ID: %s\n  LT Memory Config:\n%s", splat: [scriptName, req.id, JSON.stringify(userMemConfig, null, 2)] });
+        // Set the uid and gid on the request object
+        if (userMemConfig && userMemConfig.user)
+          req.user = userMemConfig.user;
+        if (userMemConfig && userMemConfig.group)
+          req.group = userMemConfig.group;
+
+        if (userMemConfig) {
+          const { user, group, ...umemObj } = userMemConfig;
+
+          userMemConfig = {
+            searchAlg: umemObj.searchAlg,
+            genFollowupMsgs: umemObj.generateFollowupMsgs,
+            aiAppName: application.personalizationSettings.userFactsAppName,
+            extractRoles: umemObj.extractRoleValues,
+            extractionPrompt: umemObj.extractionPrompt,
+            followupPrompt: umemObj.followupPrompt
+          };
         };
+      };
+      /** ID10202025.so
+      userMemConfig = {
+        genFollowupMsgs: application.personalizationSettings.generateFollowupMsgs,
+        aiAppName: application.personalizationSettings.userFactsAppName,
+        extractRoles: application.personalizationSettings.extractRoleValues,
+        extractionPrompt: application.personalizationSettings.extractionPrompt,
+        followupPrompt: application.personalizationSettings.followupPrompt
+      };
+      ID10202025.eo */
       // ID05142025.en
 
       /**

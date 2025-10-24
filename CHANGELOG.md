@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## [v2.8.0](https://github.com/ganrad/openai-api-router/compare/v2.7.5...v2.8.0) - 10/24/2025
+### Functionality changes
+**Azure AI Application Gateway (Server)**
+* **Enhancements:**
+
+  - **Long Term Memory (Personalization):**
+    This release introduces advanced personalization capabilities, enabling tailored model responses for distinct user groups. You can configure separate extraction and follow-up prompts for one or more groups, ensuring highly relevant and context-aware interactions.
+
+    Key Benefits:
+    
+    - Precision Responses: Leverage stored facts to enrich prompts, improving accuracy and relevance.
+    - Dynamic Personalization: Customize follow-up messages and insights for each user group.
+    - Continuous Learning: Automatically capture and store new facts for smarter future interactions.
+
+    How It Works:
+    
+    Inbound Flow (Pre-Processing): 
+    
+    - For each user prompt, the gateway retrieves contextual facts from the vector store using the configured similarity search algorithm and feeds this enriched context to the model to generate more accurate responses.
+    
+    Outbound Flow (Post-Processing):
+    
+    - The gateway extracts key facts from model responses using the configured extraction prompt and stores them in the vector database
+    - Thereafter, the gateway generates personalized follow-up messages based on the follow-up prompt and appends them to the model’s response.
+
+---
+
+### Documentation changes
+* Updated the functional architecture diagram.
+* Made minor updates to the document.
+
 ## [v2.7.5](https://github.com/ganrad/openai-api-router/compare/v2.6.0...v2.7.5) - 10/19/2025
 ### Functionality changes
 **Azure AI Application Gateway (Server)**

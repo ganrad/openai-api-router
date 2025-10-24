@@ -43,6 +43,8 @@
  * ID09172025: ganrad: v2.6.0: Added new literal/constant for Feedback weighted random endpoint router.
  * ID10032025: ganrad: v2.7.0: Added support for A2A protocol.
  * ID10162025: ganrad: v2.7.5: Added a few more constants for A2A protocol.
+ * ID10202025: ganrad: v2.8.0: a) Added new constant type for long term memory types ~ LongTermMemoryTypes and
+ * b) Added new type containing constants for long term memory feature.
 */
 const { randomUUID } = require('node:crypto'); // ID07312025.n
 
@@ -51,6 +53,7 @@ const DefaultJsonParserCharLimit = "2mb"; // 600kb"; // ID02202025.n, ID10032025
 const DefEmbeddingModelTokenLimit = 8192; // ID02212025.n
 const OpenAIBaseUri = "api.openai.com"; // ID06162025.n
 const DefaultEndpointLatency = 5000; // ID06162025.n; 5 seconds
+const DefaultMaxCompletionTokens = 500; // ID10202025.n
 
 function generateGUID(prefix) { // ID07312025.n
   const idPrefix = (!prefix || (prefix.length < 3)) ? "uid" : prefix;
@@ -67,7 +70,7 @@ async function generateUUID() { // ID10032025.n
 
 // ID07252025.sn
 const AiAppGateway = {
-  Version: "2.7.5",
+  Version: "2.8.0",
   ApiVersion: "/api/v1/",
   // RouterContextPath: "/apirouter" ID10032025.o
   RouterContextPath: "/aigateway" // ID10032025.n
@@ -365,6 +368,18 @@ const UserFeedback = { // ID09152025.n
   ThumbsDown: "down"
 }
 
+const LongTermMemoryTypes = { // ID10202025.n
+  UserType: "User",
+  GroupType: "Group"
+}
+
+// Adjust these values as needed. These are intentionally left out from AI App config.
+const LongTermMemoryConstants = { // ID10202025.n
+  UserGroupDelimiter: "-",
+  SearchDistance: 0.75,
+  NoOfRows: 2
+}
+
 module.exports = {
   generateGUID, // ID07312025.n
   generateUUID, // ID10032025.n
@@ -379,6 +394,7 @@ module.exports = {
   DefaultJsonParserCharLimit, // ID02202025.n
   DefEmbeddingModelTokenLimit, // ID02212025.n
   DefaultEndpointLatency, // ID06162025.n
+  DefaultMaxCompletionTokens, // ID10202025.n
   OpenAIBaseUri, // ID06162025.n
   HttpMethods, // ID01232025.n
   ServerDefaults,
@@ -413,5 +429,7 @@ module.exports = {
   AzAiAgentRunStatus, // ID03252025.n
   AzAiAgentAnnotationTypes, // ID03282025.n
   OpenAIChatCompletionMsgRoleTypes, // ID08202025.n
-  UserFeedback // ID09152025.n
+  UserFeedback, // ID09152025.n
+  LongTermMemoryTypes, // ID10202025.n
+  LongTermMemoryConstants // ID10202025.n
 }

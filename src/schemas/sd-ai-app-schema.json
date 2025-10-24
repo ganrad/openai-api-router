@@ -130,30 +130,73 @@
                     "description": "Flag to enable or disable long term user memory",
                     "type": "boolean"
                 },
-                "generateFollowupMsgs": {
-                    "description": "Generate followup messages?",
-                    "type": "boolean"
-                },
-                "userFactsAppName": {
-                    "description": "AI App Name used to identify and extract user facts",
-                    "type": "string"
-                },
-                "extractRoleValues": {
-                    "description": "Message role values to be used for extracting user facts",
+                "memoryType": {
+                    "description": "Is the memory associated with a User or a User Group?",
                     "type": "string",
                     "enum": [
-                        "UserAssistant",
                         "User",
-                        "Assistant"
+                        "Group"
                     ]
                 },
-                "extractionPrompt": {
-                    "description": "Prompt used to extract personal attributes",
+                "userFactsAppName": {
+                    "description": "AI App Name used to identify and extract user / group facts",
                     "type": "string"
                 },
-                "followupPrompt": {
-                    "description": "Prompt used for asking followup questions based on model response",
+                "separatorChar": {
+                    "description": "Character used as separator for User and Group.  Eg., username-groupname ~ hyphen is the separator",
                     "type": "string"
+                },
+                "searchType": {
+                    "description": "Type of algorithm used to extract facts from the vector store",
+                    "type": "string",
+                    "enum": [
+                        "CosineSimilarity",
+                        "EuclideanDistance"
+                    ]
+                },
+                "memoryConfig": {
+                    "description": "Long term user memory configuration",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "names": {
+                                "description": "Unique IDs of Groups",
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "minItems": 1,
+                                "uniqueItems": true
+                            },
+                            "extractRoleValues": {
+                                "description": "Message role values to be used for extracting user facts",
+                                "type": "string",
+                                "enum": [
+                                    "UserAssistant",
+                                    "User",
+                                    "Assistant"
+                                ]
+                            },
+                            "extractionPrompt": {
+                                "description": "Prompt used to extract personal attributes",
+                                "type": "string"
+                            },
+                            "followupPrompt": {
+                                "description": "Prompt used for asking followup questions based on model response",
+                                "type": "string"
+                            },
+                            "generateFollowupMsgs": {
+                                "description": "Generate followup messages?",
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "extractRoleValues"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "minItems": 1
                 }
             },
             "required": [
