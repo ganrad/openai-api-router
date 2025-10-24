@@ -236,7 +236,32 @@ async function populateServerContext(initialize) { // ID01312025.n
   if ( (configType == ConfigProviderType.File) && (cfgFile) && (fs.existsSync(cfgFile)) ) { // File store
     let data = fs.readFileSync(cfgFile, { encoding: 'utf8', flag: 'r' });
     let ctx = JSON.parse(data);
-
+    if (ctx.applications) {
+      for (const app of ctx.applications) {
+        if (app.endpoints && Array.isArray(app.endpoints)) {
+          for (const ep of app.endpoints) {
+            if (typeof ep.apikey === "string" && ep.apikey.startsWith("ENV:")) {
+              const envVar = ep.apikey.split(":")[1];
+              const resolved = process.env[envVar];
+              if (resolved) {
+                ep.apikey = resolved;
+                wlogger.log({
+                  level: "info",
+                  message: "[%s] Resolved API key for app [%s] from env var [%s]",
+                  splat: [scriptName, app.appId, envVar]
+                });
+              } else {
+                wlogger.log({
+                  level: "warn",
+                  message: "[%s] Env var [%s] not set for app [%s] — endpoint will likely fail auth",
+                  splat: [scriptName, envVar, app.appId]
+                });
+              }
+            }
+          }
+        }
+      }
+    }
     const valResults = validateAiServerSchema(ctx);
     if ( ! valResults.schema_compliant ) { // ID01212025.n
       wlogger.log({ level: "error", message: "[%s] Error parsing AI Application Gateway configuration file, aborting ...", splat: [scriptName] });
