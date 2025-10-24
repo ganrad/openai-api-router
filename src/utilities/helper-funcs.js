@@ -19,7 +19,8 @@
  * ID09172025: ganrad: v2.6.0: (Refactoring) Introduced a new method to retrieve unique URI for endpoint metrics object based on the application type.
  * ID10142025: ganrad: v2.7.0: (Enhancement) Introduced new feature to support normalization of AOAI output.
  * ID10182025: ganrad: v2.7.5: (Enhancement) Introduced support for MSFT Agent Framework.
- *
+ * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
+ * 
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -28,7 +29,10 @@ const { getAccessToken } = require("../auth/bootstrap-auth.js"); // ID08272025.n
 const {
   AzAiServices,
   OpenAIBaseUri,
-  AzureResourceUris
+  AzureResourceUris,
+  SearchAlgorithms, // ID10202025.n
+  LongTermMemoryTypes, // ID10202025.n
+  LongTermMemoryConstants // ID10202025.n
 } = require("./app-gtwy-constants.js"); // ID08272025.n
 
 // const fetch = require("node-fetch"); ID01312025.o
@@ -128,7 +132,7 @@ async function callAiAppEndpoint(
         hdrs = { 'Content-Type': 'application/json', 'api-key': element.apikey };
       */
 
-      response = await fetch(
+      response = await fetch(  // Synchronous call
         element.uri, {
         method: 'post',
         headers: hdrs,
@@ -340,6 +344,53 @@ function normalizeAiOutput(fullJsonOutput) {
 }
 // ID10142025.en
 
+// ID10202025.sn
+function retrievePersonalizationConfig(user, settings) {
+  // logger.log({ level: "debug", message: "[%s] retrievePersonalizationConfig():\n  User ID: %s\n  LTM Settings:\n  %s", splat: [scriptName, user, JSON.stringify(settings, null, 2)] });
+
+  let userMemoryConfig = null;
+  if (!settings.memoryType) // Double check to make sure memoryType is specified!
+    settings.memoryType = LongTermMemoryTypes.UserType; // Set default to 'User' based memory
+
+  switch (settings.memoryType) {
+    case LongTermMemoryTypes.UserType:
+      const { names, ...memConfig } = settings.memoryConfig[0]; // Ignore 'names' when 'User' based memory is selected.
+      if (memConfig) // Proceed if settings.memoryConfig[0] is NOT empty!
+        userMemoryConfig = {
+          user,
+          searchAlg: settings.searchType || SearchAlgorithms.CosineSimilarity,  // Set default search alg. to cosine similarity
+          ...memConfig
+        };
+
+      break;
+    case LongTermMemoryTypes.GroupType:
+      // Split the 'user' string using the separator character
+      const sepCharacter = settings.separatorChar ?? LongTermMemoryConstants.UserGroupDelimiter; // Default Seperator Character = '-'
+      const parts = user.split(sepCharacter, 2); // user = "user{separatorChar}group"
+
+      if (parts[1]) {
+        for (const element of settings.memoryConfig) {
+          if (element.names?.includes(parts[1])) {
+            const { names, ...memConfig } = element;
+
+            userMemoryConfig = {
+              user: parts[0],
+              group: element.names.join(), // Concat all group names delimited by comma
+              searchAlg: settings.searchType || SearchAlgorithms.CosineSimilarity,
+              ...memConfig
+            };
+
+            break; // Break out of the for loop
+          };
+        };
+      };
+      break;
+  }; // end of switch
+
+  return (userMemoryConfig);
+}
+// ID10202025.en
+
 module.exports = {
   getOpenAICallMetadata, // ID08272025.n
   prepareTextToEmbedd,
@@ -347,5 +398,6 @@ module.exports = {
   vectorizeQuery, // ID03052025.n
   callAiAppEndpoint, // ID05142025.n
   retrieveUniqueURI, // ID09172025.n
-  normalizeAiOutput // ID10142025.n
+  normalizeAiOutput, // ID10142025.n
+  retrievePersonalizationConfig // ID10202025.n
 }
