@@ -227,11 +227,16 @@
       },
       "personalizationSettings": {
         "userMemory": true,
-        "generateFollowupMsgs": true,
+        "memoryType": "User",
         "userFactsAppName": "",
-        "extractRoleValues": "User",
-        "extractionPrompt": "",
-        "followupPrompt": ""
+        "memoryConfig": [
+          {
+            "extractRoleValues": "User",
+            "extractionPrompt": "Glean and extract pertinent information or facts about the user from the 'Query'. Limit the facts to one or two. Infer information such as user's topics of interest especially in sports and associated events, game schedules, historical statistics for games played and top players in those events, demographics (where the games/tournaments were played) & any other useful contextual signals. Keep inferences **reasonable and grounded**, not speculative.",
+            "followupPrompt": "",
+            "generateFollowupMsgs": true
+          }
+        ]
       },
       "endpoints": [
         {

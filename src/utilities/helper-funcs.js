@@ -354,7 +354,7 @@ function retrievePersonalizationConfig(user, settings) {
 
   switch (settings.memoryType) {
     case LongTermMemoryTypes.UserType:
-      const { names, ...memConfig } = settings.memoryConfig[0]; // Ignore 'names' when 'User' based memory is selected.
+      const { groupNames, ...memConfig } = settings.memoryConfig[0]; // Ignore 'groupNames' when 'User' based memory is selected.
       if (memConfig) // Proceed if settings.memoryConfig[0] is NOT empty!
         userMemoryConfig = {
           user,
@@ -370,12 +370,12 @@ function retrievePersonalizationConfig(user, settings) {
 
       if (parts[1]) {
         for (const element of settings.memoryConfig) {
-          if (element.names?.includes(parts[1])) {
-            const { names, ...memConfig } = element;
+          if (element.groupNames?.includes(parts[1])) {
+            const { groupNames, ...memConfig } = element;
 
             userMemoryConfig = {
               user: parts[0],
-              group: element.names.join(), // Concat all group names delimited by comma
+              group: element.groupNames.join(), // Concat all group names delimited by comma
               searchAlg: settings.searchType || SearchAlgorithms.CosineSimilarity,
               ...memConfig
             };

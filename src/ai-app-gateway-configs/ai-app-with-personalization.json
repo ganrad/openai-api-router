@@ -28,7 +28,7 @@
     "searchType": "CosineSimilarity",
     "memoryConfig": [
       {
-        "names": [
+        "groupNames": [
           "cricket",
           "football",
           "sports",
@@ -40,7 +40,7 @@
         "generateFollowupMsgs": true
       },
       {
-        "names": [
+        "groupNames": [
           "cloud",
           "ai"
         ],

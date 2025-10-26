@@ -345,7 +345,7 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
      separatorChar | String | No | Can be specified when memory type is set to *Group*. The default separator character for user group is '-'.
      searchType | Enum(String) | No | The distance algorithm used to retrieve facts from the underlying vector store. Two algorithms are currently supported. Search type can be *CosineSimilarity* (Default) and *EuclideanDistance*.
      memoryConfig | Object[] | No | An array containing memory configuration settings for user groups.  When memory type is set to 'User', there should be only one element in this array. All other elements will be ignored.
-     memoryConfig.names | Array[String] | Yes | An array containing the ID's or names of user groups.
+     memoryConfig.groupNames | Array[String] | Yes | An array containing the ID's or names of user groups.
      memoryConfig.extractRoleValues | Enum(String) | No | This parameter specifies the message role type from which facts are extracted. Valid **Role Type** values are *User*, *Assistant* or *UserAssistant* (Default). 
      memoryConfig.extractionPrompt | String | No | The prompt used to guide the AI Gateway in extracting facts from user input/prompt.
      memoryConfig.generateFollowupMessages | Boolean | No | Used to specify whether the AI Gateway should generate follow-up messages based on the model's response.
