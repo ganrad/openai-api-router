@@ -104,6 +104,9 @@ async function updateSystemMessage(req, appId, userMemConfig, userMemDao) {
   // Iterate thru the messages array and retrieve the user's query/prompt
   let userInput = req.body.messages.find(msg => msg.role === OpenAIChatCompletionMsgRoleTypes.UserMessage)?.content;
 
+  if ( !userInput ) // Just in case no user message (prompt) is sent ....
+    return;
+
   const userFacts = await userMemDao.queryUserFactsFromDB(req, appId, userMemConfig.searchAlg, userInput); // ID10202025.n
   if ( !userFacts || userFacts.errors )
     return;
