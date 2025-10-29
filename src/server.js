@@ -240,9 +240,20 @@ async function populateServerContext(initialize) { // ID01312025.n
       for (const app of ctx.applications) {
         if (app.endpoints && Array.isArray(app.endpoints)) {
           for (const ep of app.endpoints) {
-            if (typeof ep.apikey === "string" && ep.apikey.startsWith("ENV:")) {
-              const envVar = ep.apikey.split(":")[1];
-              const resolved = process.env[envVar];
+            if (typeof ep.apikey === "string") {
+              let resolved = null;
+              let envVar = null;
+              if (/^env:/i.test(ep.apikey)) {
+                envVar = ep.apikey.split(":")[1]?.trim();
+                if (envVar) resolved = process.env[envVar];
+              }
+              else {
+                const match = ep.apikey.match(/^\$\{(\w+)\}$/);
+                if (match) {
+                  envVar = match[1];
+                  resolved = process.env[envVar];
+                }
+              }
               if (resolved) {
                 ep.apikey = resolved;
                 wlogger.log({
@@ -250,7 +261,7 @@ async function populateServerContext(initialize) { // ID01312025.n
                   message: "[%s] Resolved API key for app [%s] from env var [%s]",
                   splat: [scriptName, app.appId, envVar]
                 });
-              } else {
+              } else if (envVar) {
                 wlogger.log({
                   level: "warn",
                   message: "[%s] Env var [%s] not set for app [%s] — endpoint will likely fail auth",
@@ -262,6 +273,7 @@ async function populateServerContext(initialize) { // ID01312025.n
         }
       }
     }
+
     const valResults = validateAiServerSchema(ctx);
     if ( ! valResults.schema_compliant ) { // ID01212025.n
       wlogger.log({ level: "error", message: "[%s] Error parsing AI Application Gateway configuration file, aborting ...", splat: [scriptName] });
