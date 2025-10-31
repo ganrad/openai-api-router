@@ -18,8 +18,8 @@
 
 const msalConfig = {
     auth: {
-        clientId: envContext.appClientId, // "dd5d5c33-a90f-459c-9b1f-64e654ce5f20", "c22d810d-e24a-44be-b052-df234a01be99" // This is the ONLY mandatory field that you need to supply.
-        authority: 'https://login.microsoftonline.com/' + envContext.azTenantId, //c2236a74-6f69-4313-b77b-8a5360c27e88', // Replace the placeholder with your tenant name
+        clientId: envContext.appClientId, // This is the ONLY mandatory field that you need to supply.
+        authority: 'https://login.microsoftonline.com/' + envContext.azTenantId, // Replace the placeholder with your tenant name
         redirectUri: 'http://localhost:8000/ais-chatbot/ui', // You must register this URI on Azure Portal/App Registration. Defaults to window.location.href e.g. http://localhost:3000/,
         postLogoutRedirectUri: '/', // Indicates the page to navigate after logout.
     },

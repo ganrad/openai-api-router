@@ -260,6 +260,10 @@ Before we can get started, you will need a Linux Virtual Machine to run the AI A
    
      > **NOTE:** The AI App Gateway will not serve any requests for in-active (disabled) AI Applications.
 
+   - (Optional) Use *exposeA2AEndpoint* attribute to expose the AI Application via an A2A protocol endpoint.
+
+     > **NOTE:** The AI App Gateway will not expose an AI Application as an A2A AI Agent when this attribute is not set or is disabled (set to 'false')
+
    - Optionally, specify the backend endpoint router type *endpointRouterType*.
 
      > **NOTE:** Sample AI Application configuration files using different endpoint router types can be found in directory [ai-app-gateway-configs](./src/ai-app-gateway-configs). 
