@@ -13,16 +13,20 @@
  * ID03052025: ganrad: v2.3.0: (Enhancement) Introduced support for using RAPID host's system MID for authenticating against Azure AI Service(s).
  * ID08212025: ganrad: v2.4.0: (Enhancement) Updated 'getAccessToken' method to obtain access token for multiple/any Azure resource identified
  * by it's unique URI.
+ * ID10252025: ganrad: v2.8.5: (Refactoring) AI App Gateway security implementation (library) switched to jwks-rsa. Eliminated dependency
+ * on deprecated 'passport' and 'passport-azure-ad' packages.
+ * ID10292025: ganrad: v2.8.5: (Deprecated) This script is deprecated & no longer used. Refer to 'authMiddleware.js' script.
  */
 
-const passport = require('passport');
-const passportAzureAd = require('passport-azure-ad');
-const authConfig = require('./config');
+// const passport = require('passport');
+// const passportAzureAd = require('passport-azure-ad');
+// const authConfig = require('./config');
 
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('../utilities/logger');
 
+/**
 // ID11192024.sn
 function isAuthCheckRequiredForUri(req) {
   if ( req.path === '/healthz' ) // No auth check required for '/healthz' endpoint
@@ -31,7 +35,9 @@ function isAuthCheckRequiredForUri(req) {
   return true;
 }
 // ID11192024.en
+*/
 
+/*
 function initAuth(app, endpoint) {
   logger.log({ level: "info", message: "[%s] initAuth(): Protected endpoint: [%s]", splat: [scriptName, endpoint] });
 
@@ -44,7 +50,7 @@ function initAuth(app, endpoint) {
     passReqToCallback: authConfig.settings.passReqToCallback,
     loggingLevel: authConfig.settings.loggingLevel,
     loggingNoPII: authConfig.settings.loggingNoPII,
-  }, (req, token, done) => {
+  }, (req, token, done) => { */
 
     /**
      * Below you can do extended token validation and check for additional claims, such as:
@@ -73,24 +79,27 @@ function initAuth(app, endpoint) {
 
 
     /**
-     * Access tokens that have neither the 'scp' (for delegated permissions) nor
+     * Access tokens that have neither the 'scp' (for user delegated permissions) nor
      * 'roles' (for application permissions) claim are not to be honored.
      */
+    /**
     if (!token.hasOwnProperty('scp') && !token.hasOwnProperty('roles')) {
       return done(new Error('Unauthorized'), null, "No delegated or app permission claims found");
-    }
+    } */
 
     /**
      * If needed, pass down additional user info to route using the second argument below.
      * This information will be available in the req.user object.
      */
+    /**
     const userInfo = {
       name: token.name,
       email: token.preferred_username,
     };
     return done(null, userInfo, token);
-  });
+  }); */
 
+  /**
   app.use(passport.initialize());
 
   passport.use(bearerStrategy);
@@ -106,7 +115,7 @@ function initAuth(app, endpoint) {
 
     passport.authenticate('oauth-bearer', {
       session: false,
-
+  */
       /**
        * If you are building a multi-tenant application and you need supply the tenant ID or name dynamically,
        * uncomment the line below and pass in the tenant information. For more information, see:
@@ -115,16 +124,17 @@ function initAuth(app, endpoint) {
 
       // tenantIdOrName: <some-tenant-id-or-name>
 
-    }, (err, user, info) => {
-      if (err) {
+    // }, (err, user, info) => {
+      // if (err) {
         /**
          * An error occurred during authorization. Either pass the error to the next function
          * for Express error handler to handle, or send a response with the appropriate status code.
          */
-        return res.status(401).json({ error: err.message });
-      }
+        // return res.status(401).json({ error: err.message });
+      // }
 
       // ID11192024.sn
+      /**
       if (!user) {
         if (info && (info.aud === authConfig.credentials.clientID))
           // access token payload will be available in req.authInfo downstream
@@ -143,7 +153,7 @@ function initAuth(app, endpoint) {
     })(req, res, next);
   }); // end of middleware
   logger.log({ level: "info", message: "[%s] initAuth(): Initialized passport for authenticating users/apps using Azure Entra ID (OP)", splat: [scriptName] });
-}
+} */
 
 async function getAccessToken(req, resourceUri) { // ID03052025.n, ID08212025.n
   let bToken = null;
@@ -182,6 +192,6 @@ async function getAccessToken(req, resourceUri) { // ID03052025.n, ID08212025.n
 
 // module.exports = initAuth; ID03052025.o
 module.exports = {
-  initAuth,
+  // initAuth, // ID10252025.o
   getAccessToken
 }

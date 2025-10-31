@@ -11,6 +11,7 @@
  * Version: 2.0 (Introduced)
  *
  * Notes:
+ * ID10292025: ganrad: v2.8.5: (Deprecated) This script is deprecated & no longer used. Refer to 'securityConfig.js' script.
  */
 
 const env = process.env;
@@ -33,7 +34,7 @@ const passportConfig = {
     },
     protectedRoutes: {
         apigateway: {
-            endpoint: "/api/v1/dev/apirouter/",
+            endpoint: "/api/v1/dev/aigateway/",
             delegatedPermissions: {
                 read: ["ApiGateway.Read", "ApiGateway.ReadWrite"],
                 write: ["ApiGateway.ReadWrite"]

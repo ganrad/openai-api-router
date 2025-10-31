@@ -509,7 +509,8 @@ router.post(
        */
       if (req.body.user && application.personalizationSettings?.userMemory) { // ID10202025.n
         userMemConfig = retrievePersonalizationConfig(req.body.user, application.personalizationSettings);
-        logger.log({ level: "debug", message: "[%s] apirouter():\n  Request ID: %s\n  LT Memory Config:\n%s", splat: [scriptName, req.id, JSON.stringify(userMemConfig, null, 2)] });
+        if ( userMemConfig )
+          logger.log({ level: "debug", message: "[%s] apirouter():\n  Request ID: %s\n  LT Memory Config:\n%s", splat: [scriptName, req.id, JSON.stringify(userMemConfig, null, 2)] });
         // Set the uid and gid on the request object
         if (userMemConfig && userMemConfig.user)
           req.user = userMemConfig.user;

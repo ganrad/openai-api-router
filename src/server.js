@@ -60,7 +60,10 @@
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
  * ID10032025: ganrad: v2.7.0: (Enhancement) Added support for A2A protocol.
  * ID10132025: ganrad: v2.7.0: (Enhancement) An AI Application can be enabled (active) or disabled.  In the disabled state, the AI gateway will
- * not accept inference requests and will return an exception. 
+ * not accept inference requests and will return an exception.
+ * ID10252025: ganrad: v2.8.5: (Refactored code) Updated gateway security. New workflow supports - OAuth Code Flow + OIDC (User delegated) + 
+ * Client Credentials (Daemon, S2S/M2M) + JWT verification.
+ *  
 */
 
 // ID04272024.sn
@@ -73,16 +76,16 @@ wlogger.log({ level: "info", message: "[%s] Starting initialization of AI Applic
 const {
   generateGUID, // ID07312025.n 
   AiAppGateway, // ID07252025.n
-  ServerDefaults, 
-  CustomRequestHeaders, 
-  SchedulerTypes, 
-  AzAiServices, 
-  ServerTypes, 
-  AppServerStatus, 
+  ServerDefaults,
+  CustomRequestHeaders,
+  SchedulerTypes,
+  AzAiServices,
+  ServerTypes,
+  AppServerStatus,
   ConfigProviderType,
   DefaultJsonParserCharLimit,
   EndpointRouterTypes,
-  GatewayRouterEndpoints} = require("./utilities/app-gtwy-constants"); // ID02202025.n, ID07252025.n
+  GatewayRouterEndpoints } = require("./utilities/app-gtwy-constants"); // ID02202025.n, ID07252025.n
 
 // Server version v2.3.9 ~ ID06162025.n
 // const srvVersion = "2.3.9"; ID07252025.o
@@ -115,7 +118,9 @@ const CacheConfig = require("./utilities/cache-config");
 const SchedulerFactory = require("./utilities/scheduler-factory"); // ID05062024.n
 const sFactory = new SchedulerFactory(); // ID05062024.n
 
-const { initAuth } = require("./auth/bootstrap-auth"); // ID07292024.n
+// const { initAuth } = require("./auth/bootstrap-auth"); // ID07292024.n, ID10252025.o
+const { securityConfig } = require("./auth/securityConfig.js"); // ID10252025.n
+const { validateAccessToken } = require("./auth/authMiddleware.js"); // ID10252025.n
 const { validateAiServerSchema } = require("./schemas/validate-json-config"); // ID01242025.n, ID09202024.n
 
 // const https = require("https"); // IDTest
@@ -130,7 +135,7 @@ const srvStartDate = new Date().toLocaleString();
 // Init. random uuid generator
 // const { randomUUID } = require('node:crypto'); ID07312025.o
 const persistdb = require("./services/pp-pg.js");
-const { TblNames,PersistDao } = require('./utilities/persist-dao.js');
+const { TblNames, PersistDao } = require('./utilities/persist-dao.js');
 
 // Configure pinojs logger - logs http request/response only
 const logger = require('pino-http')({
@@ -159,7 +164,7 @@ let dbCheckTime = srvStartDate;
 async function checkDbConnectionStatus() {
   dbConnectionStatus = await pgdb.checkDbConnection();
 
-  if ( !dbConnectionStatus ) {
+  if (!dbConnectionStatus) {
     wlogger.log({ level: "error", message: "[%s] Could not connect to PostgreSQL DB. Aborting server ...", splat: [scriptName] });
     process.exit(1);
   };
@@ -173,7 +178,7 @@ async function checkDbConnectionStatus() {
 
 let host; // App Gateway host
 let port; // App Gateway listen port
-let endpoint; // AI App Gateway base URI - /api/v1/{env}/apirouter ID11152024.n
+let endpoint; // AI App Gateway base URI - /api/v1/{env}/aigateway ID11152024.n
 let pkey; // App Gateway private key (used only for reconfiguring endpoints)
 // ID02202024.sn
 async function readAiAppGatewayEnvVars() {
@@ -233,14 +238,14 @@ let context; // Server AI Applications Context
 async function populateServerContext(initialize) { // ID01312025.n
   // Retrieve ai apps from persistent store
   const cfgFile = process.env.API_GATEWAY_CONFIG_FILE;
-  if ( (configType == ConfigProviderType.File) && (cfgFile) && (fs.existsSync(cfgFile)) ) { // File store
+  if ((configType == ConfigProviderType.File) && (cfgFile) && (fs.existsSync(cfgFile))) { // File store
     let data = fs.readFileSync(cfgFile, { encoding: 'utf8', flag: 'r' });
     let ctx = JSON.parse(data);
 
     const valResults = validateAiServerSchema(ctx);
-    if ( ! valResults.schema_compliant ) { // ID01212025.n
+    if (!valResults.schema_compliant) { // ID01212025.n
       wlogger.log({ level: "error", message: "[%s] Error parsing AI Application Gateway configuration file, aborting ...", splat: [scriptName] });
-      if ( initialize )
+      if (initialize)
         // exit program
         process.exit(1);
       else
@@ -257,9 +262,9 @@ async function populateServerContext(initialize) { // ID01312025.n
         };
     };
 
-    if ( (ctx.serverId !== context.serverId) || (ctx.serverType !== context.serverType) ) {
+    if ((ctx.serverId !== context.serverId) || (ctx.serverType !== context.serverType)) {
       wlogger.log({ level: "error", message: "[%s] Server Id / Type [%s: %s] does not match Id / Type specified in config file [%s: %s]!. Aborting server initialization ...", splat: [scriptName, context.serverId, context.serverType, ctx.serverId, ctx.serverType] });
-      if ( initialize )
+      if (initialize)
         // exit program
         process.exit(1);
       else
@@ -276,20 +281,20 @@ async function populateServerContext(initialize) { // ID01312025.n
     };
 
     context.applications = ctx.applications;
-    if ( ctx.budgetConfig ) // ID08252025.n
+    if (ctx.budgetConfig) // ID08252025.n
       context.budgetConfig = ctx.budgetConfig;
 
-    if ( context.serverType === ServerTypes.MultiDomain )
+    if (context.serverType === ServerTypes.MultiDomain)
       context.aiGatewayUri = ctx.aiGatewayUri;
   }
   else { // Default to SQL DB store when 1) Env var is empty or not set 2) Config file does not exist
     let aiServersDao = new PersistDao(persistdb, TblNames.AiAppServers);
-    let values = [ context.serverId ];
+    let values = [context.serverId];
     const srvData = await aiServersDao.queryTable("(Init-0) Loading Context", 1, values); // Retrieve the AI app server data
-    if ( srvData.rCount === 1 ) {
-      if ( srvData.data[0].srv_type !== context.serverType ) {  // Unlikely this will occur!
+    if (srvData.rCount === 1) {
+      if (srvData.data[0].srv_type !== context.serverType) {  // Unlikely this will occur!
         wlogger.log({ level: "error", message: "[%s] Server type [%s] does not match type specified in DB record [%s]!. Aborting server initialization ...", splat: [scriptName, context.serverType, srvData.data[0].srv_type] });
-        if ( initialize )
+        if (initialize)
           // exit program
           process.exit(1);
         else
@@ -305,19 +310,19 @@ async function populateServerContext(initialize) { // ID01312025.n
           };
       };
 
-      if ( srvData.data[0].app_conf ) {
+      if (srvData.data[0].app_conf) {
         context.applications = srvData.data[0].app_conf.applications;
-        if ( srvData.data[0].app_conf.budgetConfig ) // ID08252025.n
+        if (srvData.data[0].app_conf.budgetConfig) // ID08252025.n
           context.budgetConfig = srvData.data[0].app_conf.budgetConfig;
       };
 
-      if ( context.serverType === ServerTypes.MultiDomain )
+      if (context.serverType === ServerTypes.MultiDomain)
         context.aiGatewayUri = srvData.data[0].def_gateway_uri;
     }
     else {
-      if ( srvData.errors ) {
+      if (srvData.errors) {
         wlogger.log({ level: "error", message: "[%s] Unable to load AI App Gateway configuration.  Check server logs.  Aborting server initialization ...", splat: [scriptName] });
-        if ( initialize )
+        if (initialize)
           // exit program
           process.exit(1);
         else
@@ -335,7 +340,7 @@ async function populateServerContext(initialize) { // ID01312025.n
     };
   };
 
-  return(null);
+  return (null);
 }
 
 let cacheConfig;
@@ -375,14 +380,14 @@ async function readAiAppGatewayConfig() { // ID01292025.n
     process.exit(1);
   }
   else {
-    if ( (srvType !== ServerTypes.SingleDomain) && (srvType !== ServerTypes.MultiDomain) ) {
+    if ((srvType !== ServerTypes.SingleDomain) && (srvType !== ServerTypes.MultiDomain)) {
       wlogger.log({ level: "error", message: "[%s] Unsupported Server Type [API_GATEWAY_TYPE: %s] specified in configuration file.  Supported server types are - %s & %s, aborting ...", splat: [scriptName, srvType, ServerTypes.SingleDomain, ServerTypes.MultiDomain] });
       // exit program
       process.exit(1);
     };
   }
 
-  if ( process.env.API_GATEWAY_CONFIG_FILE ) // If a file is specified, then use file based config
+  if (process.env.API_GATEWAY_CONFIG_FILE) // If a file is specified, then use file based config
     configType = ConfigProviderType.File;
   else // Otherwise use Sql DB based config
     configType = ConfigProviderType.SqlDB;
@@ -393,7 +398,7 @@ async function readAiAppGatewayConfig() { // ID01292025.n
       serverType: srvType,
       serverConfigType: configType
     };
-      
+
     await populateServerContext(true); // No need to receive config reload errors!
 
     if (context.serverType === ServerTypes.SingleDomain) { // ID09042024.n
@@ -411,7 +416,7 @@ async function readAiAppGatewayConfig() { // ID01292025.n
 
         console.log(`  Endpoint Router Type: ${app.endpointRouterType ?? EndpointRouterTypes.PriorityRouter}\n  Endpoints:`);
         app.endpoints.forEach((element) => {
-          if ( app.appType === AzAiServices.AzAiAgent ) // ID08212025.n
+          if (app.appType === AzAiServices.AzAiAgent) // ID08212025.n
             console.log(`    Priority: ${pidx}\tUri: ${element.uri}/${element.id}`);
           else
             console.log(`    Priority: ${pidx}\tUri: ${element.uri}`);
@@ -437,7 +442,7 @@ async function readAiAppGatewayConfig() { // ID01292025.n
 
     // if (cacheConfig.cacheResults && startScheduler) { ID11112024.o
     if (cacheConfig.cacheResults) { // ID11112024.n
-      if ( ! cacheInvalidator ) { // ID11112024.n
+      if (!cacheInvalidator) { // ID11112024.n
         // Start the cache entry invalidator cron job and set it's run schedule
         let schedule = process.env.API_GATEWAY_CACHE_INVAL_SCHEDULE;
         if (!schedule) // schedule is empty, undefined, null
@@ -448,15 +453,15 @@ async function readAiAppGatewayConfig() { // ID01292025.n
         // await runCacheInvalidator(schedule, context); ID05062024.o
         // sFactory.getScheduler(SchedulerTypes.InvalidateCacheEntry).runSchedule(schedule, context); // ID05062024.n, ID11112024.o
         cacheInvalidator = sFactory.getScheduler(SchedulerTypes.InvalidateCacheEntry); // ID11112024.n
-        cacheInvalidator.runSchedule(schedule,context);
+        cacheInvalidator.runSchedule(schedule, context);
       }
     };
 
     // ID05062024.sn
     let manageState = (process.env.API_GATEWAY_STATE_MGMT === 'true') ? true : false
     // if (manageState && startScheduler) { ID11112024.o
-    if ( manageState ) { // ID11112024.n
-      if ( ! memoryInvalidator ) {
+    if (manageState) { // ID11112024.n
+      if (!memoryInvalidator) {
         // Start the memory state invalidator cron job and set it's run schedule
         let schedule = process.env.API_GATEWAY_MEMORY_INVAL_SCHEDULE;
         if (!schedule) // schedule is empty, undefined, null
@@ -466,7 +471,7 @@ async function readAiAppGatewayConfig() { // ID01292025.n
 
         // sFactory.getScheduler(SchedulerTypes.ManageMemory).runSchedule(schedule, context); // ID05062024.n, ID11112024.o
         memoryInvalidator = sFactory.getScheduler(SchedulerTypes.ManageMemory); // ID11112024.n
-        memoryInvalidator.runSchedule(schedule,context);
+        memoryInvalidator.runSchedule(schedule, context);
       }
     };
   }
@@ -484,8 +489,8 @@ function updateAiServerFile() {
   try {
     fs.writeFileSync(process.env.API_GATEWAY_CONFIG_FILE, JSON.stringify(context, null, 2));
   }
-  catch ( err ) {
-    wlogger.log({level: "error", message: "[%s] updateAiServerFile():\n  AI App Gateway: %s\n  Encountered exception:\n%s", splat: [scriptName,context.serverId,err.stack]});
+  catch (err) {
+    wlogger.log({ level: "error", message: "[%s] updateAiServerFile():\n  AI App Gateway: %s\n  Encountered exception:\n%s", splat: [scriptName, context.serverId, err.stack] });
   };
 }
 
@@ -502,23 +507,23 @@ async function updateAiServerDB(srvStamp, qid, values) {
 function interceptSignals() {
   process.on('SIGINT', async () => {
     // Update server status and stop time
-    if ( configType === ConfigProviderType.File )
+    if (configType === ConfigProviderType.File)
       updateAiServerFile();
     else
       await updateAiServerDB(AppServerStatus.Stopped, 2, [process.env.API_GATEWAY_ID, AppServerStatus.Stopped]);
 
-    wlogger.log({level: "info", message: "[%s] interceptSignals():\n  Received [SIGINT] signal. Azure AI Application Gateway [%s] shutting down ...", splat: [scriptName,context.serverId]});
+    wlogger.log({ level: "info", message: "[%s] interceptSignals():\n  Received [SIGINT] signal. Azure AI Application Gateway [%s] shutting down ...", splat: [scriptName, context.serverId] });
     process.exit();
   });
 
   process.on('SIGTERM', async () => {
     // Update server status and stop time
-    if ( configType === ConfigProviderType.File )
+    if (configType === ConfigProviderType.File)
       updateAiServerFile();
     else
       await updateAiServerDB(AppServerStatus.Stopped, 2, [process.env.API_GATEWAY_ID, AppServerStatus.Stopped]);
 
-    wlogger.log({level: "info", message: "[%s] interceptSignals():\n  Received [SIGTERM] signal. Azure AI Application Gateway [%s] shutting down ...", splat: [scriptName,context.serverId]});
+    wlogger.log({ level: "info", message: "[%s] interceptSignals():\n  Received [SIGTERM] signal. Azure AI Application Gateway [%s] shutting down ...", splat: [scriptName, context.serverId] });
     process.exit();
   })
 }
@@ -531,16 +536,33 @@ async function initServer() { // ID01302025.n
   interceptSignals(); // ID12192024.n
 
   // Set the server status and startup time
-  if ( configType == ConfigProviderType.SqlDB )
+  if (configType == ConfigProviderType.SqlDB)
     await updateAiServerDB(AppServerStatus.Started, 3, [process.env.API_GATEWAY_ID, AppServerStatus.Running, new Date().toISOString()]);
 }
 // ID06092024.en
 
 function initializeAuth() {
   let secureApis = process.env.API_GATEWAY_AUTH;
-  if (secureApis === "true")
+  if (secureApis === "true") {
     // initAuth(app, endpoint + "/apirouter"); // ID11152024.o
-    initAuth(app, endpoint); // ID11152024.n
+    // initAuth(app, endpoint); // ID11152024.n, ID10252025.o
+
+    // ID10252025.sn
+    const delPermsObject = Object.values(securityConfig.protectedRoutes.aigateway.delegatedPermissions);
+    const requiredScopes = delPermsObject.filter(permission => permission && permission.trim());
+    
+    const appPermsObject = Object.values(securityConfig.protectedRoutes.aigateway.applicationPermissions);
+    const requiredRoles = appPermsObject.filter(permission => permission && permission.trim());
+
+    app.use(endpoint, validateAccessToken(
+      endpoint,
+      {
+        requiredScopes,
+        requiredRoles
+      }) // match what clients request & AI Gateway API exposes
+    );
+    // ID10252025.en
+  }
   else
     wlogger.log({ level: "warn", message: "[%s] AI Application Gateway endpoints are not secured by Microsoft Entra ID!", splat: [scriptName] });
 }
@@ -549,16 +571,16 @@ initServer().then(() => { // ID01302025.n
   app.use(cors()); // ID05222024.n
 
   // app.use(bodyParser.json()); // ID02202025.o
-  app.use(bodyParser.json({limit: DefaultJsonParserCharLimit})); // ID02202025.n
-  app.use(bodyParser.urlencoded({limit: DefaultJsonParserCharLimit, extended: true})); // ID02202025.n
+  app.use(bodyParser.json({ limit: DefaultJsonParserCharLimit })); // ID02202025.n
+  app.use(bodyParser.urlencoded({ limit: DefaultJsonParserCharLimit, extended: true })); // ID02202025.n
 
   // ID07292024.sn
   // Generate request id prior to invoking router middleware (endpoints)
   // app.use(endpoint + "/apirouter", (req, res, next) => { ID11152024.o
   app.use(endpoint, (req, res, next) => { // ID11152024.n
-    logger(req, res);
+    logger(req, res); // Generates the req.id
 
-    if ( azAppInsightsConString ) { // Is AppInsights logging is enabled; ID03122025.n
+    if (azAppInsightsConString) { // If AppInsights logging is enabled; ID03122025.n
       // Add the request ID to the context span
       let spanProperties = new Map();
       spanProperties.set('x-request-id', req.id);
@@ -567,17 +589,17 @@ initServer().then(() => { // ID01302025.n
     next();
   });
 
-  initializeAuth(); // Initialize OAuth flow
+  initializeAuth(); // Initialize OAuth PKCE flow
   // ID07292024.en
 
   // GET - API Gateway/Server Health Check endpoint
-  // Endpoint: /apirouter/healthz
+  // Endpoint: /aigateway/healthz
   // app.get(endpoint + "/apirouter/healthz", (req, res) => { ID11152024.o
   app.get(endpoint + GatewayRouterEndpoints.HealthEndpoint, (req, res) => { // ID11152024.n, ID07252025.n
     // logger(req,res); ID07292024.o
 
     let resp_obj = {
-      http_status: ( !dbConnectionStatus ) ? 500 : 200,
+      http_status: (!dbConnectionStatus) ? 500 : 200,
       data: {
         endpointUri: req.originalUrl,
         currentDate: new Date().toLocaleString(),
@@ -591,14 +613,14 @@ initServer().then(() => { // ID01302025.n
   });
 
   // API Gateway/Server reconfiguration endpoint
-  // Endpoint: /apirouter/reconfig
+  // Endpoint: /aigateway/reconfig/:pkey
   // app.use(endpoint + "/apirouter/reconfig/:pkey", function (req, res, next) { ID11152024.o
-  app.use(endpoint + GatewayRouterEndpoints.ReconfigureEndpoint + "/:pkey", async function (req, res, next) { // ID11152024.n, ID07252025.n
+  app.put(endpoint + GatewayRouterEndpoints.ReconfigureEndpoint + "/:pkey", async function (req, res, next) { // ID11152024.n, ID07252025.n, ID10252025.n
     // logger(req,res); ID07292024.o
 
     let resp_obj;
     // ID01212025.sn
-    if ( process.env.POD_NAME ) {
+    if (process.env.POD_NAME) {
       resp_obj = {
         http_status: 400, // Bad Request
         data: {
@@ -633,7 +655,7 @@ initServer().then(() => { // ID01302025.n
 
     resp_obj = await populateServerContext(false);
 
-    if ( ! resp_obj ) { // null means all OK
+    if (!resp_obj) { // null means all OK
       if (context.serverType === ServerTypes.SingleDomain) // Reset single-domain gateway server app info.
         reconfigEndpoints();
       else // Reset multi-domain gateway server app info.
@@ -653,7 +675,7 @@ initServer().then(() => { // ID01302025.n
   });
 
   // API Gateway/Server Control Plane endpoint
-  // Endpoint: /apirouter/cp
+  // Endpoint: /aigateway/cp
   app.use(endpoint, function (req, res, next) { // ID01232025.n
     // Add the AI App Server configuration to the request object
     req.srvconf = context;
@@ -662,7 +684,7 @@ initServer().then(() => { // ID01302025.n
   }, cprouter);
 
   // API Gateway 'load balancer' endpoint
-  // Endpoint: /apirouter
+  // Endpoint: /aigateway
   // app.use(endpoint + "/apirouter", function (req, res, next) { ID11152024.o
   app.use(endpoint, function (req, res, next) { // ID11152024.n
     // Add logger
@@ -688,15 +710,15 @@ initServer().then(() => { // ID01302025.n
   }, (context.serverType === ServerTypes.SingleDomain) ? apirouter : mdapirouter);
 
   app.use(endpoint, createA2AGatewayRouter(context.applications)); // ID10032025.n
-  
+
   app.listen(port, () => {
     wlogger.log({
-      level: "info", 
+      level: "info",
       message: "[%s] Server(): Azure AI Application Gateway started successfully.\n-----\nDetails:\n  Server Name: %s\n  Server Type: %s\n  Version: %s\n  Config. Provider Type: %s\n  Endpoint URI: http://%s:%s%s\n  Status: %s\n  Start Date: %s\n-----\n",
-      splat: [scriptName,context.serverId,context.serverType,AiAppGateway.Version,configType,host,port,endpoint,AppServerStatus.Running,srvStartDate]
+      splat: [scriptName, context.serverId, context.serverType, AiAppGateway.Version, configType, host, port, endpoint, AppServerStatus.Running, srvStartDate]
     }); // ID03282024.n, ID07252025.n
   });
-  
+
   /** IDTest
   https.createServer(
     {
