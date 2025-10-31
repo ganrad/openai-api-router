@@ -61,7 +61,6 @@ function generateGUID(prefix) { // ID07312025.n
   return(idPrefix.slice(0,3) + "_" + randomUUID());
 }
 
-
 async function generateUUID() { // ID10032025.n
   const { v4: uuidv4 } = await import('uuid');
 
@@ -70,7 +69,7 @@ async function generateUUID() { // ID10032025.n
 
 // ID07252025.sn
 const AiAppGateway = {
-  Version: "2.8.0",
+  Version: "2.8.5",
   ApiVersion: "/api/v1/",
   // RouterContextPath: "/apirouter" ID10032025.o
   RouterContextPath: "/aigateway" // ID10032025.n

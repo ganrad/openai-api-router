@@ -9,6 +9,7 @@
  * Notes:
  * ID03102025: ganrad: v2.3.0: (Enhancement) Added http method to 'operations' API
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
+ * ID10252025: ganrad: v2.8.5: (Refactored code) AI App Gateway security implementation (library) switched to jwks-rsa.
 */
 
 const fs = require("fs");
@@ -258,7 +259,8 @@ class AiAppServerProcessor {
             budgetConfig: req.body.budgetConfig,
             applications: req.body.applications
           },
-          req.user // created by
+          // req.user // created by ID10252025.o
+          req.authInfo?.token.name // Null || the user name from UAT ID10252025.n
         ];
     
       dbresp = await aiSrvsDao.storeEntity( // Save the ai app server configuration

@@ -33,9 +33,11 @@
  * ID08282025: ganrad: v2.4.5-v1.3.1: (Bugfix) Az Direct Models such as Llama, Grok do not require a 'system' message.
  * ID09162025: ganrad: v2.6.0-v1.3.2: (Enhancement) Introduced support for user feedback capture for models/agents deployed on Azure AI Foundry.
  * ID09192025: ganrad: v2.6.0-v1.3.2: (Bugfix) AI Model Inf. API fails if 'stop' parameter is sent with null/"" value.
+ * ID10252025: ganrad: v2.8.5-v1.3.2: AI App Gateway security implementation (library) switched to jwks-rsa (auth-v2.js). Required minimal 
+ * updates to the SPA. 
 */
 
-// Adjust the system prompt as needed
+// Adjust the default system prompt as needed
 const defaultPrompt = "You are a helpful AI Assistant trained by OpenAI."; // Default prompt
 const uiUserName = "user-" + Date.now().toString(36) + Math.random().toString(36).substring(2, 8); // ID06062025.n
 
@@ -92,18 +94,18 @@ let msgCounter = 0; // ID03132025.n
 
 function loadAuthScript() {
   let scriptEle = document.createElement('script');
-  scriptEle.setAttribute("src", "./auth.js");
+  scriptEle.setAttribute("src", "./auth-v2.js"); // ID10252025.n
   scriptEle.setAttribute("type", "text/javascript");
   scriptEle.setAttribute("async", false);
 
   document.body.appendChild(scriptEle);
 
   scriptEle.addEventListener("load", () => {
-    console.log('loadAuthScript(): auth.js has been loaded.');
+    console.log('loadAuthScript(): auth-v2.js has been loaded.');
   });
 
   scriptEle.addEventListener("error", () => {
-    console.error('loadAuthScript(): Error loading auth.js.');
+    console.error('loadAuthScript(): Error loading auth-v2.js.');
   });
 }
 

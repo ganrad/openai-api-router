@@ -1,5 +1,42 @@
 # CHANGELOG
 
+## [v2.8.5](https://github.com/ganrad/openai-api-router/compare/v2.8.0...v2.8.5) - 10/31/2025
+### Functionality changes
+**Azure AI Application Gateway (Server)**
+* **Enhancements:**
+
+  - **AI Gateway Resource Access Management (Authentication & Authorization)**
+    This release modernizes security and access control for the AI Gateway by introducing the following key enhancements.
+
+    **Updated Authentication Libraries**
+
+    The gateway now leverages jsonwebtoken (jwt) and jwks-rsa Node.js libraries, removing dependencies on deprecated Passport libraries.
+      
+    Benefit: Improves maintainability, reduces security risks, and aligns with industry best practices for token validation.
+
+    **Role-Based Access Control (RBAC)**
+      
+    Administrators can now enforce granular access policies across AI Gateway resources.
+      
+    Benefit: Enables secure lifecycle management of AI applications and ensures strict compliance in production environments.
+
+
+    **New Access Scopes for Fine-Grained Permissions**
+      
+    Three distinct scopes have been introduced:
+
+      - Read-Only Access – View all gateway resources without modification.
+      - Write Inferencing Access – Invoke AI Application inference endpoints.
+      - Write Access for gateway resources – Manage the lifecycle of gateway resources via control plane APIs.
+
+    Benefit: Provides precise control over user capabilities, reducing operational risk and improving governance.   
+
+---
+
+### Documentation changes
+* Updated the functional architecture diagram.
+* Made minor updates to the documentation.
+
 ## [v2.8.0](https://github.com/ganrad/openai-api-router/compare/v2.7.5...v2.8.0) - 10/24/2025
 ### Functionality changes
 **Azure AI Application Gateway (Server)**
@@ -29,7 +66,7 @@
 
 ### Documentation changes
 * Updated the functional architecture diagram.
-* Made minor updates to the document.
+* Made minor updates to the documentation.
 
 ## [v2.7.5](https://github.com/ganrad/openai-api-router/compare/v2.6.0...v2.7.5) - 10/19/2025
 ### Functionality changes
@@ -45,7 +82,7 @@
 ---
 
 ### Documentation changes
-* Made minor updates to the document.
+* Made minor updates to the Readme.md document.
 
 ## [v2.7.0](https://github.com/ganrad/openai-api-router/compare/v2.6.0...v2.7.0) - 10/14/2025
 ### Functionality changes
@@ -64,7 +101,7 @@
 
 ### Documentation changes
 * Updated the functional architecture diagram.
-* Made minor updates to the document.
+* Made minor updates to the documentation.
 
 ## [v2.6.0](https://github.com/ganrad/openai-api-router/compare/v2.5.0...v2.6.0) - 09/18/2025
 ### Functionality changes
@@ -90,7 +127,7 @@
 
 ### Documentation changes
 * Updated the functional architecture diagram.
-* Made minor updates to the document.
+* Made minor updates to the Readme.md document.
 
 ## [v2.5.0](https://github.com/ganrad/openai-api-router/compare/v2.4.0-beta...v2.5.0) - 09/12/2025
 ### Functionality changes

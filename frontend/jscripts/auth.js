@@ -3,10 +3,23 @@
  * For a full list of MSAL.js configuration parameters, visit:
  * https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/configuration.md
  */
+/**
+ * Name: Authzn functions
+ * Description: This script contains functions for authenticating AI App Gateway SPA (UI frontend) users.
+ * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
+ * Date: 07-01-2024
+ * Version (Introduced): v1.0.0
+ *  
+ * Notes:
+ * ID10252025: ganrad: v2.8.5-v1.3.2: AI App Gateway security implementation (library) switched to jwks-rsa requiring minimal 
+ * updates to the SPA.
+ * ID10292025: ganrad: v2.8.5-v1.3.2: This script is deprecated.  The SPA now uses 'auth-v2.js' script. 
+ */
+
 const msalConfig = {
     auth: {
         clientId: envContext.appClientId, // This is the ONLY mandatory field that you need to supply.
-        authority: 'https://login.microsoftonline.com/' + envContext.azTenantId, // Replace the placeholder with your tenant name/ID
+        authority: 'https://login.microsoftonline.com/' + envContext.azTenantId, // Replace the placeholder with your tenant name
         redirectUri: 'http://localhost:8000/ais-chatbot/ui', // You must register this URI on Azure Portal/App Registration. Defaults to window.location.href e.g. http://localhost:3000/,
         postLogoutRedirectUri: '/', // Indicates the page to navigate after logout.
     },
@@ -46,12 +59,25 @@ const msalConfig = {
  * https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/resources-and-scopes.md
  */
 const protectedResources = {
+    /** ID10252025.so
     apiGateway: {
         scopes: {
-            read: [envContext.apiGatewayAppId + '/ApiGateway.Read'], // ['api://Enter_the_Web_Api_Application_Id_Here/ApiGateway.Read'],
-            write: [envContext.apiGatewayAppId + '/ApiGateway.ReadWrite'] // ['api://Enter_the_Web_Api_Application_Id_Here/ApiGateway.ReadWrite'],
+            read: [envContext.apiGatewayAppId + '/ApiGateway.Read'], // ['api://Enter_the_Web_Api_Application_Id_Here/Todolist.Read'],
+            write: [envContext.apiGatewayAppId + '/ApiGateway.ReadWrite'] //  ['api://Enter_the_Web_Api_Application_Id_Here/Todolist.ReadWrite'],
         },
     },
+    ID10252025.eo */
+    // ID10252025.sn
+    apiGateway: {
+        scopes: {
+            read: [envContext.apiGatewayAppId + '/AiGateway.read'],
+            write: [
+                envContext.apiGatewayAppId + '/AiGateway.write',
+                envContext.apiGatewayAppId + '/AiGateway.ControlPlane.write'
+            ]            
+        },
+    }
+    // ID10252025.en
 };
 
 /**
@@ -135,9 +161,9 @@ function signIn() {
      */
 
     myMSALObj
-        .loginPopup({
+        .loginPopup({ // Sign-in method.  Only initiates a user session.
             ...loginRequest,
-            redirectUri: msalConfig.auth.redirectUri,
+            redirectUri: msalConfig.auth.redirectUri
         })
         .then(handleResponse)
         .catch((error) => {
@@ -146,19 +172,21 @@ function signIn() {
 }
 
 /**
- * Retrieves an access token.
+ * Token acquisition: Retrieves an access token.
  */
 async function getToken() {
     let tokenResponse;
 
     if (typeof getTokenPopup === 'function') {
         tokenResponse = await getTokenPopup({
-            scopes: [...protectedResources.apiGateway.scopes.read],
+            scopes: [...protectedResources.apiGateway.scopes.read, ...protectedResources.apiGateway.scopes.write],
             redirectUri: msalConfig.auth.redirectUri, // '/redirect'
+            forceRefresh: true // ID10252025.n
         });
     } else {
         tokenResponse = await getTokenRedirect({
-            scopes: [...protectedResources.apiGateway.scopes.read],
+            scopes: [...protectedResources.apiGateway.scopes.read, ...protectedResources.apiGateway.scopes.write],
+            forceRefresh: true // ID10252025.n
         });
     }
 

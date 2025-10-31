@@ -35,6 +35,10 @@
             "description": "Is this AI Application active?",
             "type": "boolean"
         },
+        "exposeA2AEndpoint": {
+            "description": "Expose this AI Application over A2A protocol?",
+            "type": "boolean"
+        },
         "normalizeOutput": {
             "description": "Normalize LLM output schema to OpenAI output/response schema",
             "type": "boolean"

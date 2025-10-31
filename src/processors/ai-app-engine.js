@@ -7,6 +7,7 @@
  * Version (Introduced): v2.1.0
  *
  * Notes:
+ * ID10252025: ganrad: Not used!
 */
 const path = require('path');
 const scriptName = path.basename(__filename);

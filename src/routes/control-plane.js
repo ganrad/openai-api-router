@@ -19,7 +19,7 @@ const { GatewayRouterEndpoints } = require("../utilities/app-gtwy-constants.js")
 const logger = require("../utilities/logger.js");
 const cprouter = express.Router();
 
-// Endpoint: /apirouter/cp/:resource_type/:action[/:resource_id]
+// Endpoint: /aigateway/cp/:resource_type/:action[/:resource_id]
 // Method(s): GET, POST, DELETE
 // Resources: AiAppServer, AiApplication, MdAiApplication, RagAiApplication
 // Actions: operations, deploy, status, get, delete

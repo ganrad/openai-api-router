@@ -281,8 +281,8 @@ router.post(
     };
 
     // ID10132025.sn
-    // Check if AI Application is active
-    if (!application.isActive) {
+    // Check if AI Application is active.  If it's an A2A request, check to see if this ai application is enabled.
+    if (!application.isActive  || ((inboundApiType === AiGatewayInboundReqApiType.Agent2Agent) && !application.exposeA2AEndpoint)) {
       err_obj = {
         http_code: 400, // Bad request
         data: (inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? {
@@ -294,7 +294,7 @@ router.post(
         } : {
           jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
           id: a2aReqId,
-          error: { code: -32602, message: `AI Agent [ID=${appId}] is currently in-active (in disabled state). Unable to process request.` }
+          error: { code: -32602, message: `AI Agent [ID=${appId}] is currently either in-active (in disabled state) or not available via A2A protocol. Unable to process request.` }
         }
       };
 
@@ -341,7 +341,7 @@ router.post(
           data: {
             jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
             id: a2aReqId,
-            error: { code: -32600, message: 'Invalid Request (must use jsonrpc=2.0, method message/send or message/stream)' }
+            error: { code: -32600, message: 'Invalid Request (must use jsonrpc=2.0, method=message/send or message/stream)' }
           }
         };
 
@@ -509,7 +509,8 @@ router.post(
        */
       if (req.body.user && application.personalizationSettings?.userMemory) { // ID10202025.n
         userMemConfig = retrievePersonalizationConfig(req.body.user, application.personalizationSettings);
-        logger.log({ level: "debug", message: "[%s] apirouter():\n  Request ID: %s\n  LT Memory Config:\n%s", splat: [scriptName, req.id, JSON.stringify(userMemConfig, null, 2)] });
+        if ( userMemConfig )
+          logger.log({ level: "debug", message: "[%s] apirouter():\n  Request ID: %s\n  LT Memory Config:\n%s", splat: [scriptName, req.id, JSON.stringify(userMemConfig, null, 2)] });
         // Set the uid and gid on the request object
         if (userMemConfig && userMemConfig.user)
           req.user = userMemConfig.user;

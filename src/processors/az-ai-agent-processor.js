@@ -788,7 +788,7 @@ class AzAiAgentProcessor {
     let threadId = memoryConfig?.useMemory ? req.get(CustomRequestHeaders.ThreadId) : null;
     let threadStarted = threadId ? false : true;
 
-    logger.log({ level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n  Request Payload:\n  %s", splat: [scriptName, this.constructor.name, req.id, req.originalUrl, req.user?.name, threadId, config.appId, config.appType, JSON.stringify(req.body, null, 2)] });
+    logger.log({ level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n  Request Payload:\n  %s", splat: [scriptName, this.constructor.name, req.id, req.originalUrl, req.authInfo?.token.name, threadId, config.appId, config.appType, JSON.stringify(req.body, null, 2)] });
 
     let respMessage = null; // IMPORTANT: Populate the response message before returning!
 

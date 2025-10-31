@@ -20,7 +20,7 @@
  * ID10142025: ganrad: v2.7.0: (Enhancement) Introduced new feature to support normalization of AOAI output.
  * ID10182025: ganrad: v2.7.5: (Enhancement) Introduced support for MSFT Agent Framework.
  * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
- * 
+ * ID10252025: ganrad: v2.8.5: (Refactoring) AI App Gateway security implementation (library) switched to jwks-rsa.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -44,13 +44,14 @@ async function getOpenAICallMetadata(req, element, appType) { // ID08272025.n
   let bearerToken = req.headers['Authorization'] || req.headers['authorization'];
   // if (appType === AzAiServices.OAI) { // ID09162025.o
 
-  if (bearerToken && !req.authInfo) { // Authorization header present; Use MID Auth + Ensure AI App Gateway is not configured with Entra ID
+  // If Authorization header is present & API Gateway auth is not configured then use MID Auth or pass UAT to authenticate to backend
+  if (bearerToken && !req.authInfo) {
     if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true")
       bearerToken = await getAccessToken(req, AzureResourceUris.AzureCognitiveServices);
     meta.set('Authorization', bearerToken);
-    logger.log({ level: "debug", message: "[%s] getOpenAICallMetadata(): Using bearer token (MID-IMDS) for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, req.id] });
+    logger.log({ level: "debug", message: "[%s] getOpenAICallMetadata(): Using bearer token (Client/MID-IMDS) for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, req.id] });
   }
-  else { // Use API Key Auth
+  else { // If Authorization header is present & API Gateway auth is configured then use MID Auth or API key to authenticate to backend
     if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") {
       bearerToken = await getAccessToken(req, AzureResourceUris.AzureCognitiveServices);
       meta.set('Authorization', bearerToken);
