@@ -62,8 +62,8 @@ const protectedResources = {
     /** ID10252025.so
     apiGateway: {
         scopes: {
-            read: [envContext.apiGatewayAppId + '/ApiGateway.Read'], // ['api://ea069e81-89ea-4977-85ea-9903697bf41c/ApiGateway.Read'], // ['api://Enter_the_Web_Api_Application_Id_Here/Todolist.Read'],
-            write: [envContext.apiGatewayAppId + '/ApiGateway.ReadWrite'] // ['api://ea069e81-89ea-4977-85ea-9903697bf41c/ApiGateway.ReadWrite'], //  ['api://Enter_the_Web_Api_Application_Id_Here/Todolist.ReadWrite'],
+            read: [envContext.apiGatewayAppId + '/ApiGateway.Read'], // ['api://Enter_the_Web_Api_Application_Id_Here/Todolist.Read'],
+            write: [envContext.apiGatewayAppId + '/ApiGateway.ReadWrite'] //  ['api://Enter_the_Web_Api_Application_Id_Here/Todolist.ReadWrite'],
         },
     },
     ID10252025.eo */
