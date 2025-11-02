@@ -73,10 +73,17 @@
       "memorySettings": {
         "useMemory": false
       },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
       "endpoints": [
         {
           "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15",
-          "apikey": "ed9a4c4c"
+          "apikey": "ed9a4c4c",
+          "budget": {
+            "modelName": "text-embedding-ada-002-eastus"
+          }
         }
       ]
     },
@@ -126,12 +133,19 @@
         "msgCount": 1,
         "entryExpiry": "5 minutes"
       },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
       "endpoints": [
         {
           "id": "phi-3-inst-eastus2",
           "rpm": 10,
           "uri": "https://Phi-3-small-8k-instruct-11042024.eastus2.models.ai.azure.com/chat/completions?api-version=2024-04-01-preview",
-          "apikey": "dxI84GEK"
+          "apikey": "dxI84GEK",
+          "budget": {
+            "modelName": "Phi-3-small-8k-instruct"
+          }
         }
       ]
     },
@@ -155,12 +169,19 @@
         "msgCount": 1,
         "entryExpiry": "5 minutes"
       },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
       "endpoints": [
         {
           "id": "phi-3.5-MoE-inst-eastus2",
           "rpm": 10,
           "uri": "https://Phi-3-5-MoE-instruct-110424.eastus2.models.ai.azure.com/v1/chat/completions",
-          "apikey": "dxI84GEK"
+          "apikey": "dxI84GEK",
+          "budget": {
+            "modelName": "phi-3.5-MoE-Instruct"
+          }
         }
       ]
     },
@@ -185,6 +206,10 @@
         "msgCount": 5,
         "entryExpiry": "5 minutes"
       },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
       "endpoints": [
         {
           "rpm": 5,
@@ -194,12 +219,18 @@
             "maxCallsBeforeUnhealthy": 1,
             "latencyThresholdSeconds": 20,
             "retryAfterMinutes": 5
+          },
+          "budget": {
+            "modelName": "gpt-4o-mini-0718-std"
           }
         },
         {
           "rpm": 10,
           "uri": "https://oai-gr-dev-wus3.openai.azure.com/openai/deployments/gpt-4o-wus3/chat/completions?api-version=2025-01-01-preview",
-          "apikey": "c44a8e19"
+          "apikey": "c44a8e19",
+          "budget": {
+            "modelName": "gpt-4o-0806-global-std"
+          }
         }
       ]
     },
@@ -238,18 +269,28 @@
           }
         ]
       },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
       "endpoints": [
         {
           "id": "gpt-4o-mini-eastus",
           "rpm": 10,
           "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
-          "apikey": "9ecabe6d"
+          "apikey": "9ecabe6d",
+          "budget": {
+            "modelName": "gpt-4o-mini-0718-std"
+          }
         },
         {
           "id": "gpt-4o-westus3",
           "rpm": 10,
           "uri": "https://oai-gr-dev-wus3.openai.azure.com/openai/deployments/gpt-4o-wus3/chat/completions?api-version=2025-01-01-preview",
-          "apikey": "c44a8e19"
+          "apikey": "c44a8e19",
+          "budget": {
+            "modelName": "gpt-4o-0806-global-std"
+          }
         }
       ]
     },
@@ -268,6 +309,10 @@
       "personalizationSettings": {
         "userMemory": false
       },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
       "endpointRouterType": "WeightedRandom",
       "endpoints": [
         {
@@ -279,13 +324,19 @@
             "maxCallsBeforeUnhealthy": 1,
             "latencyThresholdSeconds": 20,
             "retryAfterMinutes": 5
+          },
+          "budget": {
+            "modelName": "gpt-4.1-mini-openai"
           }
         },
         {
           "id": "gpt-4o-mini-eastus",
           "weight": 50,
           "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
-          "apikey": "9ecabe6d"
+          "apikey": "9ecabe6d",
+          "budget": {
+            "modelName": "gpt-4o-mini-0718-std"
+          }
         }
       ]
     }
@@ -295,6 +346,15 @@
       "budgetName": "AzureAIFoundry-Direct-Models",
       "description": "A budget class for Azure Direct Models on Azure AI Foundry",
       "models": [
+        {
+          "modelName": "gpt-4.1-mini-openai",
+          "description": "Deployed in OpenAI (PayGo TPMs)",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0008,
+            "cachedInputTokensCostPer1k": 0.00002,
+            "outputTokensCostPer1k": 0.0032
+          }
+        },
         {
           "modelName": "gpt-4o-mini-0718-std",
           "description": "Deployed in westus3 region - AIF Hub = dev-ais-wus3-prj-01",
@@ -344,6 +404,14 @@
             "inputTokensCostPer1k": 0.00125,
             "cachedInputTokensCostPer1k": 0.000125,
             "outputTokensCostPer1k": 0.01
+          }
+        },
+        {
+          "modelName": "text-embedding-ada-002-eastus",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.000121,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0
           }
         },
         {
