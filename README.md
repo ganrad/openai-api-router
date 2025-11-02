@@ -5,9 +5,9 @@
 ### Release Info
 Release | Date | Production Ready | Notes
 ------- | ---- | -------------------- | -----
-**v2.8.5** | 10/31/2025 | Yes | This release upgrades security by adopting modern JWT-based libraries, introduces RBAC for AI Gateway resources, and adds fine-grained scopes for read, inference, and control-plane access enhancing maintainability, governance, and production grade security.
-**v2.8.0** | 10/24/2025 | Yes | This latest release enhances personalization feature (aka Long Term Memory) by introducing support for mulitple user groups and includes other minor improvements.
-**v2.7.5** | 10/19/2025 | Yes | This stable release adds support for Microsoft Agent Framework (MAF) and includes multiple bug fixes. Use this release (or newer releases) if you intend to use A2A or MAF for building advanced AI agentic workflows and leverage the AI Gateway's built-in features.
+**v2.8.5** | 10/31/2025 | Yes | This latest release upgrades security by adopting modern JWT-based libraries, introduces RBAC for AI Gateway resources, and adds fine-grained scopes for read, inference, and control-plane access enhancing maintainability, governance, and production grade security.
+**v2.8.0** | 10/24/2025 | Yes | This release enhances personalization feature (aka Long Term Memory) by introducing support for mulitple user groups and includes other minor improvements.
+**v2.7.5** | 10/19/2025 | Yes | This stable release adds support for Microsoft Agent Framework (MAF) and includes multiple bug fixes. Use this release (or newer releases) if you intend to use Agent to Agent (A2A) or MAF for building advanced AI agentic workflows and leverage the AI Gateway's built-in features.
 
 ### Release Notes
 Refer to [Changelog document](./CHANGELOG.md) for details on new features, enhancements and bugfixes introduced in each release.
