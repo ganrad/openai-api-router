@@ -12,6 +12,7 @@
  * ID08252025: ganrad: v2.5.0: Added new schema contained within single domain App schema.  This schema contains elements for tracking costs (budgeting)
  * for API calls made by single domain AI Apps.
  * ID09272025: ganrad: v2.7.0: Added new schema to support integration with MCP servers.
+ * ID11062025: ganrad: v2.9.0: Added Ajv init parameter to not generate warnings for Union types.
 */
 
 const path = require('path');
@@ -37,8 +38,8 @@ const mdAiAppSchemaFile = "/md-ai-app-schema.json";
 const multiDomainAgentSchema = JSON.parse(fs.readFileSync(__dirname + mdSchemaFile));
 const mdAiAppSchema = JSON.parse(fs.readFileSync(__dirname + mdAiAppSchemaFile));
 
-const ajvAiServer = new Ajv({schemas: [singleDomainAgentSchema, sdAiAppSchema, sdAiAppBudgetSchema, sdAiAppMcpServersSchema, multiDomainAgentSchema, mdAiAppSchema], allErrors: true, strictSchema: false}); // ID08252025.n, ID09272025.n
-const ajvAiApps = new Ajv({schemas: [sdAiAppSchema,mdAiAppSchema], allErrors: true, strictSchema: false});
+const ajvAiServer = new Ajv({schemas: [singleDomainAgentSchema, sdAiAppSchema, sdAiAppBudgetSchema, sdAiAppMcpServersSchema, multiDomainAgentSchema, mdAiAppSchema], allErrors: true, strictSchema: false, allowUnionTypes: true}); // ID08252025.n, ID09272025.n, ID11062025.n
+const ajvAiApps = new Ajv({schemas: [sdAiAppSchema,mdAiAppSchema], allErrors: true, strictSchema: false, allowUnionTypes: true}); // ID11062025.n
 
 module.exports = {
 	singleDomainAgentSchema,

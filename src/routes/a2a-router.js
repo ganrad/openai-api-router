@@ -68,7 +68,7 @@ function createA2AGatewayRouter(applications = []) {
     let application = (appId && applications.length) ? applications.find(app => app.appId === appId) : null;
 
     // Check if AI Application loaded in app context, is active and is enabled to be exposed over A2A
-    if (!application || !application.isActive || !application.enableA2AEndpoint) {
+    if (!application || !application.isActive || !application.exposeA2AEndpoint) {
       const err_obj = {
         http_code: 404, // Resource not found!
         result: {

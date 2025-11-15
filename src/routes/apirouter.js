@@ -60,8 +60,11 @@
  * ID10032025: ganrad: v2.7.0: (Enhancement) Added support for A2A protocol.
  * ID10132025: ganrad: v2.7.0: (Enhancement) An AI Application can be enabled (active) or disabled.  In the disabled state, the AI gateway will
  * not accept inference requests and will return an exception.
+ * ID10142025: ganrad: v2.7.0: (Enhancement) Introduced new feature to support normalization of AOAI output. 
  * ID10162025: ganrad: v2.7.0: (Enhancement) Added support for Microsoft Agent Framework URI's.
  * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
+ * ID11032025: ganrad: v2.9.0: (New Feature) Introduced endpoint normalization policy feature to support transformation of AOAI request/response payload/data
+ * structures in the request processing pipeline.
  *  
 */
 
@@ -114,6 +117,9 @@ let cacheMetrics = new AppCacheMetrics();
 
 // ID06162025.n - Init container for app specific endpoint router
 let appRouters = new Map();
+
+// ID11032025.n - Init container for Ai application normalization configs
+let appNormConfigs = new Map();
 
 // ID07242025.n
 // Method: GET
@@ -282,7 +288,7 @@ router.post(
 
     // ID10132025.sn
     // Check if AI Application is active.  If it's an A2A request, check to see if this ai application is enabled.
-    if (!application.isActive  || ((inboundApiType === AiGatewayInboundReqApiType.Agent2Agent) && !application.exposeA2AEndpoint)) {
+    if (!application.isActive || ((inboundApiType === AiGatewayInboundReqApiType.Agent2Agent) && !application.exposeA2AEndpoint)) {
       err_obj = {
         http_code: 400, // Bad request
         data: (inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? {
@@ -326,7 +332,7 @@ router.post(
       return;
     };
     logger.log({ level: "debug", message: "[%s] apirouter():\n  Request ID: %s\n  Payload:\n%s", splat: [scriptName, req.id, JSON.stringify(req.body, null, 2)] }); // ID10032025.n
-    req.normalizeOutput = application.normalizeOutput ? true : false; // ID10142025.n
+    // req.normalizeOutput = application.normalizeOutput ? true : false; // ID10142025.n, ID11032025.o
 
     // ID10032025.sn
     // If A2A inference request, transform request body
@@ -473,6 +479,37 @@ router.post(
       if (cdb.cacheResults && (application.appId !== cdb.embeddApp) && (appTypes.includes(application.appType)))
         if (application.cacheSettings.useCache) // ID09162025.n Init the cacheMetrics obj. only when caching is enabled for this AI App! 
           cacheMetrics.addAiApplication(application.appId);
+
+      // ID11032025.sn
+      const normConfigs =
+        application.endpoints.filter(ep => ep.normalizationPolicy).reduce((normalizerConfigs, ep) => {
+          const inputNid = ep.normalizationPolicy.inputNormalizerId;
+          const outputNid = ep.normalizationPolicy.outputNormalizerId;
+
+          if (inputNid) {
+            const inpConfig = application.normalizerSettings.find(config => (config.normalizerId === inputNid));
+            if (inpConfig)
+              normalizerConfigs.push(inpConfig);
+          };
+
+          if (outputNid) {
+            const outConfig = application.normalizerSettings.find(config => (config.normalizerId === outputNid));
+            if (outConfig)
+              normalizerConfigs.push(outConfig);
+          };
+
+          return normalizerConfigs;
+        },[]);
+      if (normConfigs && normConfigs.length) {
+        // Remove duplicates if any
+        const uniqueNormConfigs = normConfigs.filter((config, index, self) =>
+          index === self.findIndex((o) => o.normalizerId === config.normalizerId)
+        );
+
+        appNormConfigs.set(appId, uniqueNormConfigs);
+        // console.log(`****** App ID: ${appId}; Config: ${JSON.stringify(appNormConfigs.get(appId), null, 2)} ****`);
+      };
+      // ID11032025.en
     };
 
     instanceCalls++;
@@ -496,6 +533,9 @@ router.post(
         srchContent: application.cacheSettings.searchContent
       };
 
+      if ( appNormConfigs.has(appId) ) // ID11032025.n
+        appConfig.normConfigs = appNormConfigs.get(appId);
+
       if (application?.memorySettings?.useMemory) // ID05062024.n
         memoryConfig = {
           affinity: application.memorySettings.affinity, // ID05082025.n
@@ -509,7 +549,7 @@ router.post(
        */
       if (req.body.user && application.personalizationSettings?.userMemory) { // ID10202025.n
         userMemConfig = retrievePersonalizationConfig(req.body.user, application.personalizationSettings);
-        if ( userMemConfig )
+        if (userMemConfig)
           logger.log({ level: "debug", message: "[%s] apirouter():\n  Request ID: %s\n  LT Memory Config:\n%s", splat: [scriptName, req.id, JSON.stringify(userMemConfig, null, 2)] });
         // Set the uid and gid on the request object
         if (userMemConfig && userMemConfig.user)
@@ -697,6 +737,7 @@ module.exports = { // ID01292025.n
     appConnections = new AppConnections(); // reset the application connections cache;
     cacheMetrics = new AppCacheMetrics(); // reset the application cache metrics
     appRouters = new Map(); // ID06162025.n; reset the endpoint router instances for all Ai Apps
+    appNormConfigs = new Map(); // ID11032025.n; reset the application normalization configs for all Ai Apps
     // console.log("apirouter(): Application connections and metrics cache has been successfully reset");
     logger.log({ level: "info", message: "[%s] apirouter.reconfigEndpoints(): Application connections and metrics cache have been successfully reset", splat: [scriptName] });
   },
@@ -704,6 +745,7 @@ module.exports = { // ID01292025.n
     if (appConnections.hasConnection(appId)) {
       appConnections.removeConnection(appId);
       appRouters.delete(appId); // ID06162025.n
+      appNormConfigs.delete(appId); // ID11032025.n
     };
   }
 }

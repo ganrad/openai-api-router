@@ -60,6 +60,9 @@
  * ID10082025: ganrad: v2.7.0: (Enhancement) Added support for Agent to Agent (A2A) protocol.
  * ID10142025: ganrad: v2.7.0: (Enhancement) Introduced new feature to support normalization of AOAI output. 
  * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
+ * ID11032025: ganrad: v2.9.0: (New Feature) Introduced endpoint normalization policy feature to support transformation of AOAI request/response payload/data
+ * structures in the request processing pipeline.
+ * 
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -88,8 +91,9 @@ const {
 
 const { encode } = require('gpt-tokenizer'); // ID02212025.n
 const { getExtractionPrompt, updateSystemMessage, storeUserFacts } = require("../utilities/lt-mem-manager.js"); // ID05142025.n
-const { getOpenAICallMetadata, callAiAppEndpoint, retrieveUniqueURI, normalizeAiOutput } = require("../utilities/helper-funcs.js"); // ID05142025.n, ID09172025.n, ID10142025.n
+const { getOpenAICallMetadata, callAiAppEndpoint, retrieveUniqueURI } = require("../utilities/helper-funcs.js"); // ID05142025.n, ID09172025.n, ID10142025.n, ID11032025.o
 const { streamA2AResponse } = require("../utilities/a2a-helper-funcs.js"); // ID10082025.n
+const { processBatch, processStream } = require("../utilities/payload-normalizer-v2.js"); // ID11032025.n
 
 class AzOaiProcessor {
 
@@ -293,7 +297,7 @@ class AzOaiProcessor {
     return new Promise((resolve) => setTimeout(resolve, time));
   }
 
-  async #streamChatCompletion(req_id, t_id, app_id, router_res, oai_res) {
+  async #streamChatCompletion(req_id, t_id, app_id, router_res, oai_res, nconfig) { // ID11032025.n
     const reader = oai_res.body.getReader(); // use Nodejs native fetch!
     // const reader = oai_res.body; // use node-fetch library!
 
@@ -348,7 +352,8 @@ class AzOaiProcessor {
         // console.log("**** FINISHED ****");
         break;
 
-      if (!this.request.normalizeOutput) // ID10142025.n
+      // if (!this.request.normalizeOutput) // ID10142025.n; ID11032025.o
+      if ( !nconfig ) // ID11032025.n
         router_res.write(value); // write the value out to router response/output stream
 
       const chunk = decoder.decode(value);
@@ -358,7 +363,7 @@ class AzOaiProcessor {
         if (data.length === 0) continue; // ignore empty message
 
         if (data === 'data: [DONE]') {
-          if (this.request.normalizeOutput)
+          if (nconfig)
             router_res.write('data: [DONE]\n\n');
           break;
         };
@@ -382,11 +387,12 @@ class AzOaiProcessor {
         };
 
         try {
-          const jsonMsg = JSON.parse(pdata);
+          let jsonMsg = JSON.parse(pdata);
           // 4.a Parsed data
           // console.log(`**** P-DATA ****: ${pdata}`);
           chkPart = null;
 
+          /** ID11032025.so
           if (this.request.normalizeOutput) { // ID10142025.n
             // Remove 'prompt_filter_results' and 'content_filter_results'
             delete jsonMsg.prompt_filter_results;
@@ -400,6 +406,15 @@ class AzOaiProcessor {
 
             router_res.write(cleanedData);
           };
+          ID11032025.eo */
+          // ID11032025.sn
+          if ( nconfig ) {
+            // console.log(`*** Json before process:\n${JSON.stringify(jsonMsg,null,2)}`);
+            jsonMsg = processStream(nconfig, jsonMsg);
+            // console.log(`*** Json after process:\n${JSON.stringify(jsonMsg,null,2)}`);
+            router_res.write(`data: ${JSON.stringify(jsonMsg)}\n\n`);
+          };
+          // ID11032025.en
 
           // Accumulate content and metadata
           if (!jsonMsg.choices || jsonMsg.choices.length === 0) {
@@ -447,6 +462,7 @@ class AzOaiProcessor {
   }
 
   // Currently, streaming OYD output is not supported with A2A protocol - ID10142025.n
+  // Input/Output normalization is not supported with OYD API - ID11032025.n
   async #streamChatCompletionOyd(req_id, t_id, app_id, router_res, oai_res) {
     const reader = oai_res.body.getReader();
 
@@ -578,6 +594,7 @@ class AzOaiProcessor {
       });
     };
 
+    /** ID11032025.so; When a cached response is streamed back to client, 'prompt_filter_results' will not be sent!
     if (!this.request.normalizeOutput) { // ID10142025.sn
       const value0 = "data: " + JSON.stringify({
         choices: [],
@@ -613,6 +630,7 @@ class AzOaiProcessor {
         logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Prompt-Filter:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, value0] });
       });
     }; // ID10142025.en
+    ID11032025.eo */
 
     const value1 = "data: " + JSON.stringify(msgChunk.completion) + "\n\n";
     router_res.write(value1, 'utf8', () => {
@@ -622,7 +640,8 @@ class AzOaiProcessor {
     const value2 = "data: " + JSON.stringify({
       choices: [
         {
-          ...(!this.request.normalizeOutput && {content_filter_results: {}}), // ID10142025.n
+          // ID11032025.o; When a cached response is streamed back to client, empty 'content_filter_results' will not be sent!
+          // ...(!this.request.normalizeOutput && {content_filter_results: {}}), // ID10142025.n, ID11032025.o
           delta: {},
           finish_reason: "stop",
           index: 0
@@ -677,6 +696,7 @@ class AzOaiProcessor {
     let manageState = (process.env.API_GATEWAY_STATE_MGMT === 'true') ? true : false
     let instanceName = (process.env.POD_NAME) ? apps.serverId + '-' + process.env.POD_NAME : apps.serverId; // Server instance name ID11112024.n
     this.request = req; // ID10082025.n; Initialize the request object
+    req.body_copy = req.body; // ID11032025.n; Save a copy of the request body
 
     // State management is only supported for chat completion API!
     if (memoryConfig && (!req.body.messages)) // If the request is not of type == chat completion
@@ -787,7 +807,7 @@ class AzOaiProcessor {
             };
           };
 
-          respMessage = (req.body.stream) ?
+          respMessage = (req.body.stream) ? await
             this.#streamCachedChatCompletion(req.id, threadId, config.appId, res, completion) :
             {
               http_code: 200, // All ok. Serving completion from cache.
@@ -999,6 +1019,17 @@ class AzOaiProcessor {
             routerInstance.updateUriConnections(req.id, true, uriIdx - 1);
           // ID06162025.en
 
+          // ID11032025.sn
+          // Normalize request payload as per endpoint config.  Normalization code will be executed for each endpoint separately.
+          if ( config.normConfigs && element.normalizationPolicy?.inputNormalizerId ) {
+            req.body = req.body_copy; // Reset the request body
+
+            // A deep copy of the request body is created, transforms are applied and then returned
+            req.body = processBatch(req.id, config.normConfigs.find(cfg => cfg.normalizerId === element.normalizationPolicy.inputNormalizerId), req.body);
+            logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Transformed Request\n  %s", splat: [scriptName, this.constructor.name, req.id, JSON.stringify(req.body, null, 2)] });
+          };
+          // ID11032025.en
+
           stTime = Date.now();
           response = await fetch(element.uri, {
             method: req.method,
@@ -1013,10 +1044,17 @@ class AzOaiProcessor {
             // let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? randomUUID() : threadId; // ID04302025.o
             // let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? (function () { threadStarted = true; return (randomUUID()); })() : threadId; // ID04302025.n; ID07312025.o
             let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? (function () { threadStarted = true; return (generateGUID("thread")); })() : threadId; // ID07312025.n
+            
+            // ID11032025.sn
+            let normConfig = null;
+            if ( config.normConfigs && element.normalizationPolicy?.outputNormalizerId )
+              normConfig = config.normConfigs.find(cfg => cfg.normalizerId === element.normalizationPolicy.outputNormalizerId);
+            // ID11032025.en
+
             if (req.body.stream) // Streaming request?
               data = (req.body.data_sources) ?
                 await this.#streamChatCompletionOyd(req.id, th_id, config.appId, res, response) :  // OYD call
-                await this.#streamChatCompletion(req.id, th_id, config.appId, res, response); // Chat completion call
+                await this.#streamChatCompletion(req.id, th_id, config.appId, res, response, normConfig); // Chat completion call; ID11032025.n
             else
               data = await response.json();
             // ID06052024.en
@@ -1030,6 +1068,9 @@ class AzOaiProcessor {
               threadStarted // ID04302025.n
             );
 
+            if (!req.body.stream && normConfig) // ID11032025.n
+              data = processBatch(req.id, normConfig, data);
+
             // ID02202024.sn
             if ((!threadId) && cacheDao && embeddedPrompt) { // Cache results ?
               let prompt = req.body.prompt;
@@ -1042,8 +1083,8 @@ class AzOaiProcessor {
                 config.appId,
                 prompt,
                 pgvector.toSql(embeddedPrompt),
-                // data ID10142025.o
-                (req.normalizeOutput) ? normalizeAiOutput(data) : data // ID10142025.n
+                data // ID10142025.o; ID11032025.n
+                // (req.normalizeOutput) ? normalizeAiOutput(data) : data // ID10142025.n; ID11032025.o
               ];
 
               await cacheDao.storeEntity(
@@ -1100,8 +1141,8 @@ class AzOaiProcessor {
               http_code: status,
               uri_idx: (uriIdx - 1),
               cached: false,
-              // data ID10142025.o
-              data: (req.normalizeOutput) ? normalizeAiOutput(data) : data // ID10142025.n
+              data // ID10142025.o; ID11032025.n
+              // data: (req.normalizeOutput) ? normalizeAiOutput(data) : data // ID10142025.n; ID11032025.o
             };
 
             retryAfter = 0;  // ID05282024.n (Bugfix; Set the retry after var to zero!!)

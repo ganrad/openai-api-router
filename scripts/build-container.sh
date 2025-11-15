@@ -1,1 +1,1 @@
-docker build --progress=plain -t ai-app-gateway-v2.8.5 .
+docker build --progress=plain -t ai-app-gateway-v2.9.0 .
