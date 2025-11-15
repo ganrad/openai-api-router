@@ -1,6 +1,6 @@
 {
   "name": "ai-app-gateway",
-  "version": "2.8.5",
+  "version": "2.9.0",
   "description": "An AI Application Gateway/Platform that accelerates the deployment of intelligent AI Solutions/Applications such as AI Chatbots on Azure.",
   "main": "src/server.js",
   "scripts": {

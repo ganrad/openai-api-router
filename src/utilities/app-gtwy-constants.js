@@ -45,6 +45,7 @@
  * ID10162025: ganrad: v2.7.5: Added a few more constants for A2A protocol.
  * ID10202025: ganrad: v2.8.0: a) Added new constant type for long term memory types ~ LongTermMemoryTypes and
  * b) Added new type containing constants for long term memory feature.
+ * ID11062025: ganrad: v2.9.0: Added new constant type for payload normalizer operators and modes.
 */
 const { randomUUID } = require('node:crypto'); // ID07312025.n
 
@@ -69,7 +70,7 @@ async function generateUUID() { // ID10032025.n
 
 // ID07252025.sn
 const AiAppGateway = {
-  Version: "2.8.5",
+  Version: "2.9.0",
   ApiVersion: "/api/v1/",
   // RouterContextPath: "/apirouter" ID10032025.o
   RouterContextPath: "/aigateway" // ID10032025.n
@@ -379,6 +380,18 @@ const LongTermMemoryConstants = { // ID10202025.n
   NoOfRows: 2
 }
 
+// ID11062025.n
+// Constants for normalizer operators and modes
+const NormalizerPolicyOperator = {
+  Set: "set",
+  Merge: "merge",
+  Insert: "insert",
+  Append: "append",
+  Upsert: "upsert",
+  Replace: "replace",
+  Concat: "concat",
+}
+
 module.exports = {
   generateGUID, // ID07312025.n
   generateUUID, // ID10032025.n
@@ -430,5 +443,6 @@ module.exports = {
   OpenAIChatCompletionMsgRoleTypes, // ID08202025.n
   UserFeedback, // ID09152025.n
   LongTermMemoryTypes, // ID10202025.n
-  LongTermMemoryConstants // ID10202025.n
+  LongTermMemoryConstants, // ID10202025.n
+  NormalizerPolicyOperator // ID11062025.n
 }

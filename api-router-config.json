@@ -339,6 +339,97 @@
           }
         }
       ]
+    },
+    {
+      "appId": "ai-app-gpt-5",
+      "description": "An AI Application that uses gpt-5 advanced reasoning model to generate content.  Uses input & output payload normalizers.",
+      "appType": "azure_oai",
+      "isActive": true,
+      "exposeA2AEndpoint": true,
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CosineSimilarity",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": false,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "normalizerSettings": [
+        {
+          "normalizerId": "normalizeInputToAzureOpenAI",
+          "includeAttributes": [
+            {
+              "attributeName": "messages",
+              "attributeValue": {
+                "role": "developer",
+                "content": "Always respond in Markdown. Use bullet points for lists and keep answers concise."
+              },
+              "op": "insert",
+              "index": 1
+            },
+            {
+              "attributeName": "temperature",
+              "attributeValue": 0.75
+            }
+          ],
+          "replaceAttributes": [
+            {
+              "fromAttributeName": "max_tokens",
+              "toAttributeName": "max_completion_tokens"
+            }
+          ]
+        },
+        {
+          "normalizerId": "normalizeOutputToOpenAI",
+          "excludeAttributes": [
+            {
+              "attributeName": "prompt_filter_results"
+            },
+            {
+              "attributeName": "choices[*].content_filter_results"
+            },
+            {
+              "attributeName": "system_fingerprint"
+            }
+          ],
+          "includeAttributes": [
+            {
+              "attributeName": "service_tier",
+              "attributeValue": "azure"
+            }
+          ]
+        }
+      ],
+      "endpoints": [
+        {
+          "id": "useast2-global-standard",
+          "rpm": 10,
+          "uri": "https://ganes-mbjvew83-eastus2.cognitiveservices.azure.com/openai/deployments/gpt-5-chat-GS/chat/completions?api-version=2025-01-01-preview",
+          "apikey": "77o97ahO5",
+          "budget": {
+            "modelName": "gpt-5-chat-global"
+          },
+          "normalizationPolicy": {
+            "inputNormalizerId": "normalizeInputToAzureOpenAI",
+            "outputNormalizerId": "normalizeOutputToOpenAI"
+          }
+        }
+      ]
     }
   ],
   "budgetConfig": [

@@ -39,10 +39,6 @@
             "description": "Expose this AI Application over A2A protocol?",
             "type": "boolean"
         },
-        "normalizeOutput": {
-            "description": "Normalize LLM output schema to OpenAI output/response schema",
-            "type": "boolean"
-        },
         "searchAiApp": {
             "description": "Name of the AI Search Application",
             "type": "string"
@@ -225,6 +221,248 @@
                 "useBudget"
             ],
             "additionalProperties": false
+        },
+        "normalizerSettings": {
+            "description": "Normalization settings to be applied to AI Application's input (prompt) and/or output (completions)",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "normalizerId": {
+                        "description": "Unique normalization ID",
+                        "type": "string",
+                        "unique": true
+                    },
+                    "excludeAttributes": {
+                        "description": "Attributes to remove. Supports dot/bracket paths with [*] wildcards.",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "attributeName": {
+                                    "description": "Path to delete (e.g., 'choices[*].content_filter_results', 'system_fingerprint').",
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "attributeName"
+                            ],
+                            "additionalProperties": false
+                        },
+                        "minItems": 1
+                    },
+                    "replaceAttributes": {
+                        "description": "Rename/move attributes. Supports mirrored [*] wildcards. If 'value' is present, destination is set to that value instead of moving.",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "fromAttributeName": {
+                                    "description": "Source path (may include [*]).",
+                                    "type": "string"
+                                },
+                                "toAttributeName": {
+                                    "description": "Destination path (mirrors [*] positions from source if present).",
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "description": "If this key exists (even if null/empty), set destination to this value and do not copy from source.",
+                                    "type": ["string", "number", "boolean", "object", "array", "null"]
+                                }
+                            },
+                            "additionalProperties": false,
+                            "required": [
+                                "fromAttributeName",
+                                "toAttributeName"
+                            ]
+                        },
+                        "minItems": 1
+                    },
+                    "includeAttributes": {
+                        "description": "Add/set/merge data at paths. Batch mode supports object/array ops; streaming treats includes as simple 'set'.",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "attributeName": {
+                                    "description": "Target path. Wildcards allowed only when 'broadcast' is true.",
+                                    "type": "string"
+                                },
+                                "attributeValue": {
+                                    "description": "Value for set/merge/append/insert. For upsert use 'value' below.",
+                                    "type": ["string", "number", "boolean", "object", "array", "null"]
+                                },
+                                "op": {
+                                    "type": "string",
+                                    "enum": [
+                                        "set",
+                                        "merge",
+                                        "append",
+                                        "insert",
+                                        "upsert"
+                                    ],
+                                    "default": "set",
+                                    "description": "Batch-only advanced ops: 'merge' deep-merges objects; 'append'/'insert' modify arrays; 'upsert' matches/updates or inserts."
+                                },
+                                "broadcast": {
+                                    "type": "boolean",
+                                    "default": false,
+                                    "description": "When true and attributeName contains [*], apply the op to each resolved match (batch mode only)."
+                                },
+                                "arrayMerge": {
+                                    "type": "string",
+                                    "enum": [
+                                        "replace",
+                                        "concat"
+                                    ],
+                                    "default": "replace",
+                                    "description": "How to merge arrays within objects during 'merge' or upsert-merge."
+                                },
+                                "index": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "description": "Index used for 'insert' operations. If greater than array length, inserts at end."
+                                },
+                                "match": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "description": "Upsert matcher: find element where element[match.key] === match.value.",
+                                    "required": [
+                                        "key",
+                                        "value"
+                                    ],
+                                    "properties": {
+                                        "key": {
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": "Value to match (any JSON type).",
+                                            "type": ["string", "number", "boolean", "object", "array", "null"]
+                                        }
+                                    }
+                                },
+                                "mode": {
+                                    "type": "string",
+                                    "enum": [
+                                        "merge",
+                                        "replace"
+                                    ],
+                                    "default": "merge",
+                                    "description": "Upsert behavior when a match is found: deep-merge or replace the entire element."
+                                },
+                                "value": {
+                                    "description": "For 'upsert': the object to insert/merge/replace as the array element.",
+                                    "type": ["string", "number", "boolean", "object", "array", "null"]
+                                }
+                            },
+                            "allOf": [
+                                {
+                                    "if": {
+                                        "properties": {
+                                            "op": {
+                                                "const": "insert"
+                                            }
+                                        },
+                                        "required": [
+                                            "op"
+                                        ]
+                                    },
+                                    "then": {
+                                        "required": [
+                                            "index"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "if": {
+                                        "properties": {
+                                            "op": {
+                                                "const": "merge"
+                                            }
+                                        },
+                                        "required": [
+                                            "op"
+                                        ]
+                                    },
+                                    "then": {
+                                        "required": [
+                                            "attributeValue"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "if": {
+                                        "properties": {
+                                            "op": {
+                                                "const": "append"
+                                            }
+                                        },
+                                        "required": [
+                                            "op"
+                                        ]
+                                    },
+                                    "then": {
+                                        "required": [
+                                            "attributeValue"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "if": {
+                                        "properties": {
+                                            "op": {
+                                                "const": "upsert"
+                                            }
+                                        },
+                                        "required": [
+                                            "op"
+                                        ]
+                                    },
+                                    "then": {
+                                        "required": [
+                                            "match",
+                                            "value"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "additionalProperties": false,
+                            "required": [
+                                "attributeName"
+                            ]
+                        },
+                        "minItems": 1
+                    },
+                    "includeHeaders": {
+                        "description": "HTTP headers to be added to the request or response",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "headerName": {
+                                    "description": "Name of the header to be included",
+                                    "type": "string"
+                                },
+                                "headerValue": {
+                                    "description": "Value of the included header",
+                                    "type": "string"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "required": [
+                                "headerName",
+                                "headerValue"
+                            ]
+                        },
+                        "minItems": 1
+                    }
+                },
+                "required": [
+                    "normalizerId"
+                ],
+                "additionalProperties": false
+            },
+            "minItems": 1
         },
         "mcpServerSettings": {
             "description": "MCP Servers associated with an AI Application",
@@ -488,6 +726,23 @@
                             "latencyThresholdSeconds",
                             "retryAfterMinutes"
                         ],
+                        "additionalProperties": false
+                    },
+                    "normalizationPolicy": {
+                        "description": "Normalization's to be applied to request/response payload",
+                        "type": "object",
+                        "properties": {
+                            "inputNormalizerId": {
+                                "description": "Unique Name/ID of the input/prompt normalizer",
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "outputNormalizerId": {
+                                "description": "Unique Name/ID of the output/completion normalizer",
+                                "type": "string",
+                                "minLength": 1
+                            }
+                        },
                         "additionalProperties": false
                     }
                 },

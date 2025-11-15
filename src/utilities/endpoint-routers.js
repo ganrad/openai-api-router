@@ -117,7 +117,7 @@ class TrafficRouterFactory { // ID08082025.n
 
         if (validationStatus === ConfigValidationStatus.Passed) {
           if (totalWeight === 100)
-            router = (type === EndpointRouterTypes.WeightedDynamicRouter) ? new WeightedDynamicRouter(appId, routerType, endpointObj) : new WeightedRandomRouter(appId, routerType, endpointObj);
+            router = (routerType === EndpointRouterTypes.WeightedDynamicRouter) ? new WeightedDynamicRouter(appId, routerType, endpointObj) : new WeightedRandomRouter(appId, routerType, endpointObj);
           else {
             // Log the error and exit -
             error = "The sum of all endpoint weights ('weight' attribute) should equal 100. Check endpoint configuration & update weights. Falling back to default router (Priority) implementation.";
