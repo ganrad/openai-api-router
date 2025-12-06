@@ -63,6 +63,7 @@
  * not accept inference requests and will return an exception.
  * ID10252025: ganrad: v2.8.5: (Refactored code) Updated gateway security. New workflow supports - OAuth Code Flow + OIDC (User delegated) + 
  * Client Credentials (Daemon, S2S/M2M) + JWT verification.
+ * ID12042025: ganrad: v2.9.5: (Refactored code) Log runtime exception details.
  *  
 */
 
@@ -136,6 +137,7 @@ const srvStartDate = new Date().toLocaleString();
 // const { randomUUID } = require('node:crypto'); ID07312025.o
 const persistdb = require("./services/pp-pg.js");
 const { TblNames, PersistDao } = require('./utilities/persist-dao.js');
+const { formatException } = require('./utilities/helper-funcs.js'); // ID12042025.n
 
 // Configure pinojs logger - logs http request/response only
 const logger = require('pino-http')({
@@ -476,7 +478,7 @@ async function readAiAppGatewayConfig() { // ID01292025.n
     };
   }
   catch (error) {
-    wlogger.log({ level: "error", message: "[%s] Error initializing AI Application Gateway. Error=%s", splat: [scriptName, error] });
+    wlogger.log({ level: "error", message: "[%s] Error initializing AI Application Gateway.\nError=%s", splat: [scriptName, formatException(error)] });
     // exit program
     process.exit(1);
   };
@@ -490,7 +492,7 @@ function updateAiServerFile() {
     fs.writeFileSync(process.env.API_GATEWAY_CONFIG_FILE, JSON.stringify(context, null, 2));
   }
   catch (err) {
-    wlogger.log({ level: "error", message: "[%s] updateAiServerFile():\n  AI App Gateway: %s\n  Encountered exception:\n%s", splat: [scriptName, context.serverId, err.stack] });
+    wlogger.log({ level: "error", message: "[%s] updateAiServerFile():\n  AI App Gateway: %s\n  Encountered exception:\n%s", splat: [scriptName, context.serverId, formatException(err)] });
   };
 }
 

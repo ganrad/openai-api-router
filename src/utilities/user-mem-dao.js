@@ -11,6 +11,8 @@
  *
  * Notes:
  * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
+ * ID12012025: ganrad: v2.9.5: (Optimize) Updated search type/algorithm constants to a uniform set of values.
+ * ID12042025: ganrad: v2.9.5: (Refactored code) Log error message details.
  * 
 */
 const path = require('path');
@@ -25,6 +27,7 @@ const {
   LongTermMemoryConstants } = require("./app-gtwy-constants"); // ID10202025.n
 const { TblNames, PersistDao } = require("./persist-dao.js"); 
 const persistdb = require("../services/pp-pg.js");
+const { formatException } = require("./helper-funcs.js");
 
 class UserMemDao {
   constructor(
@@ -78,10 +81,12 @@ class UserMemDao {
           pgvector.toSql(apiResp.embedding),
           LongTermMemoryConstants.NoOfRows // ID10202025.n
         ];
-        if ( srchAlg === SearchAlgorithms.CosineSimilarity ) // ID10202025.n
+        // if ( srchAlg === SearchAlgorithms.CosineSimilarity ) // ID10202025.n, ID12012025.o
+        if ( srchAlg === SearchAlgorithms.Cosine ) // ID12012025.n
           values.push(LongTermMemoryConstants.SearchDistance);  // Add the search distance
 
-        userFacts = await userFactsDao.queryTable(req.id, (srchAlg === SearchAlgorithms.CosineSimilarity) ? 2 : 1, values);
+        // userFacts = await userFactsDao.queryTable(req.id, (srchAlg === SearchAlgorithms.CosineSimilarity) ? 2 : 1, values); ID12012025.o
+        userFacts = await userFactsDao.queryTable(req.id, (srchAlg === SearchAlgorithms.Cosine) ? 2 : 1, values); // ID12012025.n
       };
       const searchBy = req.group ? LongTermMemoryTypes.GroupType : LongTermMemoryTypes.UserType; // ID10202025.n
       logger.log({ level: "info", message: "[%s] %s.queryUserFactsFromDB():\n  Request ID: %s\n  Application ID: %s\n  %s: %s\n  Search Alg.: %s\n  Execution Time: %s", splat: [scriptName, this.constructor.name, req.id, appId, searchBy, req.group ?? req.user, srchAlg, Date.now() - stTime] });
@@ -93,7 +98,7 @@ class UserMemDao {
         data: null,
         errors: err_msg
       };
-      logger.log({ level: "error", message: "[%s] %s.queryUserFactsFromDB():\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, err_msg] });
+      logger.log({ level: "error", message: "[%s] %s.queryUserFactsFromDB():\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, formatException(err_msg)] });
     };
 
     return userFacts;
@@ -144,7 +149,7 @@ class UserMemDao {
     }
     catch (error) {
       let err_msg = { reqId: req.id, appId: appId, body: req.body, cause: error };
-      logger.log({ level: "error", message: "[%s] %s.storeUserFactInDB():\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, err_msg] });
+      logger.log({ level: "error", message: "[%s] %s.storeUserFactInDB():\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, formatException(err_msg)] });
     };
   }
 }

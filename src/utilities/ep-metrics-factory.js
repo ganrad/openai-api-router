@@ -14,6 +14,8 @@
  * ID07102025: ganrad: v2.4.0: (Enhancement) Added support for AI Foundry Agent Service.
  * ID08212025: ganrad: v2.4.0: (Enhancement) Updated code to support metrics collection for AI Foundry Agent Service.
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
+ * ID11182025: ganrad: v2.9.5: (Enhancement) Introduced support for Azure AI Model v1 chat/completions API
+ * 
 */
 
 const AzOaiEpMetrics = require("./az-oai-ep-metrics.js"); // Open AI Metrics
@@ -37,7 +39,8 @@ class EndpointMetricsFactory {
   getMetricsObject(appType, targetUri, ...epConfig) { // ID08212025.n
     let metricsObj = null;
 
-    const uri = (appType === AzAiServices.AzAiAgent) ? targetUri + "/" + epConfig[1] : targetUri; // ID08212025.n
+    // const uri = (appType === AzAiServices.AzAiAgent) ? targetUri + "/" + epConfig[1] : targetUri; // ID08212025.n, ID11182025.o
+    const uri = epConfig[1] ? targetUri + "/" + epConfig[1] : targetUri; // ID11182025.n
     switch (appType) {
       case AzAiServices.OAI:
       case AzAiServices.AzAiModelInfApi: // ID11052024.n

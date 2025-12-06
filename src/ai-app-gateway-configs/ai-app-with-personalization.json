@@ -3,10 +3,10 @@
   "description": "An AI Application that uses personalization & budgeting (cost tracking) feature introduced in RAPID v2.3.8 & v2.4.0.",
   "appType": "azure_oai",
   "isActive": true,
-  "searchAiApp": "",
+  "exposeA2AEndpoint": true,
   "cacheSettings": {
     "useCache": true,
-    "searchType": "CosineSimilarity",
+    "searchType": "Cosine",
     "searchDistance": 0.9,
     "searchContent": {
       "term": "messages",
@@ -25,7 +25,7 @@
     "memoryType": "Group",
     "userFactsAppName": "",
     "separatorChar": ":",
-    "searchType": "CosineSimilarity",
+    "searchType": "Cosine",
     "memoryConfig": [
       {
         "groupNames": [

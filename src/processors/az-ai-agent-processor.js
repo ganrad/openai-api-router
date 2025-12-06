@@ -202,7 +202,7 @@ class AzAiAgentProcessor {
       }
     }
     catch (error) {
-      const emsg = `createAgentThread(): AI Application Gateway encountered exception: [${error}].`; // ID10082025.n
+      const emsg = `createAgentThread(): AI Application Gateway encountered exception: [${error.message}].`; // ID10082025.n
       err_msg = {
         error: {
           target: threadUri,
@@ -288,7 +288,7 @@ class AzAiAgentProcessor {
       }
     }
     catch (error) {
-      const emsg = `createAndAttachMessageToThread(): AI Application Gateway encountered exception: [${error}].`; // ID10082025.n
+      const emsg = `createAndAttachMessageToThread(): AI Application Gateway encountered exception: [${error.message}].`; // ID10082025.n
       err_msg = {
         error: {
           target: threadUri,
@@ -562,7 +562,7 @@ class AzAiAgentProcessor {
       }
     }
     catch (error) {
-      const emsg = `runAgentThread(): AI Application Gateway encountered exception: [${error}].`; // ID10082025.n
+      const emsg = `runAgentThread(): AI Application Gateway encountered exception: [${error.message}].`; // ID10082025.n
       err_msg = {
         error: {
           target: threadUri,
@@ -656,7 +656,7 @@ class AzAiAgentProcessor {
       }
     }
     catch (error) {
-      const emsg = `checkRunStatus(): AI Application Gateway encountered exception: [${error}].`; // ID10082025.n
+      const emsg = `checkRunStatus(): AI Application Gateway encountered exception: [${error.message}].`; // ID10082025.n
       err_msg = {
         error: {
           target: threadUri,
@@ -744,7 +744,7 @@ class AzAiAgentProcessor {
       }
     }
     catch (error) {
-      const emsg = `retrieveAgentResponse(): AI Application Gateway encountered exception: [${error}].`; // ID10082025.n
+      const emsg = `retrieveAgentResponse(): AI Application Gateway encountered exception: [${error.message}].`; // ID10082025.n
       err_msg = {
         error: {
           target: threadUri,
@@ -1003,7 +1003,7 @@ class AzAiAgentProcessor {
           break; // Completed request; break!
         }
         catch (error) {
-          const emsg = `AI Application Gateway encountered exception: [${error}].`; // ID10082025.n
+          const emsg = `AI Application Gateway encountered exception: [${error.message}].`; // ID10082025.n
           err_msg = {
             error: {
               target: req.originalUrl,

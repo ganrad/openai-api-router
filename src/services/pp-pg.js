@@ -29,6 +29,7 @@
  * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced table 'userfacts' for long term memory support ~ personalization feature. 
  * ID09152025: ganrad: v2.6.0: (Enhancement) Introduced user feedback capture for models/agents deployed on Azure AI Foundry.  Added column 'feedback_count' to
  * table 'apigtwyprompts'.
+ * ID12042025: ganrad: v2.9.5: (Refactored code) Log error message details.
 */
 
 const path = require('path');
@@ -38,6 +39,7 @@ const logger = require('../utilities/logger'); // ID04272024.n
 const pg = require('pg');
 const pgvector = require('pgvector/pg');
 const pgConfig = require('./pg-config');
+const { formatException } = require('../utilities/helper-funcs'); // ID12042025.n
 
 const createTblStmts = [
   // "CREATE TABLE apigtwyprompts (id serial PRIMARY KEY, requestid VARCHAR(100), aiappname VARCHAR(100), prompt JSON, timestamp_ TIMESTAMPTZ default current_timestamp)" // ID04112024.o
@@ -115,7 +117,7 @@ async function checkDbConnection() {
   }
   catch (err) {
     // console.log("checkDbConnection(): Encountered exception:\n" + err.stack);
-    logger.log({level: "error", message: "[%s] checkDbConnection(): Encountered exception:\n%s", splat: [scriptName, err.stack]});
+    logger.log({level: "error", message: "[%s] checkDbConnection(): Encountered exception:\n%s", splat: [scriptName, formatException(err)]});
   };
   return ret_val;
 }
@@ -132,7 +134,7 @@ async function dropTable(idx) {
   }
   catch (err) {
     // console.log("dropTable(): Encountered exception:\n" + err.stack);
-    logger.log({level: "error", message: "[%s] dropTable(): Encountered exception:\n%s", splat: [scriptName, err.stack]});
+    logger.log({level: "error", message: "[%s] dropTable(): Encountered exception:\n%s", splat: [scriptName, formatException(err)]});
   };
 }
 
@@ -148,7 +150,7 @@ async function createTable(idx) {
   }
   catch (err) {
     // console.log("createTable(): Encountered exception:\n" + err.stack);
-    logger.log({level: "error", message: "[%s] createTable(): Encountered exception:\n%s", splat: [scriptName, err.stack]});
+    logger.log({level: "error", message: "[%s] createTable(): Encountered exception:\n%s", splat: [scriptName, formatException(err)]});
   };
 }
 
@@ -174,7 +176,7 @@ async function updateData(reqid, entity, query, params) {
   }
   catch (err) {
     // console.log("*****\ninsertData():\n  Entity: ${entity}\n  Encountered exception:\n  " + err.stack);
-    logger.log({level: "error", message: "[%s] updateData():\n  Entity: %s\n  Encountered exception:\n%s", splat: [scriptName,entity,err.stack]});
+    logger.log({level: "error", message: "[%s] updateData():\n  Entity: %s\n  Encountered exception:\n%s", splat: [scriptName,entity,formatException(err)]});
   };
 
   return { 
@@ -213,7 +215,7 @@ async function executeQuery(entity, requestid, query, params) {
   catch (err) {
     // console.log("executeQuery():\n  Entity: ${entity}\n  Request ID: ${requestid}\n  Encountered exception:\n" + err.stack);
     errs = err; // ID02092025.n
-    logger.log({level: "error", message: "[%s] executeQuery():\n  Entity: %s\n  Request ID: %s\n  Encountered exception:\n%s", splat: [scriptName,entity,requestid,err.stack]});
+    logger.log({level: "error", message: "[%s] executeQuery():\n  Entity: %s\n  Request ID: %s\n  Encountered exception:\n%s", splat: [scriptName,entity,requestid,formatException(err)]});
   };
 
   return {
@@ -245,7 +247,7 @@ async function deleteData(entity, query, params) { // ID05062024.n
     client.release();
   }
   catch (err) {
-    logger.log({level: "error", message: "[%s] deleteData(): Encountered exception:\n%s", splat: [scriptName, err.stack]});
+    logger.log({level: "error", message: "[%s] deleteData(): Encountered exception:\n%s", splat: [scriptName, formatException(err)]});
   };
 }
 

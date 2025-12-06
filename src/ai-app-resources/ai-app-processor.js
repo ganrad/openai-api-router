@@ -10,6 +10,7 @@
  * ID03102025: ganrad: v2.3.0: (Enhancement) Added http method to 'operations' API
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
  * ID10252025: ganrad: v2.8.5: (Refactored code) AI App Gateway security implementation (library) switched to jwks-rsa.
+ * ID11262025: ganrad: v2.9.5: (Enhancement) Introduced Level 2 cache (Qdrant) for semantic caching.
 */
 
 const path = require('path');
@@ -29,6 +30,7 @@ const {
 const { validateAiAppSchema, sdAiAppSchema, mdAiAppSchema } = require("../schemas/validate-json-config.js"); // ID08252025.n
 const { reinitAppConnection } = require("../routes/apirouter.js");
 const { reconfigAppMetrics } = require("../routes/md-apirouter.js");
+const { deleteL2CacheCollection } = require("../utilities/helper-funcs.js"); // ID11262025.n
 
 class AiAppProcessor {
 
@@ -339,21 +341,31 @@ class AiAppProcessor {
         }
       };
 
-    // Delete the app definition
+    // Check / Retrieve the in-memory Ai app definition
     let noOfApps = serverDef.applications ? serverDef.applications.length : 0;
+    let application = null; // ID11262025.n
     let appExists = false;
     let appIdx = 0;
     if ( noOfApps > 0 ) { // Add / replace ai app definition
       for ( const app of serverDef.applications ) {
         if ( app.appId === appId ) {
           appExists = true;
+          application = app; // ID11262025.n
           break;
         };
         appIdx++;
       };
     };
 
+    // Delete the app definition
     if ( appExists ) {
+      // ID11262025.sn
+      if ( application.cacheSettings?.useCache && application.cacheSettings.level2Cache ) { // Check if level 2 (Qdrant) cache is enabled?
+        // Delete the ai application cache collection
+        deleteL2CacheCollection(req.srvconf.serverId, application.appId, application.cacheSettings.level2Cache);
+      };
+      // ID11262025.en
+
       serverDef.applications.splice(appIdx,1); // Remove Ai App from in memory context
       if ( serverType === ServerTypes.SingleDomain )
         reinitAppConnection(appId); // Delete Ai App Connections (endpoints) & associated cache metrics

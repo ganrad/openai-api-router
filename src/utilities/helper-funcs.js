@@ -21,6 +21,10 @@
  * ID10182025: ganrad: v2.7.5: (Enhancement) Introduced support for MSFT Agent Framework.
  * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
  * ID10252025: ganrad: v2.8.5: (Refactoring) AI App Gateway security implementation (library) switched to jwks-rsa.
+ * ID11182025: ganrad: v2.9.5: (Enhancement) Introduced support for Azure AI Model v1 chat/completions API
+ * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced multiple levels/layers for semantic cache - l1, l2 & l3/PG. Updated search type constants to 
+ * a uniform set of values/literals.
+ * ID12042025: ganrad: v2.9.5: (Refactoring) Introduced new function to format/stringify runtime exception.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -30,12 +34,21 @@ const {
   AzAiServices,
   OpenAIBaseUri,
   AzureResourceUris,
+  HttpMethods, // ID11212025.n
+  ServerDefaults, // ID11212025.n
   SearchAlgorithms, // ID10202025.n
   LongTermMemoryTypes, // ID10202025.n
   LongTermMemoryConstants // ID10202025.n
 } = require("./app-gtwy-constants.js"); // ID08272025.n
+const MAX_FETCH_RETRIES = 3; // ID1121225.n
 
 // const fetch = require("node-fetch"); ID01312025.o
+
+// ID12042025.sn
+function formatException(error) {
+  return JSON.stringify(error, null, 2);
+};
+// ID12042025.en
 
 async function getOpenAICallMetadata(req, element, appType) { // ID08272025.n
   const meta = new Map();
@@ -107,7 +120,8 @@ async function callAiAppEndpoint(
   let data;
   for (const element of endpoints) {
     // let metricsObj = epinfo.get(element.uri); ID09172025.o
-    let metricsObj = epinfo.get(retrieveUniqueURI(element.uri, appType, element.id)); // ID09172025.n
+    // let metricsObj = epinfo.get(retrieveUniqueURI(element.uri, appType, element.id)); // ID09172025.n, ID11182025.o
+    let metricsObj = epinfo.get(retrieveUniqueURI(element.uri, element.id)); // ID11182025.n
     let healthArr = metricsObj.isEndpointHealthy(req.id);
 
     if (!healthArr[0]) {
@@ -175,7 +189,7 @@ async function callAiAppEndpoint(
     catch (error) {
       const err_msg = { targetUri: element.uri, cause: error };
 
-      logger.log({ level: "error", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  Encountered exception:\n%s", splat: [scriptName, req.id, JSON.stringify(err_msg, null, 2)] });
+      logger.log({ level: "error", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  Encountered exception:\n%s", splat: [scriptName, req.id, formatException(err_msg)] });
     };
   }; // end of for endpoint loop
 
@@ -193,7 +207,9 @@ async function vectorizeQuery(req, epinfo, endpoints, prompt) { // ID03052025.n
 
   let data;
   for (const element of endpoints) {
-    let metricsObj = epinfo.get(element.uri);  // Vector model endpoints should be unique!
+    // let metricsObj = epinfo.get(element.uri);  // Vector model endpoints should be unique! ID11182025.o
+    let metricsObj = epinfo.get(retrieveUniqueURI(element.uri, element.id)); // ID11182025.n
+
     let healthArr = metricsObj.isEndpointHealthy(req.id);
 
     if (!healthArr[0]) {
@@ -270,9 +286,9 @@ async function vectorizeQuery(req, epinfo, endpoints, prompt) { // ID03052025.n
       };
     }
     catch (error) {
-      err_msg = { targetUri: element.uri, cause: error };
+      const err_msg = { targetUri: element.uri, cause: error };
       // console.log(`callRestApi():\n  Request ID: {requestid}\n  Encountered exception:\n${err_msg}`);
-      logger.log({ level: "error", message: "[%s] vectorizeQuery():\n  Request ID: %s\n  Encountered exception:\n%s", splat: [scriptName, req.id, err_msg] }); // ID03052025.n
+      logger.log({ level: "error", message: "[%s] vectorizeQuery():\n  Request ID: %s\n  Encountered exception:\n%s", splat: [scriptName, req.id, formatException(err_msg)] }); // ID03052025.n
     };
   }; // end of for
 
@@ -322,15 +338,24 @@ function prepareTextToEmbedd(
   return content;
 }
 
-// ID09172025.sn
+// ID09172025.sn; ID11182025.o Deprecated!
 // Parameters:
 //   baseUri: Endpoint URI
 //   appType: AI Application type
 //   suffix: Endpoint ID
-function retrieveUniqueURI(baseUri, appType, suffix) {
-  return (appType === AzAiServices.OAI) ? baseUri : baseUri + '/' + (suffix ?? '');
+// function retrieveUniqueURI(baseUri, appType, suffix) {
+// return (appType === AzAiServices.OAI) ? baseUri : baseUri + '/' + (suffix ?? '');
+//}
+// ID09172025.en;
+
+// ID11182025.sn
+// Parameters:
+//   baseUri: Endpoint URI
+//   suffix: Endpoint ID
+function retrieveUniqueURI(baseUri, suffix) {
+  return (suffix ? baseUri + '/' + suffix : baseUri)
 }
-// ID09172025.en
+// ID11182025.en
 
 // ID10142025.sn; ID11032025.o (This function is not used!)
 function normalizeAiOutput(fullJsonOutput) {
@@ -359,7 +384,8 @@ function retrievePersonalizationConfig(user, settings) {
       if (memConfig) // Proceed if settings.memoryConfig[0] is NOT empty!
         userMemoryConfig = {
           user,
-          searchAlg: settings.searchType || SearchAlgorithms.CosineSimilarity,  // Set default search alg. to cosine similarity
+          // searchAlg: settings.searchType || SearchAlgorithms.CosineSimilarity,  // Set default search alg. to cosine similarity ID11212025.o
+          searchAlg: settings.searchType || SearchAlgorithms.Cosine, // ID11212025.n
           ...memConfig
         };
 
@@ -377,7 +403,8 @@ function retrievePersonalizationConfig(user, settings) {
             userMemoryConfig = {
               user: parts[0],
               group: element.groupNames.join(), // Concat all group names delimited by comma
-              searchAlg: settings.searchType || SearchAlgorithms.CosineSimilarity,
+              // searchAlg: settings.searchType || SearchAlgorithms.CosineSimilarity, ID11212025.o
+              searchAlg: settings.searchType || SearchAlgorithms.Cosine, // ID11212025.n
               ...memConfig
             };
 
@@ -392,7 +419,203 @@ function retrievePersonalizationConfig(user, settings) {
 }
 // ID10202025.en
 
+// ID11212025.sn
+// ------------------------- Cache Utility Functions -----------------------
+
+function getL2CacheCollectionName(serverId, appId) {
+  return(`${serverId}_${appId}_cache`);
+}
+
+// ------------------------- L1 Cache Functions ----------------------------
+/**
+ * Calculates the approximate size in bytes of an in-memory (L1) cache entry.
+ * 
+ * @param {object} cacheObject The object being stored (value).
+ * @param {string} key The key used to store the object
+ * @returns {number} The estimated size in bytes.
+ */
+const l1CacheEntrySizeCalculation = (cacheObject, key) => {
+  let size = 0;
+
+  // Approximate size of strings: JavaScript strings use UTF-16 encoding,
+  // so roughly 2 bytes per character.
+
+  // Size of 'key' string
+  // Note: The 'key' passed to the set/get method is separate from the object's key property,
+  // but we can estimate both for a fuller picture if needed.
+  // Assuming the input 'cacheObject' is the value:
+  if (cacheObject.prompt) {
+    size += JSON.stringify(cacheObject.prompt).length * 2;
+  };
+
+  // console.log(`Caching object:\n*****\nPrompt size=${size}\n*****`);
+  if (cacheObject.response) {
+    size += JSON.stringify(cacheObject.response).length * 2;
+  };
+
+  // console.log(`Caching object:\n*****\nPrompt + Response Size=${size}\n*****`);
+  // Size of 'embedding' array:
+  // It has 1536 items. Standard JavaScript numbers (doubles) are 8 bytes each.
+  if (cacheObject.embedding && Array.isArray(cacheObject.embedding)) {
+    // We know it should be 1536 items based on the schema
+    const numberOfEmbeddings = cacheObject.embedding.length;
+    // Each JavaScript number (double float) is 8 bytes
+    size += numberOfEmbeddings * 8;
+  };
+  // console.log(`Caching object:\n*****\nFinal Size=${size}\n*****`);
+
+  // Add a small constant overhead for the object structure itself
+  size += 50;
+
+  logger.log({ level: "debug", message: "[%s] cacheEntrySizeCalculation(): Caching entry in L1 cache.\n  Application ID: %s\n  Key: %s\n  Size (Bytes): %d", splat: [scriptName, cacheObject.appId, key, size] });
+
+  return size;
+};
+
+const l1DisposeCachedEntry = (value, key, reason) => {
+  logger.log({ level: "debug", message: "[%s] disposeCachedEntry(): Disposing entry in L1 cache.\n  Application ID: %s\n  Key: %s\n  Reason: %s", splat: [scriptName, value.appId, key, reason] });
+}
+
+// ------------------------- L2 (Qdrant) Cache Functions ----------------------------
+/**
+* Helper for making API requests with exponential backoff.
+
+* @param {string} url - The Qdrant API endpoint URL.
+* @param {object} options - Fetch options (method, headers, body).
+* @param {number} attempt - Current retry attempt.
+* @returns {Promise<object>} The JSON response body.
+*/
+async function fetchWithRetry(url, options = {}, attempt = 1) {
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers
+      }
+    });
+
+    if (!response.ok) {
+      // Throw a specific error that includes the status code if not okay
+      const errorBody = await response.text();
+      const error = new Error(`HTTP error! Status: ${response.status}. Body: ${errorBody}`);
+      error.status = response.status;
+      throw error;
+    }
+
+    return response.json();
+  }
+  catch (error) {
+    if (attempt < MAX_FETCH_RETRIES) {
+      const delay = Math.pow(2, attempt) * 1000;
+      // Note: In production code, you might skip logging this warning to console.
+      // console.warn(`Attempt ${attempt} failed. Retrying in ${delay / 1000}s...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return fetchWithRetry(url, options, attempt + 1);
+    } 
+    else {
+      logger.log({ level: "warn", message: "[%s] fetchWithRetry(): Fetch failed:\n  URI: %s\n  Attempts: %d", splat: [scriptName, url, MAX_FETCH_RETRIES] });
+      throw error;
+    }
+  };
+}
+
+/**
+* Checks if the L2 (Qdrant) cache collection exists, and creates it if it doesn't.
+* This is crucial for making the setup idempotent.
+*/
+async function createL2CacheCollection(serverId, appId, level2Config) {
+  // const url = `${QDRANT_URL}/collections/${CACHE_COLLECTION_NAME}`;
+  const collectionName = getL2CacheCollectionName(serverId, appId);
+  const url = `${level2Config.qdrantUri}/collections/${collectionName}`;
+  let headers = { "api-key": level2Config.apikey };
+
+  // --- STEP 1: Check if collection exists via GET request ---
+  try {
+    await fetchWithRetry(url, { method: HttpMethods.GET, headers });
+    logger.log({ level: "debug", message: "[%s] createL2CacheCollection(): Qdrant collection: [%s] already exists. Skipping creation.", splat: [scriptName, collectionName] });
+
+    return;
+  }
+  catch (e) {
+    // We expect a 404 (Not Found) if the collection does not exist.
+    // If it's a 404, we proceed to creation (Step 2).
+    if (e.status !== 404)
+      logger.log({ level: "warn", message: "[%s] createL2CacheCollection(): Unexpected error during Qdrant collection check, proceeding with creation anyway.\n  Error message: %s", splat: [scriptName, e.message] });
+  };
+
+  // --- STEP 2: Create Collection via PUT request ---
+  const payload = {
+    vectors: {
+      size: ServerDefaults.L2CacheVectorDimensions,
+      distance: level2Config.searchType
+    },
+    on_disk_payload: true,
+    // Optional: Configure for better performance/storage
+    optimizers_config: {
+      default_segment_number: 2
+    },
+  };
+  headers['Content-Type'] = 'application/json';
+
+  try {
+    await fetchWithRetry(url, {
+      method: HttpMethods.PUT,
+      body: JSON.stringify(payload),
+      headers
+    });
+    logger.log({ level: "debug", message: "[%s] createL2CacheCollection(): Qdrant collection: [%s] created successfully.", splat: [scriptName, collectionName] });
+  }
+  catch (err) {
+    logger.log({ level: "warn", message: "[%s] createL2CacheCollection(): Unexpected error occured while creating Qdrant collection: [%s].\n  Error message: %s", splat: [scriptName, collectionName, formatException(err)] });
+  };
+}
+
+// Delete expired points in L2 cache ~ Qdrant
+async function cleanupL2ExpiredQdrantEntries(srvId, appId, config) {
+  const collectionName = getL2CacheCollectionName(srvId, appId);
+  const cutoff = Date.now() - config.timeToLiveInMs;
+  try {
+    const url = `${config.qdrantUri}/collections/${collectionName}/points/delete`;
+    const headers = { "Content-Type": "application/json", "api-key": config.apikey };
+
+    const resp = await fetchWithRetry(url, {
+      method: HttpMethods.POST,
+      headers,
+      body: JSON.stringify({
+        filter: { must: [{ key: "ts", range: { lt: cutoff } }] }
+      })
+    });
+
+    logger.log({ level: "debug", message: "[%s] cleanupL2ExpiredQdrantEntries(): Cleanup operation completed for Qdrant collection: [%s].", splat: [scriptName, collectionName] });
+  }
+  catch (err) {
+    logger.log({ level: "warn", message: "[%s] cleanupL2ExpiredQdrantEntries(): Unexpected error occured while attempting cleanup operation for Qdrant collection: [%s].\n  Error message: %s", splat: [scriptName, collectionName, formatException(err)] });
+  };
+}
+
+// Delete the Ai App collection
+async function deleteL2CacheCollection(srvId, appId, level2Config) {
+  const collectionName = getL2CacheCollectionName(srvId, appId);
+  // const url = `${QDRANT_URL}/collections/${CACHE_COLLECTION_NAME}`;
+  const url = `${level2Config.qdrantUri}/collections/${collectionName}`;
+  const headers = { "api-key": level2Config.apikey };
+
+  try {
+    await fetchWithRetry(url, {
+      method: HttpMethods.DELETE,
+      headers
+    });
+
+    logger.log({ level: "debug", message: "[%s] deleteL2CacheCollection(): Qdrant collection: [%s], deleted successfully", splat: [scriptName, collectionName] });
+  }
+  catch (err) {
+    logger.log({ level: "warn", message: "[%s] deleteL2CacheCollection(): Unexpected error occured while attempting delete operation on Qdrant collection: [%s].\n  Error message: %s", splat: [scriptName, collectionName, formatException(err)] });
+  };
+}
+// ID11212025.en
+
 module.exports = {
+  formatException, // ID12042025.n
   getOpenAICallMetadata, // ID08272025.n
   prepareTextToEmbedd,
   // callRestApi ID03052025.o
@@ -400,5 +623,11 @@ module.exports = {
   callAiAppEndpoint, // ID05142025.n
   retrieveUniqueURI, // ID09172025.n
   normalizeAiOutput, // ID10142025.n
-  retrievePersonalizationConfig // ID10202025.n
+  retrievePersonalizationConfig, // ID10202025.n
+  l1CacheEntrySizeCalculation, // ID11212025.n
+  l1DisposeCachedEntry, // ID11212025.n
+  cleanupL2ExpiredQdrantEntries, // ID11212025.n
+  getL2CacheCollectionName, // ID11212025.n
+  createL2CacheCollection, // ID11212025.n
+  deleteL2CacheCollection // ID11212025.n
 }

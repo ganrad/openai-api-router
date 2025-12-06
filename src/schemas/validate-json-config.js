@@ -13,6 +13,7 @@
  * for API calls made by single domain AI Apps.
  * ID09272025: ganrad: v2.7.0: Added new schema to support integration with MCP servers.
  * ID11062025: ganrad: v2.9.0: Added Ajv init parameter to not generate warnings for Union types.
+ * ID12042025: ganrad: v2.9.5: Added ajv-formats module (plug-in) to validate uri, email, hostname type fields.
 */
 
 const path = require('path');
@@ -22,6 +23,7 @@ const { ServerTypes } = require("../utilities/app-gtwy-constants.js");
 const logger = require("../utilities/logger.js");
 
 const Ajv = require("ajv");
+const addFormats = require("ajv-formats"); // ID12042025.n
 const fs = require("fs");
 
 const sdSchemaFile = "/single-domain-gtwy-schema.json";
@@ -39,7 +41,9 @@ const multiDomainAgentSchema = JSON.parse(fs.readFileSync(__dirname + mdSchemaFi
 const mdAiAppSchema = JSON.parse(fs.readFileSync(__dirname + mdAiAppSchemaFile));
 
 const ajvAiServer = new Ajv({schemas: [singleDomainAgentSchema, sdAiAppSchema, sdAiAppBudgetSchema, sdAiAppMcpServersSchema, multiDomainAgentSchema, mdAiAppSchema], allErrors: true, strictSchema: false, allowUnionTypes: true}); // ID08252025.n, ID09272025.n, ID11062025.n
+addFormats(ajvAiServer); // ID12042025.n
 const ajvAiApps = new Ajv({schemas: [sdAiAppSchema,mdAiAppSchema], allErrors: true, strictSchema: false, allowUnionTypes: true}); // ID11062025.n
+addFormats(ajvAiApps); // ID12042025.n
 
 module.exports = {
 	singleDomainAgentSchema,

@@ -65,6 +65,8 @@
  * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
  * ID11032025: ganrad: v2.9.0: (New Feature) Introduced endpoint normalization policy feature to support transformation of AOAI request/response payload/data
  * structures in the request processing pipeline.
+ * ID11182025: ganrad: v2.9.5: (Enhancement) Introduced support for Azure AI Model v1 chat/completions API
+ * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced multiple levels/layers for semantic cache (l1, l2 & pg)
  *  
 */
 
@@ -75,6 +77,7 @@ const express = require("express");
 const EndpointMetricsFactory = require("../utilities/ep-metrics-factory.js"); // ID04222024.n
 const AppConnections = require("../utilities/app-connection.js");
 const AppCacheMetrics = require("../utilities/cache-metrics.js"); // ID02202024.n
+const { LRUCache } = require('lru-cache'); // ID11212025.n
 const {
   DefaultMaxCompletionTokens, // ID10202025.n
   AzAiServices,
@@ -85,9 +88,16 @@ const {
   OpenAIChatCompletionMsgRoleTypes, // ID10032025.n
   GatewayRouterEndpoints,
   EndpointMiscConstants, // ID09152025.n
-  EndpointRouterTypes // ID09172025.n 
+  EndpointRouterTypes, // ID09172025.n 
+  ServerDefaults // ID11212025.n
 } = require("../utilities/app-gtwy-constants.js"); // ID07242025.n, ID07252025.n
-const { retrieveUniqueURI, retrievePersonalizationConfig } = require("../utilities/helper-funcs.js"); // ID09172025.n, ID10202025.n
+const { 
+  retrieveUniqueURI, 
+  retrievePersonalizationConfig, 
+  l1CacheEntrySizeCalculation, 
+  l1DisposeCachedEntry,
+  createL2CacheCollection 
+} = require("../utilities/helper-funcs.js"); // ID09172025.n, ID10202025.n, ID11212025.n
 const AiProcessorFactory = require("../processors/ai-processor-factory.js"); // ID04222024.n
 const { TrafficRouterFactory } = require("../utilities/endpoint-routers.js"); // ID08222025.n
 const ResourceHandlerFactory = require("../handlers/res-handler-factory.js"); // ID07242025.n
@@ -120,6 +130,9 @@ let appRouters = new Map();
 
 // ID11032025.n - Init container for Ai application normalization configs
 let appNormConfigs = new Map();
+
+// ID11212025.n - Init LRU Level1 cache container for Ai apps
+let level1AppCache = new Map();
 
 // ID07242025.n
 // Method: GET
@@ -190,7 +203,7 @@ router.put([GatewayRouterEndpoints.RequestsEndpoint + "/:app_id/:request_id/:fee
       const epId = application.endpoints[endpointIdx].id ?? ''; // Ensure endpoint id is specified for AI Foundry models!
       const appEpMetricsObj = appConnections.getConnection(appId);
       if (appEpMetricsObj) { // Update the in-memory ep metrics object only if it is loaded!
-        const epMetricsObj = appEpMetricsObj.get(retrieveUniqueURI(uri, application.appType, epId));
+        const epMetricsObj = appEpMetricsObj.get(retrieveUniqueURI(uri, epId)); // application.appType, epId)); ID11182025.n
 
         if (epMetricsObj) // If empty, don't throw a runtime exception. Exit the server and continue (just in case)...
           epMetricsObj.updateFeedbackCount(response.feedback);
@@ -429,7 +442,8 @@ router.post(
           // epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm, element.id); // ID04302025.n
           epmetrics = new EndpointMetricsFactory().getMetricsObject(embeddApp.appType, element.uri, element.rpm, element.id, element.healthPolicy, modelInfo); // ID04302025.n, ID05122025.n, ID08252025.n
 
-          epinfo.set(element.uri, epmetrics);
+          // epinfo.set(element.uri, epmetrics); // ID11182025.o
+          epinfo.set(retrieveUniqueURI(element.uri, element.id), epmetrics); // ID11182025.n
         };
         appConnections.addConnection(embeddApp.appId, epinfo);
       };
@@ -473,12 +487,28 @@ router.post(
         else
           epinfo.set(element.uri, epmetrics);
         ID09172025.eo */
-        epinfo.set(retrieveUniqueURI(element.uri, application.appType, element.id), epmetrics); // ID09172025.n
+        // epinfo.set(retrieveUniqueURI(element.uri, application.appType, element.id), epmetrics); // ID09172025.n, ID11182025.o
+        epinfo.set(retrieveUniqueURI(element.uri, element.id), epmetrics); // ID11182025.n
       };
       appConnections.addConnection(application.appId, epinfo);
       if (cdb.cacheResults && (application.appId !== cdb.embeddApp) && (appTypes.includes(application.appType)))
-        if (application.cacheSettings.useCache) // ID09162025.n Init the cacheMetrics obj. only when caching is enabled for this AI App! 
+        if (application.cacheSettings.useCache) { // ID09162025.n Init the cacheMetrics obj. only when caching is enabled for this AI App! 
           cacheMetrics.addAiApplication(application.appId);
+
+          if ( application.cacheSettings.level1Cache ) { // ID11212025.sn Init the level 1 semantic in-memory cache if it is enabled for this AI App!
+            const entrySize = application.cacheSettings.level1Cache.entrySize ?? ServerDefaults.L1CacheMaxEntrySize;
+            level1AppCache.set(application.appId, new LRUCache({
+              max: application.cacheSettings.level1Cache.entryCount,
+              ttl: application.cacheSettings.level1Cache.timeToLiveInMs,
+              maxSize: entrySize,
+              sizeCalculation: l1CacheEntrySizeCalculation,
+              dispose: l1DisposeCachedEntry
+            }));
+          }; // ID11212025.en
+
+          if ( application.cacheSettings.level2Cache ) // ID11212025.sn Init collection if level 2 Qdrant cache is enabled for this AI App!
+            await createL2CacheCollection(eps.serverId, appId, application.cacheSettings.level2Cache);
+        };
 
       // ID11032025.sn
       const normConfigs =
@@ -527,10 +557,14 @@ router.post(
         appId: application.appId,
         appType: application.appType,
         appEndpoints: application.endpoints,
+        // Semantic cache settings
         useCache: application.cacheSettings.useCache,
         srchType: application.cacheSettings.searchType,
         srchDistance: application.cacheSettings.searchDistance,
-        srchContent: application.cacheSettings.searchContent
+        encryptionKey: application.cacheSettings.encryptionKey, // ID11212025.n
+        srchContent: application.cacheSettings.searchContent,
+        level1Cache: level1AppCache.get(application.appId), // ID11212025.n
+        level2Config: application.cacheSettings.level2Cache // ID11212025.n
       };
 
       if ( appNormConfigs.has(appId) ) // ID11032025.n
@@ -620,7 +654,7 @@ router.post(
             appConfig,
             memoryConfig, // ID05062024.n
             appConnections,
-            cacheMetrics,
+            cacheMetrics.getCacheMetrics(appId), // ID11212025.n
             userMemConfig, // ID05142025.n
             routerInstance // ID06162025.n
           );
@@ -703,7 +737,7 @@ router.post(
 
     // ID06052024.sn, ID06212024.sn
     if (req.body.stream && // All headers have been sent; close/end the connection
-      ((response.http_code === 200) || (response.http_code === 500)))
+      ((response.http_code === 200) || (response.http_code === 500) || (response.http_code === 401))) // ID11212025.n - Fix to capture auth failure in last endpoint 
       res.end();
     else { // Non-streaming mode
       let res_hdrs = CustomRequestHeaders.RequestId;

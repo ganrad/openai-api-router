@@ -3,7 +3,7 @@
   "description": "An AI Application which uses Feedback weighted random endpoint routing algorithm introduced in RAPID v2.6.0.",
   "appType": "azure_oai",
   "isActive": true,
-  "searchAiApp": "",
+  "exposeA2AEndpoint": true,
   "cacheSettings": {
     "useCache": false
   },

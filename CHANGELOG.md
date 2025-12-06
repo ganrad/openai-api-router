@@ -1,5 +1,47 @@
 # CHANGELOG
 
+## [v2.9.5](https://github.com/ganrad/openai-api-router/compare/v2.8.0...v2.9.5) - 12/05/2025
+### Functionality changes
+**Azure AI Application Gateway (Server)**
+* **Enhancements:**
+
+  - **Multi-layer Semantic Cache**
+
+    This release adds support for a three-tier vector caching system designed to optimize AI application performance and reduce latency. Level 1 and Level 2 semantic caches are optional and can be selectively enabled for AI Applications where low latency and ultra fast end user response times are critical.
+
+    - Level 1: *In-Memory Cache*
+      
+      Ultra-fast, lightweight cache for storing limited data (completions) directly in memory.
+
+      Delivers near-instant retrieval for frequently accessed prompts. Ideal for high-speed, low-latency application use cases.
+    
+    - Level 2: *Qdrant Vector Store*
+
+      Scalable, enterprise-grade vector database for semantic caching.
+
+      Handles larger datasets efficiently. Supports multiple vector similarity search algorithms. Provides robust semantic search capabilities for improved accuracy.
+    
+    - Level 3: *PostgreSQL Vector Store* (**Default**)
+
+      Highly available, fault-tolerant, and scalable vector store leveraging PostgreSQL.
+
+      Although a bit slower than Level 1 and Level 2 semantic caches, PostgreSql vector store ensures durability and reliability for mission-critical workloads. Powers advanced semantic search and vectorization features.
+    
+    When semantic caching is enabled, the gateway stores prompts and their completions in the configured vector stores and retrieves them for semantically similar queries, returning results directly from the cache. This approach significantly reduces latency and can boost AI application performance by up to 40%.
+
+  - **Azure AI Foundry APIs**
+
+    This release introduces support for Azure AI Foundry `v1` API's. *Chat Completion* API has been tested and is fully supported.
+
+* **Bugfixes:**
+
+  - Several bug fixes were implemented, and functional tests were conducted to ensure the gateway delivers consistent results.
+
+---
+
+### Documentation changes
+* Updated the documentation.
+
 ## [v2.9.0](https://github.com/ganrad/openai-api-router/compare/v2.8.0...v2.9.0) - 11/14/2025
 ### Functionality changes
 **Azure AI Application Gateway (Server)**

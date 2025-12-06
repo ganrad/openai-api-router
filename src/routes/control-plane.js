@@ -8,6 +8,7 @@
  *
  * Notes:
  * ID07252025: ganrad: v2.4.0: (Refactored code) Moved all cp router endpoint literals to the constants module ~ app-gtwy-constants.js.
+ * ID12042025: ganrad: v2.9.5: (Refactored code) Log error message details.
 */
 
 const path = require('path');
@@ -17,6 +18,7 @@ const express = require("express");
 const AppResProcessorFactory = require("../ai-app-resources/app-res-processor-factory.js");
 const { GatewayRouterEndpoints } = require("../utilities/app-gtwy-constants.js"); // ID07252025.n
 const logger = require("../utilities/logger.js");
+const { formatException } = require("../utilities/helper-funcs.js"); // ID12042025.n
 const cprouter = express.Router();
 
 // Endpoint: /aigateway/cp/:resource_type/:action[/:resource_id]
@@ -44,13 +46,13 @@ cprouter.use([GatewayRouterEndpoints.ControlPlaneEndpoint + "/:res_type/:res_id/
       response = await processRequest(req);
     }
     catch (error) { // catch all exceptions!
-      logger.log({ level: "warn", message: "[%s] cprouter():\n  Request ID: %s\n  Encountered exception: %s", splat: [scriptName, req.id, error.stack] });
+      logger.log({ level: "warn", message: "[%s] cprouter():\n  Request ID: %s\n  Encountered exception: %s", splat: [scriptName, req.id, formatException(error)] });
       
       response = {
         http_code: 500, // Internal Server Error
         data: {
           endpointUri: req.originalUrl,
-          message: `AI Services Gateway encountered exception: [${error}].`,
+          message: `AI Services Gateway encountered exception: [${error.message}].`,
           code: "internalServerFailure"
         }
       };

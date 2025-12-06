@@ -3,10 +3,9 @@
   "description": "An AI agentic application which uses 2 Azure AI Foundry Agents - 1) A Bing search agent to answer queries of current topics such as weather, sports & news & 2) An AI Agent that uses gpt-4.1-mini model for generating responses on all topics.",
   "appType": "azure_ai_agent",
   "isActive": true,
-  "searchAiApp": "",
   "cacheSettings": {
     "useCache": false,
-    "searchType": "CosineSimilarity",
+    "searchType": "Cosine",
     "searchDistance": 0.9,
     "searchContent": {
       "term": "messages",

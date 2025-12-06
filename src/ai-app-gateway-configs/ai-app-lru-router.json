@@ -3,7 +3,7 @@
   "description": "An AI Application which uses LRU/Round-Robin endpoint routing algorithm introduced in RAPID v2.3.9.",
   "appType": "azure_oai",
   "isActive": true,
-  "searchAiApp": "",
+  "exposeA2AEndpoint": true,
   "cacheSettings": {
     "useCache": false
   },

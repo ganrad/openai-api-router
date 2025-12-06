@@ -8,7 +8,7 @@
  * Version: v2.1.0
  *
  * Notes:
- * ID01242025: ganrad: v2.2.0: 'jsonschema' validator is no longer used.  This file is kept for reference purposes only.
+ * ID01242025: ganrad: v2.2.0: (DEPRECATED) 'jsonschema' validator is no longer used.  This file is kept for reference purposes only.
 */
 
 const path = require('path');

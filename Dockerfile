@@ -22,7 +22,7 @@
 #
 FROM public.ecr.aws/docker/library/node:20.11.0-alpine3.19
 LABEL name="Azure AI Application Gateway server"
-LABEL version="2.9.0"
+LABEL version="2.9.5"
 LABEL description="This container image exposes the Azure AI Application Gateway endpoints"
 LABEL author="Ganesh Radhakrishnan" email="ganrad01@gmail.com" dated="01-28-2024" license="MIT"
 
