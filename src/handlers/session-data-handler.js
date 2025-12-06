@@ -173,7 +173,7 @@ class SessionDataHandler extends AbstractDataHandler {
       err_msg = {
         error: {
           target: threadUri,
-          message: `listMessagesInThread(): AI Application Gateway encountered exception: [${error}].`,
+          message: `listMessagesInThread(): AI Application Gateway encountered exception: [${error.message}].`,
           code: "internalFailure"
         }
       };
@@ -206,7 +206,7 @@ class SessionDataHandler extends AbstractDataHandler {
         err_msg = {
           error: {
             target: req.originalUrl,
-            message: `AI Application Gateway encountered exception: [${error}].`,
+            message: `AI Application Gateway encountered exception: [${error.message}].`,
             code: "internalFailure"
           }
         };

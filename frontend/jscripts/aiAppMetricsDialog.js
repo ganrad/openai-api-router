@@ -9,6 +9,7 @@
  * ID09162025: ganrad: v2.6.0-1.3.2: (Enhancements + Bugfixes) Introduced minor enhancements and made a few display related bug fixes.
  * ID09232025: ganrad: v2.6.0-1.3.2: (Bugfix) When AI App is switched by user, cache metrics were not reset properly. This issue has 
  * been fixed.
+ * ID11212025: ganrad: v2.9.5-1.3.4: (Enhancement) The cache metrics are rendered in a html table.
  */
 
 // Reset dialog fields when the modal is hidden (dialog is closed)
@@ -42,7 +43,7 @@ async function fetchAiAppMetrics(aiApp) { // private
     });
     const status = response.status;
     const data = await response.json();
-    if ( status === 200 )  // Check for status 200 
+    if (status === 200)  // Check for status 200 
       respJson = {
         status: status,
         data: data
@@ -67,14 +68,129 @@ async function fetchAiAppMetrics(aiApp) { // private
     console.log(`fetchAiAppMetrics(): Encountered exception\n  ${respJson}`);
   };
 
-  return(respJson);
+  return (respJson);
 }
+
+// ID11212025.sn
+function renderCacheMetrics(containerSelector, metrics, options = {}) {
+  if (!metrics) return; // No metrics has been collected for this app Or Caching is disabled for this app
+  const container = document.querySelector(containerSelector);
+
+  const decimals = Number.isInteger(options.decimals) ? options.decimals : 2;
+  const latencyDecimals = Number.isInteger(options.latencyDecimals) ? options.latencyDecimals : 1;
+  const tableClasses = options.tableClasses ||
+    'table table-striped table-bordered table-sm align-middle mb-0';
+
+  // Formatters
+  const fmtPercent = (v) => `${(Number(v || 0) * 100).toFixed(decimals)}%`;
+  const fmtNumber = (v) => Number(v ?? 0).toFixed(decimals);
+  const fmtLatency = (v) => Number(v ?? 0).toFixed(latencyDecimals);
+
+  // Build per-layer rows
+  const rows = [
+    {
+      label: "L1 (In-Memory)",
+      hits: metrics.counts.l1Hits,
+      misses: metrics.counts.l1Misses,
+      hitRate: metrics.hitRates.l1,
+      avgScore: metrics.avgScores.l1,
+      avgLatency: metrics.avgLatency.l1
+    },
+    {
+      label: "L2 (Qdrant)",
+      hits: metrics.counts.l2Hits,
+      misses: metrics.counts.l2Misses,
+      hitRate: metrics.hitRates.l2,
+      avgScore: metrics.avgScores.l2,
+      avgLatency: metrics.avgLatency.l2
+    },
+    {
+      label: "L3 (PostgreSQL)",
+      hits: metrics.counts.pgHits,
+      // If you have pgMisses, set misses here; otherwise assume 0.
+      misses: metrics.counts?.pgMisses ?? 0,
+      // If metrics.hitRates doesn’t include Level3, compute it from hits/misses:
+      hitRate: (metrics.hitRates?.pg ??
+        ((metrics.counts.pgHits + (metrics.counts?.pgMisses ?? 0)) > 0
+          ? metrics.counts.pgHits / (metrics.counts.pgHits + (metrics.counts?.pgMisses ?? 0))
+          : 0)),
+      avgScore: metrics.avgScores.pg,
+      avgLatency: metrics.avgLatency.pg
+    }
+  ];
+
+  // Create table
+  const table = document.createElement('table');
+  table.className = tableClasses;
+
+  // THEAD
+  const thead = document.createElement('thead');
+  thead.className = 'table-light';
+  const headerRow = document.createElement('tr');
+  [
+    'Layer',
+    'Hits',
+    'Misses',
+    'Hit Rate',
+    'Average Score',
+    'Average Latency (ms)'
+  ].forEach(text => {
+    const th = document.createElement('th');
+    th.scope = 'col';
+    th.textContent = text;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+
+  // TBODY
+  const tbody = document.createElement('tbody');
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+
+    const th = document.createElement('th');
+    th.scope = 'row';
+    th.textContent = r.label;
+    tr.appendChild(th);
+
+    const tdHits = document.createElement('td');
+    tdHits.textContent = r.hits;
+    tr.appendChild(tdHits);
+
+    const tdMisses = document.createElement('td');
+    tdMisses.textContent = r.misses;
+    tr.appendChild(tdMisses);
+
+    const tdHitRate = document.createElement('td');
+    tdHitRate.textContent = fmtPercent(r.hitRate);
+    tr.appendChild(tdHitRate);
+
+    const tdAvgScore = document.createElement('td');
+    tdAvgScore.textContent = fmtNumber(r.avgScore);
+    tr.appendChild(tdAvgScore);
+
+    const tdAvgLatency = document.createElement('td');
+    tdAvgLatency.textContent = fmtLatency(r.avgLatency);
+    tr.appendChild(tdAvgLatency);
+
+    tbody.appendChild(tr);
+  });
+
+  // Assemble table
+  table.appendChild(thead);
+  table.appendChild(tbody);
+
+  // Clear and inject into fieldset container
+  container.innerHTML = '';
+  container.appendChild(table);
+}
+// ID11212025.en
 
 function populateMetricsDialog(data) { // private
   document.getElementById('m_applicationId').textContent = data.applicationId;
   document.getElementById('m_appType').textContent = data.appType;
   document.getElementById('m_description').textContent = data.description;
 
+  /** ID11212025.so
   if ( data.cacheMetrics ) { // If metrics object is not empty
     document.getElementById('m_cachehc').textContent = data.cacheMetrics.hitCount;
     document.getElementById('m_cacheavgscore').textContent = data.cacheMetrics.avgScore.toFixed(4); // ID09162025.n
@@ -83,6 +199,8 @@ function populateMetricsDialog(data) { // private
     document.getElementById('m_cachehc').textContent = 0;
     document.getElementById('m_cacheavgscore').textContent = 0.0;
   };
+  ID11212025.eo */
+  renderCacheMetrics('#cacheMetricsContainer', data.cacheMetrics); // ID11212025.n
 
   const tabs = document.getElementById('m_endpointMetricsTabs');
   const content = document.getElementById('m_endpointMetricsContent');
@@ -110,12 +228,12 @@ function populateMetricsDialog(data) { // private
 
     // Reverse entries so they are in desc. order of time -
     // const entries = Object.entries(endpoint.metrics.history)
-    let entries = 
+    let entries =
       Object.entries(endpoint.metrics.history).
         reverse().
-        reduce((acc, [_,value], index) => {
+        reduce((acc, [_, value], index) => {
           acc[index] = value;
-          return(acc);
+          return (acc);
         }, {});
     /* Object.entries(entries).map(([key, value]) => {
       console.log(key, value.collectionTime);
@@ -388,7 +506,7 @@ async function retrieveAiAppMetrics() {
 
     const aiAppObject = await fetchAiAppMetrics(aiApp);
     // const aiAppObject = getTestData();
-    if ( aiAppObject.status === 200 ) {
+    if (aiAppObject.status === 200) {
       // console.log(`retrieveAiAppMetrics(): Data\n  ${JSON.stringify(aiAppObject, null, 2)}`);
       populateMetricsDialog(aiAppObject.data);
 

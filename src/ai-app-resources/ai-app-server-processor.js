@@ -10,6 +10,7 @@
  * ID03102025: ganrad: v2.3.0: (Enhancement) Added http method to 'operations' API
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
  * ID10252025: ganrad: v2.8.5: (Refactored code) AI App Gateway security implementation (library) switched to jwks-rsa.
+ * ID12042025: ganrad: v2.9.5: (Refactored code) Log error message details.
 */
 
 const fs = require("fs");
@@ -36,6 +37,7 @@ const {
   multiDomainAgentSchema } = require("../schemas/validate-json-config.js");
 const { reconfigEndpoints } = require("../routes/apirouter.js");
 const { reconfigAppMetrics } = require("../routes/md-apirouter.js");
+const { formatException } = require("../utilities/helper-funcs.js"); // ID12042025.n
 
 class AiAppServerProcessor {
 
@@ -232,7 +234,7 @@ class AiAppServerProcessor {
         fileSaved = true;
       }
       catch ( err ) {
-        logger.log({level: "error", message: "[%s] AiAppServerProcessor.deployAiApps():\n  AI App Gateway: %s\n  Encountered exception:\n%s", splat: [scriptName,srvName,err.stack]});
+        logger.log({level: "error", message: "[%s] AiAppServerProcessor.deployAiApps():\n  AI App Gateway: %s\n  Encountered exception:\n%s", splat: [scriptName,srvName,formatException(err)]});
       };
     }
     else {

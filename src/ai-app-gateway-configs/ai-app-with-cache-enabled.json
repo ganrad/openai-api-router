@@ -1,0 +1,62 @@
+{
+  "appId": "ai-chatbot-v2.9.5-gpt4o-mini",
+  "description": "An AI Application that uses all 3 levels of vector cache (l1: in-memory, l2: Qdrant and l3: PostgreSQL) to improve application performance.  This feature was introduced in RAPID v2.9.5.",
+  "appType": "azure_oai",
+  "isActive": true,
+  "exposeA2AEndpoint": true,
+  "cacheSettings": {
+    "useCache": true,
+    "searchType": "Cosine",
+    "searchDistance": 0.92,
+    "encryptionKey": "pLfj338abcWtXR2ml4GeNg1eF+afjmuOgZfW343EN0==",
+    "level1Cache": {
+      "entryCount": 5,
+      "timeToLiveInMs": 120000
+    },
+    "level2Cache": {
+      "qdrantUri": "http://grad-dummy-vm.westus2.cloudapp.azure.com:6333",
+      "apikey": "Testing123",
+      "searchType": "Cosine",
+      "searchDistance": 0.9,
+      "timeToLiveInMs": 240000
+    },
+    "searchContent": {
+      "term": "messages",
+      "includeRoles": "user"
+    },
+    "entryExpiry": "5 minutes"
+  },
+  "memorySettings": {
+    "affinity": true,
+    "useMemory": true,
+    "msgCount": 5,
+    "entryExpiry": "10 minutes"
+  },
+  "personalizationSettings": {
+    "userMemory": false
+  },
+  "budgetSettings": {
+    "useBudget": true,
+    "budgetName": "AzureAIFoundry-Direct-Models"
+  },
+  "endpoints": [
+    {
+      "id": "gpt-4o-mini-eastus",
+      "rpm": 5,
+      "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+      "apikey": "9eca9ec12e1e",
+      "budget": {
+        "modelName": "gpt-4o-mini-0718-std"
+      }
+    },
+    {
+      "id": "gpt-4o-westus3",
+      "rpm": 10,
+      "uri": "https://oai-gr-dev-wus3.openai.azure.com/openai/deployments/gpt-4o-wus3/chat/completions?api-version=2025-01-01-preview",
+      "apikey": "65d72ca615c4",
+      "budget": {
+        "modelName": "gpt-4o-1120-std"
+      }
+    }
+  ]
+}

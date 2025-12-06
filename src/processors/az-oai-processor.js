@@ -62,6 +62,8 @@
  * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
  * ID11032025: ganrad: v2.9.0: (New Feature) Introduced endpoint normalization policy feature to support transformation of AOAI request/response payload/data
  * structures in the request processing pipeline.
+ * ID11182025: ganrad: v2.9.5: (Enhancement) Introduced support for Azure AI Model v1 chat/completions API
+ * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced multiple levels/layers for semantic cache (l1 = memory, l2 = Qdrant & l3 = PostgreSQL)
  * 
 */
 const path = require('path');
@@ -75,7 +77,7 @@ const cachedb = require("../services/cp-pg.js"); // ID02202024.n
 const { TblNames, PersistDao } = require("../utilities/persist-dao.js"); // ID03012024.n
 const persistdb = require("../services/pp-pg.js"); // ID03012024.n
 const UserMemDao = require("../utilities/user-mem-dao.js"); // ID05142025.n
-const pgvector = require("pgvector/pg"); // ID02202024.n
+// const pgvector = require("pgvector/pg"); // ID02202024.n, ID11212025.o
 const {
   generateGUID, // ID07312025.n 
   DefEmbeddingModelTokenLimit,
@@ -690,7 +692,7 @@ class AzOaiProcessor {
     let cacheConfig = req.cacheconfig; // global cache config
     let memoryConfig = arguments[3]; // AI application state management config ID05062024.n
     let appConnections = arguments[4]; // EP metrics obj for all apps
-    let cacheMetrics = arguments[5]; // Cache hit metrics obj for all apps
+    let cacheMetrics = arguments[5]; // Cache hit metrics of Ai App
     const userMemConfig = arguments[6]; // ID05142025.n; AI App specific long term memory config
     const routerInstance = arguments[7]; // ID06162025.n; AI App specific endpoint router instance
     let manageState = (process.env.API_GATEWAY_STATE_MGMT === 'true') ? true : false
@@ -779,9 +781,16 @@ class AzOaiProcessor {
           vecEndpoints,
           config.srchType,
           config.srchDistance,
-          config.srchContent);
+          config.srchContent,
+          // ID11212025.sn
+          config.encryptionKey,
+          cacheMetrics,
+          config.level1Cache,
+          config.level2Config);
+          // ID11212025.en
 
-        const { rowCount, simScore, completion, embeddings } =
+        // const { rowCount, simScore, completion, embeddings } = ID11212025.o
+        const { rowCount, completion, embeddings } = // ID11212025.n
           await cacheDao.queryVectorDB(
             // req.id, ID03052025.o
             req, // ID03052025.n
@@ -791,7 +800,7 @@ class AzOaiProcessor {
           );
 
         if (rowCount === 1) { // Cache hit!
-          cacheMetrics.updateCacheMetrics(config.appId, simScore);
+          // cacheMetrics.updateCacheMetrics(config.appId, simScore); ID11212025.o
 
           if (req.body.messages && manageState && memoryConfig && memoryConfig.useMemory) { // Generate thread id if manage state == true
             // threadId = randomUUID(); ID07312025.o
@@ -800,7 +809,8 @@ class AzOaiProcessor {
             // When response is served from the cache and state mgmt is turned on, update the thread count of the first end-point
             for (const element of config.appEndpoints) { // ID04302025.n
               // let metricsObj = epdata.get(element.uri); ID09172025.o
-              let metricsObj = epdata.get(retrieveUniqueURI(element.uri, config.appType, element.id)); // ID09172025.n
+              // let metricsObj = epdata.get(retrieveUniqueURI(element.uri, config.appType, element.id)); // ID09172025.n, ID11182025.o
+              let metricsObj = epdata.get(retrieveUniqueURI(element.uri, element.id)); // ID11182025.n
               metricsObj.updateUserThreads();
 
               break;
@@ -998,7 +1008,8 @@ class AzOaiProcessor {
         uriIdx++;
 
         // let metricsObj = epdata.get(element.uri); ID09172025.o
-        let metricsObj = epdata.get(retrieveUniqueURI(element.uri, config.appType, element.id)); // ID09172025.n
+       // let metricsObj = epdata.get(retrieveUniqueURI(element.uri, config.appType, element.id)); // ID09172025.n, ID11182025.o
+        let metricsObj = epdata.get(retrieveUniqueURI(element.uri, element.id)); // ID11182025.n
         let healthArr = metricsObj.isEndpointHealthy(req.id); // ID05082025.n
         // console.log(`******isAvailable=${healthArr[0]}; retryAfter=${healthArr[1]}`);
         if (!healthArr[0]) {
@@ -1082,11 +1093,13 @@ class AzOaiProcessor {
                 instanceName, // ID11112024.n
                 config.appId,
                 prompt,
-                pgvector.toSql(embeddedPrompt),
-                data // ID10142025.o; ID11032025.n
+                embeddedPrompt, // ID11212025.n
+                // pgvector.toSql(embeddedPrompt), ID11212025.o
+                data, // ID10142025.o; ID11032025.n
                 // (req.normalizeOutput) ? normalizeAiOutput(data) : data // ID10142025.n; ID11032025.o
+                apps.serverId // ID11212025.n
               ];
-
+              
               await cacheDao.storeEntity(
                 0,
                 values,
@@ -1268,7 +1281,7 @@ class AzOaiProcessor {
           };
           ID06132024.eo */
           // ID06132024.sn
-          const emsg = `AI Services Gateway encountered exception: [${error}].`; // ID10082025.n
+          const emsg = `AI Services Gateway encountered exception: [${error.message}].`; // ID10082025.n
           err_msg = {
             error: {
               target: element.uri,

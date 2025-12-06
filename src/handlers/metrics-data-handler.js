@@ -7,6 +7,7 @@
  * Version (Introduced): 2.4.0
  *
  * Notes:
+ * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced multiple levels/layers for semantic cache (l1, l2 & pg)
  *
 */
 const path = require('path');
@@ -109,7 +110,8 @@ class MetricsDataHandler extends AbstractDataHandler {
 
     let payload = null;
     let appConnection = appConnections.getConnection(appId);
-    if (appConnection) { // A map keyed by endpoint uri's containing metrics data
+    const appCacheMetrics = cacheMetrics.getCacheMetrics(appId); // ID11212025.n
+    if (appConnection) { // A map keyed by endpoint uri's containing endpoint metrics data
       let priorityIdx = 0;
       let epDict = [];
 
@@ -128,7 +130,8 @@ class MetricsDataHandler extends AbstractDataHandler {
         applicationId: appId,
         appType: application.appType,
         description: application.description,
-        cacheMetrics: cacheMetrics.getCacheMetrics(appId),
+        // cacheMetrics: cacheMetrics.getCacheMetrics(appId), // ID11212025.o
+        cacheMetrics: (appCacheMetrics) ? appCacheMetrics.getAiAppCacheMetricsInfo() : null, // ID11212025.n
         endpointMetrics: epDict
       };
     }
@@ -137,10 +140,13 @@ class MetricsDataHandler extends AbstractDataHandler {
         applicationId: appId,
         appType: application.appType,
         description: application.description,
+        cacheMetrics: (appCacheMetrics) ? appCacheMetrics.getAiAppCacheMetricsInfo() : null, // ID11212025.n
+        /** ID11212025.o
         cacheMetrics: {
           hitCount: 0,
           avgScore: 0.0
         },
+        */
         endpointMetrics: []
       };
     }

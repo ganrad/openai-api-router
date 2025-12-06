@@ -18,7 +18,9 @@
  * ID07302025: ganrad: v2.4.0: (Enhancement) Updated health policy feature to mark endpoint as unhealthy when multiple (configured)
  * consecutive api calls return > 500 http status.
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models/agents deployed on Azure AI Foundry.
- * iD)9152025: ganrad: v2.6.0: (Enhancement) Introduced user feedback capture for models/agents deployed on Azure AI Foundry.
+ * ID09152025: ganrad: v2.6.0: (Enhancement) Introduced user feedback capture for models/agents deployed on Azure AI Foundry.
+ * ID11182025: ganrad: v2.9.5: (Bugfix) When no API calls are received during a time bucket, an empty metrics row was being added to the 
+ * history queue. This issue has been fixed. 
  * 
 */
 const path = require('path');
@@ -104,7 +106,7 @@ class AzOaiEpMetrics {
         isAvailable = false;
         retrySecs = (60000 - elapsedTime) / 1000;
 
-        logger.log({ level: "warn", message: "[%s] %s.isEndpointHealthy():\n  Request ID: %s\n  Endpoint: %s\n  RPM: %d\n  Retry After: %d\n  Message: %s", splat: [scriptName, this.constructor.name, reqid, this.endpoint, this.rpmLimit, retrySecs, "Hit max. configured RPM for this endpoint."] }); // ID05082025.n
+        logger.log({ level: "warn", message: "[%s] %s.isEndpointHealthy():\n  Request ID: %s\n  Endpoint ID: %s\n  Endpoint: %s\n  RPM: %d\n  Retry After: %d\n  Message: %s", splat: [scriptName, this.constructor.name, reqid, this.id, this.endpoint, this.rpmLimit, retrySecs, "Hit max. configured RPM for this endpoint."] }); // ID05082025.n
       };
     };
     // ID05282024.en
@@ -145,7 +147,7 @@ class AzOaiEpMetrics {
     this.#updateMetrics();
 
     const callCost = this.#calculateTokenCost(usage);
-    logger.log({ level: "debug", message: "[%s] %s.updateApiCallsAndTokens():\n  Request ID: %s\n  Usage:\n%s\n  Token Cost: %d", splat: [scriptName, this.constructor.name, reqid, JSON.stringify(usage, null, 2), callCost] });
+    logger.log({ level: "debug", message: "[%s] %s.updateApiCallsAndTokens():\n  Request ID: %s\n  Endpoint ID: %s\n  Usage:\n%s\n  Token Cost: %d", splat: [scriptName, this.constructor.name, reqid, this.id, JSON.stringify(usage, null, 2), callCost] });
     const tokens = usage?.total_tokens;
 
     if ( threadStarted ) // ID04302025.n
@@ -244,7 +246,8 @@ class AzOaiEpMetrics {
           }
         }
       };
-      this.historyQueue.enqueue(his_obj);
+      if ( this.totalCalls > 0 ) // ID11182025.n
+        this.historyQueue.enqueue(his_obj);
 
       this.threads = 0; // ID04302025.n
       this.apiCalls = 0;

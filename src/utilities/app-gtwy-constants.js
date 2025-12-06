@@ -46,6 +46,7 @@
  * ID10202025: ganrad: v2.8.0: a) Added new constant type for long term memory types ~ LongTermMemoryTypes and
  * b) Added new type containing constants for long term memory feature.
  * ID11062025: ganrad: v2.9.0: Added new constant type for payload normalizer operators and modes.
+ * ID11212025: ganrad: v2.9.5: Added new constant type for cache search terms and levels. Added new constants for cache search algorithms.
 */
 const { randomUUID } = require('node:crypto'); // ID07312025.n
 
@@ -70,7 +71,7 @@ async function generateUUID() { // ID10032025.n
 
 // ID07252025.sn
 const AiAppGateway = {
-  Version: "2.9.0",
+  Version: "2.9.5",
   ApiVersion: "/api/v1/",
   // RouterContextPath: "/apirouter" ID10032025.o
   RouterContextPath: "/aigateway" // ID10032025.n
@@ -149,7 +150,9 @@ const HttpMethods = { // ID01242025.n
 
 const ServerDefaults = {
   CacheEntryInvalidateSchedule: "*/45 * * * *",
-  MemoryInvalidateSchedule: "*/10 * * * *"
+  MemoryInvalidateSchedule: "*/10 * * * *",
+  L1CacheMaxEntrySize: 5 * 1024 * 1024, // 5MB (Mega Bytes) ID11212025.n
+  L2CacheVectorDimensions: 1536 // ID11212025.n
 };
 
 const CustomRequestHeaders = { // ID05062024.n
@@ -217,9 +220,15 @@ const ToolConditions = { // ID09042024.n
 }
 
 const SearchAlgorithms = { // ID11072024.n
-  CosineSimilarity: "CosineSimilarity",
-  EuclideanDistance: "EuclideanDistance",
-  InnerProduct: "InnerProduct"
+  // Unified cache search algorithms // ID11212025.n
+  // CosineSimilarity: "CosineSimilarity", ID11212025.o Deprecated
+  // EuclideanDistance: "EuclideanDistance",
+  // InnerProduct: "InnerProduct",
+  
+  Cosine: "Cosine",
+  Euclid: "Euclid",
+  Dot: "Dot",
+  Manhattan: "Manhattan"
 }
 
 const AppServerStatus = { // ID01232025.n
@@ -392,6 +401,21 @@ const NormalizerPolicyOperator = {
   Concat: "concat",
 }
 
+// ID11212025.sn
+// Cache search terms
+const CacheSearchTerms = {
+  Prompt: "prompt",
+  Messages: "messages"
+}
+
+// Constants for cache levels
+const CacheLevels = {
+  Level1: "l1", // In-memory
+  Level2: "l2", // Qdrant
+  Level3: "pg" // PostgreSQL
+}
+// ID11212025.en
+
 module.exports = {
   generateGUID, // ID07312025.n
   generateUUID, // ID10032025.n
@@ -444,5 +468,7 @@ module.exports = {
   UserFeedback, // ID09152025.n
   LongTermMemoryTypes, // ID10202025.n
   LongTermMemoryConstants, // ID10202025.n
-  NormalizerPolicyOperator // ID11062025.n
+  NormalizerPolicyOperator, // ID11062025.n
+  CacheSearchTerms, // ID11212025.n
+  CacheLevels // ID11212025.n
 }

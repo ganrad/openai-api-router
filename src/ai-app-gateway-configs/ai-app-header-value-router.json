@@ -3,7 +3,7 @@
   "description": "An AI Application which uses Header Switch endpoint routing algorithm introduced in RAPID v2.4.0.",
   "appType": "azure_oai",
   "isActive": true,
-  "searchAiApp": "",
+  "exposeA2AEndpoint": true,
   "cacheSettings": {
     "useCache": false
   },

@@ -7,12 +7,14 @@
  * Version: v2.1.0
  *
  * Notes:
+ * ID12042025: ganrad: v2.9.5: (Refactored code) Log error message details.
  *
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('../utilities/logger');
 const { CustomRequestHeaders } = require("../utilities/app-gtwy-constants.js");
+const { formatException } = require('../utilities/helper-funcs.js'); // ID12042025.n
 
 class AiAppGatewayTool {
 
@@ -97,11 +99,11 @@ class AiAppGatewayTool {
       data = {
         error: {
           target: gatewayUri,
-          message: `AI Application Gateway encountered exception: [${error}].`,
+          message: `AI Application Gateway encountered exception: [${error.message}].`,
           code: "internalFailure"
         }
       };
-      logger.log({ level: "error", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, req.id, JSON.stringify(data, null, 2)] });
+      logger.log({ level: "error", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, req.id, formatException(data)] });
 
       respMessage = {
         http_code: 500,

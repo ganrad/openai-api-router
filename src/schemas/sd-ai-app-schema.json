@@ -52,16 +52,92 @@
                     "type": "boolean"
                 },
                 "searchType": {
-                    "description": "Type of algorithm used to match vector entities",
+                    "description": "Type of algorithm used to match vectorized entities",
                     "type": "string",
                     "enum": [
-                        "CosineSimilarity",
-                        "EuclideanDistance"
+                        "Cosine",
+                        "Euclid"
                     ]
                 },
                 "searchDistance": {
-                    "description": "Search algorithm match rate - 1.0 to 100.0%",
-                    "type": "number"
+                    "description": "Search algorithm match rate - 1.0 to 100.0%.  Applies to l1 and pg caches.",
+                    "type": "number",
+                    "minimum": 0.1,
+                    "maximum": 1.0
+                },
+                "encryptionKey": {
+                    "description": "(Optional) 32 bytes encryption key",
+                    "type": "string",
+                    "minLength": 32
+                },
+                "level1Cache": {
+                    "description": "Level 1: In-memory cache",
+                    "type": "object",
+                    "properties": {
+                        "entrySize": {
+                            "description": "Max. size of an entry (Bytes) which will be stored in the cache",
+                            "type": "integer"
+                        },
+                        "entryCount": {
+                            "description": "No. of entries to cache in-memory",
+                            "type": "integer",
+                            "exclusiveMinimum": 4
+                        },
+                        "timeToLiveInMs": {
+                            "description": "TTL for cached entries in milli-seconds",
+                            "type": "integer",
+                            "exclusiveMinimum": 60000
+                        }
+                    },
+                    "required": [
+                        "entryCount",
+                        "timeToLiveInMs"
+                    ],
+                    "additionalProperties": false
+                },
+                "level2Cache": {
+                    "description": "Level 2: Qdrant cache",
+                    "type": "object",
+                    "properties": {
+                        "qdrantUri": {
+                            "description": "URI of Qdrant Server",
+                            "type": "string",
+                            "format": "uri",
+                            "minLength": 1
+                        },
+                        "apikey": {
+                            "description": "API Key for Qdrant Server",
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "searchType": {
+                            "description": "Type of algorithm used to match vectorized entities.  Default is Cosine similarity.",
+                            "type": "string",
+                            "enum": [
+                                "Cosine",
+                                "Euclid",
+                                "Dot",
+                                "Manhattan"
+                            ]
+                        },
+                        "searchDistance": {
+                            "description": "Search algorithm match rate - 1.0 to 100.0%. Default is 0.90 ~ 90%.",
+                            "type": "number",
+                            "minimum": 0.1,
+                            "maximum": 1.0
+                        },
+                        "timeToLiveInMs": {
+                            "description": "TTL for cached entries in milli-seconds",
+                            "type": "integer",
+                            "exclusiveMinimum": 60000
+                        }
+                    },
+                    "required": [
+                        "qdrantUri",
+                        "apikey",
+                        "timeToLiveInMs"
+                    ],
+                    "additionalProperties": false
                 },
                 "searchContent": {
                     "description": "Search content to match in request object",
@@ -76,8 +152,13 @@
                             ]
                         },
                         "includeRoles": {
-                            "description": "Role values to extract and include in search",
-                            "type": "string"
+                            "description": "Role values to extract and include in search. Use commas to separate & specify multiple values.",
+                            "type": "string",
+                            "enum": [
+                                "system",
+                                "user",
+                                "assistant"
+                            ]
                         }
                     },
                     "required": [
@@ -150,8 +231,8 @@
                     "description": "Type of algorithm used to extract facts from the vector store",
                     "type": "string",
                     "enum": [
-                        "CosineSimilarity",
-                        "EuclideanDistance"
+                        "Cosine",
+                        "Euclid"
                     ]
                 },
                 "memoryConfig": {
@@ -267,7 +348,14 @@
                                 },
                                 "value": {
                                     "description": "If this key exists (even if null/empty), set destination to this value and do not copy from source.",
-                                    "type": ["string", "number", "boolean", "object", "array", "null"]
+                                    "type": [
+                                        "string",
+                                        "number",
+                                        "boolean",
+                                        "object",
+                                        "array",
+                                        "null"
+                                    ]
                                 }
                             },
                             "additionalProperties": false,
@@ -290,7 +378,14 @@
                                 },
                                 "attributeValue": {
                                     "description": "Value for set/merge/append/insert. For upsert use 'value' below.",
-                                    "type": ["string", "number", "boolean", "object", "array", "null"]
+                                    "type": [
+                                        "string",
+                                        "number",
+                                        "boolean",
+                                        "object",
+                                        "array",
+                                        "null"
+                                    ]
                                 },
                                 "op": {
                                     "type": "string",
@@ -337,7 +432,14 @@
                                         },
                                         "value": {
                                             "description": "Value to match (any JSON type).",
-                                            "type": ["string", "number", "boolean", "object", "array", "null"]
+                                            "type": [
+                                                "string",
+                                                "number",
+                                                "boolean",
+                                                "object",
+                                                "array",
+                                                "null"
+                                            ]
                                         }
                                     }
                                 },
@@ -352,7 +454,14 @@
                                 },
                                 "value": {
                                     "description": "For 'upsert': the object to insert/merge/replace as the array element.",
-                                    "type": ["string", "number", "boolean", "object", "array", "null"]
+                                    "type": [
+                                        "string",
+                                        "number",
+                                        "boolean",
+                                        "object",
+                                        "array",
+                                        "null"
+                                    ]
                                 }
                             },
                             "allOf": [
@@ -562,6 +671,7 @@
                     "uri": {
                         "description": "AI Service endpoint URI",
                         "type": "string",
+                        "format": "uri",
                         "minLength": 1
                     },
                     "apikey": {

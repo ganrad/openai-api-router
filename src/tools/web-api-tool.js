@@ -7,11 +7,13 @@
  * Version: v2.1.0
  *
  * Notes:
+ * ID12042025: ganrad: v2.9.5: Log error message details.
  *
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('../utilities/logger');
+const { formatException } = require('../utilities/helper-funcs'); // ID12042025.n
 
 class WebApiAppTool {
 
@@ -94,11 +96,11 @@ class WebApiAppTool {
       data = {
         error: {
           target: webEndpointUri,
-          message: `Encountered exception when invoking Web API Endpoint: [${error}].`,
+          message: `Encountered exception when invoking Web API Endpoint: [${error.message}].`,
           code: "internalFailure"
         }
       };
-      logger.log({ level: "error", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, req.id, JSON.stringify(data)] });
+      logger.log({ level: "error", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, req.id, formatException(data)] });
 
       respMessage = {
         http_code: 500,

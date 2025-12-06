@@ -10,7 +10,8 @@
  * ID11112024: ganrad: v2.1.0: (Enhancement) Added new field 'srv_name' to cache table.  This field will allow
  * a) Each server instance to cleanly evict cached entries independently of other instances within a replica set & 
  * b) Provide info. on which server instance actually created a record in the cache table.
- *
+ * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced multiple levels/layers for semantic cache (l1, l2 & pg).
+ * ID12042025: ganrad: v2.9.5: (Refactored code) Log error message details.
 */
 
 const path = require('path');
@@ -20,6 +21,7 @@ const logger = require('../utilities/logger'); // ID04272024.n
 const pg = require('pg');
 const pgvector = require('pgvector/pg');
 const pgConfig = require('./pg-config');
+const { formatException } = require("../utilities/helper-funcs"); // ID12042025.n
 
 const createTblStmts = [
   // Use this DDL for testing only!
@@ -69,7 +71,7 @@ async function checkDbConnection() {
   }
   catch (err) {
     // console.log("checkDbConnection(): Encountered exception:\n" + err.stack);
-    logger.log({level: "error", message: "[%s] checkDbConnection(): Encountered exception:\n%s", splat: [scriptName, err.stack]});
+    logger.log({level: "error", message: "[%s] checkDbConnection(): Encountered exception:\n%s", splat: [scriptName, formatException(err)]});
   };
   return ret_val;
 }
@@ -86,7 +88,7 @@ async function dropTable() {
   }
   catch (err) {
     // console.log("dropTable(): Encountered exception:\n" + err.stack);
-    logger.log({level: "error", message: "[%s] dropTable(): Encountered exception:\n%s", splat: [scriptName, err.stack]});
+    logger.log({level: "error", message: "[%s] dropTable(): Encountered exception:\n%s", splat: [scriptName, formatException(err)]});
   };
 }
 
@@ -102,7 +104,7 @@ async function createTable(idx) {
   }
   catch (err) {
     // console.log("createTable(): Encountered exception:\n" + err.stack);
-    logger.log({level: "error", message: "[%s] createTable(): Encountered exception:\n%s", splat: [scriptName, err.stack]});
+    logger.log({level: "error", message: "[%s] createTable(): Encountered exception:\n%s", splat: [scriptName, formatException(err)]});
   };
 }
 
@@ -121,7 +123,7 @@ async function insertData(query, params) {
   }
   catch (err) {
     // console.log("*****\ninsertData():\n  Encountered exception:\n  " + err.stack);
-    logger.log({level: "error", message: "[%s] insertData(): Encountered exception:\n%s", splat: [scriptName, err.stack]});
+    logger.log({level: "error", message: "[%s] insertData(): Encountered exception:\n%s", splat: [scriptName, formatException(err)]});
   };
 }
 
@@ -153,7 +155,7 @@ async function deleteData(query, params) {
   }
   catch (err) {
     // console.log("*****\ndeleteData():\n  Encountered exception:\n  " + err.stack);
-    logger.log({level: "error", message: "[%s] deleteData(): Encountered exception:\n%s", splat: [scriptName, err.stack]});
+    logger.log({level: "error", message: "[%s] deleteData(): Encountered exception:\n%s", splat: [scriptName, formatException(err)]});
   };
 }
 
@@ -161,6 +163,7 @@ async function deleteData(query, params) {
 async function executeQuery(requestid, query, params) {
   let result;
   let rows = 0;
+  let vectors = null; // ID11212025.n
   let data = null;
   let score = 0;
 
@@ -175,6 +178,7 @@ async function executeQuery(requestid, query, params) {
     result.rows.map(row => {
       // console.log(`  Completion: ${JSON.stringify(row)}`);
       score = row.similarity;
+      vectors = row.embedding; // ID11212025.n
       data = row.completion;
       rows++;
     });
@@ -188,12 +192,13 @@ async function executeQuery(requestid, query, params) {
   }
   catch (err) {
     // console.log("executeQuery():\n  Request ID: ${requestid}\n  Encountered exception:\n" + err.stack);
-    logger.log({level: "error", message: "[%s] executeQuery(): Request ID: %s\nEncountered exception:\n%s", splat: [scriptName, requestid, err.stack]});
+    logger.log({level: "error", message: "[%s] executeQuery():\n  Request ID: %s\n  Encountered exception:\n%s", splat: [scriptName, requestid, formatException(err)]});
   };
 
   return {
     rowCount: rows, // No. of rows (0 / 1)
     simScore: score, // Similarity score
+    vectors, // embedding retrieved from the cache ID11212025.n
     completion: data // Completion data
   };
 }
