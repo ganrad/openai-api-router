@@ -84,12 +84,12 @@ Containerized deployment of AI Application Gateway Console is highly recommended
    You will see the application server startup message as shown in the snippet below.
 
    ```bash
-   > ai-chatbot-frontend@1.3.2 start
+   > ai-chatbot-frontend@1.3.5 start
    > node ./src/server.js
 
-   [2025/09/18 19:21:36.670] [LOG] Server(): Server configuration file: [./app-config.json]
-   [2025/09/18 19:21:36.674] [LOG] Server(): Azure AI Application Gateway API security: [true]
-   [2025/09/18 19:21:36.797] [LOG] Server(): AI Chatbot Application server is listening on localhost:8000.
+   [2026/02/18 10:24:36.670] [LOG] Server(): Server configuration file: [./app-config.json]
+   [2026/02/18 10:24:36.674] [LOG] Server(): Azure AI Application Gateway API security: [true]
+   [2026/09/18 10:24:36.797] [LOG] Server(): AI Chatbot Application server is listening on localhost:8000.
    ```
 
    Leave this terminal window open.
