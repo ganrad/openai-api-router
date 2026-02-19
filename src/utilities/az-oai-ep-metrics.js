@@ -20,7 +20,8 @@
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models/agents deployed on Azure AI Foundry.
  * ID09152025: ganrad: v2.6.0: (Enhancement) Introduced user feedback capture for models/agents deployed on Azure AI Foundry.
  * ID11182025: ganrad: v2.9.5: (Bugfix) When no API calls are received during a time bucket, an empty metrics row was being added to the 
- * history queue. This issue has been fixed. 
+ * history queue. This issue has been fixed.
+ * ID12182025: ganrad: v2.9.5: (Bugfix) Return k tokens in current and history queue.
  * 
 */
 const path = require('path');
@@ -220,7 +221,8 @@ class AzOaiEpMetrics {
       let sdate = new Date(this.startTime).toLocaleString();
       let tokens_per_call = (this.apiCalls > 0) ? (this.totalTokens / this.apiCalls) : 0;
       let latency = (this.respTime > 0) ? (this.respTime / this.apiCalls) : 0;
-      let kTokens = (this.totalTokens > 1000) ? (this.totalTokens / 1000) : this.totalTokens;
+      // let kTokens = (this.totalTokens > 1000) ? (this.totalTokens / 1000) : this.totalTokens; ID120182025.o
+      let kTokens = (this.totalTokens > 0) ? (this.totalTokens / 1000) : 0; // ID12182025.n
 
       let his_obj = {
         collectionTime: sdate,
@@ -270,7 +272,8 @@ class AzOaiEpMetrics {
   }
 
   toJSON() {
-    let kTokens = (this.totalTokens > 1000) ? (this.totalTokens / 1000) : this.totalTokens;
+    // let kTokens = (this.totalTokens > 1000) ? (this.totalTokens / 1000) : this.totalTokens; ID120182025.o
+    let kTokens = (this.totalTokens > 0) ? (this.totalTokens / 1000) : 0; // ID12182025.n
 
     return {
       threadCount: this.threads, // ID04302025.n

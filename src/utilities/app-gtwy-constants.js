@@ -47,6 +47,7 @@
  * b) Added new type containing constants for long term memory feature.
  * ID11062025: ganrad: v2.9.0: Added new constant type for payload normalizer operators and modes.
  * ID11212025: ganrad: v2.9.5: Added new constant type for cache search terms and levels. Added new constants for cache search algorithms.
+ * ID02182026: ganrad: v2.9.6: Updated minor release info.
 */
 const { randomUUID } = require('node:crypto'); // ID07312025.n
 
@@ -71,7 +72,7 @@ async function generateUUID() { // ID10032025.n
 
 // ID07252025.sn
 const AiAppGateway = {
-  Version: "2.9.5",
+  Version: "2.9.6",
   ApiVersion: "/api/v1/",
   // RouterContextPath: "/apirouter" ID10032025.o
   RouterContextPath: "/aigateway" // ID10032025.n

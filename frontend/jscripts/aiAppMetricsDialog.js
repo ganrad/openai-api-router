@@ -10,6 +10,8 @@
  * ID09232025: ganrad: v2.6.0-1.3.2: (Bugfix) When AI App is switched by user, cache metrics were not reset properly. This issue has 
  * been fixed.
  * ID11212025: ganrad: v2.9.5-1.3.4: (Enhancement) The cache metrics are rendered in a html table.
+ * ID12052025: ganrad: v2.9.6-1.3.5: (Enhancement) Added 'Refresh' button to the AI Application Metrics dialog to allow users to
+ * refresh the metrics without closing and reopening the dialog.
  */
 
 // Reset dialog fields when the modal is hidden (dialog is closed)
@@ -20,8 +22,18 @@ document.getElementById('metricsModalDialog').addEventListener('hidden.bs.modal'
 
   const tabs = document.getElementById('m_endpointMetricsTabs');
   tabs.innerHTML = '';
+  tabs.style.display = 'flex'; // Reset to default state
+
   const content = document.getElementById('m_endpointMetricsContent');
   content.innerHTML = '';
+  content.style.display = 'block'; // Reset to default state
+
+  const noMetricsMessage = document.getElementById('noEndpointMetricsMessage');
+  noMetricsMessage.style.display = 'none'; // Reset to hidden
+
+  // Clear cache metrics
+  document.getElementById('cacheMetricsContainer').innerHTML = '';
+  document.getElementById('noCacheMetricsMessage').style.display = 'none';
 });
 
 async function fetchAiAppMetrics(aiApp) { // private
@@ -73,13 +85,20 @@ async function fetchAiAppMetrics(aiApp) { // private
 
 // ID11212025.sn
 function renderCacheMetrics(containerSelector, metrics, options = {}) {
-  if (!metrics) return; // No metrics has been collected for this app Or Caching is disabled for this app
   const container = document.querySelector(containerSelector);
+  const noMetricsMessage = document.getElementById('noCacheMetricsMessage');
+
+  if (!metrics || Object.keys(metrics).length === 0) {
+    container.innerHTML = '';
+    noMetricsMessage.style.display = 'block';
+    return;
+  }; // No metrics has been collected for this app Or Caching is disabled for this app
+  noMetricsMessage.style.display = 'none';
 
   const decimals = Number.isInteger(options.decimals) ? options.decimals : 2;
   const latencyDecimals = Number.isInteger(options.latencyDecimals) ? options.latencyDecimals : 1;
   const tableClasses = options.tableClasses ||
-    'table table-striped table-bordered table-sm align-middle mb-0';
+    'table table-striped table-bordered table-sm table-hover align-middle mb-0';
 
   // Formatters
   const fmtPercent = (v) => `${(Number(v || 0) * 100).toFixed(decimals)}%`;
@@ -118,6 +137,10 @@ function renderCacheMetrics(containerSelector, metrics, options = {}) {
       avgLatency: metrics.avgLatency.pg
     }
   ];
+
+  // Create responsive wrapper with enhanced styling
+  const wrapper = document.createElement('div');
+  wrapper.className = 'table-responsive cache-metrics-table';
 
   // Create table
   const table = document.createElement('table');
@@ -161,8 +184,17 @@ function renderCacheMetrics(containerSelector, metrics, options = {}) {
     tr.appendChild(tdMisses);
 
     const tdHitRate = document.createElement('td');
+    const hitRateValue = r.hitRate;
     tdHitRate.textContent = fmtPercent(r.hitRate);
     tr.appendChild(tdHitRate);
+
+    // Add color coding based on hit rate
+    if (hitRateValue >= 0.8)
+      tdHitRate.classList.add('text-success', 'fw-bold');
+    else if (hitRateValue >= 0.5)
+      tdHitRate.classList.add('text-warning', 'fw-bold');
+    else
+      tdHitRate.classList.add('text-danger', 'fw-bold');
 
     const tdAvgScore = document.createElement('td');
     tdAvgScore.textContent = fmtNumber(r.avgScore);
@@ -178,10 +210,11 @@ function renderCacheMetrics(containerSelector, metrics, options = {}) {
   // Assemble table
   table.appendChild(thead);
   table.appendChild(tbody);
+  wrapper.appendChild(table);
 
   // Clear and inject into fieldset container
   container.innerHTML = '';
-  container.appendChild(table);
+  container.appendChild(wrapper);
 }
 // ID11212025.en
 
@@ -204,6 +237,29 @@ function populateMetricsDialog(data) { // private
 
   const tabs = document.getElementById('m_endpointMetricsTabs');
   const content = document.getElementById('m_endpointMetricsContent');
+  const noMetricsMessage = document.getElementById('noEndpointMetricsMessage');
+
+
+  // Always show the fieldset
+  document.getElementById('endpointMetricsPanel').style.display = 'block';
+
+  // Clear previous content
+  tabs.innerHTML = '';
+  content.innerHTML = '';
+
+  // Check if endpoint metrics exist and have data
+  if (!data.endpointMetrics || data.endpointMetrics.length === 0) {
+    // Hide tabs and content, show message
+    tabs.style.display = 'none';
+    content.style.display = 'none';
+    noMetricsMessage.style.display = 'block';
+    return; // Exit early
+  }
+
+  // Show tabs and content, hide message
+  tabs.style.display = 'flex';
+  content.style.display = 'block';
+  noMetricsMessage.style.display = 'none';
 
   data.endpointMetrics.forEach((endpoint, index) => {
     const isActive = (index === 0) ? 'active' : '';
@@ -239,63 +295,105 @@ function populateMetricsDialog(data) { // private
       console.log(key, value.collectionTime);
     }); */
 
+
     tabContent.innerHTML = `
-      <div class="container mt-1">
-        <div class="row">
+      <div class="metric-summary mb-3">
+        <div class="row g-2">
           <div class="col-md-4"><strong>Threads:</strong> ${endpoint.metrics.threadCount}</div>
           <div class="col-md-4"><strong>Total API Calls:</strong> ${endpoint.metrics.totalApiCalls}</div>
           <div class="col-md-4"><strong>Inference Tokens (K):</strong> ${endpoint.metrics.kInferenceTokens}</div>
         </div>
-        <div class="row mt-1">
-          <div class="col-md-4"><strong>Total Cost:</strong> ${endpoint.metrics.totalCost}</div>
+        <div class="row g-2 mt-1">
+          <div class="col-md-4"><strong>Total Cost:</strong> $${endpoint.metrics.totalCost ?? 0}</div>
           <div class="col-md-4"><strong>Feedback Count:</strong> ${endpoint.metrics.feedbackCount}</div>
           <div class="col-md-4"><strong>Succeeded:</strong> ${endpoint.metrics.apiCalls}</div>
         </div>
-        <div class="row mt-1">
+        <div class="row g-2 mt-1">
           <div class="col-md-4"><strong>Failed:</strong> ${endpoint.metrics.failedApiCalls}</div>
           <div class="col-md-4"><strong>Throttled:</strong> ${endpoint.metrics.throttledApiCalls}</div>
           <div class="col-md-4"><strong>Filtered:</strong> ${endpoint.metrics.filteredApiCalls}</div>
         </div>
-        <table class="table table-bordered mt-3">
-            <thead style="position: sticky; top: 0; background-color: white; z-index: 1;">
-                <tr>
-                    <th>Time Window</th>
-                    <th>Threads</th>
-                    <th>Total API Calls</th>
-                    <th>Total Cost</th>
-                    <th>Feedback Count</th>
-                    <th>Succeeded</th>
-                    <th>Failed</th>
-                    <th>Throttled</th>
-                    <th>Filtered</th>
-                    <th>Total Tokens (K)</th>
-                    <th>Tokens Per Minute</th>
-                    <th>Avg Response Time (Seconds)</th>
-                </tr>
-            </thead>
-            <tbody>
-              ${Object.entries(entries).map(([key, value]) => `
-                <tr>
-                  <td>${value.collectionTime}</td>
-                  <td>${value.collectedMetrics.threadCount}</td>
-                  <td>${value.collectedMetrics.totalApiCalls}</td>
-                  <td>${value.collectedMetrics.totalCost}</td>
-                  <td>${value.collectedMetrics.feedbackCount}</td>
-                  <td>${value.collectedMetrics.apiCalls}</td>
-                  <td>${value.collectedMetrics.failedApiCalls}</td>
-                  <td>${value.collectedMetrics.throttledApiCalls}</td>
-                  <td>${value.collectedMetrics.filteredApiCalls}</td>
-                  <td>${value.collectedMetrics.throughput.kTokensPerWindow}</td>
-                  <td>${value.collectedMetrics.throughput.tokensPerMinute}</td>
-                  <td>${value.collectedMetrics.latency.avgResponseTimeSec}</td>
-                </tr>
-              `).join('')}
-            </tbody>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Time Window</th>
+              <th>Threads</th>
+              <th>Total Calls</th>
+              <th>Total Cost</th>
+              <th>Feedback</th>
+              <th>Succeeded</th>
+              <th>Failed</th>
+              <th>Throttled</th>
+              <th>Filtered</th>
+              <th>Tokens (K)</th>
+              <th>TPM</th>
+              <th>Avg Time (s)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${Object.entries(entries).map(([key, value]) => `
+              <tr>
+                <td>${value.collectionTime}</td>
+                <td>${value.collectedMetrics.threadCount}</td>
+                <td>${value.collectedMetrics.totalApiCalls}</td>
+                <td>$${value.collectedMetrics.totalCost ?? 0}</td>
+                <td>${value.collectedMetrics.feedbackCount}</td>
+                <td>${value.collectedMetrics.apiCalls}</td>
+                <td>${value.collectedMetrics.failedApiCalls}</td>
+                <td>${value.collectedMetrics.throttledApiCalls}</td>
+                <td>${value.collectedMetrics.filteredApiCalls}</td>
+                <td>${value.collectedMetrics.throughput.kTokensPerWindow}</td>
+                <td>${value.collectedMetrics.throughput.tokensPerMinute}</td>
+                <td>${value.collectedMetrics.latency.avgResponseTimeSec}</td>
+              </tr>
+            `).join('')}
+          </tbody>
         </table>
       </div>
     `;
     content.appendChild(tabContent);
   });
+}
+
+async function refreshMetrics() { // ID12052025.n 
+  const aiSrvElem = document.getElementById('srvdropdown');
+  const aiGtwy = aiSrvElem.options[aiSrvElem.selectedIndex].text;
+
+  if (!aiGtwy || aiGtwy === "Choose from") {
+    console.warn("No AI Gateway selected. Cannot refresh metrics.");
+    return;
+  }
+
+  const aiAppElem = document.getElementById('appdropdown');
+  const aiApp = aiAppElem.options[aiAppElem.selectedIndex].text;
+
+  if (!aiApp || aiApp === "Choose from") {
+    console.warn("No AI Application selected. Cannot refresh metrics.");
+    return;
+  }
+
+  // Optional: show loading spinner or disable button
+  const refreshBtn = document.getElementById('refreshMetricsBtn');
+  refreshBtn.disabled = true;
+  refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Refreshing...';
+
+  try {
+    const aiAppObject = await fetchAiAppMetrics(aiApp);
+    if (aiAppObject.status === 200) {
+      populateMetricsDialog(aiAppObject.data);
+    } else {
+      console.error("Failed to refresh metrics:", aiAppObject.errors);
+    }
+  } 
+  catch (error) {
+    console.error("Error refreshing metrics:", error);
+  } 
+  finally {
+    refreshBtn.disabled = false;
+    refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Refresh';
+  };
 }
 
 function getTestData() { // private
