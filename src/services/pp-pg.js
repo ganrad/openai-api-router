@@ -30,6 +30,11 @@
  * ID09152025: ganrad: v2.6.0: (Enhancement) Introduced user feedback capture for models/agents deployed on Azure AI Foundry.  Added column 'feedback_count' to
  * table 'apigtwyprompts'.
  * ID12042025: ganrad: v2.9.5: (Refactored code) Log error message details.
+ * ID04212026: ganrad: v3.0.1: (Enhancement) Introduced 2 new tables 'toolexecplan' and 'toolexecdetails' to capture tool plan and execution data.
+ * ID04302026: ganrad: v3.0.1: (Enhancement) Introduced new field 'tool_exec_count' in table apigtwyprompts. This field will store the 
+ * tools executed as part of a request.
+ * ID05222026: ganrad: v3.0.1: (Enhancement) Made the PostgreSQL connection pool code more robust.
+ * 
 */
 
 const path = require('path');
@@ -44,7 +49,7 @@ const { formatException } = require('../utilities/helper-funcs'); // ID12042025.
 const createTblStmts = [
   // "CREATE TABLE apigtwyprompts (id serial PRIMARY KEY, requestid VARCHAR(100), aiappname VARCHAR(100), prompt JSON, timestamp_ TIMESTAMPTZ default current_timestamp)" // ID04112024.o
   // "CREATE TABLE IF NOT EXISTS apigtwyprompts (id serial PRIMARY KEY, requestid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID04112024.n, ID11082024.o
-  "CREATE TABLE IF NOT EXISTS apigtwyprompts (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, model_res_hdrs JSON, exec_time_secs real, endpoint_id VARCHAR(50), feedback_count SMALLINT not null default 0, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.n, ID09152025.n
+  "CREATE TABLE IF NOT EXISTS apigtwyprompts (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, model_res_hdrs JSON, exec_tool_count SMALLINT default 0, exec_time_secs real, endpoint_id VARCHAR(50), feedback_count SMALLINT not null default 0, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.n, ID09152025.n, ID04302026.n
   "CREATE TABLE IF NOT EXISTS apigtwymemory (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), context JSON, tool_name VARCHAR(75), md_aiappname VARCHAR(100), md_srv_name VARCHAR(100), endpoint_id SMALLINT default 0, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID05062024.n, ID11112024.n, ID11122024.n, ID05082025.n
   "CREATE TABLE IF NOT EXISTS aiapptoolstrace (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), tool_trace JSON, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID10262024.n, ID11112024.n
   "CREATE TABLE IF NOT EXISTS aiappdeploy (" +
@@ -76,14 +81,47 @@ const createTblStmts = [
     "create_date TIMESTAMPTZ default current_timestamp, " +
     "update_date TIMESTAMPTZ default current_timestamp, " +
     "created_by VARCHAR(50) )", // ID01272025.n
-  "CREATE TABLE userfacts (" +
+  "CREATE TABLE IF NOT EXISTS userfacts (" +
     "id SERIAL PRIMARY KEY, " +
     "srv_name VARCHAR(100) NOT NULL, " +
     "aiappname VARCHAR(100) NOT NULL, " +
     "user_id TEXT NOT NULL, " +
     "content TEXT NOT NULL, " +
     "embedding VECTOR(1536), " +
-    "create_date TIMESTAMP DEFAULT NOW() )" // ID05122025.n
+    "create_date TIMESTAMP DEFAULT NOW() )", // ID05122025.n
+  "CREATE TABLE IF NOT EXISTS toolexecplan (" + // ID04212026.n
+    "id SERIAL PRIMARY KEY, " +
+    "srv_name VARCHAR(100) NOT NULL, " + // AI Gateway server instance name
+    "requestid VARCHAR(100) NOT NULL, " + // Request ID
+    "threadid VARCHAR(100), " + // Thread ID
+    "aiappname VARCHAR(100) NOT NULL, " + // AI App Name
+    "aiapp_gen_plan VARCHAR(100) NOT NULL, " + // AI App used to generate plan
+    "planner_model VARCHAR(50), " + // LLM used to generate the plan
+    "toolplan JSON, " +  // Tool Plan
+    "evaltools INTEGER, " +  // No. of tools evaluated
+    "completion_tokens INTEGER, " + // Completion tokens
+    "prompt_tokens INTEGER, " + // Prompt tokens
+    "exec_time_secs real, " + // Time taken to generate tool plan
+    "uname VARCHAR(50), " + // User name/id
+    "create_date TIMESTAMP DEFAULT NOW() )",
+  "CREATE TABLE IF NOT EXISTS toolexecdetails (" + // ID04212026.n
+    "id SERIAL PRIMARY KEY, " +
+    "srv_name VARCHAR(100) NOT NULL, " + // AI Gateway server instance name
+    "requestid VARCHAR(100) NOT NULL, " + // Request ID
+    "threadid VARCHAR(100), " + // Thread ID
+    "aiappname VARCHAR(100) NOT NULL, " + // AI App Name
+    "seq_id INTEGER NOT NULL, " + // Tool execution sequence id
+    "rem_srv_type VARCHAR(25) NOT NULL, " + // Remote server type - MCP, OpenAPI and gRPC
+    "target_uri VARCHAR(100) NOT NULL, " + // Target URI of service
+    "server_id VARCHAR(100) NOT NULL, " + // Target remote server id
+    "tool_name VARCHAR(100) NOT NULL, " + // Tool name/id
+    "request_json JSON, " + // Request JSON
+    "response_json JSON, " + // Response JSON OR Error/Exception returned by the tool
+    "exception VARCHAR(1000), " + // Exceptions thrown by the remote server connection
+    "status VARCHAR(20), " + // Status of tool call - Completed, Failed
+    "exec_time_secs real, " + // Time taken to execute/run tool
+    "uname VARCHAR(50), " + // User name/id
+    "create_date TIMESTAMP DEFAULT NOW() )"
 ];
 
 const dropTblStmts = [
@@ -92,16 +130,38 @@ const dropTblStmts = [
   "DROP TABLE IF EXISTS aiapptoolstrace;", // ID10262024.n
   "DROP TABLE IF EXISTS aiappdeploy;", // ID01232025.n
   "DROP TABLE IF EXISTS aiappservers;", // ID01272025.n
-  "DROP TABLE IF EXISTS userfacts;" // ID05142025.n
+  "DROP TABLE IF EXISTS userfacts;", // ID05142025.n
+  "DROP TABLE IF EXISTS toolexecplan;", // ID04212026.n
+  "DROP TABLE IF EXISTS toolexecdetails;" // ID04212026.n
 ];
 
-// Initialize the DB connection pool
+// 1. Initialize the DB connection pool
 const pool = new pg.Pool(pgConfig.db);
+
+// 2. Global pool error handler (CRITICAL: prevents crashes on idle clients) ID05222026.n
+pool.on('error', (err, client) => {
+  logger.log({level: 'error', message: '[%s] init(): Unexpected error on idle PostgreSQL client:\n%s', splat: [scriptName, err.message]});
+
+  // Do not process.exit(-1) unless you want the process manager (like PM2) to restart it
+});
 
 // Initialize pgvector library
 pool.on('connect',async function (client) {
-  await client.query('CREATE EXTENSION IF NOT EXISTS vector');
-  await pgvector.registerType(client);
+  try { // ID05222026.n
+    await client.query('CREATE EXTENSION IF NOT EXISTS vector');
+    await pgvector.registerType(client);
+  }
+  catch (err) {
+    logger.log({level: 'error', message: '[%s] init(): Failed to initialize pgvector on new client:\n%s', splat: [scriptName, err.message]});
+    // Safely release or handle the broken client if needed
+    try {
+      // Forcefully terminate this specific broken client connection
+      await client.end();
+    } 
+    catch (closeErr) {
+      logger.log({level: 'error', message: '[%s] init(): Error while trying to close broken client:\n%s', splat: [scriptName, closeErr.message]});
+    };
+  };
 });
 
 // Check Vector DB Connection

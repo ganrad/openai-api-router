@@ -1,0 +1,143 @@
+{
+    "$id": "https://github.com/ganrad/rapid/schemas/gtwy-remote-servers-schema.json",
+    "$comment": "ID09262025: ganrad: v2.7.0: Introduced support for executing MCP server tools as part of the single agent inferencing pipeline.",
+    "title": "RemoteServerTools",
+    "description": "This schema defines attributes used for connecting to MCP, Web API or gRPC servers",
+    "type": "object",
+    "properties": {
+        "id": {
+            "description": "Unique id of the remote server",
+            "type": "string",
+            "unique": true
+        },
+        "name": {
+            "description": "Human readable name of the remote server",
+            "type": "string",
+            "minLength": 1
+        },
+        "description": {
+            "description": "Description of the remote server",
+            "type": "string",
+            "minLength": 1
+        },
+        "protocol": {
+            "description": "Type of the server, e.g. 'MCP', 'WebAPI', 'gRPC'",
+            "type": "string",
+            "enum": [
+                "MCP",
+                "WebAPI",
+                "gRPC"
+            ]
+        },
+        "uri": {
+            "description": "URI of the remote server",
+            "type": "string",
+            "minLength": 1
+        },
+        "tags": {
+            "description": "Unique tags associated with the remote server tools",
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        },
+        "serverCacheTTL": {
+            "description": "Time to refresh server cache in seconds.  Minimum 60 mins.",
+            "type": "integer",
+            "exclusiveMinimum": 3599
+        },
+        "uriToFetchToolSchemas": {
+            "description": "URI to fetch tool/api schemas from the remote server. If not specified for an mcp server it will default to 'tools/list'",
+            "type": "string"
+        },
+        "auth": {
+            "description": "Authentication scheme",
+            "type": "object",
+            "properties": {
+                "authType": {
+                    "description": "Authentication type",
+                    "type": "string",
+                    "enum": [
+                        "ApiKey",
+                        "OAuth"
+                    ]
+                },
+                "keyName": {
+                    "description": "API Key name",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "keyValue": {
+                    "description": "Server API Key value",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "clientId": {
+                    "description": "Unique identity of the client application",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "tenantId": {
+                    "description": "Identity of the MSFT Entra ID tenant",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "clientSecret": {
+                    "description": "Client secret for OAuth credentials flow",
+                    "type": "string",
+                    "minLength": 1
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "authType"
+            ]
+        },
+        "inputModes": {
+            "description": "The set of supported input media types for this skill, overriding the agent's defaults.",
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": [
+                    "application/json",
+                    "text/plain"
+                ]
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        },
+        "outputModes": {
+            "description": "The set of supported output media types for this skill, overriding the agent's defaults.",
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": [
+                    "application/json",
+                    "text/plain"
+                ]
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        },
+        "examples": {
+            "description": "Example prompts or scenarios that this skill can handle.",
+            "type": "array",
+            "items": {
+                "type": "string",
+                "description": "An example prompt or scenario showcasing the use of this remote server's tools.",
+                "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        }
+    },
+    "required": [
+        "id",
+        "protocol",
+        "uri",
+        "auth"
+    ],
+    "additionalProperties": false
+}

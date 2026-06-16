@@ -8,7 +8,8 @@
  *
  * Notes:
  * ID09162025: ganrad: v2.6.0: (Bugfix) 1) Fixed 'err_obj' is 'not defined error' 2) Session data was not being retrieved for AI Foundry Inference API models
- * 
+ * ID04282026: ganrad: v3.1.0: (Enhancement) Return the time session was created & user who created the session.
+ * ID04302026: ganrad: v3.1.0: (Bugfix) Check for session record before retrieving requests associated with the session.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -52,20 +53,27 @@ class SessionDataHandler extends AbstractDataHandler {
 
     let memoryDao = new PersistDao(persistdb, TblNames.Memory); // ID05082025.n
     let endpointId = "NA";
+    let user = "-";
+    let sessionDate = "-";
     const sessionInfo = await memoryDao.queryTable(req.id, 1, values);
-    if (sessionInfo.rCount == 1) // ID05082025.n
+    if (sessionInfo.rCount == 1) { // ID05082025.n; ID04282026.n
       endpointId = sessionInfo.data[0].endpoint_id;
+      user = sessionInfo.data[0].uname;
+      sessionDate = sessionInfo.data[0].timestamp_;
+    };
 
     let promptsDao = new PersistDao(persistdb, TblNames.Prompts);
     const sessionTrace = await promptsDao.queryTable(req.id, 2, values);
-    if (sessionTrace.rCount >= 1) {
+    if ( (sessionInfo.rCount == 1) && (sessionTrace.rCount >= 1) ) { // ID04302026.n
       respMessage = {
         http_code: 200, // OK
         data: {
           backendUriIndex: (endpointId !== "NA") ? (this.#getEndpointName(aiApp, endpointId) ?? endpointId) : endpointId,
+          sessionDate, // ID04282026.n
+          user,
           messageTrace: sessionTrace.data,
           endpointUri: req.originalUrl,
-          currentDate: new Date().toLocaleString(),
+          currentDate: new Date().toLocaleString()
         }
       };
     }

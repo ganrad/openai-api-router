@@ -25,12 +25,15 @@
  * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced multiple levels/layers for semantic cache - l1, l2 & l3/PG. Updated search type constants to 
  * a uniform set of values/literals.
  * ID12042025: ganrad: v2.9.5: (Refactoring) Introduced new function to format/stringify runtime exception.
+ * ID02272026: ganrad: v3.0.1: (Refactoring) Use of MIME types, HTTP headers & HTTP methods.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('./logger');
 const { getAccessToken } = require("../auth/bootstrap-auth.js"); // ID08272025.n
 const {
+  MimeTypes, // ID02272026.n
+  HttpHeaders, // ID02272026.n
   AzAiServices,
   OpenAIBaseUri,
   AzureResourceUris,
@@ -52,7 +55,7 @@ function formatException(error) {
 
 async function getOpenAICallMetadata(req, element, appType) { // ID08272025.n
   const meta = new Map();
-  meta.set('Content-Type', 'application/json');
+  meta.set(HttpHeaders.ContentType, MimeTypes.Json); // ID02272026.n
 
   let bearerToken = req.headers['Authorization'] || req.headers['authorization'];
   // if (appType === AzAiServices.OAI) { // ID09162025.o
@@ -61,17 +64,17 @@ async function getOpenAICallMetadata(req, element, appType) { // ID08272025.n
   if (bearerToken && !req.authInfo) {
     if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true")
       bearerToken = await getAccessToken(req, AzureResourceUris.AzureCognitiveServices);
-    meta.set('Authorization', bearerToken);
+    meta.set(HttpHeaders.Authorization, bearerToken); // ID08272025.n
     logger.log({ level: "debug", message: "[%s] getOpenAICallMetadata(): Using bearer token (Client/MID-IMDS) for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, req.id] });
   }
   else { // If Authorization header is present & API Gateway auth is configured then use MID Auth or API key to authenticate to backend
     if (process.env.AZURE_AI_SERVICE_MID_AUTH === "true") {
       bearerToken = await getAccessToken(req, AzureResourceUris.AzureCognitiveServices);
-      meta.set('Authorization', bearerToken);
+      meta.set(HttpHeaders.Authorization, bearerToken); // ID08272025.n
       logger.log({ level: "debug", message: "[%s] getOpenAICallMetadata(): Using bearer token (MID-IMDS) for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, req.id] });
     }
     else {
-      const authHdrKey = element.uri.includes(OpenAIBaseUri) || (appType === AzAiServices.AzAiModelInfApi) ? 'Authorization' : 'api-key'; // ID09162025.n
+      const authHdrKey = element.uri.includes(OpenAIBaseUri) || (appType === AzAiServices.AzAiModelInfApi) ? HttpHeaders.Authorization : 'api-key'; // ID09162025.n, ID02272026.n
       const authHdrVal = element.uri.includes(OpenAIBaseUri) || (appType === AzAiServices.AzAiModelInfApi) ? "Bearer " + element.apikey : element.apikey; // ID09162025.n
       // meta.set('api-key', element.apikey);
       meta.set(authHdrKey, authHdrVal);
@@ -105,6 +108,7 @@ async function getOpenAICallMetadata(req, element, appType) { // ID08272025.n
  * @param {*} epinfo AI App Endpoint metrics object
  * @param {*} endpoints AI App Endpoint object
  * @param {*} messages LLM request/payload
+ * @param {*} appType The type of AI Application (used to determine the auth mechanism and other metadata for the API call)
  * @returns 
  */
 async function callAiAppEndpoint(
@@ -149,7 +153,7 @@ async function callAiAppEndpoint(
 
       response = await fetch(  // Synchronous call
         element.uri, {
-        method: 'post',
+        method: HttpMethods.POST, // ID02272026.n
         headers: hdrs,
         body: JSON.stringify(messages)
       });
@@ -165,12 +169,13 @@ async function callAiAppEndpoint(
           data.usage, // ID08252025.n
           respTime);
 
-        logger.log({ level: "info", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Execution Time: %d", splat: [scriptName, req.id, element.uri, status, response.statusText, Date.now() - stTime] });
+        logger.log({ level: "info", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  Target Endpoint: %s\n  Endpoint ID: %s\n  Status: %s\n  Status Text: %s\n  Execution Time: %d", splat: [scriptName, req.id, element.uri, element.id, status, response.statusText, Date.now() - stTime] });
 
         return data; // 200 All OK
       }
       else if (status === 429) {
         data = await response.json();
+        // console.log("****** ENDPOINT IS RATE LIMITED ********");
 
         const retryAfterHeader = response.headers.get('retry-after');
         const retryAfterSecs = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 0;
@@ -178,12 +183,12 @@ async function callAiAppEndpoint(
           retryAfter = retryAfter > 0 ? Math.min(retryAfter, retryAfterSecs) : retryAfterSecs;
         metricsObj.updateFailedCalls(status, retryAfterSecs);
 
-        logger.log({ level: "warn", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Message: %s\n  Status Text: %s\n  Retry seconds: %d", splat: [scriptName, req.id, element.uri, status, data, response.statusText, retryAfterSecs] });
+        logger.log({ level: "warn", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  Target Endpoint: %s\n  Endpoint ID: %s\n  Status: %s\n  Message: %s\n  Status Text: %s\n  Retry seconds: %d", splat: [scriptName, req.id, element.uri, element.id, status, JSON.stringify(data, null, 2), response.statusText, retryAfterSecs] });
       }
       else { // Authzn failed!
         data = await response.text();
 
-        logger.log({ level: "warn", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message: %s", splat: [scriptName, req.id, element.uri, status, response.statusText, data] });
+        logger.log({ level: "warn", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  Target Endpoint: %s\n  Endpoint ID: %s\n  Status: %s\n  Status Text: %s\n  Message: %s", splat: [scriptName, req.id, element.uri, element.id, status, response.statusText, data] });
       };
     }
     catch (error) {
@@ -237,7 +242,7 @@ async function vectorizeQuery(req, epinfo, endpoints, prompt) { // ID03052025.n
       // ID03052025.en
 
       response = await fetch(element.uri, {
-        method: 'post',
+        method: HttpMethods.POST, // ID02272026.n
         // headers: { 'Content-Type': 'application/json', 'api-key': element.apikey }, ID03052025.o
         headers: hdrs, // ID03052025.n
         body: JSON.stringify(reqBody)
@@ -555,7 +560,7 @@ async function createL2CacheCollection(serverId, appId, level2Config) {
       default_segment_number: 2
     },
   };
-  headers['Content-Type'] = 'application/json';
+  headers[HttpHeaders.ContentType] = MimeTypes.Json; // ID02272026.n
 
   try {
     await fetchWithRetry(url, {
@@ -576,7 +581,7 @@ async function cleanupL2ExpiredQdrantEntries(srvId, appId, config) {
   const cutoff = Date.now() - config.timeToLiveInMs;
   try {
     const url = `${config.qdrantUri}/collections/${collectionName}/points/delete`;
-    const headers = { "Content-Type": "application/json", "api-key": config.apikey };
+    const headers = { [HttpHeaders.ContentType]: MimeTypes.Json, "api-key": config.apikey }; // ID02272026.n
 
     const resp = await fetchWithRetry(url, {
       method: HttpMethods.POST,

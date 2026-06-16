@@ -7,6 +7,7 @@
  * Version: 2.1.1
  *
  * Notes:
+ * ID05122026: ganrad: v3.0.1: This script is deprecated.
 */
 
 const { useAzureMonitor } = require("@azure/monitor-opentelemetry");
@@ -32,7 +33,6 @@ class SpanEnrichingProcessor {
         span.attributes["CustomDimension2"] = "value2";
     }
 }
-  
 
 function initializeTelemetry(srvVersion) {
 

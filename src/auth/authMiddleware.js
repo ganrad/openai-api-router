@@ -9,6 +9,7 @@
  * Version (Introduced): 2.8.5
  *
  * Notes:
+ * ID04232026: ganrad: v3.0.1: (Enhancement) Added 'read' permission for tool execution plan and details endpoint.
  */
 
 const path = require('path');
@@ -86,6 +87,7 @@ function checkResourceAuthorization(req, uid, permsArray) {
     case GatewayRouterEndpoints.MetricsEndpoint:
     case GatewayRouterEndpoints.RequestsEndpoint:
     case GatewayRouterEndpoints.SessionsEndpoint:
+    case GatewayRouterEndpoints.ToolTraceEndpoint: // ID04232026.n
       allowed = permsArray.includes(permissionsConfig.RouterWritePermission) || permsArray.includes(permissionsConfig.RouterReadPermission);
       break;
     case GatewayRouterEndpoints.ReconfigureEndpoint:

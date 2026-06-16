@@ -11,13 +11,14 @@
  * ID10132025: ganrad: v2.7.0: (Enhancement) An AI Application can be enabled (active) or disabled.  In the disabled state, the AI gateway will
  * not accept inference requests and will return an exception.
  * ID10142025: ganrad: v2.7.0: (Enhancement) Introduced new feature to support normalization of AOAI output.
- *
+ * ID04252026: ganrad: v3.0.1: (Bugfix) Added missing elements for exposeA2AEndpoint, normalizationPolicy, normalizerSettings, 
+ * remoteServerConfig & remoteServerSettings.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('../utilities/logger');
 
-const { ServerTypes, EndpointRouterTypes, AiAppGateway } = require("../utilities/app-gtwy-constants");
+const { ServerTypes, EndpointRouterTypes, AiAppGateway, AiGatewayTypes } = require("../utilities/app-gtwy-constants");
 const AbstractDataHandler = require('./abstract-data-handler');
 
 class InstanceInfoDataHandler extends AbstractDataHandler {
@@ -44,6 +45,7 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
             weight: element.weight, // ID06162025.n
             rpm: element.rpm,
             uri: element.uri,
+            ...(element.normalizationPolicy && {normalizationPolicy: element.normalizationPolicy}), // ID04252026.n
             model: element.model,
             payloadThreshold: element.payloadThreshold,
             task: element.task,
@@ -62,14 +64,26 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
         appeps.set("description", aiapp.description);
         appeps.set("type", aiapp.appType);
         appeps.set("isActive", aiapp.isActive); // ID10132025.n
+        appeps.set("exposeA2AEndpoint", aiapp.exposeA2AEndpoint || false); // ID04252026.n
         if (aiapp.searchAiApp)
           appeps.set("searchAiApp", aiapp.searchAiApp);
-        if (aiapp.normalizeOutput) // ID10142025.n
-          appeps.set("normalizeOutput", aiapp.normalizeOutput); 
+        if (aiapp.normalizerSettings) // ID10142025.n; ID04252026.n
+          appeps.set("normalizerSettings", aiapp.normalizerSettings); // ID04252026.n
         appeps.set("cacheSettings", {
           useCache: aiapp.cacheSettings.useCache,
           searchType: aiapp.cacheSettings.searchType,
           searchDistance: aiapp.cacheSettings.searchDistance,
+          ...(aiapp.cacheSettings.level1Cache && { // ID04252026.n
+            level1Cache: aiapp.cacheSettings.level1Cache
+          }),
+          ...(aiapp.cacheSettings.level2Cache && { // ID04252026.n
+            level2Cache: {
+              qdrantUri: aiapp.cacheSettings.level2Cache.qdrantUri,
+              searchType: aiapp.cacheSettings.level2Cache.searchType,
+              searchDistance: aiapp.cacheSettings.level2Cache.searchDistance,
+              timeToLiveInMs: aiapp.cacheSettings.level2Cache.timeToLiveInMs
+            }
+          }),
           searchContent: aiapp.cacheSettings.searchContent,
           entryExpiry: aiapp.cacheSettings.entryExpiry
         });
@@ -92,6 +106,8 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
             followupPrompt: aiapp.personalizationSettings.followupPrompt
           });
         // ID05142025.en
+        if (aiapp.remoteServerSettings)
+          appeps.set("remoteServerSettings", aiapp.remoteServerSettings); // ID04252026.n
         // ID08252025.sn
         if (aiapp.budgetSettings)
           appeps.set("budgetSettings", {
@@ -106,7 +122,8 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
 
     let resp_obj = {
       serverName: context.serverId,
-      serverType: context.serverType,
+      // serverType: context.serverType, // ID04252026.o
+      serverType: AiGatewayTypes.SingleAgent, // ID04252026.n
       serverVersion: AiAppGateway.Version,
       serverConfig: {
         host: serverContext.host,
@@ -127,7 +144,19 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
         memoryEnabled: process.env.API_GATEWAY_STATE_MGMT,
         memoryInvalidationSchedule: process.env.API_GATEWAY_MEMORY_INVAL_SCHEDULE
       },
-      budgetConfig: context.budgetConfig, // ID08252025.n
+      ...(context.remoteServerConfig && { remoteServerConfig: context.remoteServerConfig.map(element => ({ // ID04252026.n
+        id: element.id,
+        description: element.description,
+        protocol: element.protocol,
+        uri: element.uri,
+        tags: element.tags,
+        serverCacheTTL: element.serverCacheTTL,
+        uriToFetchToolSchemas: element.uriToFetchToolSchemas,
+        auth: {
+          authType: element.auth.authType
+        }
+      }))}),
+      ...(context.budgetConfig && {budgetConfig: context.budgetConfig}), // ID08252025.n; ID04252026.n
       aiApplications: appcons,
       containerInfo: {
         imageID: process.env.IMAGE_ID,

@@ -9,6 +9,7 @@
  * Notes:
  * ID03122025: ganrad: v2.3.0: (Enhancement) Ai App Gateway API request ID will be saved within the span in AppInsights. This should
  * help with troubleshooting performance issues.
+ * ID05122026: ganrad: v3.0.1: This script is deprecated! Refer to './azureMonitor-v2.js'.
 */
 
 const { AzureMonitorTraceExporter } = require('@azure/monitor-opentelemetry-exporter');

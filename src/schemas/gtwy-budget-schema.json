@@ -54,7 +54,6 @@
                         },
                         "required": [
                             "inputTokensCostPer1k",
-                            "cachedInputTokensCostPer1k",
                             "outputTokensCostPer1k"
                         ],
                         "additionalProperties": false

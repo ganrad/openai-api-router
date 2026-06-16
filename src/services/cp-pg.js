@@ -12,6 +12,8 @@
  * b) Provide info. on which server instance actually created a record in the cache table.
  * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced multiple levels/layers for semantic cache (l1, l2 & pg).
  * ID12042025: ganrad: v2.9.5: (Refactored code) Log error message details.
+ * ID05222026: ganrad: v3.0.1: (Enhancement) Made the PostgreSQL connection pool code more robust.
+ * 
 */
 
 const path = require('path');
@@ -33,13 +35,33 @@ const dropTblStmts = [
   "DROP TABLE IF EXISTS apigtwycache;"
 ];
 
-// Initialize the DB connection pool
+// 1. Initialize the DB connection pool
 const pool = new pg.Pool(pgConfig.db);
+
+// 2. Global pool error handler (CRITICAL: prevents crashes on idle clients) ID05222026.n
+pool.on('error', (err, client) => {
+  logger.log({level: 'error', message: '[%s] init(): Unexpected error on idle PostgreSQL client:\n%s', splat: [scriptName, err.message]});
+
+  // Do not process.exit(-1) unless you want the process manager (like PM2) to restart it
+});
 
 // Initialize pgvector library
 pool.on('connect',async function (client) {
-  await client.query('CREATE EXTENSION IF NOT EXISTS vector');
-  await pgvector.registerType(client);
+  try { // ID05222026.n
+    await client.query('CREATE EXTENSION IF NOT EXISTS vector');
+    await pgvector.registerType(client);
+  }
+  catch (err) {
+    logger.log({level: 'error', message: '[%s] init(): Failed to initialize pgvector on new client:\n%s', splat: [scriptName, err.message]});
+    // Safely release or handle the broken client if needed
+    try {
+      // Forcefully terminate this specific broken client connection
+      await client.end();
+    } 
+    catch (closeErr) {
+      logger.log({level: 'error', message: '[%s] init(): Error while trying to close broken client:\n%s', splat: [scriptName, closeErr.message]});
+    };
+  };
 });
 
 // Check Vector DB Connection

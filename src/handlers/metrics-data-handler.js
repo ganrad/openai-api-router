@@ -8,14 +8,17 @@
  *
  * Notes:
  * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced multiple levels/layers for semantic cache (l1, l2 & pg)
+ * ID05132026: ganrad: v3.0.1: (Enhancement; Refactored) Added support for exposing EP metrics in Prometheus text exposition format.
  *
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('../utilities/logger');
 
-const { ServerTypes } = require("../utilities/app-gtwy-constants");
+const { ServerTypes, EpMetricsOutputFormat } = require("../utilities/app-gtwy-constants"); // ID05132026.n
 const AbstractDataHandler = require('./abstract-data-handler');
+const { PrometheusEpMetricsFormatter } = require('../utilities/prometheus-ep-metrics-formatter'); // ID05132026.n
+const SUPPORTED_METRICS_FORMATS = new Set([EpMetricsOutputFormat.JSON, EpMetricsOutputFormat.PROMETHEUS]); // ID05132026.n
 
 class MetricsDataHandler extends AbstractDataHandler {
   constructor() {
@@ -80,8 +83,104 @@ class MetricsDataHandler extends AbstractDataHandler {
 
     return ({
       http_code: 200,
+      format: EpMetricsOutputFormat.JSON, // ID05132026.n
       data: srv_data
     });
+  }
+
+  #getMetricsJson(reqid, application, epMetrics, appCacheMetrics) { // ID05132026.n
+    let metricsInfo;
+
+    if (epMetrics) { // A map keyed by endpoint uri's containing endpoint metrics data
+      let priorityIdx = 0;
+      let epDict = [];
+
+      epMetrics.forEach(function (value, key) {
+        let dict = {
+          id: value.getUniqueId(),
+          endpoint: key,
+          priority: priorityIdx,
+          metrics: value.toJSON()
+        };
+        epDict.push(dict);
+        priorityIdx++;
+      });
+
+      metricsInfo = {
+        applicationId: application.appId,
+        appType: application.appType,
+        description: application.description,
+        // cacheMetrics: cacheMetrics.getCacheMetrics(appId), // ID11212025.o
+        cacheMetrics: (appCacheMetrics) ? appCacheMetrics.getAiAppCacheMetricsInfo(EpMetricsOutputFormat.JSON) : null, // ID11212025.n
+        endpointMetrics: epDict
+      };
+    }
+    else { // AI Application has not been invoked yet. Hence connection metrics have not been lazy loaded.
+      metricsInfo = {
+        applicationId: application.appId,
+        appType: application.appType,
+        description: application.description,
+        cacheMetrics: (appCacheMetrics) ? appCacheMetrics.getAiAppCacheMetricsInfo(EpMetricsOutputFormat.JSON) : null, // ID11212025.n
+        /** ID11212025.o
+        cacheMetrics: {
+          hitCount: 0,
+          avgScore: 0.0
+        },
+        */
+        endpointMetrics: []
+      };
+    };
+
+    return (metricsInfo);
+  }
+
+  #updateEndpointStats(data, appName, endpointName, stats) {
+    // Safely initialize the application object
+    data[appName] ||= { endpoints: {} }; // Logical nullish assignment
+
+    // Assign the endpoint payload directly
+    data[appName].endpoints[endpointName] = stats;
+  }
+
+  /**
+    ----------- Structure of the metrics snapshot object ---------
+    {
+      appName: 'ai-gk-chatbot',
+      endpoints: {
+        endpointName: {}, ...
+      },
+      cacheMetrics: {...}
+    }
+  ]
+  */
+  #getMetricsSnapshot(reqid, serverId, application, epMetrics, appCacheMetrics) {
+    if (!epMetrics)
+      return("No data found");
+
+    const formatter = new PrometheusEpMetricsFormatter(
+      {
+        namespace: 'rapid',
+        subsystem: 'ai_application_gateway',
+        staticLabels: {
+          service: (process.env.POD_NAME) ? serverId + '-' + process.env.POD_NAME : serverId // Unique identity of the ai gateway server
+        },
+        emitApplicationRollups: true
+      }
+    );
+
+    const snapshot = {};
+    epMetrics.forEach((value, key) => {
+      const epId = value.getUniqueId();
+      const stats = value.getMetricsSnapshot();
+
+      this.#updateEndpointStats(snapshot, application.appId, epId, stats);
+    });
+    if ( snapshot[application.appId].endpoints && appCacheMetrics )
+      snapshot[application.appId].cacheMetrics = appCacheMetrics.getAiAppCacheMetricsInfo(EpMetricsOutputFormat.PROMETHEUS);
+
+    logger.log({ level: "debug", message: "[%s] %s.#getMetricsSnapshot():\n  Req ID: %s\n  AI Application ID: %s\n  Metrics Data:\n%s", splat: [scriptName, this.constructor.name, reqid, application.appId, JSON.stringify(snapshot, null, 2)] });
+
+    return (formatter.format(snapshot));
   }
 
   #retrieveAiAppMetrics(
@@ -91,12 +190,14 @@ class MetricsDataHandler extends AbstractDataHandler {
     cacheMetrics) { // ID04172025.n
     const appsConfig = req.targeturis; // AI application configurations
     let application = this._getAiApplication(appId, appsConfig);
-    logger.log({ level: "info", message: "[%s] %s.#retrieveAiAppMetrics():\n  Req ID: %s\n  AI Application ID: %s", splat: [scriptName, this.constructor.name, req.id, appId] });
+    const format = req.query.format || EpMetricsOutputFormat.JSON;
+    logger.log({ level: "info", message: "[%s] %s.#retrieveAiAppMetrics():\n  Req ID: %s\n  AI Application ID: %s\n  Metrics Format: %s", splat: [scriptName, this.constructor.name, req.id, appId, format] });
 
     if (!application) {
       return (
         {
           http_code: 404, // Resource not found!
+          format: EpMetricsOutputFormat.JSON,
           data: {
             error: {
               target: req.originalUrl,
@@ -108,52 +209,48 @@ class MetricsDataHandler extends AbstractDataHandler {
       );
     };
 
+    if (!SUPPORTED_METRICS_FORMATS.has(format)) {
+      return (
+        {
+          http_code: 400, // Bad request!
+          format: EpMetricsOutputFormat.JSON,
+          data: {
+            error: {
+              target: req.originalUrl,
+              message: `Invalid metrics format [${format}]. Supported values: [${Array.from(SUPPORTED_METRICS_FORMATS).join(', ')}]. Unable to process request.`,
+              code: "badRequest"
+            }
+          }
+        }
+      );
+    };
+
     let payload = null;
+    let responseHdrs;
+    // Set the response headers
+    if (format === EpMetricsOutputFormat.JSON) // ID05132026.n
+      responseHdrs = {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+      };
+    else
+      responseHdrs = {
+        'Content-Type': 'text/plain; version=0.0.4; charset=utf-8',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+      };
+
     let appConnection = appConnections.getConnection(appId);
     const appCacheMetrics = cacheMetrics.getCacheMetrics(appId); // ID11212025.n
-    if (appConnection) { // A map keyed by endpoint uri's containing endpoint metrics data
-      let priorityIdx = 0;
-      let epDict = [];
 
-      appConnection.forEach(function (value, key) {
-        let dict = {
-          id: value.getUniqueId(),
-          endpoint: key,
-          priority: priorityIdx,
-          metrics: value.toJSON()
-        };
-        epDict.push(dict);
-        priorityIdx++;
-      });
-
-      payload = {
-        applicationId: appId,
-        appType: application.appType,
-        description: application.description,
-        // cacheMetrics: cacheMetrics.getCacheMetrics(appId), // ID11212025.o
-        cacheMetrics: (appCacheMetrics) ? appCacheMetrics.getAiAppCacheMetricsInfo() : null, // ID11212025.n
-        endpointMetrics: epDict
-      };
-    }
-    else { // AI Application has not been invoked yet. Hence connection metrics have not been lazy loaded.
-      payload = {
-        applicationId: appId,
-        appType: application.appType,
-        description: application.description,
-        cacheMetrics: (appCacheMetrics) ? appCacheMetrics.getAiAppCacheMetricsInfo() : null, // ID11212025.n
-        /** ID11212025.o
-        cacheMetrics: {
-          hitCount: 0,
-          avgScore: 0.0
-        },
-        */
-        endpointMetrics: []
-      };
-    }
+    payload = (format === EpMetricsOutputFormat.JSON) ? 
+      this.#getMetricsJson(req.id, application, appConnection, appCacheMetrics) : 
+      this.#getMetricsSnapshot(req.id, appsConfig.serverId, application, appConnection, appCacheMetrics); // ID05132026.n
 
     return (
       {
         http_code: 200,
+        format,
+        responseHdrs,
         data: payload
       }
     );

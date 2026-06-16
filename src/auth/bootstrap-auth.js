@@ -15,7 +15,9 @@
  * by it's unique URI.
  * ID10252025: ganrad: v2.8.5: (Refactoring) AI App Gateway security implementation (library) switched to jwks-rsa. Eliminated dependency
  * on deprecated 'passport' and 'passport-azure-ad' packages.
- * ID10292025: ganrad: v2.8.5: (Deprecated) This script is deprecated & no longer used. Refer to 'authMiddleware.js' script.
+ * ID10292025: ganrad: v2.8.5: (Refactoring) The 'initAuth' function is deprecated & no longer used. Refer to 'authMiddleware.js' script.
+ * ID05122026: ganrad: v3.0.1: (Enhancement) Updated the 'getAccessToken' function to retrieve token for system managed identity when AI App Gateway
+ * is run on Az Container Apps and other application runtimes.
  */
 
 // const passport = require('passport');
@@ -160,14 +162,16 @@ async function getAccessToken(req, resourceUri) { // ID03052025.n, ID08212025.n
   
   // Make a fetch call to Azure instance metadata service (IMDS)
   try {
-      const endpoint = 'http://169.254.169.254/metadata/identity/oauth2/token';
+      // const endpoint = 'http://169.254.169.254/metadata/identity/oauth2/token'; ID05122026.o
+      const endpoint = process.env.IDENTITY_ENDPOINT || 'http://169.254.169.254/metadata/identity/oauth2/token'; // ID05122026.n
       // const resource = 'https://cognitiveservices.azure.com'; // set the right audience! ID08212025.o
       const apiVersion = '2019-08-01';
       // const response = await fetch(`${endpoint}?resource=${resource}&api-version=${apiVersion}`, { ID08212025.o
       const response = await fetch(`${endpoint}?resource=${resourceUri}&api-version=${apiVersion}`, { // ID08212025.n
         method: 'GET',
         headers: {
-            'Metadata': 'true'
+            'Metadata': 'true',
+            ...(process.env.IDENTITY_HEADER && {'X-IDENTITY-HEADER': process.env.IDENTITY_HEADER}) // ID05122026.n (required to protect against SSRF attacks!)
         }
       });
 
@@ -183,7 +187,7 @@ async function getAccessToken(req, resourceUri) { // ID03052025.n, ID08212025.n
       };
   } 
   catch (err) {
-    logger.log({ level: "warn", message: "[%s] getAccessToken(): Error retrieving access token.\n  Request ID: %s\n  Resource URI: %s\n  Error:\n  %s", splat: [scriptName, req.id, resourceUri, err] });
+    logger.log({ level: "warn", message: "[%s] getAccessToken(): Error retrieving access token.\n  Request ID: %s\n  Resource URI: %s\n  Error:\n  %s", splat: [scriptName, req.id, resourceUri, err.message] });
     // console.error('Error retrieving access token:', err);
   };
 

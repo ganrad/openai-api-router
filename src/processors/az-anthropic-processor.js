@@ -1,117 +1,46 @@
 /**
- * Name: Azure OAI processor
- * Description: This class implements a processor for executing Azure Open AI API requests.
+ * Name: Azure Anthropic (Claude) Messages API processor
+ * Description: This class implements a processor for executing A\ on Azure Messages API requests.
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
- * Date: 04-24-2024
+ * Date: 06-04-2026
+ * Version (Introduced): v3.0.1
  *
  * Notes:
- * ID04272024: ganrad: Switched to centralized logging with winstonjs
- * ID05062024: ganrad: Introduced memory feature (state management) for appType = Azure OpenAI Service
- * ID05282024: ganrad: (Bugfix) Reset the 'retryAfter' value when the request is served with an available endpoint.
- * ID05312024: ganrad: (Bugfix) Save only the message content retrieved from cache in memory for a new thread.
- * ID06052024: ganrad: (Enhancement) Added streaming support for Azure OpenAI Chat Completion API call(s).
- * ID06132024: ganrad: (Enhancement) Adapted gateway error messages to be compliant with AOAI Service error messages.
- * ID07292024: ganrad: (Minor update) Print authenticated user name along with the request.
- * ID09242024: ganrad: (Bugfix) Resolved JSON.parse error in streaming mode. Simplified streaming logic to improve performance
- * and readability.
- * ID10302024: ganrad: v2.1.0: (Enhancement) Support MSFT Entra ID auth (managed identity) for Azure OAI API calls (In addition
- * to supporting API Keys).
- * ID11052024: ganrad: v2.1.0: (Enhancement) Added support for LLMs which use Azure AI Model Inference API (Chat completion).
- * ID11062024: ganrad: v2.1.0: (Bugfix) Capture AI Model Inference API 422's.
- * ID11082024: ganrad: v2.1.0: (Enhancement) Added new field 'exec_time_secs' (~ execution time) to the 'apigtwyprompts' table.
- * ID11112024: ganrad: v2.1.0: Introduced instanceName (server ID + '-' + Pod Name) field.  Instance name will be stored along with cache, memory & prompt 
- * records. This will allow cache and memory invalidators associated with an instance to only operate on records created by self. 
- * Users can also easily identify which server instance served a request.  This feature is important when multiple server instances are deployed
- * on a container platform ~ Kubernetes.
- * ID11152024: ganrad: v2.1.0: (Bugfix)  Both API Gateway Entra ID Auth + AOAI MID Auth should not be used together!  Only one of them can be used.
- * ID02112025: ganrad: v2.2.0: (Enhancement) Store AOAI API response headers in 'apigtwyprompts' table.
- * ID02142025: ganrad: v2.2.0: (Enhancement) Store user session (thread ID) in 'apigtwyprompts' table.
- * ID02152025: ganrad: v2.2.0: (Enhancement) For streamed API calls, include token usage info. before persisting the request in 
- * 'apigtwyprompts' table.
- * ID02212025: ganrad: v2.2.1: (Experimental: To do) Count tokens in request body and skip caching the request + response if token size is greater than 8192.
- * This is the max input token limit for AOAI embedding model(s).
- * ID03052025: ganrad: v2.3.0: (Enhancement) Introduced support for using RAPID host's system MID for authenticating against Azure AI Service(s).
- * Restructured code.
- * ID03142025: ganrad: v2.3.0: (Error-proofing ~ poka-yoke) Disable caching for AOAI Chat Completion API function calls.
- * ID03262025: ganrad: v2.3.1: (Bugfix) a) Do a case insensitive match for authorization http header. b) Log the backend uri index when
- * an exception is encountered.
- * ID04302025: ganrad: v2.3.2: (Enhancement) When state mgmt is enabled for an AI App, track no. of user sessions/threads in metrics 
- * collection interval.
- * ID05082025: ganrad: v2.3.5: (Enhancement) When memory is turned on for an AI App, session affinity to backend URI can be enabled using a boolean
- * flag ~ memorySettings.affinity.
- * ID05142025: ganrad: v2.3.8: (Enhancement) Introduced user personalization feature ~ Long term memory.
- * ID06162025: ganrad: v2.3.9: (Enhancements) Listed below.
- *   1) When session affinity or weighted routing is enabled, retry all endpoints before returning.
- *   2) Introduced weighted random routing based on pre-defined endpoint weights.
- *   3) Extension of #2: Dynamically adjust the endpoint weights based on latency/response times of backend endpoints.
- *   4) Introduced Least Recently Used (LRU) and Least Connections Used (LCU) endpoint routers.
- *   5) Updated auth header to support OpenAI API calls.
- * ID07312025: ganrad: v2.4.0: (Refactored code) Globally unique ID's are generated using a single function defined in module ~ app-gtwy-constants.js.
- * ID08052025: ganrad: v2.4.0: (Enhancement) Introduced payload size based backend API routing.
- * ID08202025: ganrad: v2.4.0: (Refactored code) Replaced hardcoded strings with constants. Http headers should only be sent once when in 
- * streaming mode especially when the backend (AOAI) API connection fails & multiple connections are re-tried.
- * ID08212025: ganrad: v2.4.0: (Enhancement) The method used to obtain Azure Entra access token (MID Auth) now supports multiple resource uris.
- * ID08272025: ganrad: v2.5.0: (Refactored code) Move the function to set AI Foundry API call request headers to 'helper-funcs.js'.
- * ID08292025: ganrad: v2.5.0: (Enhancement) Introduced BudgetAwareRouter implementation.
- * ID09022025: ganrad: v2.5.0: (Enhancement) Introduced AdaptiveBudgetAwareRouter implementation.
- * ID09162025: ganrad: v2.6.0: (Enhancement) Introduced user feedback capture for models/agents deployed on Azure AI Foundry.
- * ID09172025: ganrad: v2.6.0: (Bugfix) Generate unique uri's for indexing endpoint metrics object.
- * ID10082025: ganrad: v2.7.0: (Enhancement) Added support for Agent to Agent (A2A) protocol.
- * ID10142025: ganrad: v2.7.0: (Enhancement) Introduced new feature to support normalization of AOAI output. 
- * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
- * ID11032025: ganrad: v2.9.0: (New Feature) Introduced endpoint normalization policy feature to support transformation of AOAI request/response payload/data
- * structures in the request processing pipeline.
- * ID11182025: ganrad: v2.9.5: (Enhancement) Introduced support for Azure AI Model v1 chat/completions API
- * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced multiple levels/layers for semantic cache (l1 = memory, l2 = Qdrant & l3 = PostgreSQL)
- * ID02232026: ganrad: v3.0.1: (Enhancement) Introduced MCP Server tools integration. This feature integrates MCP tool invocation into the 
- * inference processing pipeline, allowing supplemental context to be supplied to the LLM to improve response quality.
- * ID02282026: ganrad: v3.0.1: (Enhancement) When MCP Server tools integration is enabled, the tool response(s) will be included in the model context.
- * ID03172026: ganrad: v3.0.1: (Enhancement) Added support for multiple remote server types - MCP, OpenAPI and gRPC.
- * ID04222026: ganrad: v3.0.1: (Enhancement) Added persistence layer for capturing tool plan and execution details.
- * ID04302026: ganrad: v3.0.1: (Enhancement) Added tools execution count to apigtwyprompts table.
- * ID05202026: ganrad: v3.0.1: (Enhancement) Introduced new feature (events API) so registered Rapid clients (UI) can receive 
- * status/trace events in real-time.
- * ID05222026: ganrad: v3.0.1: (Bugfix) When endpoints are rate limited, incorrect http status codes and response messages were being returned.
- * ID06032026: ganrad: v3.0.1: (Bugfix) HTTP headers included in the input normalizer policy are now sent to the target model deployment endpoint.
- * ID06062026: ganrad: v3.0.1: (Bugfix) When model inferencing returned status 400; multiple prompt table records were getting created.
  * 
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('../utilities/logger.js');
 
-// const fetch = require("node-fetch"); // ID06052024.o
+const CacheDao = require("../utilities/cache-dao.js");
+const cachedb = require("../services/cp-pg.js");
+const { TblNames, PersistDao } = require("../utilities/persist-dao.js");
+const persistdb = require("../services/pp-pg.js");
+const UserMemDao = require("../utilities/user-mem-dao.js");
 
-const CacheDao = require("../utilities/cache-dao.js"); // ID02202024.n
-const cachedb = require("../services/cp-pg.js"); // ID02202024.n
-const { TblNames, PersistDao } = require("../utilities/persist-dao.js"); // ID03012024.n
-const persistdb = require("../services/pp-pg.js"); // ID03012024.n
-const UserMemDao = require("../utilities/user-mem-dao.js"); // ID05142025.n
-// const pgvector = require("pgvector/pg"); // ID02202024.n, ID11212025.o
 const {
-  generateGUID, // ID07312025.n 
+  generateGUID,
   DefEmbeddingModelTokenLimit,
   CustomRequestHeaders,
-  EndpointRouterTypes, // ID06162025.n
-  OpenAIChatCompletionMsgRoleTypes, // ID08202025.n
-  EndpointMiscConstants, // ID09162025.n
-  AiGatewayInboundReqApiType, // ID10082025.n
-  A2AProtocolAttributes, // ID10082025.n
-  A2AErrorCodes // ID10082025.n
-} = require("../utilities/app-gtwy-constants.js"); // ID05062024.n; ID06162025.n
-// const { randomUUID } = require('node:crypto'); // ID05062024.n; ID07312025.o
+  EndpointRouterTypes,
+  OpenAIChatCompletionMsgRoleTypes,
+  EndpointMiscConstants,
+  AiGatewayInboundReqApiType,
+  A2AProtocolAttributes,
+  A2AErrorCodes
+} = require("../utilities/app-gtwy-constants.js");
 
 const { encode } = require('gpt-tokenizer'); // ID02212025.n
-const { getExtractionPrompt, updateSystemMessage, storeUserFacts } = require("../utilities/lt-mem-manager.js"); // ID05142025.n
-const { getOpenAICallMetadata, callAiAppEndpoint, retrieveUniqueURI } = require("../utilities/helper-funcs.js"); // ID05142025.n, ID09172025.n, ID10142025.n, ID11032025.o
-const { streamA2AResponse } = require("../utilities/a2a-helper-funcs.js"); // ID10082025.n
-const { processBatch, processStream } = require("../utilities/payload-normalizer-v2.js"); // ID11032025.n
-const { RemoteServerTools } = require("../utilities/remote-server-tools.js"); // ID02232026.n; ID03172026.n
-const { ToolPlannerExecutor } = require("../utilities/tool-planner-executor.js"); // ID02282026.n; ID03172026.n
-const { sendStatus, sendTrace, sendError, sendDone } = require("../utilities/sse-event-broker.js"); // ID05202026.n
+const { getExtractionPrompt, updateSystemMessage, storeUserFacts } = require("../utilities/lt-mem-manager.js");
+const { getOpenAICallMetadata, callAiAppEndpoint, retrieveUniqueURI } = require("../utilities/helper-funcs.js");
+const { streamA2AResponse } = require("../utilities/a2a-helper-funcs.js");
+const { processBatch, processStream } = require("../utilities/payload-normalizer-v2.js");
+const { RemoteServerTools } = require("../utilities/remote-server-tools.js");
+const { ToolPlannerExecutor } = require("../utilities/tool-planner-executor.js");
+const { sendStatus, sendTrace, sendError, sendDone } = require("../utilities/sse-event-broker.js");
 
-class AzOaiProcessor {
+class AzAnthropicProcessor {
 
   constructor() {
     this.streamed_response_sent = false;  // ID08202025.n
@@ -144,12 +73,12 @@ class AzOaiProcessor {
   }
 
   #checkAndPruneCtxMsgs(count, msgs) {
-    let aCount = 3 + (count * 2);
+    let aCount = count * 2;
 
     let mLength = msgs.length;
 
     if (mLength > aCount)
-      msgs.splice(3, 2); // 1) Keep the original 3 messages => role = system + user and assistant & 2) Delete the next 2 messages (role=user + assistant)
+      msgs.splice(2, 2); // 1) Keep the original 2 messages => role = user and assistant & 2) Delete the next 2 messages (role=user + assistant)
 
     return (msgs)
   }
@@ -481,93 +410,6 @@ class AzOaiProcessor {
     return resp_data;
   }
 
-  // Currently, streaming OYD output is not supported with A2A protocol - ID10142025.n
-  // Input/Output normalization is not supported with OYD API - ID11032025.n
-  async #streamChatCompletionOyd(req_id, t_id, app_id, router_res, oai_res, t_count) { // ID04222026.n
-    const reader = oai_res.body.getReader();
-
-    if (!this.streamed_response_sent) { // ID08202025.n
-      // Send 200 response status and headers
-      let res_hdrs = CustomRequestHeaders.RequestId;
-      router_res.setHeader('Content-Type', 'text/event-stream');
-      router_res.setHeader('Cache-Control', 'no-cache');
-      router_res.setHeader('Connection', 'keep-alive');
-      router_res.set(CustomRequestHeaders.RequestId, req_id);
-      if (t_id) {
-        res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
-        router_res.set(CustomRequestHeaders.ThreadId, t_id);
-      };
-      if (t_count) { // ID04222026.n
-        res_hdrs += ', ' + CustomRequestHeaders.ExecToolsCount;
-        router_res.set(CustomRequestHeaders.ExecToolsCount, t_count);
-      };
-      router_res.set("Access-Control-Expose-Headers", res_hdrs);
-      router_res.flushHeaders();
-
-      this.streamed_response_sent = true; // ID08202025.n
-    };
-
-    let recv_data = "";
-    let cit_data = "";
-    let chunkCount = 0;
-    let call_data = null;
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      router_res.write(value); // write the value out to router response/output stream
-
-      const decoder = new TextDecoder("utf-8");
-      const chunk = decoder.decode(value);
-      // console.log(`Decoded value: ${chunk}`);
-
-      if (chunk.startsWith("data: "))
-        chunkCount++;
-
-      if (chunkCount === 1) { // Citation data
-        const clean_data = chunk.replace(/^data: /, "").trim();
-        cit_data += clean_data;
-      };
-
-      if (chunkCount > 1) { // Content data
-        const lines = chunk.split("data:");
-        // console.log(`chunk_count: ${chunkCount}; length: ${lines.length}`);
-        const parsedLines = lines
-          .map((line) => line.replace(/^data: /, "").trim()) // Remove the "data: " prefix
-          .filter((line) => line !== "" && line !== "[DONE]") // Remove empty lines and "[DONE]"
-          .map((line) => {
-            // console.log(`Parsed Line: ${line}`);
-            return (JSON.parse(line))
-          }); // Parse the JSON string 
-
-        for (const parsedLine of parsedLines) {
-          const { choices } = parsedLine;
-          if (choices.length > 0) {
-            const { delta } = choices[0];
-            const { content } = delta;
-            if (content)
-              recv_data += content;
-
-            if (!call_data)
-              call_data = {
-                id: parsedLine.id,
-                object: parsedLine.object,
-                created: parsedLine.created,
-                model: parsedLine.model,
-                system_fingerprint: parsedLine.system_fingerprint
-              };
-          };
-        }; // end of for loop
-      };
-    }; // end of while loop
-
-    logger.log({ level: "debug", message: "[%s] %s.streamChatCompletionOyd():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Citations:\n  %s\n  Completion:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, cit_data, recv_data] });
-
-    let resp_data = this.#constructCompletionMessage(recv_data, cit_data, call_data);
-
-    return resp_data;
-  }
-
   async #streamCachedChatCompletion(
     req_id,
     t_id,
@@ -692,22 +534,9 @@ class AzOaiProcessor {
   }
   // ID06052024.en
 
-  #toolsMessagesNotPresent(msgs) { // ID03142025.n
-    let retval = true;
-    msgs.forEach(element => {
-      if (element.tool_calls) {
-        retval = false;
-
-        return;
-      }
-    });
-
-    return (retval);
-  }
-
   async processRequest(
     req, // 0
-    res, // 1 ID06052024.n
+    res, // 1
     config) { // 2
 
     let apps = req.targeturis; // Ai applications object
@@ -718,44 +547,42 @@ class AzOaiProcessor {
     const userMemConfig = arguments[6]; // ID05142025.n; AI App specific long term memory config
     const routerInstance = arguments[7]; // ID06162025.n; AI App specific endpoint router instance
     let manageState = (process.env.API_GATEWAY_STATE_MGMT === 'true') ? true : false
-    let instanceName = (process.env.POD_NAME) ? apps.serverId + '-' + process.env.POD_NAME : apps.serverId; // Server instance name ID11112024.n
-    this.request = req; // ID10082025.n; Initialize the request object
+    let instanceName = (process.env.POD_NAME) ? apps.serverId + '-' + process.env.POD_NAME : apps.serverId; // Server instance name
+    this.request = req; // Initialize the request object
     req.body_copy = req.body; // ID11032025.n; Save a copy of the request body
 
-    // State management is only supported for chat completion API!
-    if (memoryConfig && (!req.body.messages)) // If the request is not of type == chat completion
+    // State management is only supported for Messages API!
+    if (memoryConfig && (!req.body.messages)) // If the request is not of type == messages
       memoryConfig = null;
 
-    // Long term memory management is only supported for chat completion API!; ID05142025.n
-    if (userMemConfig && (!req.body.messages)) // If the request is not of type == chat completion
+    // Long term memory management is only supported for messages API!
+    if (userMemConfig && (!req.body.messages)) // If the request is not of type == messages
       userMemConfig = null;
 
     // 1. Get thread ID in request header.  Also, get the session id in request header if it's present
     // -----------------------------------
-    // let threadId = req.get(CustomRequestHeaders.ThreadId); ID10082025.o
-    let threadId = null; // ID10082025.n
-    let sessionId = null; // ID05202026.n
-    if (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) { // ID10082025.n
+    let threadId = null;
+    let sessionId = null;
+    if (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) {
       threadId = req.get(CustomRequestHeaders.ThreadId);
-      sessionId = req.get(CustomRequestHeaders.SessionId); // ID05202026.n
+      sessionId = req.get(CustomRequestHeaders.SessionId);
     }
     else {
       threadId = req.body.threadId;
       delete req.body.threadId;
     };
 
-    if ( sessionId ) { // ID05202026.n
+    if ( sessionId ) {
       sendStatus(sessionId, '🧠 Understanding request...');
       sendTrace(sessionId, `Processing Request ID: ${req.id} for AI App: ${config.appId}`);
     };
 
-    let threadStarted = false; // ID04302025.n
+    let threadStarted = false;
 
-    // console.log(`*****\nAzOaiProcessor.processRequest():\n  URI: ${req.originalUrl}\n  Request ID: ${req.id}\n  Application ID: ${config.appId}\n  Type: ${config.appType}`);
     // Imp.: User: req.authInfo?.token.name, refers to the authenticated user's request!
     logger.log({ level: "info", message: "[%s] %s.processRequest(): Request ID: %s\n  API Type: %s\n  URL: %s\n  User: %s\n  Thread ID: %s\n  Application ID: %s\n  Type: %s\n  Request Payload:\n  %s", splat: [scriptName, this.constructor.name, req.id, req.inboundApiType, req.originalUrl, req.authInfo?.token.name, threadId, config.appId, config.appType, JSON.stringify(req.body, null, 2)] }); // ID07292024.n
 
-    let respMessage = null; // IMPORTANT: Populate this var before returning!
+    let respMessage = null; // IMPORTANT: Populate this var before returning!!
 
     // 2. Check prompt present in cache?
     // ---------------------------------
@@ -774,13 +601,13 @@ class AzOaiProcessor {
     let values = null;
     let err_msg = null;
     let uriIdx = 0;
-    let endpointId = 0; // ID05082025.n
-    let routerEndpointId; // ID06162025.n
-    let routerIdTried = false; // ID06162025.n
+    let endpointId = 0;
+    let routerEndpointId;
+    let routerIdTried = false;
     let userMessage = null;
 
-    try { // ID03172026.n
-      userMessage = req.body.messages.find(msg => msg.role === OpenAIChatCompletionMsgRoleTypes.UserMessage)?.content; // ID05142025.n, ID08202025.n
+    try {
+      userMessage = req.body.messages.find(msg => msg.role === OpenAIChatCompletionMsgRoleTypes.UserMessage)?.content;
     }
     catch (error) {
       const emsg = `Invalid Payload. Error: ${error}`;
@@ -792,11 +619,34 @@ class AzOaiProcessor {
           code: "invalidPayload"
         }
       };
-      // ID06132024.en  
 
       respMessage = {
         http_code: 400, // Bad request
-        data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+        data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg :
+          {
+            jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
+            id: req.a2aReqId,
+            error: { code: -32602, message: emsg } // Invalid method parameters
+          }
+      };
+
+      return (respMessage);
+    };
+
+    if ( req.body.tools ) { // Tool calling is not supported!
+      const emsg = "Tool calling is not supported!";
+
+      err_msg = {
+        error: {
+          target: req.originalUrl,
+          message: emsg,
+          code: "invalidPayload"
+        }
+      };
+
+      respMessage = {
+        http_code: 400, // Bad request
+        data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg :
           {
             jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
             id: req.a2aReqId,
@@ -810,8 +660,7 @@ class AzOaiProcessor {
     let epdata = appConnections.getConnection(config.appId); // ID04302025.n
 
     if (!threadId) {
-      // if ( cacheConfig.cacheResults && useCache ) { // Is caching enabled?; ID03142025.o
-      if (cacheConfig.cacheResults && useCache && ((!req.body.tools) && this.#toolsMessagesNotPresent(req.body.messages))) { // Is caching enabled?; ID03142025.n;
+      if ( cacheConfig.cacheResults && useCache ) { // Is caching enabled?; ID03142025.o
         for (const application of apps.applications) {
           if (application.appId === cacheConfig.embeddApp) {
             vecEndpoints = application.endpoints;
@@ -819,20 +668,6 @@ class AzOaiProcessor {
             break;
           };
         };
-
-        /**
-         * ID05142025.sn
-         * When state management is enabled, is this the first/initial request?
-         * Is long term memory enabled for this AI App? &
-         * Is user value present in the request payload?
-        if ( userMemConfig && req.body.user )
-          await updateSystemMessage(
-            req,
-            config.appId,
-            userMemConfig,
-            new UserMemDao(appConnections.getConnection(cacheConfig.embeddApp), vecEndpoints));  // This method updates the request payload (req.body)!
-          // console.log(`***** Updated request body *****\n${JSON.stringify(req.body,null,2)}\n************`);
-        // ID05142025.en */
 
         if ( sessionId ) // ID05202026.n
           sendStatus(sessionId, '🔍 Searching semantic cache(s)...');
@@ -845,37 +680,28 @@ class AzOaiProcessor {
           config.srchType,
           config.srchDistance,
           config.srchContent,
-          // ID11212025.sn
           config.encryptionKey,
           cacheMetrics,
           config.level1Cache,
           config.level2Config);
-        // ID11212025.en
 
-        // const { rowCount, simScore, completion, embeddings } = ID11212025.o
         const { rowCount, cacheLevel, completion, embeddings } = // ID05202026.n; ID11212025.n
           await cacheDao.queryVectorDB(
-            // req.id, ID03052025.o
             req, // ID03052025.n
             config.appId,
-            // req.body, ID03052025.o
             cachedb
           );
 
         if (rowCount === 1) { // Cache hit!
-          // cacheMetrics.updateCacheMetrics(config.appId, simScore); ID11212025.o
 
           if ( sessionId) // ID05202026.n
             sendTrace(sessionId, `Semantic cache hit. Response served from Semantic Cache Tier: <b>${cacheLevel}</b>`);
 
           if (req.body.messages && manageState && memoryConfig && memoryConfig.useMemory) { // Generate thread id if manage state == true
-            // threadId = randomUUID(); ID07312025.o
             threadId = generateGUID("thread"); // ID07312025.n
 
             // When response is served from the cache and state mgmt is turned on, update the thread count of the first end-point
             for (const element of config.appEndpoints) { // ID04302025.n
-              // let metricsObj = epdata.get(element.uri); ID09172025.o
-              // let metricsObj = epdata.get(retrieveUniqueURI(element.uri, config.appType, element.id)); // ID09172025.n, ID11182025.o
               let metricsObj = epdata.get(retrieveUniqueURI(element.uri, element.id)); // ID11182025.n
               metricsObj.updateUserThreads();
 
@@ -891,7 +717,7 @@ class AzOaiProcessor {
               data: completion
             };
 
-          // ID09162025.sn - Insert cached response in prompts table. This record is required to collect user feedback.
+          // ID09162025.sn - Insert cached response in prompts table. This record is also used to collect user feedback.
           let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
           if (persistPrompts) { // Persist prompt and completion ?
             promptDao = new PersistDao(persistdb, TblNames.Prompts);
@@ -903,7 +729,7 @@ class AzOaiProcessor {
               completion,
               {},
               req.body.user,
-              0, // ID04302026.n (No tools were executed!)
+              0, // ID04302026.n (No remote tools were executed!)
               (Date.now() - stTime) / 1000,
               EndpointMiscConstants.IdCached // Use '-cached-' as endpoint ID since this is a cached response
             ];
@@ -912,7 +738,6 @@ class AzOaiProcessor {
               values.unshift(threadId);
             };
 
-            // console.log(`**** Values dump:\n${JSON.stringify(values, null, 2)}`);
             (threadId) ? await promptDao.storeEntity(req.id, 2, values) : await promptDao.storeEntity(req.id, 0, values);
           };
           // ID09162025.en
@@ -922,11 +747,11 @@ class AzOaiProcessor {
 
             // ID05312024.sn
             let saveMsg = {
-              role: completion.choices[0].message.role,
-              content: completion.choices[0].message.content
+              role: completion.role,
+              content: completion.content
             };
             // ID05312024.en
-            // req.body.messages.push(completion.choices[0].message); ID05312024.o
+
             req.body.messages.push(saveMsg); // ID05312024.n
             logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Cached Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, JSON.stringify(req.body.messages, null, 2)] });
 
@@ -953,7 +778,7 @@ class AzOaiProcessor {
 
           return (respMessage);
         }
-        else {
+        else { // Semantic cache miss
           embeddedPrompt = embeddings;
           if ( sessionId ) // ID05202026.n
             sendTrace(sessionId, 'Semantic cache miss');
@@ -982,14 +807,6 @@ class AzOaiProcessor {
         logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Endpoint ID: %s\n  Prompt + Retrieved Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, endpointId, JSON.stringify(req.body.messages, null, 2)] });
       }
       else {
-        /* ID06132024.so
-              err_msg = {
-                endpointUri: req.originalUrl,
-                currentDate: new Date().toLocaleString(),
-                errorMessage: `The user session associated with Thread ID=[${threadId}] has either expired or is invalid! Start a new user session.`
-              };
-        ID06132024.eo */
-        // ID06132024.sn
         const emsg = `The user session associated with Thread ID=[${threadId}] has either expired or is invalid! Start a new user session.`; // ID10082025.n
         err_msg = {
           error: {
@@ -998,11 +815,10 @@ class AzOaiProcessor {
             code: "invalidPayload"
           }
         };
-        // ID06132024.en  
 
         respMessage = {
           http_code: 400, // Bad request
-          data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+          data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg : // ID10082025.n
             {
               jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
               id: req.a2aReqId,
@@ -1039,7 +855,6 @@ class AzOaiProcessor {
     };
 
     /**
-     * ID05142025.sn
      * When state management is enabled, is this the first/initial request?
      * Is long term memory enabled for this AI App? &
      * Is user value present in the request payload?
@@ -1051,22 +866,17 @@ class AzOaiProcessor {
         userMemConfig,
         new UserMemDao(appConnections.getConnection(cacheConfig.embeddApp), vecEndpoints));  // This method updates the request payload (req.body)!
     // console.log(`***** Updated request body *****\n${JSON.stringify(req.body,null,2)}\n************`);
-    // ID05142025.en
 
     let endpointIdMatched = (manageState && memoryConfig && memoryConfig.useMemory && memoryConfig.affinity) ? false : true; // ID05082025.n
 
     /**
-     * ID06162025.sn
      * Populate an array to track which endpoints have been tried
      */
     let triedEps = new Array(config.appEndpoints.length).fill(false);
-    // ID06162025.en
 
     if (!routerIdTried && routerInstance) // ID06162025.n; Skip if session affinity is configured and this call is part of an existing session.
-      // routerEndpointId = routerInstance.getEndpointId(req.id);  // ID08052025.o
       routerEndpointId = routerInstance.getEndpointId(req);  // ID08052025.n
 
-    // ID02282026.sn
     // 4. Add context by invoking Remote server tools (if configured)
     // This step will only be executed when remote server config is configured with the AI App config.
     // Note: The remote server is expected to return the enriched prompt/context in the same format as the original request payload, 
@@ -1111,11 +921,9 @@ class AzOaiProcessor {
         logger.log({ level: "error", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Message: Error occurred while invoking remote tools. Proceeding with original request payload.\n  Error:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, config.appId, error.toString()] });
       };
     };
-    // ID02282026.en
 
-    // 5. Call Azure OAI endpoint(s)
+    // 5. Call Azure Anthropic model deployment endpoint(s)
     // ---------------------------------
-    // let epdata = appConnections.getConnection(config.appId); ID04302025.o
     let response;
     let retryAfter = 0;
     let continueRetry = true; // ID0522026.n
@@ -1156,8 +964,6 @@ class AzOaiProcessor {
 
         uriIdx++;
 
-        // let metricsObj = epdata.get(element.uri); ID09172025.o
-        // let metricsObj = epdata.get(retrieveUniqueURI(element.uri, config.appType, element.id)); // ID09172025.n, ID11182025.o
         respMessage = null; // ID05222026.n (Reset response message)
         let metricsObj = epdata.get(retrieveUniqueURI(element.uri, element.id)); // ID11182025.n
         let healthArr = metricsObj.isEndpointHealthy(req.id); // ID05082025.n
@@ -1172,15 +978,11 @@ class AzOaiProcessor {
         };
 
         try {
-          // const meta = await this.#getOpenAICallMetadata(req, element, config); // ID06162025.n, ID08272025.o
           const meta = await getOpenAICallMetadata(req, element, config.appType); // ID08272025.n
 
-          // ID06162025.sn
           if (routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter))
             routerInstance.updateUriConnections(req.id, true, uriIdx - 1);
-          // ID06162025.en
 
-          // ID11032025.sn
           // Normalize request payload as per endpoint config.  Normalization code will be executed for each endpoint separately.
           if (config.normConfigs && element.normalizationPolicy?.inputNormalizerId) {
             req.body = req.body_copy; // Reset the request body
@@ -1189,46 +991,37 @@ class AzOaiProcessor {
             req.body = processBatch(req.id, config.normConfigs.find(cfg => cfg.normalizerId === element.normalizationPolicy.inputNormalizerId), req.body);
             logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Transformed Request\n  %s", splat: [scriptName, this.constructor.name, req.id, JSON.stringify(req.body, null, 2)] });
 
-            // ID06042026.n - Send HTTP headers (if any) to the target endpoint
+            // Send HTTP headers (if any) to the target endpoint
             const normalizer = config.normConfigs.find(cfg => cfg.normalizerId === element.normalizationPolicy.inputNormalizerId);
             normalizer.includeHeaders?.forEach(item => {
               meta.set(item.headerName,item.headerValue);
             });
           };
-          // ID11032025.en
 
+          /*
           stTime = Date.now();
           response = await fetch(element.uri, {
             method: req.method,
             headers: meta,
             body: JSON.stringify(req.body)
           });
+          */
 
           let status = response.status;
           if (status === 200) { // All Ok
-            // data = await response.json(); ID06052024.o
-            // ID06052024.sn
-            // let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? randomUUID() : threadId; // ID04302025.o
-            // let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? (function () { threadStarted = true; return (randomUUID()); })() : threadId; // ID04302025.n; ID07312025.o
-            // let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? (function () { threadStarted = true; return (generateGUID("thread")); })() : threadId; // ID07312025.n, ID04222026.o
 
-            // ID11032025.sn
             let normConfig = null;
             if (config.normConfigs && element.normalizationPolicy?.outputNormalizerId)
               normConfig = config.normConfigs.find(cfg => cfg.normalizerId === element.normalizationPolicy.outputNormalizerId);
-            // ID11032025.en
 
             if (req.body.stream) // Streaming request?
-              data = (req.body.data_sources) ?
-                await this.#streamChatCompletionOyd(req.id, th_id, config.appId, res, response, toolsCount) :  // OYD call; ID04222026.n
-                await this.#streamChatCompletion(req.id, th_id, config.appId, res, response, normConfig, toolsCount); // Chat completion call; ID11032025.n, ID04222026.n
+              await this.#streamChatCompletion(req.id, th_id, config.appId, res, response, normConfig, toolsCount); // Messages API call
             else
               data = await response.json();
-            // ID06052024.en
+              // console.log(`***** Data: ${JSON.stringify(data, null, 2)} *****`);
 
             let respTime = Date.now() - stTime;
             metricsObj.updateApiCallsAndTokens(
-              // data.usage?.total_tokens,
               req.id, // ID08252025.n
               data.usage, // ID08252025.n
               respTime,
@@ -1238,11 +1031,9 @@ class AzOaiProcessor {
             if (!req.body.stream && normConfig) // ID11032025.n
               data = processBatch(req.id, normConfig, data);
 
-            // ID02202024.sn
             if ((!threadId) && cacheDao && embeddedPrompt) { // Cache results ?
               let prompt = req.body.prompt;
               if (!prompt)
-                // prompt = JSON.stringify(req.body.messages); ID02282026.o
                 prompt = JSON.stringify(req.body_copy.messages); // ID02282026.n
 
               values = [
@@ -1251,9 +1042,7 @@ class AzOaiProcessor {
                 config.appId,
                 prompt,
                 embeddedPrompt, // ID11212025.n
-                // pgvector.toSql(embeddedPrompt), ID11212025.o
                 data, // ID10142025.o; ID11032025.n
-                // (req.normalizeOutput) ? normalizeAiOutput(data) : data // ID10142025.n; ID11032025.o
                 apps.serverId // ID11212025.n
               ];
 
@@ -1263,20 +1052,17 @@ class AzOaiProcessor {
                 cachedb
               );
             };
-            // ID02202024.en
 
             if (th_id && req.body.stream) // ID06052024.n
               threadId = th_id;
 
-            // ID03012024.sn
             let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
             if (persistPrompts) { // Persist prompt and completion ?
               // ----- ID02112025.sn
               const allHeaders = {};
               for (const [name, value] of response.headers.entries()) {
                 allHeaders[name] = value;
-              }
-              // console.log(`**** AOAI Headers ****:\n${JSON.stringify(allHeaders, null, 2)}`);
+              };
               // ------ ID02112025.en
               promptDao = new PersistDao(persistdb, TblNames.Prompts);
               values = [
@@ -1298,15 +1084,12 @@ class AzOaiProcessor {
                 values
               );
             };
-            // ID03012024.en
 
-            // ID06162025.sn
             if (routerInstance)
               if (routerInstance.routerType === EndpointRouterTypes.WeightedDynamicRouter)
                 routerInstance.updateWeightsBasedOnLatency(uriIdx - 1, respTime);
               else if ((routerInstance.routerType === EndpointRouterTypes.BudgetAwareRouter) || (routerInstance.routerType === EndpointRouterTypes.AdaptiveBudgetAwareRouter)) // ID08292025.n, ID09022025.n
                 routerInstance.updateActualCost(req.id, uriIdx - 1, data.usage);
-            // ID06162025.en
 
             respMessage = {
               http_code: status,
@@ -1314,7 +1097,6 @@ class AzOaiProcessor {
               cached: false,
               toolsCount, // ID04222026.n
               data // ID10142025.o; ID11032025.n
-              // data: (req.normalizeOutput) ? normalizeAiOutput(data) : data // ID10142025.n; ID11032025.o
             };
 
             if ( sessionId ) { // ID05202026.n
@@ -1324,7 +1106,6 @@ class AzOaiProcessor {
               sendTrace(sessionId, "Response ready");
             };
 
-            // retryAfter = 0;  // ID05282024.n (Bugfix; Set the retry after var to zero!!) ID05222026.o
             continueRetry = false; // ID05222026.n
             break; // break out from the endpoint for loop!
           }
@@ -1338,7 +1119,6 @@ class AzOaiProcessor {
 
             metricsObj.updateFailedCalls(status, retryAfterSecs);
 
-            // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n  Retry seconds: ${retryAfterSecs}\n*****`);
             logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Endpoint ID: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s\n  Retry seconds: %d", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, element.id, status, response.statusText, JSON.stringify(data, null, 2), retryAfterSecs] });
           }
           else if (status === 400 || status === 422) { // Invalid prompt ~ content filtered; ID11062024.n
@@ -1346,14 +1126,14 @@ class AzOaiProcessor {
 
             // ID03012024.sn
             let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
-            if ((status === 422) && persistPrompts) { // Persist prompts ? // ID06062026.n - Only update prompts table if it's a content filter issue. Exit while loop, return!
+            if ((status === 422) && persistPrompts) { // Persist prompts ?; Only update prompts table if it's a content filter issue. Exit while loop, return!
               // ----- ID02112025.sn
               const allHeaders = {};
               for (const [name, value] of response.headers.entries()) {
                 allHeaders[name] = value;
-              }
-              // console.log(`**** AOAI Headers ****:\n${JSON.stringify(allHeaders, null, 2)}`);
+              };
               // ------ ID02112025.en
+
               promptDao = new PersistDao(persistdb, TblNames.Prompts);
               values = [
                 req.id,
@@ -1378,7 +1158,6 @@ class AzOaiProcessor {
             };
             // ID03012024.en
 
-            // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n  Status Text: ${statusText}\n*****`);
             logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, status, response.statusText, JSON.stringify(data, null, 2)] });
 
             metricsObj.updateFailedCalls(status, 0);
@@ -1386,7 +1165,7 @@ class AzOaiProcessor {
               http_code: status,
               uri_idx: (uriIdx - 1), // ID03262025.n
               status_text: response.statusText,
-              data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? data : // ID10082025.n
+              data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? data : // ID10082025.n
                 {
                   jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
                   id: req.a2aReqId,
@@ -1399,23 +1178,10 @@ class AzOaiProcessor {
           else { // Authz failed
             data = await response.text();
 
-            // console.log(`*****\nAzOaiProcessor.processRequest():\n  App Id: ${config.appId}\n  Request ID: ${req.id}\n  Target Endpoint: ${element.uri}\n  Status: ${status}\n  Message: ${JSON.stringify(data)}\n*****`);
             logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, status, response.statusText, JSON.stringify(data, null, 2)] });
 
             metricsObj.updateFailedCalls(status, 0);
 
-            /* ID06132024.so
-            err_msg = {
-                    appId: config.appId,
-                    reqId: req.id,
-                    targetUri: element.uri,
-                    http_code: status,
-              status_text: response.statusText,
-              data: data,
-                    cause: `AI Service endpoint returned exception message [${response.statusText}]`
-                  };
-            ID06132024.eo */
-            // ID06132024.sn
             const emsg = `AI Service endpoint returned exception: [${data}].`; // ID10082025.n
             err_msg = {
               error: {
@@ -1424,34 +1190,20 @@ class AzOaiProcessor {
                 code: "unauthorized"
               }
             };
-            // ID06132024.en
 
             respMessage = {
               http_code: status,
               uri_idx: (uriIdx - 1), // ID03262025.n
-              data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+              data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg : // ID10082025.n
                 {
                   jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
                   id: req.a2aReqId,
                   error: { code: A2AErrorCodes.AuthError, message: "AI Service endpoint returned an exception.", data } // Authentication error
                 }
             };
-
-            // ID05222026.n (Commented.  Identified bug when stress testing calls with tool invocations!)
-            // retryAfter = 1; // ID06162025.n; Log the failed call in the endpoint metrics object, try other available endpoints (if any)
-            // break; // ID06162025.o
           };
         }
         catch (error) {
-          /* ID06132024.so
-                err_msg = {
-            appId: config.appId,
-            reqId: req.id,
-            targetUri: element.uri,
-            cause: error
-          };
-          ID06132024.eo */
-          // ID06132024.sn
           const emsg = `AI Services Gateway encountered exception: [${error.message}].`; // ID10082025.n
           err_msg = {
             error: {
@@ -1460,24 +1212,19 @@ class AzOaiProcessor {
               code: "internalFailure"
             }
           };
-          // ID06132024.en
-          // console.log(`*****\nAzOaiProcessor.processRequest():\n  Encountered exception:\n  ${JSON.stringify(err_msg)}\n*****`)
+
           logger.log({ level: "error", message: "[%s] %s.processRequest():\n  ID: %s\n  Priority: %d\n  Encountered exception:\n  %s", splat: [scriptName, this.constructor.name, element.id, (uriIdx - 1), JSON.stringify(err_msg, null, 2)] });
 
           respMessage = {
             http_code: 500,
             uri_idx: (uriIdx - 1), // ID03262025.n
-            data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+            data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg : // ID10082025.n
               {
                 jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
                 id: req.a2aReqId,
                 error: { code: -32603, message: emsg } // Internal JSON-RPC error
               }
           };
-
-          // break; // ID04172024.n; ID06162025.o
-          // ID05222026.n (Commented. Identified bug when stress testing calls with tool invocations!)
-          // retryAfter = 1; // ID06162025.n; Try remaining endpoints if any!
         }
         finally { // ID06162025.sn
           if (routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter))
@@ -1486,22 +1233,12 @@ class AzOaiProcessor {
       }; // end of endpoint for loop
 
     }
-    // while ((retryAfter > 0) && triedEps.some(val => val === false)); // ID06162025.n, ID05222026.o
     while (continueRetry && triedEps.some(val => val === false)); // ID05222026.n
 
-    // instanceFailedCalls++;
-
     if (retryAfter > 0) {
-      /* ID06132024.so
-      err_msg = {
-        endpointUri: req.originalUrl,
-        currentDate: new Date().toLocaleString(),
-        errorMessage: `All backend OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`
-      };
-      ID06132024.eo */
       if (respMessage == null) { // ID06162025.n
         const emsg = `All backend Azure OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`; // ID10082025.n
-        // ID06132024.sn
+
         err_msg = {
           error: {
             target: req.originalUrl,
@@ -1509,13 +1246,11 @@ class AzOaiProcessor {
             code: "tooManyRequests"
           }
         };
-        // ID06132024.en
 
-        // res.set('retry-after', retryAfter); // Set the retry-after response header
         respMessage = {
           http_code: 429, // Server is busy, retry later!
           uri_idx: (uriIdx - 1), // ID05082025.n
-          data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+          data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg : // ID10082025.n
             {
               jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
               id: req.a2aReqId,
@@ -1527,13 +1262,6 @@ class AzOaiProcessor {
     }
     else {
       if (respMessage == null) {
-        /* ID06132024.so
-              err_msg = {
-                endpointUri: req.originalUrl,
-                currentDate: new Date().toLocaleString(),
-                errorMessage: "Internal server error. Unable to process request. Check server logs."
-              };
-        ID06132024.eo */
         const emsg = "Internal server error. Unable to process request. Please check server logs."; // ID10082025.n
         // ID06132024.sn
         err_msg = {
@@ -1547,7 +1275,7 @@ class AzOaiProcessor {
 
         respMessage = {
           http_code: 500, // Internal API Gateway server error!
-          data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
+          data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg : // ID10082025.n
             {
               jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
               id: req.a2aReqId,
@@ -1559,24 +1287,21 @@ class AzOaiProcessor {
       };
     };
 
-    // ID05062024.sn
     if ((respMessage.http_code === 200) &&
-      req.body.messages && // state management is only supported for chat completions API
+      req.body.messages && // state management is only supported for messages API
       manageState &&
       memoryConfig &&
       memoryConfig.useMemory) { // Manage state for this AI application?
 
       let completionMsg = {
-        role: data.choices[0].message.role,
-        content: data.choices[0].message.content
+        role: data.role,
+        content: data.content?.filter(msg => msg.type === "text").map(msg => msg.text).join(' ')
       };
 
       req.body.messages.push(completionMsg);
 
       memoryDao = new PersistDao(persistdb, TblNames.Memory);
       if (!threadId)
-        // threadId = randomUUID(); ID07312025.o
-        // threadId = generateGUID("thread"); // ID04222026.o
         threadId = th_id; // ID04222026.n
 
       logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Completed Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, JSON.stringify(req.body.messages, null, 2)] });
@@ -1618,10 +1343,8 @@ class AzOaiProcessor {
       };
       // ID02142025.en
     };
-    // ID05062024.en
 
     /**
-     * ID05142025.sn
      * Was response generated OK? &
      * Is long term memory enabled for this AI App? &
      * Is user value present in the request payload?
@@ -1681,7 +1404,6 @@ class AzOaiProcessor {
         };
       };
     };
-    // ID05142025.en
 
     if ( sessionId ) // ID05202026.n
       if ( respMessage.http_code === 200 )
@@ -1695,4 +1417,4 @@ class AzOaiProcessor {
   } // end of processRequest()
 }
 
-module.exports = AzOaiProcessor;
+module.exports = AzAnthropicProcessor;

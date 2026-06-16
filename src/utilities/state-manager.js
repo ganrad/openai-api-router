@@ -11,6 +11,7 @@
  * ID11112024: ganrad: v2.1.0: (Bugfix) After re-configuring a server, the scheduler was still using the old app config. state eviction interval!
  * ID11112024: ganrad: v2.1.0: (Enhancement) State manager should only delete memory records which were either created/updated by the associated
  * server instance.
+ * ID06042026: ganrad: v3.0.1: Introduced support for Anthropic's Messages API
 */
 
 const path = require('path');
@@ -21,7 +22,7 @@ const memoryDao = require("../services/pp-pg.js");
 const { TblNames } = require("./persist-dao.js");
 const { AzAiServices } = require("./app-gtwy-constants.js");
 
-const AppTypes = [AzAiServices.OAI, AzAiServices.AzAiModelInfApi]; // ID11042024.n
+const AppTypes = [AzAiServices.OAI, AzAiServices.AzAiModelInfApi, AzAiServices.Anthropic]; // ID11042024.n; ID06042026.n
 
 var cron = require('node-cron');
 

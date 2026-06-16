@@ -48,6 +48,21 @@
  * ID11062025: ganrad: v2.9.0: Added new constant type for payload normalizer operators and modes.
  * ID11212025: ganrad: v2.9.5: Added new constant type for cache search terms and levels. Added new constants for cache search algorithms.
  * ID02182026: ganrad: v2.9.6: Updated minor release info.
+ * ID02232026: ganrad: v3.0.1: Added new constant types for a) Supported MCP Server authentication types b) MCP methods.
+ * ID02272026: ganrad: v3.0.1: Added new constant type for MIME types and HTTP headers. Added new constant type for MCP tool execution types.
+ * ID03172026: ganrad: v3.0.1: Added new constant type for remote server types.
+ * ID04022026: ganrad: v3.0.1: Added new constant type(s) for ai gateway env's.
+ * ID04232026: ganrad: v3.0.1: a) Added new constant to 'AppResourceTypes' for tracing tool executions b) Added new constant to 'GatewayRouterEndpoints'
+ * for retrieving tool execution trace messages.
+ * ID04242026: ganrad: v3.0.1: Added new constant to return the remote tools count.
+ * ID05122026: ganrad: v3.0.1: Added new constant type for OTel span attributes.
+ * ID05132026: ganrad: v3.0.1: Added new constant type for EP metrics output format.
+ * ID05182026: ganrad: v3.0.1: Deprecated ServerTypes (single and multi domain).  Introduced constants for AI Gateway Types - Single & Multi Agent
+ * ID05202026: ganrad: v3.0.1: Added new endpoint constant to support status/trace events to client.  Added new constant value for http header 'session id'.
+ * Added new constant type for streamed status/trace events.
+ * ID05282026: ganrad: v3.0.1: Added constants to support A2A protocol to v1.0.1.
+ * ID06042026: ganrad: v3.0.1: Introduced support for Anthropic's Messages API.
+ * 
 */
 const { randomUUID } = require('node:crypto'); // ID07312025.n
 
@@ -72,7 +87,7 @@ async function generateUUID() { // ID10032025.n
 
 // ID07252025.sn
 const AiAppGateway = {
-  Version: "2.9.6",
+  Version: "3.0.1",
   ApiVersion: "/api/v1/",
   // RouterContextPath: "/apirouter" ID10032025.o
   RouterContextPath: "/aigateway" // ID10032025.n
@@ -86,18 +101,29 @@ const GatewayRouterEndpoints = {
   MetricsEndpoint: "/metrics",
   RequestsEndpoint: "/requests",
   SessionsEndpoint: "/sessions",
+  ToolTraceEndpoint: "/tooltrace", // ID04232026.n
   ReconfigureEndpoint: "/reconfig",
-  InferenceEndpoint: "/lb"
+  InferenceEndpoint: "/lb",
+  EventsEndpoint: "/events" // ID05202026.n
 };
 // ID07252025.en
 
+const AiAppGatewayEnv = { // ID04022026.n
+  DEV: "dev",
+  TEST: "test",
+  PREPROD: "preprod",
+  PROD: "prod"
+}
+
 const AiGatewayInboundReqApiType = { // ID10032025.n
   OpenAI: "OpenAI",
+  Anthropic: "AnthropicMessages", // ID06042026.n
   Agent2Agent: "Agent2Agent"
 };
 
 const A2AProtocolAttributes = { // ID10032025.n
-  Version: "0.3.0",
+  SpecUri: "https://a2a-protocol.org/latest/",
+  Version: "1.0", // ID05282026.n - Use the latest supported minor version per major version. Examples: "0.3", "1.0"
   DefaultTransport: "JSONRPC", // JSON-RPC 2.0 over HTTP (mandatory)
   JsonRpcVersion: "2.0",
   MethodInvoke: 'invoke',
@@ -149,6 +175,13 @@ const HttpMethods = { // ID01242025.n
   OPTIONS: 'OPTIONS',
 };
 
+const MimeTypes = { // ID02272026.n
+  Json: 'application/json',
+  FormUrlEncoded: 'application/x-www-form-urlencoded',
+  MultipartFormData: 'multipart/form-data',
+  EventStream: 'text/event-stream'
+}
+
 const ServerDefaults = {
   CacheEntryInvalidateSchedule: "*/45 * * * *",
   MemoryInvalidateSchedule: "*/10 * * * *",
@@ -156,10 +189,18 @@ const ServerDefaults = {
   L2CacheVectorDimensions: 1536 // ID11212025.n
 };
 
+const HttpHeaders = { // ID02272026.n
+  ContentType: 'Content-Type',
+  Authorization: 'Authorization',
+  Accept: 'Accept'
+}
+
 const CustomRequestHeaders = { // ID05062024.n
   RequestId: "x-request-id",
   ThreadId: "x-thread-id",
-  EndpointId: "x-endpoint-id" // ID08052025.n
+  SessionId: "x-session-id", // ID05202026.n - This is the client (UX/UI) session id, not to be confused with thread id (used for state management)!
+  EndpointId: "x-endpoint-id", // ID08052025.n
+  ExecToolsCount: "x-tools-count" // ID04242026.n
 };
 
 const SchedulerTypes = { // ID05062024.n
@@ -173,6 +214,7 @@ const AiWorkflowEngines = {
 
 const AzAiServices = {
   OAI: "azure_oai",
+  Anthropic: "azure_claude", // ID06042026.n
   AiSearch: "azure_search",
   Language: "azure_language",
   Translator: "azure_translator",
@@ -205,10 +247,15 @@ const TranslatorAPIKind = {
   Dictionary: "dictionary"
 };
 
-const ServerTypes = { // ID09042024.n
+const ServerTypes = { // ID09042024.n; ID05182026 - Deprecated ServerTypes
   SingleDomain: "single-domain",
   MultiDomain: "multi-domain"
 };
+
+const AiGatewayTypes = { // ID05182026.n
+  SingleAgent: "single-agent",
+  MultiAgent: "multi-agent"
+}
 
 const RetrievalToolTypes = { // ID09042024.n
   AiAppGateway: "aiapp_gateway",
@@ -250,7 +297,8 @@ const AppResourceTypes = { // ID01232025.n
   RagApplication: "RagApplication",
   AiAppGatewayRequest: "AiAppGatewayRequest", // ID07242025.n
   AiAppGatewaySession: "AiAppGatewaySession",
-  AiAppGatewayMetrics: "AiAppGatewayMetrics"
+  AiAppGatewayMetrics: "AiAppGatewayMetrics",
+  AiAppGatewayToolTrace: "AiAppGatewayToolTrace" // ID04232026.n
 }
 
 const AppResourceActions = { // API Level; ID01232025.n
@@ -417,11 +465,67 @@ const CacheLevels = {
 }
 // ID11212025.en
 
+// ID02232026.sn
+// Supported MCP Server Authentication Types
+const McpServerAuthTypes = {
+  ApiKey: "ApiKey", // Api key
+  OAuth: "OAuth" // OAuth token based auth
+}
+
+// MCP Protocol Methods (as per spec 2025-11-25)
+const McpMethods = {
+  INITIALIZE: 'initialize',
+  INITIALIZED: 'notifications/initialized',
+  TOOLS_LIST: 'tools/list',
+  TOOLS_CALL: 'tools/call',
+  RESOURCES_LIST: 'resources/list',
+  RESOURCES_READ: 'resources/read',
+  RESOURCES_TEMPLATES_LIST: 'resources/templates/list',
+  PROMPTS_LIST: 'prompts/list',
+  PROMPTS_GET: 'prompts/get',
+  PING: 'ping'
+}
+// ID02232026.en
+
+const GatewaySpanAttrs = { // ID05122026.n
+  HostIdentity: "HostName",
+  GatewayId: "GatewayId",
+  InboundReqType: "InboundRequestType",
+  ApplicationID: "ApplicationId"
+}
+
+const McpToolExecutionTypes = { // ID02272026.n
+  SequentialExecution : "sequential",
+  ParallelExecution: "parallel"
+}
+
+const RemoteServerProtocol = { // ID03172026.n
+  Mcp: "MCP",
+  WebAPI: "WebAPI",
+  gRPC: "gRPC"
+}
+
+const EpMetricsOutputFormat = { // ID05132026.n
+  JSON: "json",
+  PROMETHEUS: "prometheus"
+}
+
+const SseBrokerEvents = { // ID05202026.n
+  HeartBeat: "heartbeat",
+  Connected: "connected",
+  Status: "status",
+  Trace: "trace",
+  Done: "done",
+  Error: "error"
+}
+
 module.exports = {
   generateGUID, // ID07312025.n
   generateUUID, // ID10032025.n
   AiGatewayInboundReqApiType, // ID10032025.n
+  GatewaySpanAttrs, // ID05122026.n
   AiAppGateway, // ID07252025.n
+  AiAppGatewayEnv, // ID04022026.n
   A2AProtocolAttributes, // ID10032025.n
   A2AErrorCodes, // ID10032025.n
   A2ATaskStatus, // ID10032025.n
@@ -434,7 +538,9 @@ module.exports = {
   DefaultMaxCompletionTokens, // ID10202025.n
   OpenAIBaseUri, // ID06162025.n
   HttpMethods, // ID01232025.n
+  MimeTypes, // ID02272026.n
   ServerDefaults,
+  HttpHeaders, // ID02272026.n
   CustomRequestHeaders,
   SchedulerTypes, // ID05062024.n
   AiWorkflowEngines, // ID09042024.n
@@ -444,6 +550,7 @@ module.exports = {
   TranslatorAPIKind,
   ContentSafetyAPIKind,
   ServerTypes, // ID09042024.n
+  AiGatewayTypes, // ID05182026.n
   RetrievalToolTypes, // ID09042024.n
   ToolConditions, // ID09042024.n
   SearchAlgorithms, // ID11072024.n
@@ -471,5 +578,11 @@ module.exports = {
   LongTermMemoryConstants, // ID10202025.n
   NormalizerPolicyOperator, // ID11062025.n
   CacheSearchTerms, // ID11212025.n
-  CacheLevels // ID11212025.n
+  CacheLevels, // ID11212025.n
+  McpToolExecutionTypes, // ID02272026.n
+  McpServerAuthTypes, // ID02232026.n
+  McpMethods, // ID02232026.n
+  RemoteServerProtocol, // ID03172026.n
+  EpMetricsOutputFormat, // ID05132026.n
+  SseBrokerEvents // ID05202026.n
 }

@@ -34,6 +34,9 @@
  * ID08052025: ganrad: v2.4.0: (Enhancement) Added new insert statement to support AI Agent message persistence in 'apigtwyprompts' table.
  * ID09152025: ganrad: v2.6.0: (Enhancement) Added new update statement to support capturing user feedback in 'apigtwyprompts' table.
  * ID10202025: ganrad: v2.8.0: (Enhancement) Updated long term memory feature to support multiple user groups.
+ * ID04212026: ganrad: v3.0.1: (Enhancement) Introduced 2 new tables 'toolexecplan' and 'toolexecdetails' to capture tool plan and execution data.
+ * ID04302026: ganrad: v3.0.1: (Enhancement) Introduced new field 'tool_exec_count' in table apigtwyprompts. This field will store the 
+ * tools executed as part of a request.
 */
 
 // const pgvector = require('pgvector/pg');
@@ -45,7 +48,9 @@ const TblNames = {
     ToolsTrace: "ToolsTrace", // ID10262024.n
     AiAppDeploy: "AiAppDeploy", // ID01232025.n
     AiAppServers: "AiAppServers", // ID01272025.n
-    UserFacts: "UserFacts" // ID05142025.n
+    UserFacts: "UserFacts", // ID05142025.n
+    ToolExecPlan: "ToolExecutionPlan", // ID04212026.n
+    ToolExecDetails: "ToolExecutionDetails" // ID04212026.n
   };
 
 const cacheQueryStmts = [
@@ -63,9 +68,9 @@ const promptInsertStmts = [
   // "INSERT INTO apigtwyprompts (requestid, aiappname, prompt) VALUES ($1,$2,$3) RETURNING id" ID04112024.o
   // "INSERT INTO apigtwyprompts (requestid, aiappname, prompt, completion, uname) VALUES ($1,$2,$3,$4,$5) RETURNING id" // ID04112024.n, ID11082024.o
   // "INSERT INTO apigtwyprompts (requestid, srv_name, aiappname, prompt, completion, model_res_hdrs, uname, exec_time_secs) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.o
-  "INSERT INTO apigtwyprompts (requestid, srv_name, aiappname, prompt, completion, model_res_hdrs, uname, exec_time_secs, endpoint_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.n
+  "INSERT INTO apigtwyprompts (requestid, srv_name, aiappname, prompt, completion, model_res_hdrs, uname, exec_tool_count, exec_time_secs, endpoint_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.n, ID04302026.n
   "UPDATE apigtwyprompts SET threadid = $4 WHERE requestid = $1 and srv_name = $2 and aiappname = $3 RETURNING id", // ID02142025.n
-  "INSERT INTO apigtwyprompts (threadid, requestid, srv_name, aiappname, prompt, completion, uname, exec_time_secs, endpoint_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id", // ID08052025.n
+  "INSERT INTO apigtwyprompts (threadid, requestid, srv_name, aiappname, prompt, completion, uname, exec_tool_count, exec_time_secs, endpoint_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id", // ID08052025.n, ID04302026.n
   "UPDATE apigtwyprompts SET feedback_count = feedback_count + $4 WHERE srv_name LIKE $1 || '%' AND requestid = $2 AND aiappname = $3 RETURNING id, endpoint_id", // ID09152025.n
 ];
 
@@ -126,6 +131,24 @@ const userFactsInsertStmts = [ // ID05142025.n
   "INSERT INTO userfacts (srv_name, aiappname, user_id, content, embedding) VALUES ($1,$2,$3,$4,$5) RETURNING id"
 ];
 
+const toolExecPlanQueryStmts = [ // ID04212026.n
+  "SELECT * FROM toolexecplan ORDER BY create_date DESC",
+  "SELECT * FROM toolexecplan WHERE srv_name LIKE $1 || '%' AND requestid = $2 AND aiappname = $3"
+];
+
+const toolExecPlanInsertStmts = [ // ID04212026.n
+  "INSERT INTO toolexecplan (srv_name, requestid, threadid, aiappname, aiapp_gen_plan, planner_model, toolplan, evaltools, completion_tokens, prompt_tokens, exec_time_secs, uname) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id"
+];
+
+const toolExecDetailsQueryStmts = [ // ID04212026.n
+  "SELECT * FROM toolexecdetails ORDER BY create_date DESC",
+  "SELECT * FROM toolexecdetails WHERE srv_name LIKE $1 || '%' AND requestid = $2 AND aiappname = $3"
+];
+
+const toolExecDetailsInsertStmts = [ // ID04212026.n
+  "INSERT INTO toolexecdetails (srv_name, requestid, threadid, aiappname, seq_id, rem_srv_type, target_uri, server_id, tool_name, request_json, response_json, exception, status, exec_time_secs, uname) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id"
+];
+
 class PersistDao {
   constructor(dbh, tableName) {
     this.dbHandle = dbh;
@@ -155,6 +178,12 @@ class PersistDao {
     }
     else if ( this.entity === TblNames.UserFacts ) { // ID05142025.n
       query = userFactsQueryStmts[qidx];
+    }
+    else if ( this.entity === TblNames.ToolExecPlan ) { // ID04212026.n
+      query = toolExecPlanQueryStmts[qidx];
+    }
+    else if ( this.entity === TblNames.ToolExecDetails ) { // ID04212026.n
+      query = toolExecDetailsQueryStmts[qidx];
     };
 
     const {rowCount, completion, errors} = // ID02092025.n
@@ -192,6 +221,12 @@ class PersistDao {
 
     if ( this.entity === TblNames.UserFacts ) // ID05142025.n
       query = userFactsInsertStmts[qidx];
+
+    if ( this.entity === TblNames.ToolExecPlan ) // ID04212026.n
+      query = toolExecPlanInsertStmts[qidx];
+
+    if ( this.entity === TblNames.ToolExecDetails ) // ID04212026.n
+      query = toolExecDetailsInsertStmts[qidx];
 
     // await this.dbHandle.insertData( // ID05062024.o
     const result = await this.dbHandle.updateData( // ID05062024.n, ID01232025.n

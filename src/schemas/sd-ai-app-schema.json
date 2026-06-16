@@ -2,7 +2,7 @@
     "$id": "https://github.com/ganrad/rapid/schemas/sd-ai-app-schema.json",
     "$comment": "ID03242025: ganrad: v2.4.0: Added new enum to AI App Type and 'id' attribute to endpoints array. ID04302025: ganrad: v2.3.5: Added new 'affinity' attribute to memorySettings. ID05092025: ganrad: v2.3.6: Added endpoint 'healthPolicy' attributes. ID05142025: ganrad: v2.3.8: Added attributes to support personalization feature. ID08052025: ganrad: v2.4.0: Added new routers - PayloadSwitch, HeaderSwitch, ModelAware * TokenAware",
     "title": "SingleDomainAiApp",
-    "description": "A single domain AI Application",
+    "description": "An AI Application/Agent",
     "type": "object",
     "properties": {
         "appId": {
@@ -12,6 +12,10 @@
         },
         "name": {
             "description": "Short description of AI Application (for display)",
+            "type": "string"
+        },
+        "version": {
+            "description": "Version of the AI Application in semver format - Major.Minor.Patch.  For information purposes only.",
             "type": "string"
         },
         "description": {
@@ -27,6 +31,7 @@
                 "azure_content_safety",
                 "azure_search",
                 "azure_oai",
+                "azure_claude",
                 "azure_aimodel_inf",
                 "azure_ai_agent"
             ]
@@ -282,6 +287,67 @@
             },
             "required": [
                 "userMemory"
+            ],
+            "additionalProperties": false
+        },
+        "securitySettings": {
+            "description": "Security settings for this AI Application/Agent",
+            "type": "object",
+            "properties": {
+                "inbound": {
+                    "type": "object",
+                    "description": "Allowed source ips/addresses for inbound requests",
+                    "properties": {
+                        "allowedSources": {
+                            "type": "object",
+                            "properties": {
+                                "ips": {
+                                    "type": "array",
+                                    "uniqueItems": true,
+                                    "items": {"type": "string"}
+                                }
+                            },
+                            "additionalProperties": false,
+                            "required": ["ips"]
+                        }
+                    },
+                    "required": ["allowedSources"],
+                    "additionalProperties": false
+                },
+                "outbound": {
+                    "type": "object",
+                    "description": "Allowed source ips/addresses for outbound requests",
+                    "properties": {
+                        "allowedDestinations": {
+                            "type": "object",
+                            "properties": {
+                                "ips": {
+                                    "type": "array",
+                                    "uniqueItems": true,
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "domains": {
+                                    "type": "array",
+                                    "uniqueItems": true,
+                                    "items": {
+                                        "type": "string",
+                                        "pattern": "^(\\*\\.)?([a-zA-Z0-9-]+\\.)*[a-zA-Z0-9-]+$"
+                                    }
+                                }
+                            },
+                            "additionalProperties": false,
+                            "required": ["ips", "domains"]
+                        }
+                    },
+                    "required": ["allowedDestinations"],
+                    "additionalProperties": false
+                }
+            },
+            "required": [
+                "inbound",
+                "outbound"
             ],
             "additionalProperties": false
         },
@@ -573,21 +639,41 @@
             },
             "minItems": 1
         },
-        "mcpServerSettings": {
-            "description": "MCP Servers associated with an AI Application",
+        "remoteServerSettings": {
+            "description": "Remote Servers associated with an AI Application",
             "type": "object",
             "properties": {
-                "serverIds": {
-                    "description": "List of MCP server identities",
+                "servers": {
+                    "description": "List of remote servers",
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "type": "object",
+                        "properties": {
+                            "serverId": {
+                                "description": "Unique identity of the remote server",
+                                "type": "string"
+                            },
+                            "allowedTools": {
+                                "description": "List of tools/endpoints allowed for this remote server",
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "serverId"
+                        ]
                     },
-                    "minItems": 1,
-                    "uniqueItems": true
+                    "minItems": 1
                 },
                 "aiAppName": {
                     "description": "AI Application used by the planner",
+                    "type": "string"
+                },
+                "plannerModel": {
+                    "description": "Name of the Model to be used by the planner",
                     "type": "string"
                 },
                 "plannerPrompt": {
@@ -595,8 +681,14 @@
                     "type": "string"
                 },
                 "plannerMaxTokens": {
-                    "description": "Max tokens to be generated by the planner",
+                    "description": "Max tokens to be generated by the planner (model)",
                     "type": "integer"
+                },
+                "plannerTemperature": {
+                    "description": "Temperature setting for the planner (model)",
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
                 },
                 "maxToolsPerQuery": {
                     "description": "Max tools that can be invoked per user query",
@@ -604,7 +696,8 @@
                 }
             },
             "required": [
-                "serverIds"
+                "servers",
+                "plannerModel"
             ],
             "additionalProperties": false
         },
@@ -667,6 +760,11 @@
                         "description": "Rate limit in requests per minute (RPM) for this endpoint",
                         "type": "integer",
                         "exclusiveMinimum": 0
+                    },
+                    "rateLimitDelaySecs": {
+                        "description": "Rate limit delay in seconds. Default is 60 seconds.",
+                        "type": "integer",
+                        "exclusiveMinimum": 5
                     },
                     "uri": {
                         "description": "AI Service endpoint URI",

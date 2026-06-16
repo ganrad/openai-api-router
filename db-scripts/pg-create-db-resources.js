@@ -18,6 +18,7 @@
  * ID05142025: ganrad: v2.3.8: Introduced table userfacts to store facts related to a user of an AI Application.  User facts can be used
  * by the model to provided more personalized responses.
  * ID06132025: ganrad: v2.3.8: Renamed this script from 'pg-test.js' to 'pg-create-db-resources.js'.
+ * ID04212026: ganrad: v3.0.1: (Enhancement) Introduced 2 new tables 'toolexecplan' and 'toolexecdetails' to capture tool plan and execution data.
  */
 
 // const pgvector = require('pgvector/pg');
@@ -112,8 +113,31 @@ async function createDBResources() {
   // Query rows in 'UserFacts' table
   let ufDao = new PersistDao(pdb,TblNames.UserFacts);
   await ufDao.queryTable('001',0,null);
-  console.log("***** End of User Facts Table *****");
+  console.log("***** End of User Facts Table; *****\n\n***** Begin Tool Execution Plan Table; *****");
   // ID05142025.en
+
+  // ID04212026.sn
+  // Delete and create 'toolexecplan' table
+  if ( deleteTables )
+    await pdb.dropTable(6);
+  await pdb.createTable(6);
+
+  // Query rows in 'ToolExecPlan' table
+  let tpDao = new PersistDao(pdb,TblNames.ToolExecPlan);
+  await tpDao.queryTable('001',0,null);
+  console.log("***** End of Tool Execution Plan Table; *****\n\n***** Begin Tool Execution Details Table; *****");
+
+  // Delete and create 'toolexecdetails' table
+  if ( deleteTables )
+    await pdb.dropTable(7);
+  await pdb.createTable(7);
+
+  // Query rows in 'ToolExecDetails' table
+  let tedDao = new PersistDao(pdb,TblNames.ToolExecDetails);
+  await tedDao.queryTable('001',0,null);
+  console.log("***** End of Tool Execution Details Table; *****");
+  // ID04212026.en
+
   // await new Promise(r => setTimeout(r, 2000));
 }
 

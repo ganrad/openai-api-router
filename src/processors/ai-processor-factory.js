@@ -10,10 +10,12 @@
  * ID09042024: ganrad: Added routing support for AI orchestration engines
  * ID11052024: ganrad: v2.1.0: (Enhancement) Added support for LLMs which use Azure AI Model Inference API (Chat completion).
  * ID03242025: ganrad: v2.4.0: (Enhancement) Added support for AI Agents hosted/deployed in AI Foundry Agent Service.
+ * ID06042026: ganrad: v3.0.1: Introduced support for Anthropic's Messages API.
 */
 
 const AzOaiProcessor = require("./az-oai-processor.js");
 const AzAiAgentProcessor = require("./az-ai-agent-processor.js"); // ID03242025.n
+const AzAnthropicProcessor = require("./az-anthropic-processor.js"); // ID06042026.n
 const AzAiSearchProcessor = require("./az-ai-search-processor.js");
 const AzAiSvcProcessor = require("./az-ai-svc-processor.js");
 const AzAiTranslatorProcessor = require("./az-ai-translator-processor.js");
@@ -39,6 +41,9 @@ class AiProcessorFactory {
         break;
       case AzAiServices.AzAiAgent: // ID03242025.n
         processor = new AzAiAgentProcessor();
+        break;
+      case AzAiServices.Anthropic: // ID06042026.n
+        processor = new AzAnthropicProcessor();
         break;
       case AzAiServices.AiSearch:
         processor = new AzAiSearchProcessor();

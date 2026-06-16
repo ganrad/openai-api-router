@@ -14,6 +14,7 @@
  * ID11112024: ganrad: v2.1.0: (Enhancement) Cache invalidator should only delete cached entries which were either created/updated by the associated
  * server instance.
  * ID11252025: ganrad: v2.9.5: (Enhancement) Check and invalidate/evict cached entries from L2 cache ~ Qdrant
+ * ID06042026: ganrad: v3.0.1: Introduced support for Anthropic's Messages API
 */
 
 const path = require('path');
@@ -25,7 +26,7 @@ var cron = require('node-cron');
 
 const { AzAiServices } = require("./app-gtwy-constants.js");
 const { cleanupL2ExpiredQdrantEntries } = require("./helper-funcs.js"); // ID11252025.n
-const AppTypes = [AzAiServices.OAI, AzAiServices.AzAiModelInfApi]; // ID11042024.n
+const AppTypes = [AzAiServices.OAI, AzAiServices.AzAiModelInfApi, AzAiServices.Anthropic]; // ID11042024.n; ID06042026.n
 
 class CacheEntryInvalidator {
 

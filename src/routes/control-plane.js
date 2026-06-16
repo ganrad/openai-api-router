@@ -21,7 +21,7 @@ const logger = require("../utilities/logger.js");
 const { formatException } = require("../utilities/helper-funcs.js"); // ID12042025.n
 const cprouter = express.Router();
 
-// Endpoint: /aigateway/cp/:resource_type/:action[/:resource_id]
+// Endpoint: /aigateway/cp/:resource_type/:resource_id/:action
 // Method(s): GET, POST, DELETE
 // Resources: AiAppServer, AiApplication, MdAiApplication, RagAiApplication
 // Actions: operations, deploy, status, get, delete

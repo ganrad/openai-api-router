@@ -29,6 +29,7 @@
  * server id and AI application id.
  * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced in-memory (l1) and Qdrant (l2) levels/layers in semantic cache. Updated search type / algorithm
  * constants to a uniform set of values.
+ * ID05202026: ganrad: v3.0.1: (Enhancement) Return the cache level when there is a hit.
  *   
 */
 const path = require('path');
@@ -343,6 +344,7 @@ class CacheDao {
         if (l1Hit)
           return {
             rowCount: 1,
+            cacheLevel: CacheLevels.Level1, // ID05202026.n
             completion: l1Hit.entry.response,
             embeddings: apiResp.embedding
           };
@@ -359,6 +361,7 @@ class CacheDao {
 
           return {
             rowCount: 1,
+            cacheLevel: CacheLevels.Level2, // ID05202026.n
             completion: l2Hit.entry.response,
             embeddings: apiResp.embedding
           };
@@ -434,6 +437,7 @@ class CacheDao {
 
     return {
       rowCount: rowno,
+      cacheLevel: rowno ? CacheLevels.Level3 : null, // ID05202026.n
       // simScore: score, ID11212025.o
       completion: data,
       embeddings: embedding

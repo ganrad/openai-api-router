@@ -14,6 +14,7 @@
  * ID09272025: ganrad: v2.7.0: Added new schema to support integration with MCP servers.
  * ID11062025: ganrad: v2.9.0: Added Ajv init parameter to not generate warnings for Union types.
  * ID12042025: ganrad: v2.9.5: Added ajv-formats module (plug-in) to validate uri, email, hostname type fields.
+ * ID03162026: ganrad: v3.0.1: Updated schema to reflect new configuration file structure changes.  Updated validation functions accordingly.
 */
 
 const path = require('path');
@@ -29,7 +30,7 @@ const fs = require("fs");
 const sdSchemaFile = "/single-domain-gtwy-schema.json";
 const sdAiAppSchemaFile = "/sd-ai-app-schema.json";
 const sdAiAppBudgetSchemaFile = "/gtwy-budget-schema.json"; // ID08252025.n
-const sdAiAppMcpServersSchemaFile = "/gtwy-mcp-servers-schema.json"; // ID09272025.n
+const sdAiAppMcpServersSchemaFile = "/gtwy-remote-servers-schema.json"; // ID09272025.n; ID03162026.n - updated schema file reference to reflect new config file structure
 const singleDomainAgentSchema = JSON.parse(fs.readFileSync(__dirname + sdSchemaFile));
 const sdAiAppSchema = JSON.parse(fs.readFileSync(__dirname + sdAiAppSchemaFile));
 const sdAiAppBudgetSchema = JSON.parse(fs.readFileSync(__dirname + sdAiAppBudgetSchemaFile)); // ID08252025.n

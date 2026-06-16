@@ -64,7 +64,16 @@
  * ID10252025: ganrad: v2.8.5: (Refactored code) Updated gateway security. New workflow supports - OAuth Code Flow + OIDC (User delegated) + 
  * Client Credentials (Daemon, S2S/M2M) + JWT verification.
  * ID12042025: ganrad: v2.9.5: (Refactored code) Log runtime exception details.
- *  
+ * ID02232026: ganrad: v3.0.1: (Enhancement) Introduced MCP Server tools integration. This feature integrates MCP tool invocation into the 
+ * inference processing pipeline, allowing supplemental context to be supplied to the LLM to improve response quality.
+ * ID04022026: ganrad: v3.0.1: (Enhancement) Harden the aigateway resources for production deployments.
+ * ID05122026: ganrad: v3.0.1: (Refactoring) Updated the App Insights instrumentation code to use the latest OTel SDK (v2) & dependencies.
+ * ID05182026: ganrad: v3.0.1: (Refactoring) Introduced AI Gateway Type - Single and Multi Agent.  Server Types - Single and Multi Domain, will be deprecated
+ * in next release.
+ * ID05282026: ganrad: v3.0.1: (Enhancement) A2A: Updated agent card to include skills info.
+ * ID05282026: ganrad: v3.0.1: (Enhancement) Introduced security router. This router enforces IP security policies on inbound calls to the AI App Gateway.
+ * ID06092026: ganrad: v3.0.1: (Enhancement) Introduced ai gateway name, description and registry identity.
+ * 
 */
 
 // ID04272024.sn
@@ -81,19 +90,23 @@ const {
   CustomRequestHeaders,
   SchedulerTypes,
   AzAiServices,
-  ServerTypes,
+  ServerTypes, // Deprecated; ID05182026.o
+  AiGatewayTypes, // ID05182026.n
   AppServerStatus,
   ConfigProviderType,
   DefaultJsonParserCharLimit,
   EndpointRouterTypes,
-  GatewayRouterEndpoints } = require("./utilities/app-gtwy-constants"); // ID02202025.n, ID07252025.n
+  GatewayRouterEndpoints,
+  AiAppGatewayEnv,
+  GatewaySpanAttrs } = require("./utilities/app-gtwy-constants"); // ID02202025.n, ID07252025.n
 
 // Server version v2.3.9 ~ ID06162025.n
 // const srvVersion = "2.3.9"; ID07252025.o
 
 // ID02082024.sn: Configure Azure Monitor OpenTelemetry for instrumenting API gateway requests.
 // const { useAzureMonitor } = require("@azure/monitor-opentelemetry"); ID01312025.o
-const { initializeTelemetry, addCustomPropertiesToSpan } = require("./config/monitor/azureMonitorManualInstru.js"); // ID01312025.n, ID03122025.n
+// const { initializeTelemetry, addCustomPropertiesToSpan } = require("./config/monitor/azureMonitorManualInstru.js"); // ID01312025.n, ID03122025.n, ID05122026.o
+const { initializeTelemetry, addCustomPropertiesToSpan } = require("./config/monitor/azureMonitor-v2.js"); // ID05122026.n
 const azAppInsightsConString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING; // ID01312025.n
 // let azAppInsightsConString = process.env.APPLICATION_INSIGHTS_CONNECTION_STRING; // ID11052024.n, ID01312025.o
 if (azAppInsightsConString) {
@@ -112,7 +125,8 @@ const cors = require("cors"); // ID05222024.n
 const { apirouter, reconfigEndpoints } = require("./routes/apirouter"); // Single domain AI App Gateway
 const { mdapirouter, reconfigAppMetrics } = require("./routes/md-apirouter"); // ID09042024.n; Multi domain distributed AI App Engine
 const { createA2AGatewayRouter } = require("./routes/a2a-router.js"); // ID10032025.n
-const cprouter = require("./routes/control-plane.js"); // ID01232025.n; AI App Gateway control plane route
+const cprouter = require("./routes/control-plane.js"); // ID01232025.n; AI App Gateway control plane router
+const secrouter = require("./routes/security-router.js"); // ID05282026.n; AI App Gateway security router
 const pgdb = require("./services/cp-pg.js");
 const CacheConfig = require("./utilities/cache-config");
 // const runCacheInvalidator = require("./utilities/cache-invalidator"); ID05062024.o
@@ -124,7 +138,6 @@ const { securityConfig } = require("./auth/securityConfig.js"); // ID10252025.n
 const { validateAccessToken } = require("./auth/authMiddleware.js"); // ID10252025.n
 const { validateAiServerSchema } = require("./schemas/validate-json-config"); // ID01242025.n, ID09202024.n
 
-// const https = require("https"); // IDTest
 const app = express();
 let bodyParser = require('body-parser');
 
@@ -139,26 +152,105 @@ const persistdb = require("./services/pp-pg.js");
 const { TblNames, PersistDao } = require('./utilities/persist-dao.js');
 const { formatException } = require('./utilities/helper-funcs.js'); // ID12042025.n
 
+// ID04022026.sn
 // Configure pinojs logger - logs http request/response only
-const logger = require('pino-http')({
-  // Define a custom request id function
-  genReqId: function (req, res) {
-    const existingID = req.id ?? req.headers[CustomRequestHeaders.RequestId];
-    if (existingID) return existingID;
-    // const id = randomUUID(); ID07312025.o
-    const id = generateGUID("request"); // ID07312025.n
-    res.setHeader(CustomRequestHeaders.RequestId, id);
-
-    return id;
-  },
-  useLevel: 'info',
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true
-    }
-  }
+// Create base logger to handle 'EINTR' write exception
+const pino = require('pino');
+const stream = pino.destination(1); // 1 = stdout fd
+stream.on('error', (err) => {
+  console.error('Logger stream error:', err);
 });
+const baseLogger = pino(stream);
+
+const pinoHttp = require('pino-http')
+
+let logger;
+if (process.env.API_GATEWAY_ENV === AiAppGatewayEnv.DEV) {
+  logger = pinoHttp({
+    logger: baseLogger,
+    // Define a custom request id function
+    genReqId: function (req, res) {
+      const existingID = req.id ?? req.headers[CustomRequestHeaders.RequestId];
+      if (existingID) return existingID;
+      // const id = randomUUID(); ID07312025.o
+      const id = generateGUID("request"); // ID07312025.n
+      res.setHeader(CustomRequestHeaders.RequestId, id);
+
+      return id;
+    },
+    useLevel: process.env.LOG_LEVEL || 'info',
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        colorize: true
+      }
+    }
+  });
+}
+else { 
+  // For all other envs, do not use pino-pretty! Pino-pretty runs in a worker and if it were to crash, the server may shutdown 
+  // when attempting to write the response headers!
+  logger = pinoHttp({
+    logger: baseLogger, // use base logger to catch write exceptions on stream
+    // Define a custom request id function
+    genReqId: function (req, res) {
+      const existingID = req.id ?? req.headers[CustomRequestHeaders.RequestId];
+      if (existingID) return existingID;
+      // const id = randomUUID(); ID07312025.o
+      const id = generateGUID("request"); // ID07312025.n
+      res.setHeader(CustomRequestHeaders.RequestId, id);
+
+      return id;
+    },
+    transport: undefined, // forces default stdout
+    customProps: function (req, res) {
+      return {
+        appName: 'rapid-gateway',
+        route: req.url,
+        method: req.method,
+        traceparent: req.headers['traceparent'],
+        clientIp: req.headers['x-forwarded-for'] || req.socket.remoteAddress
+      };
+    },
+    redact: { // Redact confidential info.
+      paths: [
+        'req.headers.authorization',
+        'req.headers.api-key'
+      ],
+      censor: '***'
+    },
+    autoLogging: { // Ignore logging health, metrics and server send events API calls
+      ignore: (req) => {
+        return req.url.includes(GatewayRouterEndpoints.HealthEndpoint) || req.url.includes(GatewayRouterEndpoints.MetricsEndpoint) || req.url.includes(GatewayRouterEndpoints.EventsEndpoint);
+      }
+    },
+    customSuccessMessage: function (req, res) {
+      return `${req.method} ${req.url} completed`;
+    },
+    customErrorMessage: function (req, res, err) {
+      return `${req.method} ${req.url} error: ${err.message}`;
+    },
+    customProps: (req, res) => ({
+      responseTime: res.getHeader('X-Response-Time')
+    }),
+    serializers: { // Log minimal values; reduce noise
+      req(req) {
+        return {
+          id: req.id,
+          method: req.method,
+          url: req.url
+        };
+      },
+      res(res) {
+        return {
+          statusCode: res.statusCode
+        };
+      }
+    },
+    useLevel: process.env.LOG_LEVEL || 'info'
+  });
+};
+// ID04022026.en
 
 // ID06282024.sn
 let dbConnectionStatus = 1;
@@ -192,13 +284,14 @@ async function readAiAppGatewayEnvVars() {
   if (process.env.API_GATEWAY_PORT)
     port = Number(process.env.API_GATEWAY_PORT);
   else
-    port = 8000;
+    port = 8000; // Default listen port is 8000
 
-  if (process.env.API_GATEWAY_ENV)
+  if (process.env.API_GATEWAY_ENV) {
     // endpoint = "/api/v1/" + process.env.API_GATEWAY_ENV; ID11152024.o
     endpoint = AiAppGateway.ApiVersion + process.env.API_GATEWAY_ENV + AiAppGateway.RouterContextPath; // ID11152024.n, ID07252025.n
+  }
   else {
-    wlogger.log({ level: "error", message: "[%s] Env. variable [API_GATEWAY_ENV] not set, aborting ...", splat: [scriptName] });
+    wlogger.log({ level: "error", message: `[%s] Env. variable [API_GATEWAY_ENV] not set.  Possible values are [dev,test,preprod,prod]. Aborting ...`, splat: [scriptName] });
     // exit program
     process.exit(1);
   };
@@ -242,7 +335,29 @@ async function populateServerContext(initialize) { // ID01312025.n
   const cfgFile = process.env.API_GATEWAY_CONFIG_FILE;
   if ((configType == ConfigProviderType.File) && (cfgFile) && (fs.existsSync(cfgFile))) { // File store
     let data = fs.readFileSync(cfgFile, { encoding: 'utf8', flag: 'r' });
-    let ctx = JSON.parse(data);
+
+    let ctx;
+    try {
+      ctx = JSON.parse(data); // ID04022026.n
+    }
+    catch (error) {
+      if (initialize) {
+        wlogger.log({ level: "error", message: "[%s] Error reading AI Gateway Configuration file. Aborting initialization ...\n  Configuration file: %s\n  Error: %s\n", splat: [scriptName, cfgFile, error.message] });
+        process.exit(1);
+      }
+      else {
+        return {
+          http_code: 500, // Internal server error!
+          data: {
+            endpointUri: req.originalUrl,
+            error: {
+              message: error.message,
+              code: "fileReadError"
+            }
+          }
+        };
+      };
+    };
 
     const valResults = validateAiServerSchema(ctx);
     if (!valResults.schema_compliant) { // ID01212025.n
@@ -282,9 +397,23 @@ async function populateServerContext(initialize) { // ID01312025.n
         };
     };
 
+    // ID06092026.sn
+    if ( !ctx.agentRegistryId )
+      context.agentRegistryId = generateGUID("a2a"); // Generate new A2A Agent registry ID if it's not present
+    else
+      context.agentRegistryId = ctx.agentRegistryId;
+    if ( ctx.serverName )
+      context.serverName = ctx.serverName;
+    if ( ctx.description )
+      context.description = ctx.description;
+    // ID06092026.en
+
     context.applications = ctx.applications;
     if (ctx.budgetConfig) // ID08252025.n
       context.budgetConfig = ctx.budgetConfig;
+
+    if (ctx.remoteServerConfig) // ID02232026.n
+      context.remoteServerConfig = ctx.remoteServerConfig;
 
     if (context.serverType === ServerTypes.MultiDomain)
       context.aiGatewayUri = ctx.aiGatewayUri;
@@ -316,6 +445,9 @@ async function populateServerContext(initialize) { // ID01312025.n
         context.applications = srvData.data[0].app_conf.applications;
         if (srvData.data[0].app_conf.budgetConfig) // ID08252025.n
           context.budgetConfig = srvData.data[0].app_conf.budgetConfig;
+
+        if (srvData.data[0].app_conf.remoteServerConfig) // ID02232026.n
+          context.remoteServerConfig = srvData.data[0].app_conf.remoteServerConfig;
       };
 
       if (context.serverType === ServerTypes.MultiDomain)
@@ -377,9 +509,12 @@ async function readAiAppGatewayConfig() { // ID01292025.n
   };
   const srvType = process.env.API_GATEWAY_TYPE;
   if (!srvType) { // ID01292025.n
-    wlogger.log({ level: "error", message: "[%s] Env. variable [API_GATEWAY_TYPE] not set, aborting ...", splat: [scriptName] });
+    // wlogger.log({ level: "error", message: "[%s] Env. variable [API_GATEWAY_TYPE] not set, aborting ...", splat: [scriptName] });
     // exit program
-    process.exit(1);
+    // process.exit(1); // ID05182026.o
+
+    // ID05182026.n Set the server type to default - Single domain
+    srvType = ServerTypes.SingleDomain;
   }
   else {
     if ((srvType !== ServerTypes.SingleDomain) && (srvType !== ServerTypes.MultiDomain)) {
@@ -552,7 +687,7 @@ function initializeAuth() {
     // ID10252025.sn
     const delPermsObject = Object.values(securityConfig.protectedRoutes.aigateway.delegatedPermissions);
     const requiredScopes = delPermsObject.filter(permission => permission && permission.trim());
-    
+
     const appPermsObject = Object.values(securityConfig.protectedRoutes.aigateway.applicationPermissions);
     const requiredRoles = appPermsObject.filter(permission => permission && permission.trim());
 
@@ -576,8 +711,20 @@ initServer().then(() => { // ID01302025.n
   app.use(bodyParser.json({ limit: DefaultJsonParserCharLimit })); // ID02202025.n
   app.use(bodyParser.urlencoded({ limit: DefaultJsonParserCharLimit, extended: true })); // ID02202025.n
 
+  // ID05282026.sn
+  // Inbound security middleware. Protects all AI Gateway entry points/routes.
+  // Get's invoked first!
+  // Path: /aigateway
+  app.use(endpoint, (req, res, next) => {
+    req.srvconf = context;
+
+    next();
+  }, secrouter);
+  // ID05282026.en
+
   // ID07292024.sn
   // Generate request id prior to invoking router middleware (endpoints)
+  // Endpoint: /aigateway
   // app.use(endpoint + "/apirouter", (req, res, next) => { ID11152024.o
   app.use(endpoint, (req, res, next) => { // ID11152024.n
     logger(req, res); // Generates the req.id
@@ -586,6 +733,10 @@ initServer().then(() => { // ID01302025.n
       // Add the request ID to the context span
       let spanProperties = new Map();
       spanProperties.set('x-request-id', req.id);
+      const hostId = process.env.POD_NAME || host; // ID05122026.n
+      spanProperties.set(GatewaySpanAttrs.HostIdentity, hostId);
+      const gatewayId = (process.env.POD_NAME) ? context.serverId + '-' + process.env.POD_NAME : context.serverId;
+      spanProperties.set(GatewaySpanAttrs.GatewayId, gatewayId);
       addCustomPropertiesToSpan(spanProperties);
     };
     next();
@@ -685,9 +836,9 @@ initServer().then(() => { // ID01302025.n
     next();
   }, cprouter);
 
-  // API Gateway 'load balancer' endpoint
-  // Endpoint: /aigateway
   // app.use(endpoint + "/apirouter", function (req, res, next) { ID11152024.o
+  // API Gateway 'Primary' endpoint
+  // Endpoint: /aigateway
   app.use(endpoint, function (req, res, next) { // ID11152024.n
     // Add logger
     // logger(req,res); ID07292024.o
@@ -695,7 +846,7 @@ initServer().then(() => { // ID01302025.n
     // Add cache config to the request object
     req.cacheconfig = cacheConfig;
 
-    // Add the AI Apps context to the request object
+    // Add the AI App server configuration (context) to the request object
     req.targeturis = context;
 
     // Add the server context to the request object
@@ -711,14 +862,14 @@ initServer().then(() => { // ID01302025.n
     next();
   }, (context.serverType === ServerTypes.SingleDomain) ? apirouter : mdapirouter);
 
-  app.use(endpoint, createA2AGatewayRouter(context.applications)); // ID10032025.n
+  app.use(endpoint, createA2AGatewayRouter(context.applications, context.remoteServerConfig)); // ID10032025.n, ID05282026.n
 
   app.listen(port, () => {
     wlogger.log({
       level: "info",
-      message: "[%s] Server(): Azure AI Application Gateway started successfully.\n-----\nDetails:\n  Server Name: %s\n  Server Type: %s\n  Version: %s\n  Config. Provider Type: %s\n  Endpoint URI: http://%s:%s%s\n  Status: %s\n  Start Date: %s\n-----\n",
-      splat: [scriptName, context.serverId, context.serverType, AiAppGateway.Version, configType, host, port, endpoint, AppServerStatus.Running, srvStartDate]
-    }); // ID03282024.n, ID07252025.n
+      message: "[%s] Server(): Azure AI Application Gateway started successfully.\n-----\nDetails:\n  Server Name: %s\n  Gateway Type: %s\n  Version: %s\n  Config. Provider Type: %s\n  Endpoint URI: http://%s:%s%s\n  Status: %s\n  Start Date: %s\n-----\n",
+      splat: [scriptName, context.serverId, AiGatewayTypes.SingleAgent, AiAppGateway.Version, configType, host, port, endpoint, AppServerStatus.Running, srvStartDate]
+    }); // ID03282024.n, ID07252025.n, ID05182026.n
   });
 
   /** IDTest

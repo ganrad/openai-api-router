@@ -15,7 +15,8 @@
  * ID08212025: ganrad: v2.4.0: (Enhancement) Updated code to support metrics collection for AI Foundry Agent Service.
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
  * ID11182025: ganrad: v2.9.5: (Enhancement) Introduced support for Azure AI Model v1 chat/completions API
- * 
+ * ID05272026: ganrad: v3.0.1: (Enhancement) Introduced rate limit delay (seconds) for endpoints
+ * ID06042026: ganrad: v3.0.1: (Enhancement) Introduced support for Anthropic's Messages API.
 */
 
 const AzOaiEpMetrics = require("./az-oai-ep-metrics.js"); // Open AI Metrics
@@ -40,9 +41,10 @@ class EndpointMetricsFactory {
     let metricsObj = null;
 
     // const uri = (appType === AzAiServices.AzAiAgent) ? targetUri + "/" + epConfig[1] : targetUri; // ID08212025.n, ID11182025.o
-    const uri = epConfig[1] ? targetUri + "/" + epConfig[1] : targetUri; // ID11182025.n
+    const uri = epConfig[0] ? targetUri + "/" + epConfig[0] : targetUri; // ID11182025.n, ID05272026.n
     switch (appType) {
       case AzAiServices.OAI:
+      case AzAiServices.Anthropic: // ID06042026.n
       case AzAiServices.AzAiModelInfApi: // ID11052024.n
       case AzAiServices.AzAiAgent: // ID07102025.n
         metricsObj = new AzOaiEpMetrics(
@@ -50,10 +52,11 @@ class EndpointMetricsFactory {
           process.env.API_GATEWAY_METRICS_CINTERVAL,
           // process.env.API_GATEWAY_METRICS_CHISTORY); ID05282024.o
           process.env.API_GATEWAY_METRICS_CHISTORY,
-          epConfig[0], // (RPM) ID05282024.n
-          epConfig[1], // (ID) ID04302025.n
-          epConfig[2], // (Health Policy) ID05122025.n
-          epConfig[3]); // Model pricing info. ID08252025.n
+          epConfig[0], // (ID) ID04302025.n
+          epConfig[1], // (RPM) ID05282024.n
+          epConfig[2], // (Rate limit delay in seconds) ID05272026.n
+          epConfig[3], // (Health Policy) ID05122025.n
+          epConfig[4]) // (Model pricing info.) ID08252025.n
         break;
       case AzAiServices.AiSearch:
         metricsObj = new AzAiSearchEpMetrics(

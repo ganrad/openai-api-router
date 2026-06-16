@@ -9,9 +9,10 @@
  * ID09232025: ganrad: v2.6.0: (Bug Fixes) Minor bug fixes - missing semicolon, unnecessary initialization ...
  * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced multiple levels in semantic cache - l1 (Memory), l2 (Qdrant) 
  * and l3 (PostGres). Introduced new class to store Ai App cache metrics.
+ * ID05142026: ganrad: v3.0.1: (Enhancement; Refactored) Added support for exposing cache metrics in Prometheus text exposition format.
 */
 
-const { CacheLevels } = require('./app-gtwy-constants'); // ID11212025.n
+const { CacheLevels, EpMetricsOutputFormat } = require('./app-gtwy-constants'); // ID05142026.n, ID11212025.n
 
 class AiApplication { // ID11212025.o Important: This class is deprecated!
   #totalScore; // ID09232025.n
@@ -32,7 +33,6 @@ class AiApplication { // ID11212025.o Important: This class is deprecated!
 class CacheMetricsInfo { // ID11212025.n
   constructor() {
     // Initialize the metrics info. object
-    
     this.metricsInfo = {
       l1Hits: 0,
       l1Misses: 0,
@@ -44,14 +44,17 @@ class CacheMetricsInfo { // ID11212025.n
       pgMisses: 0,
       pgScores: 0.0,
       latencies: { 
-        l1_sum: 0,
+        l1_sum: 0.0,
         l1_count: 0,
-        l2_sum: 0,
+        l2_sum: 0.0,
         l2_count: 0,
-        pg_sum: 0,
-        Pg_count: 0  
+        pg_sum: 0.0,
+        pg_count: 0  
       }
-    }
+    };
+
+    // Clone metricsInfo object for point in time metrics calculation
+    this.pitMetricsInfo = structuredClone(this.metricsInfo); // ID05142026.n
   }
 
   updateCacheHits(level, score) {
@@ -98,33 +101,108 @@ class CacheMetricsInfo { // ID11212025.n
     return(sum/count);
   }
 
-  getAiAppCacheMetricsInfo() {
-    return {
-      hitRates: {
-        [CacheLevels.Level1]: this.metricsInfo.l1Hits / (this.metricsInfo.l1Hits + this.metricsInfo.l1Misses || 1),
-        [CacheLevels.Level2]: this.metricsInfo.l2Hits / (this.metricsInfo.l2Hits + this.metricsInfo.l2Misses || 1),
-        [CacheLevels.Level3]: this.metricsInfo.pgHits / (this.metricsInfo.pgHits + this.metricsInfo.pgMisses || 1)
-      },
-      avgScores: {
-        [CacheLevels.Level1]: this.metricsInfo.l1Hits ? this.metricsInfo.l1Scores / this.metricsInfo.l1Hits : 0,
-        [CacheLevels.Level2]: this.metricsInfo.l2Hits ? this.metricsInfo.l2Scores / this.metricsInfo.l2Hits : 0,
-        [CacheLevels.Level3]: this.metricsInfo.pgHits ? this.metricsInfo.pgScores / this.metricsInfo.pgHits : 0
-      },
-      avgLatency: {
-        [CacheLevels.Level1]: this.getAvgLatency(CacheLevels.Level1),
-        [CacheLevels.Level2]: this.getAvgLatency(CacheLevels.Level2),
-        [CacheLevels.Level3]: this.getAvgLatency(CacheLevels.Level3)
-      },
-      counts: {
-        l1Hits: this.metricsInfo.l1Hits,
-        l1Misses: this.metricsInfo.l1Misses,
-        l2Hits: this.metricsInfo.l2Hits,
-        l2Misses: this.metricsInfo.l2Misses,
-        pgHits: this.metricsInfo.pgHits,
-        pgMisses: this.metricsInfo.pgMisses
-      }
+  getAiAppCacheMetricsInfo(format) { // ID05142026.n
+    let metricsRetObject;
+    
+    if (format === EpMetricsOutputFormat.JSON) {
+      metricsRetObject = {
+        hitRates: {
+          [CacheLevels.Level1]: this.metricsInfo.l1Hits / (this.metricsInfo.l1Hits + this.metricsInfo.l1Misses || 1),
+          [CacheLevels.Level2]: this.metricsInfo.l2Hits / (this.metricsInfo.l2Hits + this.metricsInfo.l2Misses || 1),
+          [CacheLevels.Level3]: this.metricsInfo.pgHits / (this.metricsInfo.pgHits + this.metricsInfo.pgMisses || 1)
+        },
+        avgScores: {
+          [CacheLevels.Level1]: this.metricsInfo.l1Hits ? this.metricsInfo.l1Scores / this.metricsInfo.l1Hits : 0,
+          [CacheLevels.Level2]: this.metricsInfo.l2Hits ? this.metricsInfo.l2Scores / this.metricsInfo.l2Hits : 0,
+          [CacheLevels.Level3]: this.metricsInfo.pgHits ? this.metricsInfo.pgScores / this.metricsInfo.pgHits : 0
+        },
+        avgLatency: {
+          [CacheLevels.Level1]: this.getAvgLatency(CacheLevels.Level1),
+          [CacheLevels.Level2]: this.getAvgLatency(CacheLevels.Level2),
+          [CacheLevels.Level3]: this.getAvgLatency(CacheLevels.Level3)
+        },
+        counts: {
+          l1Hits: this.metricsInfo.l1Hits,
+          l1Misses: this.metricsInfo.l1Misses,
+          l2Hits: this.metricsInfo.l2Hits,
+          l2Misses: this.metricsInfo.l2Misses,
+          pgHits: this.metricsInfo.pgHits,
+          pgMisses: this.metricsInfo.pgMisses
+        }
+      };
+    }
+    else { // Prometheus text exposition format
+      const l1Hits = this.metricsInfo.l1Hits - this.pitMetricsInfo.l1Hits;
+      this.pitMetricsInfo.l1Hits = this.metricsInfo.l1Hits;
+
+      const l2Hits = this.metricsInfo.l2Hits - this.pitMetricsInfo.l2Hits;
+      this.pitMetricsInfo.l2Hits = this.metricsInfo.l2Hits;
+
+      const pgHits = this.metricsInfo.pgHits - this.pitMetricsInfo.pgHits;
+      this.pitMetricsInfo.pgHits = this.metricsInfo.pgHits;
+
+      const l1Misses = this.metricsInfo.l1Misses - this.pitMetricsInfo.l1Misses;
+      this.pitMetricsInfo.l1Misses = this.metricsInfo.l1Misses;
+
+      const l2Misses = this.metricsInfo.l2Misses - this.pitMetricsInfo.l2Misses;
+      this.pitMetricsInfo.l2Misses = this.metricsInfo.l2Misses;
+
+      const pgMisses = this.metricsInfo.pgMisses - this.pitMetricsInfo.pgMisses;
+      this.pitMetricsInfo.pgMisses = this.metricsInfo.pgMisses;
+
+      const l1Scores = this.metricsInfo.l1Scores - this.pitMetricsInfo.l1Scores;
+      this.pitMetricsInfo.l1Scores = this.metricsInfo.l1Scores;
+
+      const l2Scores = this.metricsInfo.l2Scores - this.pitMetricsInfo.l2Scores;
+      this.pitMetricsInfo.l2Scores = this.metricsInfo.l2Scores;
+
+      const pgScores = this.metricsInfo.pgScores - this.pitMetricsInfo.pgScores;
+      this.pitMetricsInfo.pgScores = this.metricsInfo.pgScores;
+
+      const l1_sum = this.metricsInfo.latencies.l1_sum - this.pitMetricsInfo.latencies.l1_sum;
+      this.pitMetricsInfo.latencies.l1_sum = this.metricsInfo.latencies.l1_sum;
+      const l1_count = this.metricsInfo.latencies.l1_count - this.pitMetricsInfo.latencies.l1_count;
+      this.pitMetricsInfo.latencies.l1_count = this.metricsInfo.latencies.l1_count;
+
+      const l2_sum = this.metricsInfo.latencies.l2_sum - this.pitMetricsInfo.latencies.l2_sum;
+      this.pitMetricsInfo.latencies.l2_sum = this.metricsInfo.latencies.l2_sum;
+      const l2_count = this.metricsInfo.latencies.l2_count - this.pitMetricsInfo.latencies.l2_count;
+      this.pitMetricsInfo.latencies.l2_count = this.metricsInfo.latencies.l2_count;
+
+      const pg_sum = this.metricsInfo.latencies.pg_sum - this.pitMetricsInfo.latencies.pg_sum;
+      this.pitMetricsInfo.latencies.pg_sum = this.metricsInfo.latencies.pg_sum;
+      const pg_count = this.metricsInfo.latencies.pg_count - this.pitMetricsInfo.latencies.pg_count;
+      this.pitMetricsInfo.latencies.pg_count = this.metricsInfo.latencies.pg_count;
+
+      metricsRetObject = {
+        hitRates: {
+          [CacheLevels.Level1]: l1Hits / (l1Hits + l1Misses || 1),
+          [CacheLevels.Level2]: l2Hits / (l2Hits + l2Misses || 1),
+          [CacheLevels.Level3]: pgHits / (pgHits + pgMisses || 1)
+        },
+        avgScores: {
+          [CacheLevels.Level1]: l1Hits ? (l1Scores / l1Hits).toFixed(2) : 0,
+          [CacheLevels.Level2]: l2Hits ? (l2Scores / l2Hits).toFixed(2) : 0,
+          [CacheLevels.Level3]: pgHits ? (pgScores / pgHits).toFixed(2) : 0
+        },
+        avgLatency: {
+          [CacheLevels.Level1]: (l1_sum / l1_count).toFixed(2),
+          [CacheLevels.Level2]: (l2_sum / l2_count).toFixed(2),
+          [CacheLevels.Level3]: (pg_sum / pg_count).toFixed(2)
+        },
+        counts: {
+          l1Hits: this.metricsInfo.l1Hits,
+          l1Misses: this.metricsInfo.l1Misses,
+          l2Hits: this.metricsInfo.l2Hits,
+          l2Misses: this.metricsInfo.l2Misses,
+          pgHits: this.metricsInfo.pgHits,
+          pgMisses: this.metricsInfo.pgMisses
+        }
+      };
     };
-  }
+
+    return(metricsRetObject);
+  } 
 }
 
 class AppCacheMetrics {

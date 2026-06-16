@@ -7,6 +7,7 @@
  * Version (Introduced): 2.4.0
  *
  * Notes:
+ * ID04232026: ganrad: v3.0.1: (Enhancement) Added new data handler for tool execution trace.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -17,12 +18,14 @@ const RequestDataHandler = require("./request-data-handler.js");
 const SessionDataHandler = require('./session-data-handler');
 const MetricsDataHandler = require('./metrics-data-handler.js');
 const InstanceInfoDataHandler = require('./instance-data-handler.js');
+const ToolExecutionTraceDataHandler = require('./tool-trace-data-handler.js'); // ID04232026.n
 
 const handlerMap = {
   [AppResourceTypes.AiAppServer]: InstanceInfoDataHandler,
   [AppResourceTypes.AiAppGatewayRequest]: RequestDataHandler,
   [AppResourceTypes.AiAppGatewaySession]: SessionDataHandler,
-  [AppResourceTypes.AiAppGatewayMetrics]: MetricsDataHandler
+  [AppResourceTypes.AiAppGatewayMetrics]: MetricsDataHandler,
+  [AppResourceTypes.AiAppGatewayToolTrace]: ToolExecutionTraceDataHandler // ID04232026.n
 };
 
 class ResourceHandlerFactory {
