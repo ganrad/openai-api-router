@@ -11,6 +11,7 @@
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
  * ID10252025: ganrad: v2.8.5: (Refactored code) AI App Gateway security implementation (library) switched to jwks-rsa.
  * ID11262025: ganrad: v2.9.5: (Enhancement) Introduced Level 2 cache (Qdrant) for semantic caching.
+ * ID07152026: ganrad: v3.0.1: (Enhancement) Introduced AI Application security policies for restricting a) Inbound access to app and b) External access from app.
 */
 
 const path = require('path');
@@ -27,9 +28,9 @@ const {
   AppResourceActions, 
   ResourceDBActions, 
   ConfigProviderType } = require("../utilities/app-gtwy-constants.js");
-const { validateAiAppSchema, sdAiAppSchema, mdAiAppSchema } = require("../schemas/validate-json-config.js"); // ID08252025.n
-const { reinitAppConnection } = require("../routes/apirouter.js");
-const { reconfigAppMetrics } = require("../routes/md-apirouter.js");
+const { validateAiAppSchema, sdAiAppSchema, sdSecuritySchema, mdAiAppSchema } = require("../schemas/validate-json-config.js"); // ID08252025.n, ID07152026.n
+const { reinitAppConnection } = require("../routers/apirouter.js");
+const { reconfigAppMetrics } = require("../routers/md-apirouter.js");
 const { deleteL2CacheCollection } = require("../utilities/helper-funcs.js"); // ID11262025.n
 
 class AiAppProcessor {
@@ -116,6 +117,7 @@ class AiAppProcessor {
         date: new Date().toLocaleString()
       }
     };
+    respMessage.data.resourceSchema.properties.securitySettings.allOf[0] = sdSecuritySchema; // ID07152026.n
 
     return(respMessage);
   }

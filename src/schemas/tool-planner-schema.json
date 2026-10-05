@@ -1,0 +1,104 @@
+{
+  "$id": "https://github.com/ganrad/rapid/schemas/tool-planner-schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["planVersion", "reason", "nodes"],
+  "properties": {
+    "planVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    }
+  },
+  "$defs": {
+    "referenceExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$from"],
+      "properties": {
+        "$from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string"
+        },
+        "collect": {
+          "type": "string",
+          "enum": ["list", "flatten"]
+        }
+      }
+    },
+    "variableExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$var"],
+      "properties": {
+        "$var": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "forEach": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "as"],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/referenceExpression"
+        },
+        "as": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "maxConcurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "tool", "parameters", "dependsOn"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "tool": {
+          "type": "string",
+          "pattern": "^[^|\\s]+\\|[^|\\s]+$"
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "dependsOn": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "forEach": {
+          "$ref": "#/$defs/forEach"
+        },
+        "onError": {
+          "type": "string",
+          "enum": ["fail", "skip"]
+        }
+      }
+    }
+  }
+}

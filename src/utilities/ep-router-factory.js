@@ -15,7 +15,7 @@
 */
 
 const { EndpointRouterTypes } = require("./app-gtwy-constants.js"); // AI weighted router types
-const { CreateTrafficRouter } = require("./endpoint-routers.js"); // ID08082025.n
+const { CreateTrafficRouter } = require("../traffic-routers/endpoint-routers.js"); // ID08082025.n
 
 class EndpointRouterFactory {
 

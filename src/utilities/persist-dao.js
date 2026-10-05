@@ -37,10 +37,16 @@
  * ID04212026: ganrad: v3.0.1: (Enhancement) Introduced 2 new tables 'toolexecplan' and 'toolexecdetails' to capture tool plan and execution data.
  * ID04302026: ganrad: v3.0.1: (Enhancement) Introduced new field 'tool_exec_count' in table apigtwyprompts. This field will store the 
  * tools executed as part of a request.
+ * ID08202026: ganrad: v3.0.1: (Bugfix) Re-factored prompts & memory/state management table query/store calls to use separate gateway server & instance id's.
+ * ID08262026: ganrad: v3.0.1: (Enhancement) Three new fields were added to apigtwyprompts table (- generation model, generation input & output tokens). 
+ * Hence DML statements were updated.
+ * ID08272026: ganrad: v3.0.1: (Enhancement) Added new query to apigtwyprompts table to support querying by request id. This is required for A2A call traces.
+ * ID09282026: ganrad: v3.0.1: (Enhancement) Two new fields were added to apigtwyprompts table - generation cache read and write tokens. These values are 
+ * used for deriving user API call and cost metrics.
+ * 
 */
 
 // const pgvector = require('pgvector/pg');
-
 const TblNames = {
     Cache: "Cache",
     Prompts: "Prompts",
@@ -50,7 +56,8 @@ const TblNames = {
     AiAppServers: "AiAppServers", // ID01272025.n
     UserFacts: "UserFacts", // ID05142025.n
     ToolExecPlan: "ToolExecutionPlan", // ID04212026.n
-    ToolExecDetails: "ToolExecutionDetails" // ID04212026.n
+    ToolExecDetails: "ToolExecutionDetails", // ID04212026.n
+    UserMetrics: "UserMetrics" // ID09282026.n (Views derived from Prompts table)
   };
 
 const cacheQueryStmts = [
@@ -61,48 +68,53 @@ const cacheQueryStmts = [
 const promptQueryStmts = [
   "SELECT * FROM apigtwyprompts ORDER BY timestamp_ DESC",
   "SELECT * FROM apigtwyprompts WHERE srv_name LIKE $1 || '%' AND requestid = $2 AND aiappname = $3", // ID11042024.n, ID09152025.n
-  "SELECT * FROM apigtwyprompts WHERE threadid = $1 AND aiappname = $2 ORDER BY id" // ID02142025.n, ID05082025.n
+  // "SELECT * FROM apigtwyprompts WHERE threadid = $1 AND aiappname = $2 ORDER BY id" // ID02142025.n, ID05082025.n, ID08202026.o
+  "SELECT * FROM apigtwyprompts WHERE srv_name = $1 AND aiappname = $2 AND threadid = $3 ORDER BY id", // ID08202026.n
+  "SELECT * FROM apigtwyprompts WHERE srv_name = $1 AND aiappname = $2 AND threadid = $3 AND requestid = $4" // ID08272026.n
 ];
 
 const promptInsertStmts = [
   // "INSERT INTO apigtwyprompts (requestid, aiappname, prompt) VALUES ($1,$2,$3) RETURNING id" ID04112024.o
   // "INSERT INTO apigtwyprompts (requestid, aiappname, prompt, completion, uname) VALUES ($1,$2,$3,$4,$5) RETURNING id" // ID04112024.n, ID11082024.o
   // "INSERT INTO apigtwyprompts (requestid, srv_name, aiappname, prompt, completion, model_res_hdrs, uname, exec_time_secs) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.o
-  "INSERT INTO apigtwyprompts (requestid, srv_name, aiappname, prompt, completion, model_res_hdrs, uname, exec_tool_count, exec_time_secs, endpoint_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.n, ID04302026.n
+  "INSERT INTO apigtwyprompts (requestid, srv_name, instance, aiappname, prompt, completion, model_res_hdrs, uname, exec_tool_count, exec_time_secs, endpoint_id, gen_model, gen_input_tokens, gen_output_tokens, gen_cache_rd_tokens, gen_cache_wr_tokens) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.n, ID04302026.n, ID08202026.n, ID08262026.n, ID09282026.n
   "UPDATE apigtwyprompts SET threadid = $4 WHERE requestid = $1 and srv_name = $2 and aiappname = $3 RETURNING id", // ID02142025.n
-  "INSERT INTO apigtwyprompts (threadid, requestid, srv_name, aiappname, prompt, completion, uname, exec_tool_count, exec_time_secs, endpoint_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id", // ID08052025.n, ID04302026.n
+  "INSERT INTO apigtwyprompts (threadid, requestid, srv_name, instance, aiappname, prompt, completion, uname, exec_tool_count, exec_time_secs, endpoint_id, gen_model, gen_input_tokens, gen_output_tokens, gen_cache_rd_tokens, gen_cache_wr_tokens) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id", // ID08052025.n, ID04302026.n, ID08202026.n, ID08262026.n, ID09282026.n
   "UPDATE apigtwyprompts SET feedback_count = feedback_count + $4 WHERE srv_name LIKE $1 || '%' AND requestid = $2 AND aiappname = $3 RETURNING id, endpoint_id", // ID09152025.n
 ];
 
+// Important: APP ID has to be Unique across ai gateway servers
 const memoryQueryStmts = [ // ID05062024.n
   "SELECT * FROM apigtwymemory ORDER BY timestamp_ DESC",
-  "SELECT * FROM apigtwymemory WHERE threadid = $1 AND aiappname = $2",
-  "SELECT * FROM apigtwymemory WHERE threadid = $1 AND md_aiappname = $2" // AND md_srv_name = $3" // ID11122024.n
+  // "SELECT * FROM apigtwymemory WHERE threadid = $1 AND aiappname = $2", ID08202026.o
+  "SELECT * FROM apigtwymemory WHERE srv_name = $1 AND aiappname = $2 AND threadid = $3", // ID08202026.n
+  "SELECT * FROM apigtwymemory WHERE threadid = $1 AND md_aiappname = $2" // AND md_srv_name = $3" // ID11122024.n (Deprecated)
 ];
 
 const memoryInsertStmts = [ // ID05062024.n
-  "INSERT INTO apigtwymemory (requestid, srv_name, threadid, aiappname, context, uname, endpoint_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id", // ID05062024.n, ID11112024.n, ID05082025.n
+  "INSERT INTO apigtwymemory (requestid, srv_name, instance, threadid, aiappname, context, uname, endpoint_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id", // ID05062024.n, ID11112024.n, ID05082025.n, ID08202026.n
   // `UPDATE apigtwymemory SET requestid = $1, context = $4, uname = $5, timestamp_ = to_timestamp(${Date.now()} / 1000) WHERE threadid = $2 and aiappname = $3 RETURNING id`
-  `UPDATE apigtwymemory SET requestid = $1, context = $5, uname = $6, srv_name = $2, endpoint_id = $7 WHERE threadid = $3 and aiappname = $4 RETURNING id`, // ID11112024.n, ID05082025.n
-  `UPDATE apigtwymemory SET tool_name = $3, md_aiappname = $4, md_srv_name = $5 WHERE threadid = $1 and aiappname = $2 RETURNING id` // ID11122024.n
+  // `UPDATE apigtwymemory SET requestid = $1, context = $5, uname = $6, srv_name = $2, endpoint_id = $7 WHERE threadid = $3 and aiappname = $4 RETURNING id`, // ID11112024.n, ID05082025.n, ID08202026.o
+  `UPDATE apigtwymemory SET requestid = $1, instance = $3, context = $6, uname = $7, endpoint_id = $8 WHERE srv_name = $2 and threadid = $4 and aiappname = $5 RETURNING id`, // ID11112024.n, ID05082025.n, ID08202026.n
+  `UPDATE apigtwymemory SET tool_name = $3, md_aiappname = $4, md_srv_name = $5 WHERE threadid = $1 and aiappname = $2 RETURNING id` // ID11122024.n (Deprecated)
 ];
 
-const toolsTraceQueryStmts = [ // ID10262024.n
+const toolsTraceQueryStmts = [ // ID10262024.n (Deprecated)
   "SELECT * FROM aiapptoolstrace ORDER BY timestamp_ DESC",
   "SELECT * FROM aiapptoolstrace WHERE requestid = $1 AND aiappname = $2"
 ];
 
-const toolsTraceInsertStmts = [ // ID10262024.n
+const toolsTraceInsertStmts = [ // ID10262024.n (Deprecated)
   "INSERT INTO aiapptoolstrace (requestid, srv_name, aiappname, uname, tool_trace) VALUES ($1,$2,$3,$4,$5) RETURNING id" // ID11112024.n
 ];
 
-const aiAppDeployQueryStmts = [ // ID01232025.n
+const aiAppDeployQueryStmts = [ // ID01232025.n (Not currently used)
   "SELECT * FROM aiappdeploy ORDER BY create_date DESC",
   "SELECT job_id FROM aiappdeploy WHERE id = $1",
   "SELECT rapid_uri, srv_name, aiappname, doc_processor_type, status, failed_reason, no_of_runs, process_time, deploy_time, create_date, update_date FROM aiappdeploy WHERE job_id = $1"
 ];
 
-const aiAppDeployInsertStmts = [ // ID01232025.n
+const aiAppDeployInsertStmts = [ // ID01232025.n (Not currently used)
   "INSERT INTO aiappdeploy (job_id, rapid_uri, srv_name, aiappname, requestid, payload, doc_processor_type, status, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id"
 ];
 
@@ -137,16 +149,16 @@ const toolExecPlanQueryStmts = [ // ID04212026.n
 ];
 
 const toolExecPlanInsertStmts = [ // ID04212026.n
-  "INSERT INTO toolexecplan (srv_name, requestid, threadid, aiappname, aiapp_gen_plan, planner_model, toolplan, evaltools, completion_tokens, prompt_tokens, exec_time_secs, uname) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id"
+  "INSERT INTO toolexecplan (srv_name, instance, planner_type, requestid, threadid, aiappname, aiapp_gen_plan, planner_model, toolplan, evaltools, completion_tokens, prompt_tokens, exec_time_secs, uname) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id"
 ];
 
 const toolExecDetailsQueryStmts = [ // ID04212026.n
   "SELECT * FROM toolexecdetails ORDER BY create_date DESC",
-  "SELECT * FROM toolexecdetails WHERE srv_name LIKE $1 || '%' AND requestid = $2 AND aiappname = $3"
+  "SELECT * FROM toolexecdetails WHERE srv_name LIKE $1 || '%' AND requestid = $2 AND aiappname = $3 ORDER BY seq_id"
 ];
 
 const toolExecDetailsInsertStmts = [ // ID04212026.n
-  "INSERT INTO toolexecdetails (srv_name, requestid, threadid, aiappname, seq_id, rem_srv_type, target_uri, server_id, tool_name, request_json, response_json, exception, status, exec_time_secs, uname) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id"
+  "INSERT INTO toolexecdetails (srv_name, instance, requestid, threadid, aiappname, seq_id, rem_srv_type, target_uri, server_id, tool_name, tool_id, request_json, response_json, exception, status, exec_time_secs, uname) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id"
 ];
 
 class PersistDao {
@@ -155,7 +167,7 @@ class PersistDao {
     this.entity = tableName;
   }
 
-  async queryTable(rid, qidx, params) {
+  async queryTable(rid, qidx, params, sqlQuery = null) { // ID09292026.n
     let query = null;
 
     if ( this.entity === TblNames.Prompts ) {
@@ -184,6 +196,9 @@ class PersistDao {
     }
     else if ( this.entity === TblNames.ToolExecDetails ) { // ID04212026.n
       query = toolExecDetailsQueryStmts[qidx];
+    }
+    else if ( this.entity === TblNames.UserMetrics ) { // ID09282026.n
+      query = sqlQuery;
     };
 
     const {rowCount, completion, errors} = // ID02092025.n
@@ -242,5 +257,5 @@ class PersistDao {
 
 module.exports = {
   TblNames,
-  PersistDao
+  PersistDao,
 }

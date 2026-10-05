@@ -32,7 +32,7 @@ class AppResProcessorFactory {
         resourceObj = new AiAppServerProcessor();
         break;
       case AppResourceTypes.AiApplication:
-        resourceObj = new AiAppProcessor;
+        resourceObj = new AiAppProcessor();
         break;
       case AppResourceTypes.RagApplication:
         resourceObj = new RagAppProcessor();

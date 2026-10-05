@@ -62,11 +62,17 @@
  * Added new constant type for streamed status/trace events.
  * ID05282026: ganrad: v3.0.1: Added constants to support A2A protocol to v1.0.1.
  * ID06042026: ganrad: v3.0.1: Introduced support for Anthropic's Messages API.
+ * ID07232026: ganrad: v3.0.1: Added new constants for MCP server protocol attributes.
+ * ID08122026: ganrad: v3.0.1: Added new constant for remote server type 'A2A'.
+ * ID08252026: ganrad: v3.0.1: Added new constants for end to end agent trace - resource and endpoint.
+ * ID09102026: ganrad: v3.0.1: Added new constants for tool retrieval strategies.
+ * ID09142026: ganrad: v3.0.1: Added new constants for Mcp Client attributes.
+ * ID09232026: ganrad: v3.0.1: Added new constants for tool planning and execution engine.
+ * ID09282026: ganrad: v3.0.1: Added new constant to 'AppResourceTypes' for tracking user level metrics. Added new constant for user metrics endpoint.
  * 
 */
 const { randomUUID } = require('node:crypto'); // ID07312025.n
 
-const DefaultAiGatewayUri = "http://localhost:8080/api/v1/dev/apirouter/lb"; // ID02102025.n
 const DefaultJsonParserCharLimit = "2mb"; // 600kb"; // ID02202025.n, ID10032025.n
 const DefEmbeddingModelTokenLimit = 8192; // ID02212025.n
 const OpenAIBaseUri = "api.openai.com"; // ID06162025.n
@@ -93,18 +99,22 @@ const AiAppGateway = {
   RouterContextPath: "/aigateway" // ID10032025.n
 };
 
+const DefaultAiGatewayUri = "http://localhost:8080/api/v1/" + (process.env.API_GATEWAY_ENV || AiAppGatewayEnv.DEV) + AiAppGateway.RouterContextPath + "/lb"; // ID02102025.n
+
 const GatewayRouterEndpoints = {
   A2AEndpoint: "/agents", // ID10032025.n
   ControlPlaneEndpoint: "/cp",
   InstanceInfoEndpoint: "/instanceinfo",
   HealthEndpoint: "/healthz",
   MetricsEndpoint: "/metrics",
+  UserMetricsEndpoint: "/usermetrics", // ID09282026.n
   RequestsEndpoint: "/requests",
   SessionsEndpoint: "/sessions",
   ToolTraceEndpoint: "/tooltrace", // ID04232026.n
   ReconfigureEndpoint: "/reconfig",
   InferenceEndpoint: "/lb",
-  EventsEndpoint: "/events" // ID05202026.n
+  EventsEndpoint: "/events", // ID05202026.n
+  AgentTraceEndpoint: "/agenttrace" // ID08252026.n
 };
 // ID07252025.en
 
@@ -161,6 +171,15 @@ const A2AObjectKind = { // ID10032025.n
   TaskArtifactUpdate: "artifact-update"
 }
 
+const McpProtocolAttributes = { // ID07232026.n
+  Version: "2025-11-25"
+}
+
+const McpClientAttributes = { // ID09142026.n
+  Name: "AiApplicationPlatform",
+  Version: "1.0.0"
+}
+
 const AzureApiVersions = { // ID03242025.n
   AiAgentService: '2025-05-01' // ID07102025.n
 };
@@ -200,7 +219,8 @@ const CustomRequestHeaders = { // ID05062024.n
   ThreadId: "x-thread-id",
   SessionId: "x-session-id", // ID05202026.n - This is the client (UX/UI) session id, not to be confused with thread id (used for state management)!
   EndpointId: "x-endpoint-id", // ID08052025.n
-  ExecToolsCount: "x-tools-count" // ID04242026.n
+  ExecToolsCount: "x-tools-count", // ID04242026.n
+  McpProtocolVersion: "mcp-protocol-version" // ID07232026.n
 };
 
 const SchedulerTypes = { // ID05062024.n
@@ -298,7 +318,9 @@ const AppResourceTypes = { // ID01232025.n
   AiAppGatewayRequest: "AiAppGatewayRequest", // ID07242025.n
   AiAppGatewaySession: "AiAppGatewaySession",
   AiAppGatewayMetrics: "AiAppGatewayMetrics",
-  AiAppGatewayToolTrace: "AiAppGatewayToolTrace" // ID04232026.n
+  AiAppGatewayUserMetrics: "AiAppGatewayUserMetrics", // ID09282026.n
+  AiAppGatewayToolTrace: "AiAppGatewayToolTrace", // ID04232026.n
+  AiAppGatewayAgentTrace: "AiAppGatewayAgentTrace" // ID08252026.n
 }
 
 const AppResourceActions = { // API Level; ID01232025.n
@@ -487,6 +509,11 @@ const McpMethods = {
 }
 // ID02232026.en
 
+const SecEnginePermissions = { // ID08062026.n
+  DENIED: "Denied",
+  GRANTED: "Granted"
+}
+
 const GatewaySpanAttrs = { // ID05122026.n
   HostIdentity: "HostName",
   GatewayId: "GatewayId",
@@ -500,6 +527,7 @@ const McpToolExecutionTypes = { // ID02272026.n
 }
 
 const RemoteServerProtocol = { // ID03172026.n
+  A2A: "A2A", // ID08122026.n
   Mcp: "MCP",
   WebAPI: "WebAPI",
   gRPC: "gRPC"
@@ -517,6 +545,18 @@ const SseBrokerEvents = { // ID05202026.n
   Trace: "trace",
   Done: "done",
   Error: "error"
+}
+
+const ToolRetrievalStrategy = { // ID09102026.n
+  Lexical: "lexical",
+  Semantic: "semantic",
+  Hybrid: "hybrid",
+  None: "none" // Default
+}
+
+const ToolPlannerTypes = { // ID09232026.n
+  Version0: "v0",
+  Version1: "v1"
 }
 
 module.exports = {
@@ -579,10 +619,15 @@ module.exports = {
   NormalizerPolicyOperator, // ID11062025.n
   CacheSearchTerms, // ID11212025.n
   CacheLevels, // ID11212025.n
+  McpClientAttributes, // ID09142026.n
+  McpProtocolAttributes, // ID07232026.n
   McpToolExecutionTypes, // ID02272026.n
   McpServerAuthTypes, // ID02232026.n
   McpMethods, // ID02232026.n
   RemoteServerProtocol, // ID03172026.n
   EpMetricsOutputFormat, // ID05132026.n
-  SseBrokerEvents // ID05202026.n
+  SseBrokerEvents, // ID05202026.n
+  SecEnginePermissions, // ID08062026.n
+  ToolRetrievalStrategy, // ID09102026.n
+  ToolPlannerTypes // ID09232026.n
 }

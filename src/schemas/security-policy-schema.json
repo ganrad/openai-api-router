@@ -1,0 +1,133 @@
+{
+  "$id": "https://github.com/ganrad/rapid/schemas/security-policy-schema.json",
+  "$comment": "ID07152026: ganrad: v3.0.1: This schema defines the attributes for configuring inbound and outbound security policies",
+  "title": "AiGatewaySecurityPolicy",
+  "description": "This schema defines attributes used for configuring a) Gateway level and b) AI Application level, security policies",
+  "type": "object",
+  "properties": {
+    "inbound": {
+      "type": "object",
+      "description": "Allowed source ips/addresses for inbound requests",
+      "properties": {
+        "allowedSources": {
+          "type": "object",
+          "properties": {
+            "ips": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "ips"
+          ]
+        },
+        "piiPolicy": {
+          "$ref": "#/$defs/piiConfig"
+        }
+      },
+      "required": [
+        "allowedSources"
+      ],
+      "additionalProperties": false
+    },
+    "outbound": {
+      "type": "object",
+      "description": "Allowed source ips/addresses for outbound requests",
+      "properties": {
+        "allowedDestinations": {
+          "type": "object",
+          "properties": {
+            "ips": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            },
+            "domains": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^(\\*\\.)?([a-zA-Z0-9-]+\\.)*[a-zA-Z0-9-]+$"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "ips",
+            "domains"
+          ]
+        },
+        "piiPolicy": {
+          "$ref": "#/$defs/piiConfig"
+        }
+      },
+      "required": [
+        "allowedDestinations"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "inbound",
+    "outbound"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "piiConfig": {
+      "type": "object",
+      "required": ["enabled", "action", "builtinIdentifiers", "customIdentifiers"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "action": {
+          "type": "string",
+          "enum": ["ALLOW", "BLOCK", "REDACT"]
+        },
+        "redactionCharacter": {
+          "type": "string",
+          "maxLength": 1,
+          "default": "*"
+        },
+        "builtinIdentifiers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "EMAIL_ADDRESS",
+              "PHONE_NUMBER",
+              "CREDIT_CARD",
+              "US_SSN",
+              "IP_ADDRESS"
+            ]
+          }
+        },
+        "customIdentifiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "regex"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "regex": {
+                "type": "string",
+                "format": "regex"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

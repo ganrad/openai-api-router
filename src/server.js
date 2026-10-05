@@ -58,7 +58,7 @@
  * ID07312025: ganrad: v2.4.0: (Refactored code) Globally unique ID's are generated using a single function defined in module ~ app-gtwy-constants.js.
  * ID08212025: ganrad: v2.4.0: (Enhancement) Updated code to support AI Foundry Service Agents.
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
- * ID10032025: ganrad: v2.7.0: (Enhancement) Added support for A2A protocol.
+ * ID10032025: ganrad: v2.7.0: (Enhancement) Added support for A2A protocol. 05282026: Updated agent card to include skills info.
  * ID10132025: ganrad: v2.7.0: (Enhancement) An AI Application can be enabled (active) or disabled.  In the disabled state, the AI gateway will
  * not accept inference requests and will return an exception.
  * ID10252025: ganrad: v2.8.5: (Refactored code) Updated gateway security. New workflow supports - OAuth Code Flow + OIDC (User delegated) + 
@@ -70,9 +70,14 @@
  * ID05122026: ganrad: v3.0.1: (Refactoring) Updated the App Insights instrumentation code to use the latest OTel SDK (v2) & dependencies.
  * ID05182026: ganrad: v3.0.1: (Refactoring) Introduced AI Gateway Type - Single and Multi Agent.  Server Types - Single and Multi Domain, will be deprecated
  * in next release.
- * ID05282026: ganrad: v3.0.1: (Enhancement) A2A: Updated agent card to include skills info.
- * ID05282026: ganrad: v3.0.1: (Enhancement) Introduced security router. This router enforces IP security policies on inbound calls to the AI App Gateway.
+ * ID06042026: ganrad: v3.0.1: Introduced support for Anthropic's Messages API.
  * ID06092026: ganrad: v3.0.1: (Enhancement) Introduced ai gateway name, description and registry identity.
+ * ID07102026: ganrad: v3.0.1: (Enhancement) Introduced security engine to evaluate inbound/outbound security policies at AI Gateway level.
+ * ID07162026: ganrad: v3.0.1: (Bugfix) Request ID's were getting generated for health, metrics and events API calls.  These calls are not logged to App Insights and do not require a request ID.
+ * ID07172026: ganrad: v3.0.1: (Enhancement) Introduced security policy evaluation for AI Gateway reconfig endpoint.
+ * ID08202026: ganrad: v3.0.1: (Bugfix) Set the host id based on the gateway's runtime - ACA, K8S, VM ...
+ * ID09102026: ganrad: v3.0.1: (Enhancement) Introduced tool retrieval optimization feature & support for multiple strategies - Lexical (BM25), Semantic & Hybrid.
+ * ID09282026: ganrad: v3.0.1: (Enhancement) Do not generate req id & bypass logging when user metrics endpoint is invoked.
  * 
 */
 
@@ -98,6 +103,7 @@ const {
   EndpointRouterTypes,
   GatewayRouterEndpoints,
   AiAppGatewayEnv,
+  ToolRetrievalStrategy, // ID09102026.n
   GatewaySpanAttrs } = require("./utilities/app-gtwy-constants"); // ID02202025.n, ID07252025.n
 
 // Server version v2.3.9 ~ ID06162025.n
@@ -122,21 +128,23 @@ else
 const fs = require("fs");
 const express = require("express");
 const cors = require("cors"); // ID05222024.n
-const { apirouter, reconfigEndpoints } = require("./routes/apirouter"); // Single domain AI App Gateway
-const { mdapirouter, reconfigAppMetrics } = require("./routes/md-apirouter"); // ID09042024.n; Multi domain distributed AI App Engine
-const { createA2AGatewayRouter } = require("./routes/a2a-router.js"); // ID10032025.n
-const cprouter = require("./routes/control-plane.js"); // ID01232025.n; AI App Gateway control plane router
-const secrouter = require("./routes/security-router.js"); // ID05282026.n; AI App Gateway security router
+const { apirouter, reconfigEndpoints } = require("./routers/apirouter.js"); // Single domain AI App Gateway
+const { mdapirouter, reconfigAppMetrics } = require("./routers/md-apirouter.js"); // ID09042024.n; Multi domain distributed AI App Engine; 
+const { createA2AGatewayRouter } = require("./routers/a2a-router.js"); // ID10032025.n
+const cprouter = require("./routers/control-plane.js"); // ID01232025.n; AI App Gateway control plane router
 const pgdb = require("./services/cp-pg.js");
-const CacheConfig = require("./utilities/cache-config");
+const CacheConfig = require("./lib/cache-config");
 // const runCacheInvalidator = require("./utilities/cache-invalidator"); ID05062024.o
-const SchedulerFactory = require("./utilities/scheduler-factory"); // ID05062024.n
+const SchedulerFactory = require("./lib/scheduler-factory.js"); // ID05062024.n
 const sFactory = new SchedulerFactory(); // ID05062024.n
 
 // const { initAuth } = require("./auth/bootstrap-auth"); // ID07292024.n, ID10252025.o
 const { securityConfig } = require("./auth/securityConfig.js"); // ID10252025.n
 const { validateAccessToken } = require("./auth/authMiddleware.js"); // ID10252025.n
 const { validateAiServerSchema } = require("./schemas/validate-json-config"); // ID01242025.n, ID09202024.n
+
+const secrouter = require("./routers/security-router.js"); // ID07172026.n
+const toolConfigManager = require("./lib/tool-config-manager.js"); // ID09102026.n
 
 const app = express();
 let bodyParser = require('body-parser');
@@ -187,7 +195,8 @@ if (process.env.API_GATEWAY_ENV === AiAppGatewayEnv.DEV) {
     }
   });
 }
-else { 
+else {
+  // IMPORTANT: 
   // For all other envs, do not use pino-pretty! Pino-pretty runs in a worker and if it were to crash, the server may shutdown 
   // when attempting to write the response headers!
   logger = pinoHttp({
@@ -221,7 +230,10 @@ else {
     },
     autoLogging: { // Ignore logging health, metrics and server send events API calls
       ignore: (req) => {
-        return req.url.includes(GatewayRouterEndpoints.HealthEndpoint) || req.url.includes(GatewayRouterEndpoints.MetricsEndpoint) || req.url.includes(GatewayRouterEndpoints.EventsEndpoint);
+        return req.url.includes(GatewayRouterEndpoints.HealthEndpoint) || 
+        req.url.includes(GatewayRouterEndpoints.MetricsEndpoint) || 
+        req.url.includes(GatewayRouterEndpoints.UserMetricsEndpoint) || // ID09282026.n
+        req.url.includes(GatewayRouterEndpoints.EventsEndpoint);
       }
     },
     customSuccessMessage: function (req, res) {
@@ -409,6 +421,9 @@ async function populateServerContext(initialize) { // ID01312025.n
     // ID06092026.en
 
     context.applications = ctx.applications;
+    if (ctx.securityPolicyConfig) // ID07152026.n
+      context.securityPolicyConfig = ctx.securityPolicyConfig;
+
     if (ctx.budgetConfig) // ID08252025.n
       context.budgetConfig = ctx.budgetConfig;
 
@@ -443,6 +458,9 @@ async function populateServerContext(initialize) { // ID01312025.n
 
       if (srvData.data[0].app_conf) {
         context.applications = srvData.data[0].app_conf.applications;
+        if (srvData.data[0].app_conf.securityPolicyConfig) // ID07152026.n
+          context.securityPolicyConfig = srvData.data[0].app_conf.securityPolicyConfig;
+
         if (srvData.data[0].app_conf.budgetConfig) // ID08252025.n
           context.budgetConfig = srvData.data[0].app_conf.budgetConfig;
 
@@ -478,9 +496,9 @@ async function populateServerContext(initialize) { // ID01312025.n
 }
 
 let cacheConfig;
-let cacheInvalidator = null; // ID11112024.n ~ Cache entry invalidator instance
-let memoryInvalidator = null; // ID11112024.n ~ Memory entry evictor instance
 async function readAiAppGatewayConfig() { // ID01292025.n
+  let cacheInvalidator = null; // ID11112024.n ~ Cache entry invalidator instance
+  let memoryInvalidator = null; // ID11112024.n ~ Memory entry evictor instance
   let vectorAppFound = false;
 
   let cacheResults = process.env.API_GATEWAY_USE_CACHE;
@@ -536,15 +554,27 @@ async function readAiAppGatewayConfig() { // ID01292025.n
       serverConfigType: configType
     };
 
-    await populateServerContext(true); // No need to receive config reload errors!
+    await populateServerContext(true); // Don't receive config reload errors!
 
     if (context.serverType === ServerTypes.SingleDomain) { // ID09042024.n
       // console.log("Server(): AI Application backend (Azure OpenAI Service) endpoints:");
       wlogger.log({ level: "info", message: "[%s] Listing AI Applications:", splat: [scriptName] });
       context.applications?.forEach((app) => {
         let pidx = 0;
-        if ((app.appType === AzAiServices.OAI) || (app.appType === AzAiServices.AzAiModelInfApi))
-          console.log(`\nApplication ID: ${app.appId}\n  Type: ${app.appType}\n  Active: ${app.isActive}\n  Config:\n    useCache=${app?.cacheSettings?.useCache ?? false}\n    useMemory=${app?.memorySettings?.useMemory ?? false}\n    personalization=${app?.personalizationSettings?.userMemory ?? false}\n    budgeting=${app?.budgetSettings?.useBudget ?? false}`); // ID05142025.n; ID08252025.n
+        if ((app.appType === AzAiServices.OAI) || (app.appType === AzAiServices.AzAiModelInfApi) || (app.appType === AzAiServices.Anthropic)) { // ID06042026.n
+          let logAgentDef = `\nApplication ID: ${app.appId}\n  Type: ${app.appType}\n  Version: ${app.version ?? "1.0.0"}\n  Active: ${app.isActive}\n  A2A Agent: ${app.exposeA2AEndpoint ? true : false}\n  Config:\n    useCache=${app?.cacheSettings?.useCache ?? false}\n    useMemory=${app?.memorySettings?.useMemory ?? false}\n    personalization=${app?.personalizationSettings?.userMemory ?? false}\n    budgeting=${app?.budgetSettings?.useBudget ?? false}`; // ID09102026.n
+          
+          logAgentDef += `\n    optimized_tool_retrieval=${app.remoteServerSettings?.toolRetrieval?.enabled ?? false}; strategy=${app.remoteServerSettings?.toolRetrieval?.strategy ?? ToolRetrievalStrategy.None}`; // ID09102026.n
+          console.log(logAgentDef);
+
+          // console.log(`\nApplication ID: ${app.appId}\n  Type: ${app.appType}\n  Version: ${app.version ?? "1.0.0"}\n  Active: ${app.isActive}\n  A2A Agent: ${app.exposeA2AEndpoint ? true : false}\n  Config:\n    useCache=${app?.cacheSettings?.useCache ?? false}\n    useMemory=${app?.memorySettings?.useMemory ?? false}\n    personalization=${app?.personalizationSettings?.userMemory ?? false}\n    budgeting=${app?.budgetSettings?.useBudget ?? false}\n    optimized_tool_retrieval=${app.remoteServerSettings?.toolRetrieval?.enabled}; strategy=${app.remoteServerSettings?.toolRetrieval?.strategy}`); // ID05142025.n; ID08252025.n; ID09102026.o
+        
+          // ID09102026.sn
+          if ( app.remoteServerSettings?.toolRetrieval?.enabled ) { // Load the tool config into the tool config manager
+            toolConfigManager.set(app.appId, app.remoteServerSettings.toolRetrieval);
+          };
+          // ID09102026.en
+        }
         else
           console.log(`\nApplication ID: ${app.appId}\n  Type: ${app.appType}\n  Active: ${app.isActive}`);
 
@@ -560,8 +590,12 @@ async function readAiAppGatewayConfig() { // ID01292025.n
           pidx++;
         });
       });
+
+      if ( toolConfigManager.isNotEmpty() ) { // ID09102026.n; Build the index
+
+      };
     }
-    else if (context.serverType === ServerTypes.MultiDomain) {
+    else if (context.serverType === ServerTypes.MultiDomain) { // Deprecated; Not used!
       const aiGatewayUri = context.aiGatewayUri;
       wlogger.log({ level: "info", message: "[%s] Listing AI Applications:", splat: [scriptName] });
       context.applications?.forEach((app) => {
@@ -594,7 +628,6 @@ async function readAiAppGatewayConfig() { // ID01292025.n
       }
     };
 
-    // ID05062024.sn
     let manageState = (process.env.API_GATEWAY_STATE_MGMT === 'true') ? true : false
     // if (manageState && startScheduler) { ID11112024.o
     if (manageState) { // ID11112024.n
@@ -711,32 +744,37 @@ initServer().then(() => { // ID01302025.n
   app.use(bodyParser.json({ limit: DefaultJsonParserCharLimit })); // ID02202025.n
   app.use(bodyParser.urlencoded({ limit: DefaultJsonParserCharLimit, extended: true })); // ID02202025.n
 
-  // ID05282026.sn
-  // Inbound security middleware. Protects all AI Gateway entry points/routes.
-  // Get's invoked first!
-  // Path: /aigateway
-  app.use(endpoint, (req, res, next) => {
-    req.srvconf = context;
-
-    next();
-  }, secrouter);
-  // ID05282026.en
-
   // ID07292024.sn
   // Generate request id prior to invoking router middleware (endpoints)
   // Endpoint: /aigateway
   // app.use(endpoint + "/apirouter", (req, res, next) => { ID11152024.o
   app.use(endpoint, (req, res, next) => { // ID11152024.n
+    // Do not generate a request id for events/trace requests coming from the AI Gateway console UI, metrics requests and health check requests. 
+    // These requests are not logged to AppInsights and do not require a request id.
+    if ( req.originalUrl.includes(GatewayRouterEndpoints.EventsEndpoint) || 
+      req.originalUrl.includes(GatewayRouterEndpoints.MetricsEndpoint) || 
+      req.originalUrl.includes(GatewayRouterEndpoints.UserMetricsEndpoint) || // ID09282026.n
+      req.originalUrl.includes(GatewayRouterEndpoints.HealthEndpoint) ) { // ID07162026.n
+      next();
+
+      return;
+    };
+      
     logger(req, res); // Generates the req.id
 
     if (azAppInsightsConString) { // If AppInsights logging is enabled; ID03122025.n
       // Add the request ID to the context span
       let spanProperties = new Map();
       spanProperties.set('x-request-id', req.id);
-      const hostId = process.env.POD_NAME || host; // ID05122026.n
+
+      const replicaId = process.env.POD_NAME || process.env.CONTAINER_APP_REPLICA_NAME; // ID08202026.n
+      const hostId = replicaId || host; // ID05122026.n, ID08202026.n
       spanProperties.set(GatewaySpanAttrs.HostIdentity, hostId);
-      const gatewayId = (process.env.POD_NAME) ? context.serverId + '-' + process.env.POD_NAME : context.serverId;
+
+      // const gatewayId = (process.env.POD_NAME) ? context.serverId + '-' + process.env.POD_NAME : context.serverId; ID08202026.o
+      const gatewayId = (replicaId !== null) ? context.serverId + ':' + replicaId : context.serverId; // ID08202026.n
       spanProperties.set(GatewaySpanAttrs.GatewayId, gatewayId);
+
       addCustomPropertiesToSpan(spanProperties);
     };
     next();
@@ -768,7 +806,9 @@ initServer().then(() => { // ID01302025.n
   // API Gateway/Server reconfiguration endpoint
   // Endpoint: /aigateway/reconfig/:pkey
   // app.use(endpoint + "/apirouter/reconfig/:pkey", function (req, res, next) { ID11152024.o
-  app.put(endpoint + GatewayRouterEndpoints.ReconfigureEndpoint + "/:pkey", async function (req, res, next) { // ID11152024.n, ID07252025.n, ID10252025.n
+  // IMPORTANT (07-15-2026): This middleware is now DEPRECATED
+  // USE the control plane api to update AI Gateway / AI Application configurations!
+  app.put(endpoint + GatewayRouterEndpoints.ReconfigureEndpoint + "/:pkey", secrouter, async function (req, res) { // ID11152024.n, ID07252025.n, ID10252025.n, ID07172026.n
     // logger(req,res); ID07292024.o
 
     let resp_obj;
@@ -862,7 +902,7 @@ initServer().then(() => { // ID01302025.n
     next();
   }, (context.serverType === ServerTypes.SingleDomain) ? apirouter : mdapirouter);
 
-  app.use(endpoint, createA2AGatewayRouter(context.applications, context.remoteServerConfig)); // ID10032025.n, ID05282026.n
+  app.use(endpoint, createA2AGatewayRouter(context.applications, context.remoteServerConfig)); // ID10032025.n
 
   app.listen(port, () => {
     wlogger.log({

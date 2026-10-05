@@ -30,6 +30,8 @@
  * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced in-memory (l1) and Qdrant (l2) levels/layers in semantic cache. Updated search type / algorithm
  * constants to a uniform set of values.
  * ID05202026: ganrad: v3.0.1: (Enhancement) Return the cache level when there is a hit.
+ * ID07282026: ganrad: v3.0.1: (Enhancement) Introduced support for enforcement of outbound security policies at both a) AI Gateway level and b) AI Application level.
+ * ID08202026: ganrad: v3.0.1: (Bugfix) Re-factored cache table query/store calls to use unique gateway server & instance id's.
  *   
 */
 const path = require('path');
@@ -70,13 +72,13 @@ const queryStmts = [
 
 const insertStmts = [
   // "INSERT INTO apigtwycache (requestid, aiappname, prompt, embedding, completion) VALUES ($1,$2,$3,$4,$5) RETURNING id" // ID11112024.o
-  "INSERT INTO apigtwycache (requestid, srv_name, aiappname, prompt, embedding, completion) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id" // ID11112024.n
+  "INSERT INTO apigtwycache (requestid, srv_name, instance, aiappname, prompt, embedding, completion) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id" // ID11112024.n, ID08202026.n
 ];
 
 class CacheDao {
   constructor(
-    epInfo,
-    vectorEndpoints,
+    epInfo, // Endpoint metrics object
+    vectorEndpoints, // Endpoints array
     sType,
     sDistance,
     sContent) {
@@ -116,6 +118,7 @@ class CacheDao {
     this.l1Cache = arguments[7];
     this.level2Config = arguments[8];
     // ID11212025.en
+    this.appSecurityPolicies = arguments[9]; // ID07282026.n
   }
 
   // ---------------------- Utilities ----------------------
@@ -336,7 +339,8 @@ class CacheDao {
         // reqBody.user, ID03052025.o
         this.endPointInfo,
         this.endpoints,
-        queryContent);
+        queryContent,
+        this.appSecurityPolicies); // ID07282026.n
 
       if (apiResp) { // Use the embedded vector to query against the Vector stores
         // 3.0) L1 Search ID11212025.n
@@ -452,17 +456,17 @@ class CacheDao {
     let prompt = null;
     let emb = null;
     let modelResponse = null;
-    const updatedValues = values.filter((_, idx) => idx !== 6).map((value, index) => { // Skip 'serverId' ~ values[6]
-      if (index === 3) // prompt
+    const updatedValues = values.filter((_, idx) => idx !== 7).map((value, index) => { // Skip 'serverId' ~ values[6]; ID08202026.n
+      if (index === 4) // prompt
         prompt = JSON.parse(value);
 
-      if (index === 4) { // embedding
+      if (index === 5) { // embedding
         emb = value;
 
         return (pgvector.toSql(emb));
       };
 
-      if (index === 5) // model response/completion
+      if (index === 6) // model response/completion
         modelResponse = value;
 
       return (value);
@@ -481,7 +485,7 @@ class CacheDao {
         key = await generateUUID();
 
         // Save model completion in l1 cache
-        const entry = { key, appId: values[2], prompt, response: modelResponse, embedding: emb };
+        const entry = { key, appId: values[3], prompt, response: modelResponse, embedding: emb };
         this.l1Cache.set(key, entry);
       };
 
@@ -492,17 +496,17 @@ class CacheDao {
 
         // Save model completion in l2 cache
         const entry = { key, prompt, response: modelResponse };
-        await this.#addToL2(values[0], values[6], values[2], emb, entry);
+        await this.#addToL2(values[0], values[7], values[3], emb, entry);
       };
 
       logger.log({
         level: "info", message: "[%s] %s.storeEntity():\n  Request ID: %s\n  Application ID: %s\n  Execution Time: %d\n  Items in L1 cache: %d\n  Total size of items in L1 cache (Bytes): %d",
-        splat: [scriptName, this.constructor.name, values[0], values[2], Date.now() - stTime, (this.l1Cache ? this.l1Cache.size : 0), (this.l1Cache ? this.l1Cache.calculatedSize : 0)]
+        splat: [scriptName, this.constructor.name, values[0], values[3], Date.now() - stTime, (this.l1Cache ? this.l1Cache.size : 0), (this.l1Cache ? this.l1Cache.calculatedSize : 0)]
       });
     }
     catch (error) {
       const errorDetails = `    Name: ${error.name}\n    Message: ${error.message}\n    Stack Trace: ${error.stack}`;
-      logger.log({ level: "error", message: "[%s] %s.storeEntity():\n  Request ID: %s\n  Application ID: %s\n  Encountered exception:\n%s", splat: [scriptName, this.constructor.name, values[0], values[2], errorDetails] });
+      logger.log({ level: "error", message: "[%s] %s.storeEntity():\n  Request ID: %s\n  Application ID: %s\n  Encountered exception:\n%s", splat: [scriptName, this.constructor.name, values[0], values[3], errorDetails] });
     };
     // ID11212025.en
   }

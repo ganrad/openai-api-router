@@ -26,6 +26,10 @@
  * a uniform set of values/literals.
  * ID12042025: ganrad: v2.9.5: (Refactoring) Introduced new function to format/stringify runtime exception.
  * ID02272026: ganrad: v3.0.1: (Refactoring) Use of MIME types, HTTP headers & HTTP methods.
+ * ID07282026: ganrad: v3.0.1: (Enhancement) Introduced support for enforcement of outbound security policies at both a) AI Gateway level and b) AI Application level.
+ * ID08032026: ganrad: v3.0.1: (Enhancement) Add http header keys (if present) when the endpoint uses a norm input policy ...
+ * ID08042026: ganrad: v3.0.1: (Enhancement) API Key name can be configured for a model deployment endpoint. This is optional.  Defaults to 'api-key'.
+ * 
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -44,7 +48,7 @@ const {
   LongTermMemoryConstants // ID10202025.n
 } = require("./app-gtwy-constants.js"); // ID08272025.n
 const MAX_FETCH_RETRIES = 3; // ID1121225.n
-
+const SecurityEngine = require('../security/security-engine.js'); // ID07282026.n
 // const fetch = require("node-fetch"); ID01312025.o
 
 // ID12042025.sn
@@ -74,7 +78,9 @@ async function getOpenAICallMetadata(req, element, appType) { // ID08272025.n
       logger.log({ level: "debug", message: "[%s] getOpenAICallMetadata(): Using bearer token (MID-IMDS) for Az OAI Auth.\n  Request ID: %s", splat: [scriptName, req.id] });
     }
     else {
-      const authHdrKey = element.uri.includes(OpenAIBaseUri) || (appType === AzAiServices.AzAiModelInfApi) ? HttpHeaders.Authorization : 'api-key'; // ID09162025.n, ID02272026.n
+      const apiKeyName = element.apikeyName || 'api-key'; // ID08042026.n
+
+      const authHdrKey = element.uri.includes(OpenAIBaseUri) || (appType === AzAiServices.AzAiModelInfApi) ? HttpHeaders.Authorization : apiKeyName; // ID09162025.n, ID02272026.n, ID08042026.n
       const authHdrVal = element.uri.includes(OpenAIBaseUri) || (appType === AzAiServices.AzAiModelInfApi) ? "Bearer " + element.apikey : element.apikey; // ID09162025.n
       // meta.set('api-key', element.apikey);
       meta.set(authHdrKey, authHdrVal);
@@ -106,7 +112,7 @@ async function getOpenAICallMetadata(req, element, appType) { // ID08272025.n
  * 
  * @param {*} req The AI App Gateway request object
  * @param {*} epinfo AI App Endpoint metrics object
- * @param {*} endpoints AI App Endpoint object
+ * @param {*} endpoints AI App Endpoints object
  * @param {*} messages LLM request/payload
  * @param {*} appType The type of AI Application (used to determine the auth mechanism and other metadata for the API call)
  * @returns 
@@ -140,6 +146,14 @@ async function callAiAppEndpoint(
     let response = null;
     try {
       let hdrs = await getOpenAICallMetadata(req, element, appType); // ID08272025.n
+      if ( arguments[5] ) { // ID08032026.sn
+        const normsArray = arguments[5];
+        const normConfig = normsArray.find(config => (config.normalizerId === element.normalizationPolicy?.inputNormalizerId));
+        if ( normConfig && normConfig.includeHeaders )
+          normConfig.includeHeaders.forEach(item => {
+            hdrs.set(item.headerName, item.headerValue);
+          });
+      }; // ID08032026.en
 
       /** ID08272025.o
       const bearerToken = req.headers['Authorization']; 
@@ -169,7 +183,7 @@ async function callAiAppEndpoint(
           data.usage, // ID08252025.n
           respTime);
 
-        logger.log({ level: "info", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  Target Endpoint: %s\n  Endpoint ID: %s\n  Status: %s\n  Status Text: %s\n  Execution Time: %d", splat: [scriptName, req.id, element.uri, element.id, status, response.statusText, Date.now() - stTime] });
+        logger.log({ level: "info", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  Target Endpoint: %s\n  Endpoint ID: %s\n  Model/Deployment ID: %s\n  Status: %s\n  Status Text: %s\n  Execution Time: %d", splat: [scriptName, req.id, element.uri, element.id, messages.model, status, response.statusText, Date.now() - stTime] });
 
         return data; // 200 All OK
       }
@@ -202,7 +216,7 @@ async function callAiAppEndpoint(
 }
 
 // async function callRestApi(requestid, uname, epinfo, endpoints, prompt) { ID03052025.o
-async function vectorizeQuery(req, epinfo, endpoints, prompt) { // ID03052025.n
+async function vectorizeQuery(req, epinfo, endpoints, prompt, appSecurityPolicies) { // ID03052025.n, ID07282026.n
   let retryAfter = 0;
   let reqBody = {
     input: prompt,
@@ -224,6 +238,21 @@ async function vectorizeQuery(req, epinfo, endpoints, prompt) { // ID03052025.n
         retryAfter = healthArr[1];
       continue;
     };
+
+    // ID07282026.sn
+    if ( req.srvconf.securityPolicyConfig ) {
+      // 1. Check AI Gateway outbound security policies
+      const secEngine = new SecurityEngine(req.srvconf.securityPolicyConfig);
+      if ( !secEngine.isOutboundAllowed(element.uri) ) // Skip this endpoint URI if it's not in outbound allow list
+        continue; 
+    };
+    if ( appSecurityPolicies ) {
+      // 2. Check AI App outbound security policies
+      const secEngine = new SecurityEngine(appSecurityPolicies);
+      if ( !secEngine.isOutboundAllowed(element.uri) ) // Skip this endpoint URI if it's not in outbound allow list
+        continue;
+    };
+    // ID07282026.en
 
     let stTime = Date.now();
     let response = null;

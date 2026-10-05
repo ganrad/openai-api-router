@@ -13,6 +13,9 @@
  * ID10142025: ganrad: v2.7.0: (Enhancement) Introduced new feature to support normalization of AOAI output.
  * ID04252026: ganrad: v3.0.1: (Bugfix) Added missing elements for exposeA2AEndpoint, normalizationPolicy, normalizerSettings, 
  * remoteServerConfig & remoteServerSettings.
+ * ID07152026: ganrad: v3.0.1: (Enhancement) Introduced new feature to secure inbound/outbound calls from the AI Gateway.
+ * ID08202026: ganrad: v3.0.1: (Enhancement) Return data when gateway server is run in ACA env.
+ * 
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -67,6 +70,8 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
         appeps.set("exposeA2AEndpoint", aiapp.exposeA2AEndpoint || false); // ID04252026.n
         if (aiapp.searchAiApp)
           appeps.set("searchAiApp", aiapp.searchAiApp);
+        if (aiapp.securitySettings) // ID07152026.n
+          appeps.set("securitySettings", aiapp.securitySettings);
         if (aiapp.normalizerSettings) // ID10142025.n; ID04252026.n
           appeps.set("normalizerSettings", aiapp.normalizerSettings); // ID04252026.n
         appeps.set("cacheSettings", {
@@ -144,6 +149,7 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
         memoryEnabled: process.env.API_GATEWAY_STATE_MGMT,
         memoryInvalidationSchedule: process.env.API_GATEWAY_MEMORY_INVAL_SCHEDULE
       },
+      ...(context.securityPolicyConfig && { securityPolicyConfig: context.securityPolicyConfig }), // ID07152026.n
       ...(context.remoteServerConfig && { remoteServerConfig: context.remoteServerConfig.map(element => ({ // ID04252026.n
         id: element.id,
         description: element.description,
@@ -158,13 +164,22 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
       }))}),
       ...(context.budgetConfig && {budgetConfig: context.budgetConfig}), // ID08252025.n; ID04252026.n
       aiApplications: appcons,
-      containerInfo: {
-        imageID: process.env.IMAGE_ID,
-        nodeName: process.env.NODE_NAME,
-        podName: process.env.POD_NAME,
-        podNamespace: process.env.POD_NAMESPACE,
-        podServiceAccount: process.env.POD_SVC_ACCOUNT
-      },
+      ...(process.env.POD_NAME && {
+        containerInfo: {
+          imageID: process.env.IMAGE_ID,
+          nodeName: process.env.NODE_NAME,
+          podName: process.env.POD_NAME,
+          podNamespace: process.env.POD_NAMESPACE,
+          podServiceAccount: process.env.POD_SVC_ACCOUNT
+        }
+      }),
+      ...(process.env.CONTAINER_APP_REPLICA_NAME && { // ID08202026.n
+        containerAppInfo: {
+          appName: process.env.CONTAINER_APP_NAME,
+          appRevision: process.env.CONTAINER_APP_REVISION,
+          replicaName: process.env.CONTAINER_APP_REPLICA_NAME
+        }
+      }),
       aiAppGatewayUri: serverContext.endpoint,
       endpointUri: req.originalUrl,
       serverStartDate: serverContext.srvStartDate,
@@ -179,7 +194,7 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
     );
   }
 
-  #getMultiDomainAgentMetadata(req) {
+  #getMultiDomainAgentMetadata(req) { // Deprecated
     logger.log({ level: "debug", message: "[%s] %s.#getMultiDomainAgentMetadata():\n  Req ID: %s", splat: [scriptName, this.constructor.name, req.id] });
 
     let context = req.targeturis;
@@ -253,7 +268,7 @@ class InstanceInfoDataHandler extends AbstractDataHandler {
         response = this.#getSingleDomainAgentMetadata(request);
         break;
       case ServerTypes.MultiDomain:
-        response = this.#getMultiDomainAgentMetadata(request);
+        response = this.#getMultiDomainAgentMetadata(request); // Deprecated!
         break;
     };
 

@@ -15,6 +15,9 @@
  * ID11062025: ganrad: v2.9.0: Added Ajv init parameter to not generate warnings for Union types.
  * ID12042025: ganrad: v2.9.5: Added ajv-formats module (plug-in) to validate uri, email, hostname type fields.
  * ID03162026: ganrad: v3.0.1: Updated schema to reflect new configuration file structure changes.  Updated validation functions accordingly.
+ * ID07152026: ganrad: v3.0.1: Added new schema to support security policies.
+ * ID09042026: ganrad: v3.0.1: Added new schema to support tool retrieval feature.
+ * 
 */
 
 const path = require('path');
@@ -31,19 +34,24 @@ const sdSchemaFile = "/single-domain-gtwy-schema.json";
 const sdAiAppSchemaFile = "/sd-ai-app-schema.json";
 const sdAiAppBudgetSchemaFile = "/gtwy-budget-schema.json"; // ID08252025.n
 const sdAiAppMcpServersSchemaFile = "/gtwy-remote-servers-schema.json"; // ID09272025.n; ID03162026.n - updated schema file reference to reflect new config file structure
+const sdSecuritySchemaFile = "/security-policy-schema.json"; // ID07152026.n
+const sdToolRetrievalSchemaFile = "/tool-retrieval-schema.json"; // ID09042026.n
+
 const singleDomainAgentSchema = JSON.parse(fs.readFileSync(__dirname + sdSchemaFile));
 const sdAiAppSchema = JSON.parse(fs.readFileSync(__dirname + sdAiAppSchemaFile));
 const sdAiAppBudgetSchema = JSON.parse(fs.readFileSync(__dirname + sdAiAppBudgetSchemaFile)); // ID08252025.n
 const sdAiAppMcpServersSchema = JSON.parse(fs.readFileSync(__dirname + sdAiAppMcpServersSchemaFile)); // ID09272025.n
+const sdSecuritySchema = JSON.parse(fs.readFileSync(__dirname + sdSecuritySchemaFile)); // ID07152026.n
+const sdToolRetrievalSchema = JSON.parse(fs.readFileSync(__dirname + sdToolRetrievalSchemaFile)); // ID09042026.n
 
 const mdSchemaFile = "/multi-domain-gtwy-schema.json";
 const mdAiAppSchemaFile = "/md-ai-app-schema.json";
 const multiDomainAgentSchema = JSON.parse(fs.readFileSync(__dirname + mdSchemaFile));
 const mdAiAppSchema = JSON.parse(fs.readFileSync(__dirname + mdAiAppSchemaFile));
 
-const ajvAiServer = new Ajv({schemas: [singleDomainAgentSchema, sdAiAppSchema, sdAiAppBudgetSchema, sdAiAppMcpServersSchema, multiDomainAgentSchema, mdAiAppSchema], allErrors: true, strictSchema: false, allowUnionTypes: true}); // ID08252025.n, ID09272025.n, ID11062025.n
+const ajvAiServer = new Ajv({schemas: [singleDomainAgentSchema, sdAiAppSchema, sdAiAppBudgetSchema, sdAiAppMcpServersSchema, sdSecuritySchema, sdToolRetrievalSchema, multiDomainAgentSchema, mdAiAppSchema], allErrors: true, strictSchema: false, allowUnionTypes: true}); // ID08252025.n, ID09272025.n, ID11062025.n, ID07152026.n, ID09042026.n
 addFormats(ajvAiServer); // ID12042025.n
-const ajvAiApps = new Ajv({schemas: [sdAiAppSchema,mdAiAppSchema], allErrors: true, strictSchema: false, allowUnionTypes: true}); // ID11062025.n
+const ajvAiApps = new Ajv({schemas: [sdAiAppSchema, sdSecuritySchema, sdToolRetrievalSchema, mdAiAppSchema], allErrors: true, strictSchema: false, allowUnionTypes: true}); // ID11062025.n, ID07152026.n, ID09042026.n
 addFormats(ajvAiApps); // ID12042025.n
 
 module.exports = {
@@ -51,6 +59,7 @@ module.exports = {
 	sdAiAppSchema,
 	sdAiAppBudgetSchema, // ID08252025.n
 	sdAiAppMcpServersSchema, // ID09272025.n
+	sdSecuritySchema, // ID07152026.n
 	multiDomainAgentSchema,
 	mdAiAppSchema,
 	validateAiServerSchema: (srvConfig) => {

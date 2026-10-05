@@ -75,6 +75,15 @@
  * ID05222026: ganrad: v3.0.1: (Bugfix) When endpoints are rate limited, incorrect http status codes and response messages were being returned.
  * ID06032026: ganrad: v3.0.1: (Bugfix) HTTP headers included in the input normalizer policy are now sent to the target model deployment endpoint.
  * ID06062026: ganrad: v3.0.1: (Bugfix) When model inferencing returned status 400; multiple prompt table records were getting created.
+ * ID07152026: ganrad: v3.0.1: (Enhancement) Introduced support for enforcement of outbound security policies at both a) AI Gateway level and b) AI Application level.
+ * ID08142026: ganrad: v3.0.1: (Bugfix) When the AI Gateway is configured to serve A2A agents, context/thread ID can be passed in to allow for end to end traceability.
+ * ID08202026: ganrad: v3.0.1: (Bugfix) Re-factored cache, prompts & memory/state management query/store calls to use unique gateway server id, required for 
+ * multi-gateway server interoperability. Introduced separate 'instance' field in tables to capture pod/replica name.
+ * ID08262026: ganrad: v3.0.1: (Enhancement) Introduced 3 new fields in apigtwyprompts table - generation model, generation input & output tokens. Capture the 
+ * generation and orchestration time in a separate variable.
+ * ID09232026: ganrad: v3.0.1: (Enhancement) Introduced multiple tool planner and execution engines.
+ * ID09282026: ganrad: v3.0.1: (Enhancement) Introduced 2 new fields in apigtwyprompts table - generation cache read and write tokens. These values are 
+ * used for deriving user API call and cost metrics.
  * 
 */
 const path = require('path');
@@ -103,13 +112,14 @@ const {
 // const { randomUUID } = require('node:crypto'); // ID05062024.n; ID07312025.o
 
 const { encode } = require('gpt-tokenizer'); // ID02212025.n
-const { getExtractionPrompt, updateSystemMessage, storeUserFacts } = require("../utilities/lt-mem-manager.js"); // ID05142025.n
+const { getExtractionPrompt, updateSystemMessage, storeUserFacts } = require("../lib/lt-mem-manager.js"); // ID05142025.n
 const { getOpenAICallMetadata, callAiAppEndpoint, retrieveUniqueURI } = require("../utilities/helper-funcs.js"); // ID05142025.n, ID09172025.n, ID10142025.n, ID11032025.o
 const { streamA2AResponse } = require("../utilities/a2a-helper-funcs.js"); // ID10082025.n
-const { processBatch, processStream } = require("../utilities/payload-normalizer-v2.js"); // ID11032025.n
-const { RemoteServerTools } = require("../utilities/remote-server-tools.js"); // ID02232026.n; ID03172026.n
-const { ToolPlannerExecutor } = require("../utilities/tool-planner-executor.js"); // ID02282026.n; ID03172026.n
-const { sendStatus, sendTrace, sendError, sendDone } = require("../utilities/sse-event-broker.js"); // ID05202026.n
+const { processBatch, processStream } = require("../lib/payload-normalizer-v2.js"); // ID11032025.n
+const { RemoteServerTools } = require("../remote-servers/remote-server-tools.js"); // ID02232026.n; ID03172026.n
+const { ToolPlannerFactory } = require("../remote-servers/tool-planner-factory.js"); // ID02282026.n; ID03172026.n; ID09232026.n
+const { sendStatus, sendTrace, sendError, sendDone } = require("../lib/sse-event-broker.js"); // ID05202026.n
+const SecurityEngine = require('../security/security-engine.js'); // ID07152026.n
 
 class AzOaiProcessor {
 
@@ -718,7 +728,8 @@ class AzOaiProcessor {
     const userMemConfig = arguments[6]; // ID05142025.n; AI App specific long term memory config
     const routerInstance = arguments[7]; // ID06162025.n; AI App specific endpoint router instance
     let manageState = (process.env.API_GATEWAY_STATE_MGMT === 'true') ? true : false
-    let instanceName = (process.env.POD_NAME) ? apps.serverId + '-' + process.env.POD_NAME : apps.serverId; // Server instance name ID11112024.n
+    // let instanceName = (process.env.POD_NAME) ? apps.serverId + '-' + process.env.POD_NAME : apps.serverId; // Server instance name ID11112024.n, ID08202026.o
+    let replicaName = process.env.POD_NAME || process.env.CONTAINER_APP_REPLICA_NAME || null; // ID08202026.n
     this.request = req; // ID10082025.n; Initialize the request object
     req.body_copy = req.body; // ID11032025.n; Save a copy of the request body
 
@@ -766,6 +777,7 @@ class AzOaiProcessor {
       useCache = req.query.use_cache === 'false' ? false : useCache;
 
     let stTime;
+    let genOrchestrationTime = Date.now(); // ID08262026.n
     let vecEndpoints = null;
     let embeddedPrompt = null;
     let cacheDao = null;
@@ -812,9 +824,11 @@ class AzOaiProcessor {
     if (!threadId) {
       // if ( cacheConfig.cacheResults && useCache ) { // Is caching enabled?; ID03142025.o
       if (cacheConfig.cacheResults && useCache && ((!req.body.tools) && this.#toolsMessagesNotPresent(req.body.messages))) { // Is caching enabled?; ID03142025.n;
+        let appSecurityPolicies = null; // ID07152026.n
         for (const application of apps.applications) {
           if (application.appId === cacheConfig.embeddApp) {
             vecEndpoints = application.endpoints;
+            appSecurityPolicies = application.securitySettings; // ID07152026.n
 
             break;
           };
@@ -849,8 +863,9 @@ class AzOaiProcessor {
           config.encryptionKey,
           cacheMetrics,
           config.level1Cache,
-          config.level2Config);
-        // ID11212025.en
+          config.level2Config,
+          // ID11212025.en
+          appSecurityPolicies); // ID07152026.n
 
         // const { rowCount, simScore, completion, embeddings } = ID11212025.o
         const { rowCount, cacheLevel, completion, embeddings } = // ID05202026.n; ID11212025.n
@@ -897,7 +912,8 @@ class AzOaiProcessor {
             promptDao = new PersistDao(persistdb, TblNames.Prompts);
             values = [
               req.id,
-              instanceName,
+              apps.serverId, // ID08202026.n
+              replicaName, // ID08202026.n
               config.appId,
               req.body,
               completion,
@@ -905,10 +921,16 @@ class AzOaiProcessor {
               req.body.user,
               0, // ID04302026.n (No tools were executed!)
               (Date.now() - stTime) / 1000,
-              EndpointMiscConstants.IdCached // Use '-cached-' as endpoint ID since this is a cached response
+              EndpointMiscConstants.IdCached, // Use '-cached-' as endpoint ID since this is a cached response
+              'NA', // ID08262026.n
+              0,
+              0,
+              0, // ID09282026.n
+              0
             ];
             if (threadId) {
-              values.splice(5, 1);
+              // values.splice(5, 1); ID08202026.o
+              values.splice(6,1); // ID08202026.n
               values.unshift(threadId);
             };
 
@@ -933,7 +955,8 @@ class AzOaiProcessor {
             memoryDao = new PersistDao(persistdb, TblNames.Memory);
             values = [
               req.id,
-              instanceName, // ID11112024.n
+              apps.serverId, // ID11112024.n, ID08202026.n
+              replicaName, // ID08202026.n
               threadId,
               config.appId,
               {
@@ -949,6 +972,7 @@ class AzOaiProcessor {
           if ( sessionId ) { // ID05202026.n
             sendStatus(sessionId, "🏁 Completed");
             sendTrace(sessionId, "Response ready");
+            sendDone(sessionId, { threadId: threadId || null }); // Important so client can de-register!
           };
 
           return (respMessage);
@@ -963,8 +987,11 @@ class AzOaiProcessor {
     else { // Start of user session if
       memoryDao = new PersistDao(persistdb, TblNames.Memory);
       values = [
-        threadId,
-        config.appId
+        // threadId, ID08202026.o
+        // config.appId
+        apps.serverId, // ID08202026.n
+        config.appId,
+        threadId
       ];
 
       // retrieve the thread context
@@ -978,6 +1005,10 @@ class AzOaiProcessor {
 
         req.body.messages = ctxMsgs;
         endpointId = userContext.data[0].endpoint_id; // ID05082025.n
+
+        // Set the threadId if it is not present in the http req header (A2A protocol)
+        if ( !req.get(CustomRequestHeaders.ThreadId) && (req.inboundApiType === AiGatewayInboundReqApiType.Agent2Agent)) // ID08142026.n
+          req.headers[CustomRequestHeaders.ThreadId] = threadId;
 
         logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Endpoint ID: %s\n  Prompt + Retrieved Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, endpointId, JSON.stringify(req.body.messages, null, 2)] });
       }
@@ -1010,7 +1041,10 @@ class AzOaiProcessor {
             }
         };
 
-        return (respMessage);
+        if ( req.inboundApiType === AiGatewayInboundReqApiType.Agent2Agent ) // ID08142026.n
+          respMessage = null; // Continue processing if A2A request and threadId is present!
+        else
+          return (respMessage);
       };
 
       if (memoryConfig.affinity) // ID06162025.n
@@ -1018,6 +1052,26 @@ class AzOaiProcessor {
     }; // end of user session if
 
     let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? (function () { threadStarted = true; return (generateGUID("thread")); })() : threadId; // ID04222026.n
+
+    /**
+     * ID08142026.sn
+     * If system message is not present in the request payload, add it to the request payload (req.body) before calling OAI endpoint(s).
+     * This is an optional step and will only be executed when system message is configured in the AI App config.
+     * If the system message is not present in the request payload, it will be added to the request payload (req.body) before calling OAI endpoint(s).
+     * If the system message is already present in the request payload, it will not be added again.
+     * If the system message is not present in the request payload and is not configured in the AI App config, it will not be added to the request payload.
+     */
+    if (config.instructionPrompt && config.instructionPrompt.length > 0) {
+      let sysMsg = req.body.messages.find(msg => msg.role === OpenAIChatCompletionMsgRoleTypes.SystemMessage)?.content;
+      if (!sysMsg) {
+        req.body.messages.unshift({
+          role: OpenAIChatCompletionMsgRoleTypes.SystemMessage,
+          content: config.instructionPrompt
+        });
+        logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  System Message added to request payload:\n  %s", splat: [scriptName, this.constructor.name, req.id, th_id, config.appId, JSON.stringify(req.body.messages[0], null, 2)] });
+      };
+    };
+    // ID08142026.en
 
     /**
      * ID02232026.sn
@@ -1029,7 +1083,12 @@ class AzOaiProcessor {
     let remoteServersObject = null;
     if (config.appRemoteServerConfig) {
       try {
-        remoteServersObject = await new RemoteServerTools().getRemoteServerToolsForAiApp(req.id, config.appRemoteServerConfig, apps.remoteServerConfig);
+        remoteServersObject = await new RemoteServerTools().getRemoteServerToolsForAiApp(
+          req.id,
+          config.appRemoteServerConfig,
+          apps.remoteServerConfig,
+          config.appSecurityPolicies,
+          apps.securityPolicyConfig);
         if ( sessionId && remoteServersObject ) // ID05202026.n
           sendStatus(sessionId, '🛠️ Identifying server tools...');
       }
@@ -1037,6 +1096,7 @@ class AzOaiProcessor {
         logger.log({ level: "error", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Message: Error occurred while calling remote servers. Proceeding with original request payload.\n  Error:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, config.appId, error.toString()] });
       };
     };
+    // ID02232026.en
 
     /**
      * ID05142025.sn
@@ -1064,7 +1124,7 @@ class AzOaiProcessor {
 
     if (!routerIdTried && routerInstance) // ID06162025.n; Skip if session affinity is configured and this call is part of an existing session.
       // routerEndpointId = routerInstance.getEndpointId(req.id);  // ID08052025.o
-      routerEndpointId = routerInstance.getEndpointId(req);  // ID08052025.n
+      routerEndpointId = routergatewayInstance.getEndpointId(req);  // ID08052025.n
 
     // ID02282026.sn
     // 4. Add context by invoking Remote server tools (if configured)
@@ -1078,21 +1138,36 @@ class AzOaiProcessor {
         const toolPlannerAiApp = config.appRemoteServerConfig.aiAppName;
         let epMetricsObj = (toolPlannerAiApp) ? appConnections.getConnection(toolPlannerAiApp) : epdata;
         let endpointsObj = (toolPlannerAiApp) ? apps.applications.find(app => app.appId === toolPlannerAiApp)?.endpoints : config.appEndpoints;
+        let normsObj = (toolPlannerAiApp) ? config.plannerNormConfigs : config.normConfigs; // Can be null!
+        const plannerAppType = (toolPlannerAiApp) ? apps.applications.find(app => app.appId === toolPlannerAiApp)?.appType : config.appType;
 
         let bridgeObjects = remoteServersObject.filter(server => (server.bridge)).map(({ serverId, bridge }) => ({ serverId, bridge }));
         // console.log(`***** Bridge Objects for Tool Planner/Executor *****\n${JSON.stringify(bridgeObjects,null,2)}\n************`);
 
         // let toolPlannerExecutor = new McpToolPlannerExecutor(config.appRemoteServerConfig, apps.remoteServerConfig, epMetricsObj, endpointsObj, config.appType);
+        /* ID09232026.so
         let toolPlannerExecutor = // ID04222026.n
           new ToolPlannerExecutor(
-            instanceName,
+            apps.serverId, // ID08202026.n
             config.appId,
             config.appRemoteServerConfig, 
             apps.remoteServerConfig, 
             epMetricsObj, 
             endpointsObj, 
-            config.appType, 
+            plannerAppType, 
             bridgeObjects);
+        ID09232026.eo */
+
+        const toolPlannerExecutor = ToolPlannerFactory.getInstance().createPlanner( // ID09232026.n
+          apps.serverId,
+          config.appId,
+          config.appRemoteServerConfig, 
+          apps.remoteServerConfig, 
+          epMetricsObj, 
+          endpointsObj, 
+          plannerAppType, 
+          bridgeObjects
+        );
 
         // Get the tools for each MCP server and put them into a single array to be passed to the tool planner/executor.
         let allTools = [];
@@ -1101,8 +1176,8 @@ class AzOaiProcessor {
             allTools = allTools.concat(remoteServer.tools);
         };
 
-        toolsCount = await toolPlannerExecutor.planAndExecuteTools(req, th_id, allTools); // This method updates the request payload (req.body) with the enriched context output by remote server tools! 
-        console.log(`***** Updated request body after Remote Server Tools execution *****\n${JSON.stringify(req.body, null, 2)}\n************`);
+        toolsCount = await toolPlannerExecutor.planAndExecuteTools(req, th_id, allTools, normsObj); // This method updates the request payload (req.body) with the enriched context output by remote server tools! 
+        // 0 - console.log(`***** Updated request body after Remote Server Tools execution *****\n${JSON.stringify(req.body, null, 2)}\n************`);
       }
       catch (error) {
         if ( sessionId ) // ID05202026.n
@@ -1155,6 +1230,21 @@ class AzOaiProcessor {
           triedEps[uriIdx] = true;
 
         uriIdx++;
+
+        // ID07152026.sn
+        if ( apps.securityPolicyConfig ) {
+          // 1. Check AI Gateway outbound security policies
+          const secEngine = new SecurityEngine(apps.securityPolicyConfig);
+          if ( !secEngine.isOutboundAllowed(element.uri) ) // Skip this endpoint URI if it's not in outbound allow list
+            continue; 
+        };
+        if ( config.appSecurityPolicies ) {
+          // 2. Check AI App outbound security policies
+          const secEngine = new SecurityEngine(config.appSecurityPolicies);
+          if ( !secEngine.isOutboundAllowed(element.uri) ) // Skip this endpoint URI if it's not in outbound allow list
+            continue;
+        };
+        // ID07152026.en
 
         // let metricsObj = epdata.get(element.uri); ID09172025.o
         // let metricsObj = epdata.get(retrieveUniqueURI(element.uri, config.appType, element.id)); // ID09172025.n, ID11182025.o
@@ -1247,13 +1337,13 @@ class AzOaiProcessor {
 
               values = [
                 req.id,
-                instanceName, // ID11112024.n
+                apps.serverId, // ID11112024.n
+                replicaName, // ID08202026.n
                 config.appId,
                 prompt,
                 embeddedPrompt, // ID11212025.n
                 // pgvector.toSql(embeddedPrompt), ID11212025.o
-                data, // ID10142025.o; ID11032025.n
-                // (req.normalizeOutput) ? normalizeAiOutput(data) : data // ID10142025.n; ID11032025.o
+                data,
                 apps.serverId // ID11212025.n
               ];
 
@@ -1281,15 +1371,22 @@ class AzOaiProcessor {
               promptDao = new PersistDao(persistdb, TblNames.Prompts);
               values = [
                 req.id,
-                instanceName, // ID11112024.n
+                apps.serverId, // ID11112024.n
+                replicaName, // ID08202026.n
                 config.appId,
                 req.body,
                 data, // ID04112024.n
                 allHeaders, // ID02112025.n
                 req.body.user, // ID04112024.n
                 toolsCount, // ID04302026.n
-                respTime / 1000, // ID11082024.n
-                (element.id) ? element.id : EndpointMiscConstants.IdIndexPrefix + (uriIdx - 1) // ID05082025.n, ID09162025.n
+                // respTime / 1000, // ID11082024.n, ID08262026.o
+                (Date.now() - genOrchestrationTime) / 1000, // ID08262026.n
+                (element.id) ? element.id : EndpointMiscConstants.IdIndexPrefix + (uriIdx - 1), // ID05082025.n, ID09162025.n,
+                req.body.model || 'NA', // ID08262026.n
+                data.usage?.prompt_tokens || 0,
+                data.usage?.completion_tokens || 0,
+                data.usage?.prompt_token_details?.cached_tokens || 0, // ID09282026.n
+                data.usage?.prompt_token_details?.cache_write_tokens || 0
               ];
 
               await promptDao.storeEntity(
@@ -1357,15 +1454,22 @@ class AzOaiProcessor {
               promptDao = new PersistDao(persistdb, TblNames.Prompts);
               values = [
                 req.id,
-                instanceName, // ID11112024.n
+                apps.serverId, // ID11112024.n
+                replicaName, // ID08202026.n
                 config.appId,
                 req.body,
                 data, // ID04112024.n
                 allHeaders, // ID02112025.n
                 req.body.user, // ID04112024.n
                 toolsCount, // ID04302026.n
-                (Date.now() - stTime) / 1000, // ID11082024.n
-                (element.id) ? element.id : EndpointMiscConstants.IdIndexPrefix + (uriIdx - 1) // ID05082025.n, ID09162025.n
+                // (Date.now() - stTime) / 1000, // ID11082024.n, ID08262026.o
+                (Date.now() - genOrchestrationTime) / 1000, // ID08262026.n
+                (element.id) ? element.id : EndpointMiscConstants.IdIndexPrefix + (uriIdx - 1), // ID05082025.n, ID09162025.n
+                req.body.model || "NA", // ID08262026.n
+                0,
+                0,
+                0, // ID08282026.n
+                0
               ];
 
               await promptDao.storeEntity(
@@ -1480,7 +1584,7 @@ class AzOaiProcessor {
           // retryAfter = 1; // ID06162025.n; Try remaining endpoints if any!
         }
         finally { // ID06162025.sn
-          if (routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter))
+          if ( routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter) )
             routerInstance.updateUriConnections(req.id, false, uriIdx - 1);
         }; // ID06162025.en
       }; // end of endpoint for loop
@@ -1534,24 +1638,28 @@ class AzOaiProcessor {
                 errorMessage: "Internal server error. Unable to process request. Check server logs."
               };
         ID06132024.eo */
-        const emsg = "Internal server error. Unable to process request. Please check server logs."; // ID10082025.n
+        const emsg = "All backend endpoints failed with an exception. Unable to process request. Please check AI Gateway and Application/Model security policies."; // ID07152026.n
+        // const emsg = "Internal server error. Unable to process request. Please check server logs."; // ID10082025.n, ID10152026.o
         // ID06132024.sn
         err_msg = {
           error: {
             target: req.originalUrl,
             message: emsg,
-            code: "internalFailure"
+            // code: "internalFailure" ID07152026.o
+            code: "forbidden" // ID07152026.n
           }
         };
         // ID06132024.en
 
         respMessage = {
-          http_code: 500, // Internal API Gateway server error!
+          // http_code: 500, // Internal API Gateway server error! ID07152026.o
+          http_code: 403, // ID07152026.n
           data: (req.inboundApiType === AiGatewayInboundReqApiType.OpenAI) ? err_msg : // ID10082025.n
             {
               jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
               id: req.a2aReqId,
-              error: { code: -32603, message: emsg } // Internal JSON-RPC error
+              // error: { code: -32603, message: emsg } // Internal JSON-RPC error ID07152026.o
+              error: { code: -32001, message: emsg } // ID07152026.n
             }
         };
 
@@ -1583,7 +1691,8 @@ class AzOaiProcessor {
 
       values = [
         req.id,
-        instanceName, // ID11112024.n
+        apps.serverId, // ID11112024.n, ID08202026.n
+        replicaName, // ID08202026.n
         threadId,
         config.appId,
         {
@@ -1605,7 +1714,7 @@ class AzOaiProcessor {
         promptDao = new PersistDao(persistdb, TblNames.Prompts);
         values = [
           req.id,
-          instanceName,
+          apps.serverId, // ID08202026.n
           config.appId,
           threadId
         ];

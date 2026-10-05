@@ -2,7 +2,7 @@
     "$id": "https://github.com/ganrad/rapid/schemas/gtwy-remote-servers-schema.json",
     "$comment": "ID09262025: ganrad: v2.7.0: Introduced support for executing MCP server tools as part of the single agent inferencing pipeline.",
     "title": "RemoteServerTools",
-    "description": "This schema defines attributes used for connecting to MCP, Web API or gRPC servers",
+    "description": "This schema defines attributes used for connecting to A2A, MCP, Web API or gRPC servers",
     "type": "object",
     "properties": {
         "id": {
@@ -21,9 +21,10 @@
             "minLength": 1
         },
         "protocol": {
-            "description": "Type of the server, e.g. 'MCP', 'WebAPI', 'gRPC'",
+            "description": "Type of the server, e.g. 'A2A', 'MCP', 'WebAPI', 'gRPC'",
             "type": "string",
             "enum": [
+                "A2A",
                 "MCP",
                 "WebAPI",
                 "gRPC"

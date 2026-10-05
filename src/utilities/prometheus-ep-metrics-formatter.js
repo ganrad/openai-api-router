@@ -1,6 +1,11 @@
-'use strict';
-
 /**
+ * Name: Prometheus AI Gateway Endpoint Metrics Formatter
+ * Description: Prometheus text formatter for RAPID AI Application Gateway metrics.
+ *
+ * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
+ * Date: 05-21-2026
+ * Version (Introduced): 3.0.1
+ * 
  * Prometheus text formatter for RAPID AI Application Gateway metrics.
  *
  * IMPORTANT:
@@ -58,6 +63,8 @@
  *   }
  * }
  */
+'use strict';
+
 class PrometheusEpMetricsFormatter {
   static CONTENT_TYPE = 'text/plain; version=0.0.4; charset=utf-8';
 

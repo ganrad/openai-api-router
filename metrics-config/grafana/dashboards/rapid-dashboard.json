@@ -1,0 +1,50 @@
+{
+  "title": "RAPID AI Gateway Metrics",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Success Rate",
+      "targets": [
+        {
+          "expr": "rapid_ai_application_gateway_endpoint_success_rate"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Error Rate",
+      "targets": [
+        {
+          "expr": "rapid_ai_application_gateway_endpoint_error_rate"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "API Calls (Success)",
+      "targets": [
+        {
+          "expr": "rapid_ai_application_gateway_endpoint_api_calls{outcome=\"success\"}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Token Usage",
+      "targets": [
+        {
+          "expr": "rapid_ai_application_gateway_endpoint_tokens_total"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Cost ($)",
+      "targets": [
+        {
+          "expr": "rapid_ai_application_gateway_endpoint_token_cost_usd"
+        }
+      ]
+    }
+  ]
+}

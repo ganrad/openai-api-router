@@ -13,6 +13,7 @@
  * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced multiple levels/layers for semantic cache (l1, l2 & pg).
  * ID12042025: ganrad: v2.9.5: (Refactored code) Log error message details.
  * ID05222026: ganrad: v3.0.1: (Enhancement) Made the PostgreSQL connection pool code more robust.
+ * ID08202026: ganrad: v3.0.1: (Refactored code) Introduced new 'instance' field in cache table.
  * 
 */
 
@@ -28,7 +29,8 @@ const { formatException } = require("../utilities/helper-funcs"); // ID12042025.
 const createTblStmts = [
   // Use this DDL for testing only!
   "CREATE TABLE apigtwycache (id serial PRIMARY KEY, srv_name VARCHAR(100), aiappname VARCHAR(100), prompt text, embedding vector(3), completion JSON, timestamp_ TIMESTAMPTZ default current_timestamp)",
-  "CREATE TABLE IF NOT EXISTS apigtwycache (id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, srv_name VARCHAR(100), requestid VARCHAR(100), aiappname VARCHAR(100), prompt text, embedding vector(1536), completion JSON, timestamp_ TIMESTAMP DEFAULT CURRENT_TIMESTAMP)" // ID11112024.n
+  // "CREATE TABLE IF NOT EXISTS apigtwycache (id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, srv_name VARCHAR(100), requestid VARCHAR(100), aiappname VARCHAR(100), prompt text, embedding vector(1536), completion JSON, timestamp_ TIMESTAMP DEFAULT CURRENT_TIMESTAMP)" // ID11112024.n, // ID08202026.o
+  "CREATE TABLE IF NOT EXISTS apigtwycache (id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, srv_name VARCHAR(100) NOT NULL, instance VARCHAR(100), requestid VARCHAR(100) NOT NULL, aiappname VARCHAR(100) NOT NULL, prompt text, embedding vector(1536), completion JSON, timestamp_ TIMESTAMP DEFAULT CURRENT_TIMESTAMP)" // ID08202026.n
 ];
 
 const dropTblStmts = [

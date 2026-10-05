@@ -46,6 +46,11 @@
                                 "type": "number",
                                 "minimum": 0
                             },
+                            "cachedWriteTokensCostPer1k": {
+                                "description": "Price per cache creation/write input token",
+                                "type": "number",
+                                "minimum": 0
+                            },
                             "outputTokensCostPer1k": {
                                 "description": "Price per output token",
                                 "type": "number",

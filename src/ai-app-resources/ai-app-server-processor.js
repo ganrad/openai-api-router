@@ -9,8 +9,10 @@
  * Notes:
  * ID03102025: ganrad: v2.3.0: (Enhancement) Added http method to 'operations' API
  * ID08252025: ganrad: v2.5.0: (Enhancement) Introduced cost tracking (/ budgeting) for models deployed on Azure AI Foundry.
+ * ID09272025: ganrad: v2.7.0: (Enhancement) Added new schema to support integration with MCP servers.
  * ID10252025: ganrad: v2.8.5: (Refactored code) AI App Gateway security implementation (library) switched to jwks-rsa.
  * ID12042025: ganrad: v2.9.5: (Refactored code) Log error message details.
+ * ID07152026: ganrad: v3.0.1: (Enhancement) Introduced AI Gateway security policies for restricting a) Inbound access to gateway and b) External access from gateway.
 */
 
 const fs = require("fs");
@@ -31,12 +33,14 @@ const {
 const { 
   validateAiServerSchema,
   sdAiAppSchema,
+  sdSecuritySchema, // ID07152026.n
   sdAiAppBudgetSchema, // ID08252025.n 
+  sdAiAppMcpServersSchema, // ID09272025.n
   singleDomainAgentSchema,
   mdAiAppSchema, 
   multiDomainAgentSchema } = require("../schemas/validate-json-config.js");
-const { reconfigEndpoints } = require("../routes/apirouter.js");
-const { reconfigAppMetrics } = require("../routes/md-apirouter.js");
+const { reconfigEndpoints } = require("../routers/apirouter.js");
+const { reconfigAppMetrics } = require("../routers/md-apirouter.js");
 const { formatException } = require("../utilities/helper-funcs.js"); // ID12042025.n
 
 class AiAppServerProcessor {
@@ -117,6 +121,8 @@ class AiAppServerProcessor {
     };
     if ( serverType === ServerTypes.SingleDomain ) {
       respMessage.data.resourceSchema.properties.applications.items = sdAiAppSchema;
+      respMessage.data.resourceSchema.properties.securityPolicyConfig.allOf[0] = sdSecuritySchema; // ID07152026.n
+      respMessage.data.resourceSchema.properties.remoteServerConfig.items = sdAiAppMcpServersSchema; // ID09272025.n
       respMessage.data.resourceSchema.properties.budgetConfig.items = sdAiAppBudgetSchema; // ID08252025.n
     }
     else

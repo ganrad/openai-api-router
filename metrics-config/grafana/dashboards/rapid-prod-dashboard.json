@@ -1,0 +1,132 @@
+{
+  "title": "RAPID AI Gateway - Production Observability",
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "version": 1,
+  "panels": [
+
+    {
+      "type": "stat",
+      "title": "Endpoint Success Rate",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
+      "targets": [
+        { "expr": "avg(rapid_ai_application_gateway_endpoint_success_rate) by (endpoint_id)" }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "title": "Endpoint Error Rate",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 5 },
+      "targets": [
+        { "expr": "avg(rapid_ai_application_gateway_endpoint_error_rate) by (endpoint_id)" }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "API Calls (Success vs Fail)",
+      "gridPos": { "x": 0, "y": 5, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "sum(rapid_ai_application_gateway_endpoint_api_calls{outcome=\"success\"}) by (endpoint_id)"
+        },
+        {
+          "expr": "sum(rapid_ai_application_gateway_endpoint_api_calls{outcome=\"failed\"}) by (endpoint_id)"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Total Tokens (per Endpoint)",
+      "gridPos": { "x": 0, "y": 11, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "sum(rapid_ai_application_gateway_endpoint_tokens_total) by (endpoint_id)"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Token Cost ($)",
+      "gridPos": { "x": 0, "y": 17, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "sum(rapid_ai_application_gateway_endpoint_token_cost_usd) by (endpoint_id)"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Cache Hit Rate (L1/L2/L3)",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "rapid_ai_application_gateway_application_cache_hit_rate",
+          "legendFormat": "{{cache_tier}}"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Cache Latency (ms)",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "rapid_ai_application_gateway_application_cache_avg_latency_ms",
+          "legendFormat": "{{cache_backend}}"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Cache Hits (rate)",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "rate(rapid_ai_application_gateway_application_cache_hits[5m])",
+          "legendFormat": "{{cache_tier}}"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Cache Misses (rate)",
+      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "rate(rapid_ai_application_gateway_application_cache_misses[5m])",
+          "legendFormat": "{{cache_tier}}"
+        }
+      ]
+    },
+
+    {
+      "type": "bar",
+      "title": "Endpoint Comparison (Success Rate)",
+      "gridPos": { "x": 0, "y": 23, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "avg(rapid_ai_application_gateway_endpoint_success_rate) by (endpoint_id)"
+        }
+      ]
+    },
+
+    {
+      "type": "bar",
+      "title": "Cost per Endpoint ($)",
+      "gridPos": { "x": 12, "y": 23, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "sum(rapid_ai_application_gateway_endpoint_token_cost_usd) by (endpoint_id)"
+        }
+      ]
+    }
+  ]
+}

@@ -32,7 +32,7 @@ const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('./logger');
 
-const Queue = require('./queue');
+const Queue = require('../lib/queue');
 const { EndpointMetricsConstants } = require('./app-gtwy-constants');
 
 class EpMetricsSnapshot { // ID05132026.n
@@ -53,6 +53,7 @@ class EpMetricsSnapshot { // ID05132026.n
 
     this.costOfInputTokens = 0.0; // Cost for input tokens for current time window
     this.costOfCachedTokens = 0.0; // Cost for cached tokens for current time window
+    this.costOfCacheWriteTokens = 0.0; // Cost of cache write tokens (Anthropic Messages API)
     this.costOfOutputTokens = 0.0; // Cost for output tokens for current time window
     this.totalCost = 0.0; // Total cost of tokens
   }
@@ -90,6 +91,10 @@ class EpMetricsSnapshot { // ID05132026.n
     totalCachedTokensK = (totalCachedTokensK > 0) ? (totalCachedTokensK / 1000) : 0;
     this.totalCachedTokens = this.epInstance.totalCachedTokens;
 
+    let totalCacheWriteTokensK = this.epInstance.totalCacheWriteTokens - this.totalCacheWriteTokens;
+    totalCacheWriteTokensK = (totalCacheWriteTokensK > 0) ? (totalCacheWriteTokensK / 1000) : 0;
+    this.totalCacheWriteTokens = this.epInstance.totalCacheWriteTokens;
+
     let totalTokensK = this.epInstance.totalTokens - this.totalTokens;
     totalTokensK = (totalTokensK > 0) ? (totalTokensK / 1000) : 0;
     this.totalTokens = this.epInstance.totalTokens;
@@ -103,6 +108,9 @@ class EpMetricsSnapshot { // ID05132026.n
 
     const cachedTokenCost = this.epInstance.costOfCachedTokens - this.costOfCachedTokens;
     this.costOfCachedTokens = this.epInstance.costOfCachedTokens;
+
+    const cacheWriteTokenCost = this.epInstance.costOfCacheWriteTokens - this.costOfCacheWriteTokens;
+    this.costOfCacheWriteTokens = this.epInstance.costOfCacheWriteTokens;
 
     const totalTokenCost = this.epInstance.totalCost - this.totalCost;
     this.totalCost = this.epInstance.totalCost;
@@ -118,10 +126,12 @@ class EpMetricsSnapshot { // ID05132026.n
       totalInputTokensK,
       totalOutputTokensK,
       totalCachedTokensK,
+      totalCacheWriteTokensK,
       totalTokensK,
       inputTokenCost,
       outputTokenCost,
       cachedTokenCost,
+      cacheWriteTokenCost,
       totalTokenCost
     };
     // console.log(`*** Endpoint: ${this.epInstance.id}; Metrics: ${JSON.stringify(retObject, null, 2)}`);
@@ -145,6 +155,7 @@ class EpMetricsSnapshot { // ID05132026.n
 
     this.costOfInputTokens = 0.0; // Cost for input tokens for current time window
     this.costOfCachedTokens = 0.0; // Cost for cached tokens for current time window
+    this.costOfCacheWriteTokens = 0.0; // Cost of cache write tokens (claude models) for current time window
     this.costOfOutputTokens = 0.0; // Cost for output tokens for current time window
     this.totalCost = 0.0; // Total cost of tokens
   }
@@ -183,6 +194,7 @@ class AzOaiEpMetrics {
     this.totalOutputTokens = 0; // Total output tokens processed by this endpoint
     this.costOfInputTokens = 0.0; // Cost for input tokens for current time window
     this.costOfCachedTokens = 0.0; // Cost for cached tokens for current time window
+    this.costOfCacheWriteTokens = 0.0; // Cost of cache creation/write tokens for current time window
     this.costOfOutputTokens = 0.0; // Cost for output tokens for current time window
     // ID04152026.en
     this.totalCost = 0.0; // Total cost of tokens ID08252025.n
@@ -279,16 +291,19 @@ class AzOaiEpMetrics {
       // console.log(`***** prompt token cost = [${promptTokensCost}] *****`);
       const cachedInputTokensCost = cachedTokens ? (cachedTokens * this.modelInfo.tokenPriceInfo.cachedInputTokensCostPer1k) / 1000 : 0;
       // console.log(`***** cached input token cost = [${cachedInputTokensCost}] *****`);
+      const cacheWriteTokensCost = cacheCreationInputTokens ? (cacheCreationInputTokens * this.modelInfo.tokenPriceInfo.cachedWriteTokensCostPer1k) / 1000 : 0;
+      // console.log(`***** cached input creation/write token cost = [${cacheWriteTokensCost}] *****`);
       const completionTokensCost = completionTokens ? (completionTokens * this.modelInfo.tokenPriceInfo.outputTokensCostPer1k) / 1000 : 0;
       // console.log(`***** completed token cost = [${completionTokensCost}] *****`);
 
       // ID04152026.sn
       this.costOfInputTokens += promptTokensCost;
       this.costOfCachedTokens += cachedInputTokensCost;
+      this.costOfCacheWriteTokens += cacheWriteTokensCost;
       this.costOfOutputTokens += completionTokensCost;
       // ID04152026.en
 
-      callTotalCost = promptTokensCost + cachedInputTokensCost + completionTokensCost;
+      callTotalCost = promptTokensCost + cachedInputTokensCost + cacheWriteTokensCost + completionTokensCost;
     };
 
     return (callTotalCost);
@@ -379,6 +394,7 @@ class AzOaiEpMetrics {
       // ID04152026.sn
       let kInpTokens = (this.totalInputTokens > 0) ? (this.totalInputTokens / 1000) : 0;
       let kCachedTokens = (this.totalCachedTokens > 0) ? (this.totalCachedTokens / 1000) : 0;
+      let kCachedWriteTokens = (this.totalCacheWriteTokens > 0) ? (this.totalCacheWriteTokens / 1000) : 0;
       let kOutputTokens = (this.totalOutputTokens > 0) ? (this.totalOutputTokens / 1000) : 0;
       // ID04152026.en
 
@@ -394,6 +410,7 @@ class AzOaiEpMetrics {
           // ID04152026.sn
           totalCostInputTokens: this.costOfInputTokens.toFixed(6),
           totalCostCachedTokens: this.costOfCachedTokens.toFixed(6),
+          totalCostCachedWriteTokens: this.costOfCacheWriteTokens.toFixed(6),
           totalCostOutputTokens: this.costOfOutputTokens.toFixed(6),
           // ID04152026.en
           totalCost: this.totalCost.toFixed(6), // ID08252025.n
@@ -403,6 +420,7 @@ class AzOaiEpMetrics {
             // ID04152026.sn
             kInpTokensWindow: kInpTokens,
             kCachedTokensWindow: kCachedTokens,
+            kCachedWriteTokensWindow: kCachedWriteTokens,
             kOutputTokensWindow: kOutputTokens,
             // ID04152026.en
             // requestsPerWindow: (kTokens * 6), ID08252025.o, Not tracked
@@ -436,6 +454,7 @@ class AzOaiEpMetrics {
       // ID04152026.sn
       this.costOfInputTokens = 0.0;
       this.costOfCachedTokens = 0.0;
+      this.costOfCacheWriteTokens = 0.0;
       this.costOfOutputTokens = 0.0;
       // ID04152026.en
       this.totalCost = 0.0; // ID08252025.n
@@ -458,6 +477,7 @@ class AzOaiEpMetrics {
     // ID04152026.sn
     let kInputTokens = (this.totalInputTokens > 0) ? (this.totalInputTokens / 1000) : 0;
     let kCachedTokens = (this.totalCachedTokens > 0) ? (this.totalCachedTokens / 1000) : 0;
+    let kCachedWriteTokens = (this.totalCacheWriteTokens > 0) ? (this.totalCacheWriteTokens / 1000) : 0;
     let kOutputTokens = (this.totalOutputTokens > 0) ? (this.totalOutputTokens / 1000) : 0;
     // ID04152026.en
 
@@ -471,9 +491,11 @@ class AzOaiEpMetrics {
       // ID04152026.sn
       kInputTokens,
       kCachedTokens,
+      kCachedWriteTokens,
       kOutputTokens,
       totalCostInputTokens: this.costOfInputTokens.toFixed(6),
       totalCostCachedTokens: this.costOfCachedTokens.toFixed(6),
+      totalCostCachedWriteTokens: this.costOfCacheWriteTokens.toFixed(6),
       totalCostOutputTokens: this.costOfOutputTokens.toFixed(6),
       // ID04152026.en
       kInferenceTokens: kTokens,

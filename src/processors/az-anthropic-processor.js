@@ -21,7 +21,7 @@ const UserMemDao = require("../utilities/user-mem-dao.js");
 
 const {
   generateGUID,
-  DefEmbeddingModelTokenLimit,
+  HttpMethods,
   CustomRequestHeaders,
   EndpointRouterTypes,
   OpenAIChatCompletionMsgRoleTypes,
@@ -31,45 +31,21 @@ const {
   A2AErrorCodes
 } = require("../utilities/app-gtwy-constants.js");
 
-const { encode } = require('gpt-tokenizer'); // ID02212025.n
-const { getExtractionPrompt, updateSystemMessage, storeUserFacts } = require("../utilities/lt-mem-manager.js");
+const { AiApiError } = require("../utilities/helper-classes.js");
+
+const { getExtractionPrompt, updateSystemMessage, storeUserFacts } = require("../lib/lt-mem-manager.js");
 const { getOpenAICallMetadata, callAiAppEndpoint, retrieveUniqueURI } = require("../utilities/helper-funcs.js");
 const { streamA2AResponse } = require("../utilities/a2a-helper-funcs.js");
-const { processBatch, processStream } = require("../utilities/payload-normalizer-v2.js");
-const { RemoteServerTools } = require("../utilities/remote-server-tools.js");
-const { ToolPlannerExecutor } = require("../utilities/tool-planner-executor.js");
-const { sendStatus, sendTrace, sendError, sendDone } = require("../utilities/sse-event-broker.js");
+const { processBatch, processStream } = require("../lib/payload-normalizer-v2.js");
+const { RemoteServerTools } = require("../remote-servers/remote-server-tools.js");
+const { ToolPlannerExecutor } = require("../remote-servers/tool-planner-executor.js");
+const { sendStatus, sendTrace, sendError, sendDone } = require("../lib/sse-event-broker.js");
+const SecurityEngine = require('../security/security-engine.js'); 
 
 class AzAnthropicProcessor {
 
   constructor() {
-    this.streamed_response_sent = false;  // ID08202025.n
-    this.request = null;  // ID10082025.n; Initialize with null
-  }
-
-  #tokensWithinLimit(req) { // ID02212025.n
-    const msgs = req.body.messages;
-
-    const nameTokens = 1;
-    const msgTokens = 3;
-
-    let tokens = 5;
-    let elemTokens = 0;
-    for (const element of msgs) {
-      tokens += msgTokens;
-      elemTokens = encode(element.content).length;
-      // console.log(`*** role: ${element.role}, content: ${element.content}, tokens: ${elemTokens} ***`);
-
-      // Encode the text to get the tokens
-      tokens += elemTokens;
-      if (element.name)
-        tokens += nameTokens;
-    };
-
-    const retVal = (tokens > DefEmbeddingModelTokenLimit) ? false : true;
-    logger.log({ level: "info", message: "[%s] %s.#tokensWithinLimit():\n  Request ID: %s\n  Token Count: %s", splat: [scriptName, this.constructor.name, req.id, tokens] });
-
-    return (retVal);
+    this.request = null;  // Initialize request
   }
 
   #checkAndPruneCtxMsgs(count, msgs) {
@@ -83,362 +59,381 @@ class AzAnthropicProcessor {
     return (msgs)
   }
 
-  // ID06052024.sn
-  * #chunkToLines(chunked_data) {
-    let previous = "";
+  /**
+   * Internal: fire the HTTP request with a timeout via AbortController.
+   */
+  async _post(modelTargetUri, headers, body, { signal } = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60_000); // CHECK
 
-    for (const chunk of chunked_data) {
-      const bufferChunk = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-      previous += bufferChunk;
-
-      let eolIndex;
-      while ((eolIndex = previous.indexOf("\n")) >= 0) {
-        // line includes the EOL
-        const line = previous.slice(0, eolIndex + 1).trimEnd();
-        if (line === "data: [DONE]") break;
-        // if (line.startsWith("data: ")) yield line;
-        if (line) yield line;
-        previous = previous.slice(eolIndex + 1);
-      }
-    };
-    if (previous.startsWith("data: ")) yield previous;
-  }
-
-  * #linesToMessages(linesAsync) {
-    let message;
-    for (const line of linesAsync) {
-      if (line.startsWith("data: "))
-        message = line.substring("data: ".length);
-      else
-        message = line;
-
-      yield message;
-    }
-  }
-
-  * #processChunk(data, pline) {
-    yield* this.#linesToMessages(this.#chunkToLines(data));
-  }
-
-  #constructCompletionMessage(completion, citations, metadata) {
-    let completionObj = null;
-
-    if (citations) {
-      const citsObj = JSON.parse(citations);
-      completionObj = {
-        id: metadata.id,
-        object: metadata.object,
-        created: metadata.created,
-        model: metadata.model,
-        choices: [
-          {
-            message: {
-              role: OpenAIChatCompletionMsgRoleTypes.Assistant,
-              content: completion,
-              context: {
-                citations: citsObj.choices[0].delta.context.citations,
-                intent: citsObj.choices[0].delta.context.intent,
-                all_retrieved_documents: citsObj.choices[0].delta.context.all_retrieved_documents
-              }
-            },
-            finish_reason: "stop",
-            index: 0
-          }
-        ],
-        system_fingerprint: metadata.system_fingerprint
-      };
-    }
-    else {
-      completionObj = {
-        id: metadata.id,
-        object: metadata.object,
-        created: metadata.created,
-        model: metadata.model,
-        choices: [
-          {
-            message: {
-              role: OpenAIChatCompletionMsgRoleTypes.Assistant,
-              content: completion,
-            },
-            finish_reason: "stop",
-            index: 0
-          }
-        ],
-        system_fingerprint: metadata.system_fingerprint
-      };
-      if (metadata.usage) // ID02152025.n
-        completionObj.usage = metadata.usage;
+    // Chain an externally-provided signal, if any.
+    if (signal) {
+      if (signal.aborted) controller.abort();
+      else signal.addEventListener('abort', () => controller.abort(), { once: true });
     };
 
-    return (completionObj);
+    try {
+      const res = await fetch(modelTargetUri, {
+        method: HttpMethods.POST,
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      return res;
+    }
+    finally {
+      clearTimeout(timer);
+    };
   }
 
-  #constructCompletionStreamMessage(completion) {
-    let completionObj = {
-      choices: [
-        {
-          index: 0,
-          delta: {
-            content: completion.choices[0].message.content
-          },
-          finish_reason: null
+  // ---------------------------------------------------------------------------
+  // STREAMING (Server-Sent Events)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Streaming completion. Async-iterates parsed SSE events:
+   *   { event: 'content_block_delta', data: {...} }, etc.
+   *
+   * Usage:
+   *   for await (const evt of _streamMessage({...})) { ... }
+   *
+   * @param {string}   requestid             - Request ID
+   * @param {string}   threadid              - Thread ID
+   * @param {object}   res                   - Response object
+   * @param {object}   [opts]
+   * @param {AbortSignal} [opts.signal]      - Cancel the request/stream.
+   * @param {object}      [opts.expressRes]  - Optional ExpressJS response; when
+   *                                           provided, each event is piped to
+   *                                           it as a properly-formatted SSE frame.
+   * @returns {AsyncGenerator<{event: string, data: object}>}
+   */
+  async * _streamMessage(requestid, threadid, res, { signal, expressRes } = {}) {
+
+    if (!res.ok) {
+      // Surface the error to the Express client too, if one is attached.
+      if (expressRes && !expressRes.headersSent) {
+        try { await this._raiseForError(res); }
+        catch (err) {
+          expressRes.status(err.status || 500).json({
+            error: { type: err.type, message: err.message },
+          });
+          return;
         }
-      ],
-      created: completion.created,
-      id: completion.id,
-      model: completion.model,
-      object: completion.object,
-      system_fingerprint: completion.system_fingerprint
-    };
-
-    let citationsObj = null;
-    if (completion.choices[0].message?.context) {
-      citationsObj = {
-        id: completion.id,
-        created: completion.created,
-        model: completion.model,
-        object: completion.object,
-        choices: [
-          {
-            index: 0,
-            delta: {
-              role: OpenAIChatCompletionMsgRoleTypes.Assistant,
-              context: {
-                citations: completion.choices[0].message.context.citations,
-                intent: completion.choices[0].message.context.intent
-              }
-            },
-            end_turn: false,
-            finish_reason: null
-          }
-        ]
       };
+
+      await this._raiseForError(res);
     };
 
-    let retValue = {
-      completion: completionObj,
-      citations: citationsObj
-    };
+    if (!res.body) throw new AiApiError('No response body for stream.', AiGatewayInboundReqApiType.Anthropic);
 
-    return retValue;
+    // Prepare the Express response as an SSE stream (only once).
+    this._initSse(requestid, threadid, expressRes);
+
+    // Abort upstream if the downstream client disconnects.
+    if (expressRes) {
+      expressRes.on('close', () => {
+        if (signal && !signal.aborted) { /* caller owns signal */ }
+      });
+    }
+
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    try {
+      // res.body is a WHATWG ReadableStream; async-iterate its chunks.
+      for await (const chunk of res.body) {
+        buffer += decoder.decode(chunk, { stream: true });
+
+        // SSE events are delimited by a blank line (\n\n). Handle \r\n too.
+        let idx;
+        while ((idx = buffer.indexOf('\n\n')) !== -1) {
+          const rawEvent = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 2);
+
+          const parsed = this._parseSseBlock(rawEvent);
+          if (parsed) {
+            this._writeSse(expressRes, parsed);
+            yield parsed;
+          };
+        };
+      };
+
+      // Flush any trailing event without a final blank line.
+      const tail = buffer.trim();
+      if (tail) {
+        const parsed = this._parseSseBlock(tail);
+        if (parsed) {
+          this._writeSse(expressRes, parsed);
+          yield parsed;
+        };
+      };
+    }
+    finally {
+      // Close the Express SSE stream when the upstream is done/aborted.
+      // if (expressRes && !expressRes.writableEnded) expressRes.end();
+      // expressRes will be closed by the apirouter!
+    };
   }
 
-  #checkIfMessageIsComplete(message) {
-    let braces = 0;
-    for (var i = 0, len = message.length; i < len; ++i) {
-      switch (message[i]) {
-        case '{':
-          ++braces;
-          break;
-        case '}':
-          --braces;
-          break;
+  /** Initialize SSE headers on the Express response (idempotent). */
+  _initSse(requestid, threadid, expressRes) {
+    if (!expressRes || expressRes.headersSent) return;
+
+    // Send 200 response status and headers
+    let res_hdrs = CustomRequestHeaders.RequestId;
+    expressRes.setHeader('Content-Type', 'text/event-stream');
+    expressRes.setHeader('Cache-Control', 'no-cache, no-transform');
+    expressRes.setHeader('Connection', 'keep-alive');
+    expressRes.set(CustomRequestHeaders.RequestId, requestid);
+    if (threadid) {
+      res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
+      expressRes.set(CustomRequestHeaders.ThreadId, threadid);
+    };
+    expressRes.set("Access-Control-Expose-Headers", res_hdrs);
+    expressRes.set("X-Accel-Buffering", "no"); // Tell Nginx servers (if present as reverse proxy) to not buffer SSE events
+
+    /*
+    expressRes.flushHeaders();
+    expressRes.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no', // disable proxy buffering (e.g. nginx)
+    }); */
+
+    if (typeof expressRes.flushHeaders === 'function')
+      expressRes.flushHeaders();
+  }
+
+  /** Write one parsed event to the Express response as an SSE frame. */
+  _writeSse(expressRes, parsed) {
+    if (!expressRes || expressRes.writableEnded) return;
+    const frame =
+      `event: ${parsed.event}\n` +
+      `data: ${JSON.stringify(parsed.data)}\n\n`;
+
+    // 0 - if (parsed.event === "message_delta")
+      // console.log(`**** Event: ${frame} ****`);
+
+    expressRes.write(frame);
+  }
+
+  /**
+   * Parse one SSE block into { event, data }.
+   * A block looks like:
+   *   event: content_block_delta
+   *   data: {"type":"content_block_delta", ...}
+   */
+  _parseSseBlock(block) {
+    let eventName = 'message';
+    const dataLines = [];
+
+    for (const line of block.split('\n')) {
+      const trimmed = line.replace(/\r$/, '');
+      if (!trimmed || trimmed.startsWith(':')) continue; // comment / keep-alive
+      if (trimmed.startsWith('event:')) {
+        eventName = trimmed.slice(6).trim();
+      } else if (trimmed.startsWith('data:')) {
+        dataLines.push(trimmed.slice(5).trim());
       }
     }
-    return (braces === 0) ? true : false;
+
+    if (!dataLines.length) return null;
+
+    const dataStr = dataLines.join('\n');
+    if (dataStr === '[DONE]') return { event: eventName, data: { done: true } };
+
+    let data;
+    try {
+      data = JSON.parse(dataStr);
+    }
+    catch {
+      data = { raw: dataStr };
+    };
+    return { event: eventName, data };
   }
 
-  #sleep(time) {
-    return new Promise((resolve) => setTimeout(resolve, time));
+  /**
+   * Reassemble a non-streamed-shaped Message from streamed pieces.
+   * Output matches the schema returned by Messages API response, so cached
+   * responses can be served back identically to a fresh API call.
+   *
+   * @param {object} p
+   * @param {string} p.text                 - Assembled text from the stream.
+   * @param {object|null} p.message         - The message_start `message` skeleton.
+   * @param {object} p.usage                - Accumulated usage counts.
+   * @param {string|null} [p.stop_reason]
+   * @param {string|null} [p.stop_sequence]
+   * @returns {object} Non-streamed Message object.
+   */
+  #buildMessageFromStream({ text, message, usage = {}, stop_reason = null, stop_sequence = null }) {
+    return {
+      id: message?.id ?? null,
+      type: message?.type ?? 'message',
+      role: message?.role ?? 'assistant',
+      model: message?.model ?? null,
+      content: text ? [{ type: 'text', text }] : [],
+      stop_reason,
+      stop_sequence,
+      // Use Anthropic's exact field names so it matches a fresh response 1:1.
+      usage: {
+        input_tokens: usage.input_tokens ?? 0,
+        cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
+        cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
+        output_tokens: usage.output_tokens ?? 0
+      },
+    };
   }
 
-  async #streamChatCompletion(req_id, t_id, app_id, router_res, oai_res, nconfig, t_count) { // ID11032025.n, ID04222026.n
-    const reader = oai_res.body.getReader(); // use Nodejs native fetch!
-    // const reader = oai_res.body; // use node-fetch library!
+  /**
+     * Convenience helper: stream and assemble the final text.
+     * Optionally invoke onDelta(textChunk) for live output.
+     * Optionally pipe SSE frames to an ExpressJS response via expressRes.
+     *
+     * Also captures token usage across the stream:
+     *   - input / cache-read / cache-write  -> from `message_start`
+     *   - output (cumulative)               -> updated from `message_delta`
+     *
+     * @returns {Promise<{ text: string, message: object|null, usage: object, nonStreamResponse: object }>}
+     */
+  async #streamToText(requestid, threadid, appId, response, { signal, onDelta, expressRes } = {}) {
+    let text = '';
+    let finalMessage = null;
+    let stopReason = null;
+    let stopSequence = null;
 
-    if (!this.streamed_response_sent) { // ID08202025.n
-      // Send 200 response status and headers
-      let res_hdrs = CustomRequestHeaders.RequestId;
-      router_res.setHeader('Content-Type', 'text/event-stream');
-      router_res.setHeader('Cache-Control', 'no-cache');
-      router_res.setHeader('Connection', 'keep-alive');
-      router_res.set(CustomRequestHeaders.RequestId, req_id);
-      if (t_id) {
-        res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
-        router_res.set(CustomRequestHeaders.ThreadId, t_id);
-      };
-      if (t_count) { // ID04222026.n
-        res_hdrs += ', ' + CustomRequestHeaders.ExecToolsCount;
-        router_res.set(CustomRequestHeaders.ExecToolsCount, t_count);
-      };
-      router_res.set("Access-Control-Expose-Headers", res_hdrs);
-      router_res.set("X-Accel-Buffering", "no"); // ID10082025.n; Tell Nginx servers (if present as reverse proxy) to not buffer SSE events 
-      router_res.flushHeaders();
-
-      this.streamed_response_sent = true; // ID08202025.n
+    // Normalized usage accumulator.
+    const usage = {
+      input_tokens: 0,
+      cache_read_input_tokens: 0,
+      cache_creation_input_tokens: 0,
+      output_tokens: 0,
     };
 
-    let chkPart = null;
-    let recv_data = '';
-    let call_data = null;
+    const mergeUsage = (u) => {
+      if (!u) return;
+      if (typeof u.input_tokens === 'number') usage.input_tokens = u.input_tokens;
+      if (typeof u.cache_read_input_tokens === 'number')
+        usage.cache_read_input_tokens = u.cache_read_input_tokens;
+      if (typeof u.cache_creation_input_tokens === 'number')
+        usage.cache_creation_input_tokens = u.cache_creation_input_tokens;
+      // output_tokens is cumulative; later events carry the latest total.
+      if (typeof u.output_tokens === 'number') usage.output_tokens = u.output_tokens;
+    };
 
-    // ID10082025.sn
-    let streamOAIResponse = true;
-    if (this.request.inboundApiType === AiGatewayInboundReqApiType.Agent2Agent) {
-      streamOAIResponse = false;
+    if (this.request.inboundApiType === AiGatewayInboundReqApiType.Agent2Agent) {  // A2A API
+      // Prepare the Express response as an SSE stream (only once).
+      this._initSse(requestid, threadid, expressRes);
 
       const a2aRequest = {
-        requestId: req_id,
-        threadId: t_id,
-        appId: app_id,
+        requestId,
+        threadId,
+        appId,
         inputMessage: this.request.a2aMessage,
-        responseStream: router_res,
-        oaiReader: reader,
+        responseStream: expressRes,
+        anthropicResponse: response,
         a2aReqId: this.request.a2aReqId
       };
 
       const a2aResponse = await streamA2AResponse(a2aRequest, false);
-      recv_data = a2aResponse.recv_data;
-      call_data = a2aResponse.call_data;
-    };
-    // ID10082025.en
+      text = a2aResponse.recv_data;
+      finalMessage = a2aResponse.call_data;
+      stopReason = finalMessage.stopReason;
+      stopSequence = finalMessage.stopSequence;
 
-    const decoder = new TextDecoder("utf-8");
-    while (streamOAIResponse) { // ID10082025.n
-      const { done, value } = await reader.read();
-      if (done)
-        // 1. Debugging start - Finished
-        // console.log("**** FINISHED ****");
-        break;
+      usage.input_tokens = finalMessage.usage.input_tokens;
+      usage.cache_read_input_tokens = finalMessage.usage.cache_read_input_tokens ?? 0;
+      usage.cache_creation_input_tokens = finalMessage.usage.cache_creation_input_tokens ?? 0;
+      usage.output_tokens = finalMessage.usage.output_tokens;
+    }
+    else { // Anthropic Messages API
 
-      // if (!this.request.normalizeOutput) // ID10142025.n; ID11032025.o
-      if (!nconfig) // ID11032025.n
-        router_res.write(value); // write the value out to router response/output stream
+      for await (const { event, data } of this._streamMessage(requestid, threadid, response, { signal, expressRes })) {
+        switch (event) {
+          case 'message_start': // CHECK: Use constants?
+            finalMessage = data.message ?? null;
+            // Initial usage: input + cache counts (output is typically 1 here).
+            mergeUsage(data.message?.usage);
+            break;
+          case 'content_block_delta':
+            if (data?.delta?.type === 'text_delta' && data.delta.text) {
+              text += data.delta.text;
+              if (onDelta) onDelta(data.delta.text);
+            }
+            break;
+          case 'message_delta':
+            // Carries the cumulative output_tokens (and sometimes refreshed input).
+            mergeUsage(data.usage);
+            // Final stop fields arrive here, not in message_start.
+            if (data.delta?.stop_reason !== undefined) stopReason = data.delta.stop_reason;
+            if (data.delta?.stop_sequence !== undefined) stopSequence = data.delta.stop_sequence;
 
-      const chunk = decoder.decode(value);
-      const arr = chunk.split('\n'); // ID09242024.sn
-
-      for (const data of arr) {
-        if (data.length === 0) continue; // ignore empty message
-
-        if (data === 'data: [DONE]') {
-          if (nconfig)
-            router_res.write('data: [DONE]\n\n');
-          break;
+            break;
+          case 'error':
+            throw new AiApiError(
+              data?.error?.message || 'Stream error',
+              AiGatewayInboundReqApiType.Anthropic,
+              { type: data?.error?.type, body: data }
+            );
+          default:
+            break; // content_block_start/stop, message_stop, ping, etc.
         };
+      };
+    }; // end of if
 
-        // 2. Line data
-        // console.log(`**** DATA ****: ${data}`);
-        let pdata = '';
-        if (data.includes("data: "))
-          pdata = data.substring("data: ".length);
-        else
-          pdata = data;
+    // Convenience totals.
+    usage.total_input_tokens =
+      usage.input_tokens +
+      usage.cache_read_input_tokens +
+      usage.cache_creation_input_tokens;
+    usage.total_tokens = usage.total_input_tokens + usage.output_tokens;
 
-        if (chkPart) {
-          let cdata = chkPart.concat(pdata);
-          if (cdata.includes("data: "))
-            pdata = cdata.substring("data: ".length);
-          else
-            pdata = cdata;
-          // 3. Stitched line data fragments
-          // console.log(`**** C-DATA ****: ${cdata}`);
-        };
+    // Build the DB-ready, non-streamed-shaped Message.
+    const nonStreamResponse = this.#buildMessageFromStream({
+      text, message: finalMessage, usage, stop_reason: stopReason, stop_sequence: stopSequence
+    });
 
-        try {
-          let jsonMsg = JSON.parse(pdata);
-          // 4.a Parsed data
-          // console.log(`**** P-DATA ****: ${pdata}`);
-          chkPart = null;
-
-          /** ID11032025.so
-          if (this.request.normalizeOutput) { // ID10142025.n
-            // Remove 'prompt_filter_results' and 'content_filter_results'
-            delete jsonMsg.prompt_filter_results;
-            if (jsonMsg.choices) {
-              for (const choice of jsonMsg.choices)
-                delete choice.content_filter_results;
-            };
-
-            // Re-serialize and write cleaned data
-            const cleanedData = `data: ${JSON.stringify(jsonMsg)}\n\n`;
-
-            router_res.write(cleanedData);
-          };
-          ID11032025.eo */
-          // ID11032025.sn
-          if (nconfig) {
-            // console.log(`*** Json before process:\n${JSON.stringify(jsonMsg,null,2)}`);
-            jsonMsg = processStream(nconfig, jsonMsg);
-            // console.log(`*** Json after process:\n${JSON.stringify(jsonMsg,null,2)}`);
-            router_res.write(`data: ${JSON.stringify(jsonMsg)}\n\n`);
-          };
-          // ID11032025.en
-
-          // Accumulate content and metadata
-          if (!jsonMsg.choices || jsonMsg.choices.length === 0) {
-            console.log("streamCompletion(): Skipping this line");
-
-            // ID02152025.sn
-            if (jsonMsg.usage && call_data)
-              call_data.usage = jsonMsg.usage;
-            // ID02152025.en
-          }
-          else {
-            let content = jsonMsg.choices[0].delta.content;
-            if (content)
-              recv_data = recv_data.concat(content);
-
-            if (!call_data && (jsonMsg.created > 0))
-              call_data = {
-                id: jsonMsg.id,
-                object: jsonMsg.object,
-                created: jsonMsg.created,
-                model: jsonMsg.model,
-                system_fingerprint: jsonMsg.system_fingerprint
-              };
-          };
-        }
-        catch (error) {
-          // Incomplete JSON, save for next chunk
-          chkPart = pdata;
-
-          // 4.b Partial data
-          // console.log(`**** ChkPart ****: ${chkPart}`);
-        };
-      }; // ID09242024.en; End of for loop
-    }; // end of while
-    // 5. Check if chunk part was not processed!
-    // console.log(`ChkPart: ${chkPart}`);
-
-    logger.log({ level: "debug", message: "[%s] %s.streamChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Completion: %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, recv_data] });
-
-    let resp_data = this.#constructCompletionMessage(recv_data, null, call_data);
-
-    // 6. Final streamed response to be saved in cache/memory
-    // console.log(`**** CACHE/MEMORY DATA ****\n ${JSON.stringify(resp_data,null,2)}`);
-    return resp_data;
+    return { text, message: finalMessage, usage, nonStreamResponse };
   }
 
-  async #streamCachedChatCompletion(
-    req_id,
-    t_id,
-    app_id,
-    router_res,
-    res_payload) {
-    // Send 200 response status and headers
-    let res_hdrs = CustomRequestHeaders.RequestId;
-    router_res.setHeader('Content-Type', 'text/event-stream');
-    router_res.setHeader('Cache-Control', 'no-cache');
-    router_res.setHeader('Connection', 'keep-alive');
-    router_res.set(CustomRequestHeaders.RequestId, req_id);
-    if (t_id) {
-      res_hdrs += ', ' + CustomRequestHeaders.ThreadId;
-      router_res.set(CustomRequestHeaders.ThreadId, t_id);
+  /**
+   * Replay a cached (non-streamed) Message as a full Anthropic SSE stream.
+   * Emits the exact event sequence the Claude SDK expects, so clients can
+   * consume a cache hit identically to a live streaming call.
+   *
+   * Event order:
+   *   message_start
+   *     -> [ content_block_start, content_block_delta..., content_block_stop ] per block
+   *   message_delta (stop_reason/stop_sequence + final output usage)
+   *   message_stop
+   *
+   * @param {string} requestid         - Request id
+   * @param {string} threadid          - (optional) Thread id
+   * @param {string} appid             - AI Application id
+   * @param {object} cached            - A Message object (Messages API Response shape).
+   * @param {object} [opts]
+   * @param {object} [opts.expressRes] - ExpressJS response to pipe SSE frames to.
+   * @param {function} [opts.onEvent]  - Optional callback({event, data}) per frame.
+   * @param {number} [opts.chunkSize]  - Split text blocks into N-char deltas (0 = single delta).
+   * @param {number} [opts.delayMs]    - Optional delay between deltas to simulate streaming.
+   * @returns {Promise<void>}
+   */
+  async #streamCachedResponse(requestid, threadid, appid, cached, { expressRes, onEvent, chunkSize = 0, delayMs = 0 } = {}) {
+    if (!cached || typeof cached !== 'object') {
+      throw new AiApiError('streamCachedResponse: a cached Message object is required.', AiGatewayInboundReqApiType.Anthropic);
     };
-    router_res.set("Access-Control-Expose-Headers", res_hdrs);
-    router_res.set("X-Accel-Buffering", "no"); // ID10082025.n; Tell Nginx servers (if present as reverse proxy) to not buffer SSE events
-    router_res.flushHeaders();
 
-    // ID10082025.sn
+    this._initSse(requestid, threadid, expressRes);
+
     if (this.request.inboundApiType === AiGatewayInboundReqApiType.Agent2Agent) {
       const a2aRequest = {
-        requestId: req_id,
-        threadId: t_id,
-        appId: app_id,
+        requestId: requestid,
+        threadId: threadid,
+        appId: appid,
         inputMessage: this.request.a2aMessage,
-        responseStream: router_res,
-        responsePayload: res_payload.choices[0].message.content,
+        responseStream: expressRes,
+        responsePayload: cached.content[0].text,
         a2aReqId: this.request.a2aReqId
       };
 
@@ -449,90 +444,120 @@ class AzAnthropicProcessor {
         cached: true
       };
     };
-    // ID10082025.n
 
-    let msgChunk = this.#constructCompletionStreamMessage(res_payload)
-    // console.log(`***** CACHED MESSAGE:\n${JSON.stringify(msgChunk)}`);
-    if (msgChunk.citations) {
-      const cit_data = "data: " + JSON.stringify(msgChunk.citations) + "\n\n";
-      router_res.write(cit_data, 'utf8', () => {
-        logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Citations:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, cit_data] });
-      });
+    const emit = async (event, data) => {
+      const frame = { event, data: { type: event, ...data } };
+      this._writeSse(expressRes, frame);
+      if (onEvent) onEvent(frame);
+      if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
     };
 
-    /** ID11032025.so; When a cached response is streamed back to client, 'prompt_filter_results' will not be sent!
-    if (!this.request.normalizeOutput) { // ID10142025.sn
-      const value0 = "data: " + JSON.stringify({
-        choices: [],
-        created: 0,
-        id: "",
-        model: "",
-        object: "",
-        prompt_filter_results: [  // Safe to return 'safe sev' for all harm categories as this is a cached response!
-          {
-            prompt_index: 0,
-            content_filter_results: {
-              hate: {
-                filtered: false,
-                severity: "safe",
-              },
-              self_harm: {
-                filtered: false,
-                severity: "safe",
-              },
-              sexual: {
-                filtered: false,
-                severity: "safe",
-              },
-              violence: {
-                filtered: false,
-                severity: "safe",
-              }
-            }
-          }
-        ]
-      }) + "\n\n";
-      router_res.write(value0, 'utf8', () => {
-        logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Prompt-Filter:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, value0] });
+    const usage = cached.usage || {};
+    const content = Array.isArray(cached.content) ? cached.content : [];
+
+    try {
+      // 1) message_start — content is empty; output_tokens starts at 0.
+      await emit('message_start', {
+        message: {
+          id: cached.id ?? null,
+          type: cached.type ?? 'message',
+          role: cached.role ?? 'assistant',
+          model: cached.model ?? null,
+          content: [],
+          stop_reason: null,
+          stop_sequence: null,
+          usage: {
+            input_tokens: usage.input_tokens ?? 0,
+            cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
+            cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
+            output_tokens: usage.output_tokens ?? 0,
+          },
+        },
       });
-    }; // ID10142025.en
-    ID11032025.eo */
 
-    const value1 = "data: " + JSON.stringify(msgChunk.completion) + "\n\n";
-    router_res.write(value1, 'utf8', () => {
-      logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Completion:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, value1] });
-    });
+      // 2) One start/delta(s)/stop cycle per content block.
+      for (let index = 0; index < content.length; index++) {
+        const block = content[index];
 
-    const value2 = "data: " + JSON.stringify({
-      choices: [
-        {
-          // ID11032025.o; When a cached response is streamed back to client, empty 'content_filter_results' will not be sent!
-          // ...(!this.request.normalizeOutput && {content_filter_results: {}}), // ID10142025.n, ID11032025.o
-          delta: {},
-          finish_reason: "stop",
-          index: 0
+        if (block.type === 'text') {
+          await emit('content_block_start', {
+            index,
+            content_block: { type: 'text', text: '' },
+          });
+
+          const text = block.text ?? '';
+          for (const piece of this._splitText(text, chunkSize)) {
+            await emit('content_block_delta', {
+              index,
+              delta: { type: 'text_delta', text: piece },
+            });
+          }
         }
-      ],
-      created: msgChunk.completion.created,
-      id: msgChunk.completion.id,
-      model: msgChunk.completion.model,
-      object: msgChunk.completion.object
-    }) + "\n\n";
-    router_res.write(value2, 'utf8', () => {
-      logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Stop:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, value2] });
-    });
+        else if (block.type === 'tool_use') {
+          await emit('content_block_start', {
+            index,
+            content_block: { type: 'tool_use', id: block.id, name: block.name, input: {} },
+          });
+          // tool_use input is streamed as partial JSON.
+          await emit('content_block_delta', {
+            index,
+            delta: { type: 'input_json_delta', partial_json: JSON.stringify(block.input ?? {}) },
+          });
+        }
+        else if (block.type === 'thinking') {
+          await emit('content_block_start', {
+            index,
+            content_block: { type: 'thinking', thinking: '' },
+          });
+          await emit('content_block_delta', {
+            index,
+            delta: { type: 'thinking_delta', thinking: block.thinking ?? '' },
+          });
+          if (block.signature) {
+            await emit('content_block_delta', {
+              index,
+              delta: { type: 'signature_delta', signature: block.signature },
+            });
+          }
+        }
+        else {
+          // Unknown block type: emit start with the block as-is, no delta.
+          await emit('content_block_start', { index, content_block: block });
+        };
 
-    const value3 = 'data: [\"Done\"]\n\n';
-    router_res.write(value3, 'utf8', () => {
-      logger.log({ level: "debug", message: "[%s] %s.streamCachedChatCompletion():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Done:\n  %s", splat: [scriptName, this.constructor.name, req_id, t_id, app_id, value3] });
-    });
+        await emit('content_block_stop', { index });
+      }; // end of for loop
+
+      // 3) message_delta — final stop fields + cumulative output usage.
+      await emit('message_delta', {
+        delta: {
+          stop_reason: cached.stop_reason ?? 'end_turn',
+          stop_sequence: cached.stop_sequence ?? null,
+        },
+        usage: { output_tokens: usage.output_tokens ?? 0 },
+      });
+
+      // 4) message_stop — terminal event.
+      await emit('message_stop', {});
+    }
+    finally {
+      // if (expressRes && !expressRes.writableEnded) expressRes.end();
+    };
 
     return {
       http_code: 200, // All ok. Serving completion from cache.
       cached: true
     };
   }
-  // ID06052024.en
+
+  /** Split text into chunks of `size` chars (size <= 0 => single chunk). */
+  _splitText(text, size) {
+    if (!text) return [];
+    if (!size || size <= 0) return [text];
+    const out = [];
+    for (let i = 0; i < text.length; i += size) out.push(text.slice(i, i + size));
+    return out;
+  }
 
   async processRequest(
     req, // 0
@@ -549,7 +574,7 @@ class AzAnthropicProcessor {
     let manageState = (process.env.API_GATEWAY_STATE_MGMT === 'true') ? true : false
     let instanceName = (process.env.POD_NAME) ? apps.serverId + '-' + process.env.POD_NAME : apps.serverId; // Server instance name
     this.request = req; // Initialize the request object
-    req.body_copy = req.body; // ID11032025.n; Save a copy of the request body
+    req.body_copy = req.body; // Save a copy of the request body
 
     // State management is only supported for Messages API!
     if (memoryConfig && (!req.body.messages)) // If the request is not of type == messages
@@ -572,7 +597,7 @@ class AzAnthropicProcessor {
       delete req.body.threadId;
     };
 
-    if ( sessionId ) {
+    if (sessionId) {
       sendStatus(sessionId, '🧠 Understanding request...');
       sendTrace(sessionId, `Processing Request ID: ${req.id} for AI App: ${config.appId}`);
     };
@@ -633,7 +658,7 @@ class AzAnthropicProcessor {
       return (respMessage);
     };
 
-    if ( req.body.tools ) { // Tool calling is not supported!
+    if (req.body.tools) { // Tool calling is not supported!
       const emsg = "Tool calling is not supported!";
 
       err_msg = {
@@ -657,22 +682,25 @@ class AzAnthropicProcessor {
       return (respMessage);
     };
 
-    let epdata = appConnections.getConnection(config.appId); // ID04302025.n
+    let epdata = appConnections.getConnection(config.appId);
 
     if (!threadId) {
-      if ( cacheConfig.cacheResults && useCache ) { // Is caching enabled?; ID03142025.o
+      if (cacheConfig.cacheResults && useCache) { // Is caching enabled?
+        let appSecurityPolicies = null;
+
         for (const application of apps.applications) {
           if (application.appId === cacheConfig.embeddApp) {
             vecEndpoints = application.endpoints;
+            appSecurityPolicies = application.securitySettings;
 
             break;
           };
         };
 
-        if ( sessionId ) // ID05202026.n
+        if (sessionId)
           sendStatus(sessionId, '🔍 Searching semantic cache(s)...');
 
-        stTime = Date.now(); // ID09162025.n
+        stTime = Date.now();
         // Perform semantic search using input prompt
         cacheDao = new CacheDao(
           appConnections.getConnection(cacheConfig.embeddApp),
@@ -683,26 +711,27 @@ class AzAnthropicProcessor {
           config.encryptionKey,
           cacheMetrics,
           config.level1Cache,
-          config.level2Config);
+          config.level2Config,
+          appSecurityPolicies);
 
-        const { rowCount, cacheLevel, completion, embeddings } = // ID05202026.n; ID11212025.n
+        const { rowCount, cacheLevel, completion, embeddings } =
           await cacheDao.queryVectorDB(
-            req, // ID03052025.n
+            req,
             config.appId,
             cachedb
           );
 
         if (rowCount === 1) { // Cache hit!
 
-          if ( sessionId) // ID05202026.n
+          if (sessionId)
             sendTrace(sessionId, `Semantic cache hit. Response served from Semantic Cache Tier: <b>${cacheLevel}</b>`);
 
           if (req.body.messages && manageState && memoryConfig && memoryConfig.useMemory) { // Generate thread id if manage state == true
-            threadId = generateGUID("thread"); // ID07312025.n
+            threadId = generateGUID("thread");
 
             // When response is served from the cache and state mgmt is turned on, update the thread count of the first end-point
-            for (const element of config.appEndpoints) { // ID04302025.n
-              let metricsObj = epdata.get(retrieveUniqueURI(element.uri, element.id)); // ID11182025.n
+            for (const element of config.appEndpoints) {
+              let metricsObj = epdata.get(retrieveUniqueURI(element.uri, element.id));
               metricsObj.updateUserThreads();
 
               break;
@@ -710,15 +739,15 @@ class AzAnthropicProcessor {
           };
 
           respMessage = (req.body.stream) ? await
-            this.#streamCachedChatCompletion(req.id, threadId, config.appId, res, completion) :
+            this.#streamCachedResponse(req.id, threadId, config.appId, completion, { expressRes: res }) :
             {
               http_code: 200, // All ok. Serving completion from cache.
               cached: true,
               data: completion
             };
 
-          // ID09162025.sn - Insert cached response in prompts table. This record is also used to collect user feedback.
-          let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
+          // Insert cached response in prompts table. This record is also used to collect user feedback.
+          let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false;
           if (persistPrompts) { // Persist prompt and completion ?
             promptDao = new PersistDao(persistdb, TblNames.Prompts);
             values = [
@@ -729,7 +758,7 @@ class AzAnthropicProcessor {
               completion,
               {},
               req.body.user,
-              0, // ID04302026.n (No remote tools were executed!)
+              0, // No remote tools were executed!
               (Date.now() - stTime) / 1000,
               EndpointMiscConstants.IdCached // Use '-cached-' as endpoint ID since this is a cached response
             ];
@@ -740,47 +769,45 @@ class AzAnthropicProcessor {
 
             (threadId) ? await promptDao.storeEntity(req.id, 2, values) : await promptDao.storeEntity(req.id, 0, values);
           };
-          // ID09162025.en
 
           if (req.body.messages && manageState && memoryConfig && memoryConfig.useMemory) { // Manage state for this AI application?
             respMessage.threadId = threadId;
 
-            // ID05312024.sn
             let saveMsg = {
               role: completion.role,
               content: completion.content
             };
-            // ID05312024.en
 
-            req.body.messages.push(saveMsg); // ID05312024.n
+            req.body.messages.push(saveMsg);
             logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Prompt + Cached Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, JSON.stringify(req.body.messages, null, 2)] });
 
             memoryDao = new PersistDao(persistdb, TblNames.Memory);
             values = [
               req.id,
-              instanceName, // ID11112024.n
+              instanceName,
               threadId,
               config.appId,
               {
                 content: req.body.messages
               },
-              req.body.user, // ID04112024.n
-              0 // ID05082025.n
+              req.body.user,
+              0
             ];
 
             await memoryDao.storeEntity(req.id, 0, values);
           };
 
-          if ( sessionId ) { // ID05202026.n
+          if (sessionId) {
             sendStatus(sessionId, "🏁 Completed");
             sendTrace(sessionId, "Response ready");
+            sendDone(sessionId, { threadId: threadId || null }); // Important so client can de-register!
           };
 
           return (respMessage);
         }
         else { // Semantic cache miss
           embeddedPrompt = embeddings;
-          if ( sessionId ) // ID05202026.n
+          if (sessionId)
             sendTrace(sessionId, 'Semantic cache miss');
         };
       }; // No caching configured
@@ -802,12 +829,12 @@ class AzAnthropicProcessor {
           this.#checkAndPruneCtxMsgs(memoryConfig.msgCount, ctxMsgs);
 
         req.body.messages = ctxMsgs;
-        endpointId = userContext.data[0].endpoint_id; // ID05082025.n
+        endpointId = userContext.data[0].endpoint_id;
 
         logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Endpoint ID: %s\n  Prompt + Retrieved Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, endpointId, JSON.stringify(req.body.messages, null, 2)] });
       }
       else {
-        const emsg = `The user session associated with Thread ID=[${threadId}] has either expired or is invalid! Start a new user session.`; // ID10082025.n
+        const emsg = `The user session associated with Thread ID=[${threadId}] has either expired or is invalid! Start a new user session.`;
         err_msg = {
           error: {
             target: req.originalUrl,
@@ -818,7 +845,7 @@ class AzAnthropicProcessor {
 
         respMessage = {
           http_code: 400, // Bad request
-          data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg : // ID10082025.n
+          data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg :
             {
               jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
               id: req.a2aReqId,
@@ -829,24 +856,29 @@ class AzAnthropicProcessor {
         return (respMessage);
       };
 
-      if (memoryConfig.affinity) // ID06162025.n
+      if (memoryConfig.affinity)
         routerIdTried = true;
     }; // end of user session if
 
-    let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? (function () { threadStarted = true; return (generateGUID("thread")); })() : threadId; // ID04222026.n
+    let th_id = !threadId && (manageState && memoryConfig && memoryConfig.useMemory) ? (function () { threadStarted = true; return (generateGUID("thread")); })() : threadId;
 
     /**
-     * ID02232026.sn
+     * 
      * When remote server config is present for an AI App, make a call to remote servers and fetch the tools.
      * This is an optional step and will only be executed when remote server config is provided in the AI App config.
      * If the calls to remote server(s) fail for any reason, tools exposed by those servers will not be cached.  We will proceed 
-     * with the original request payload and call OAI endpoint(s).
+     * with the original request payload and call Anthropic endpoint(s).
      */
     let remoteServersObject = null;
     if (config.appRemoteServerConfig) {
       try {
-        remoteServersObject = await new RemoteServerTools().getRemoteServerToolsForAiApp(req.id, config.appRemoteServerConfig, apps.remoteServerConfig);
-        if ( sessionId && remoteServersObject ) // ID05202026.n
+        remoteServersObject = await new RemoteServerTools().getRemoteServerToolsForAiApp(
+          req.id,
+          config.appRemoteServerConfig,
+          apps.remoteServerConfig,
+          config.appSecurityPolicies,
+          apps.securityPolicyConfig);
+        if (sessionId && remoteServersObject)
           sendStatus(sessionId, '🛠️ Identifying server tools...');
       }
       catch (error) {
@@ -874,13 +906,13 @@ class AzAnthropicProcessor {
      */
     let triedEps = new Array(config.appEndpoints.length).fill(false);
 
-    if (!routerIdTried && routerInstance) // ID06162025.n; Skip if session affinity is configured and this call is part of an existing session.
-      routerEndpointId = routerInstance.getEndpointId(req);  // ID08052025.n
+    if (!routerIdTried && routerInstance) // Skip if session affinity is configured and this call is part of an existing session.
+      routerEndpointId = routerInstance.getEndpointId(req);
 
     // 4. Add context by invoking Remote server tools (if configured)
     // This step will only be executed when remote server config is configured with the AI App config.
     // Note: The remote server is expected to return the enriched prompt/context in the same format as the original request payload, 
-    // so that it can be directly used to call OAI endpoint(s) without any additional transformation.
+    // so that it can be directly used to call Anthropic endpoint(s) without any additional transformation.
     // ---------------------------------
     let toolsCount = 0;
     if (remoteServersObject && config.appRemoteServerConfig) {
@@ -888,20 +920,20 @@ class AzAnthropicProcessor {
         const toolPlannerAiApp = config.appRemoteServerConfig.aiAppName;
         let epMetricsObj = (toolPlannerAiApp) ? appConnections.getConnection(toolPlannerAiApp) : epdata;
         let endpointsObj = (toolPlannerAiApp) ? apps.applications.find(app => app.appId === toolPlannerAiApp)?.endpoints : config.appEndpoints;
+        let normsObj = (toolPlannerAiApp) ? config.plannerNormConfigs : config.normConfigs; // Can be null!
 
         let bridgeObjects = remoteServersObject.filter(server => (server.bridge)).map(({ serverId, bridge }) => ({ serverId, bridge }));
         // console.log(`***** Bridge Objects for Tool Planner/Executor *****\n${JSON.stringify(bridgeObjects,null,2)}\n************`);
 
-        // let toolPlannerExecutor = new McpToolPlannerExecutor(config.appRemoteServerConfig, apps.remoteServerConfig, epMetricsObj, endpointsObj, config.appType);
-        let toolPlannerExecutor = // ID04222026.n
+        let toolPlannerExecutor =
           new ToolPlannerExecutor(
             instanceName,
             config.appId,
-            config.appRemoteServerConfig, 
-            apps.remoteServerConfig, 
-            epMetricsObj, 
-            endpointsObj, 
-            config.appType, 
+            config.appRemoteServerConfig,
+            apps.remoteServerConfig,
+            epMetricsObj,
+            endpointsObj,
+            config.appType,
             bridgeObjects);
 
         // Get the tools for each MCP server and put them into a single array to be passed to the tool planner/executor.
@@ -911,11 +943,11 @@ class AzAnthropicProcessor {
             allTools = allTools.concat(remoteServer.tools);
         };
 
-        toolsCount = await toolPlannerExecutor.planAndExecuteTools(req, th_id, allTools); // This method updates the request payload (req.body) with the enriched context output by remote server tools! 
-        console.log(`***** Updated request body after Remote Server Tools execution *****\n${JSON.stringify(req.body, null, 2)}\n************`);
+        toolsCount = await toolPlannerExecutor.planAndExecuteTools(req, th_id, allTools, normsObj); // This method updates the request payload (req.body) with the enriched context output by remote server tools! 
+        // console.log(`***** Updated request body after Remote Server Tools execution *****\n${JSON.stringify(req.body, null, 2)}\n************`);
       }
       catch (error) {
-        if ( sessionId ) // ID05202026.n
+        if (sessionId)
           sendTrace(sessionId, "Error occurred while invoking tools");
 
         logger.log({ level: "error", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Application ID: %s\n  Message: Error occurred while invoking remote tools. Proceeding with original request payload.\n  Error:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, config.appId, error.toString()] });
@@ -926,17 +958,17 @@ class AzAnthropicProcessor {
     // ---------------------------------
     let response;
     let retryAfter = 0;
-    let continueRetry = true; // ID0522026.n
+    let continueRetry = true;
     let data;
 
-    if ( sessionId ) // ID05202026.n
+    if (sessionId)
       sendStatus(sessionId, "✍️ Generating response...");
 
-    do { // ID06162025.n
+    do {
 
       uriIdx = 0;  // Initialize the endpoint index!
       for (const element of config.appEndpoints) { // start of endpoint loop
-        if (!endpointIdMatched && (uriIdx !== endpointId)) { // ID05082025.n
+        if (!endpointIdMatched && (uriIdx !== endpointId)) {
           uriIdx++;
 
           continue;
@@ -944,7 +976,7 @@ class AzAnthropicProcessor {
         else
           endpointIdMatched = true;
 
-        if ((!routerIdTried) && (routerEndpointId !== null) && (routerEndpointId >= 0)) { // ID06162025.n
+        if ((!routerIdTried) && (routerEndpointId !== null) && (routerEndpointId >= 0)) {
           if (uriIdx !== routerEndpointId) {
             uriIdx++
 
@@ -954,7 +986,7 @@ class AzAnthropicProcessor {
             routerIdTried = true;
         };
 
-        if (triedEps[uriIdx]) { // ID06162025.n; This endpoint has been called/invoked so skip and go to next!
+        if (triedEps[uriIdx]) { // This endpoint has been called/invoked so skip and go to next!
           uriIdx++;
 
           continue;
@@ -964,9 +996,22 @@ class AzAnthropicProcessor {
 
         uriIdx++;
 
-        respMessage = null; // ID05222026.n (Reset response message)
-        let metricsObj = epdata.get(retrieveUniqueURI(element.uri, element.id)); // ID11182025.n
-        let healthArr = metricsObj.isEndpointHealthy(req.id); // ID05082025.n
+        if ( apps.securityPolicyConfig ) {
+          // 1. Check AI Gateway outbound security policies
+          const secEngine = new SecurityEngine(apps.securityPolicyConfig);
+          if ( !secEngine.isOutboundAllowed(element.uri) ) // Skip this endpoint URI if it's not in outbound allow list
+            continue; 
+        };
+        if ( config.appSecurityPolicies ) {
+          // 2. Check AI App outbound security policies
+          const secEngine = new SecurityEngine(config.appSecurityPolicies);
+          if ( !secEngine.isOutboundAllowed(element.uri) ) // Skip this endpoint URI if it's not in outbound allow list
+            continue;
+        };
+
+        respMessage = null; // (Reset response message)
+        let metricsObj = epdata.get(retrieveUniqueURI(element.uri, element.id));
+        let healthArr = metricsObj.isEndpointHealthy(req.id);
         // console.log(`******isAvailable=${healthArr[0]}; retryAfter=${healthArr[1]}`);
         if (!healthArr[0]) {
           if (retryAfter > 0)
@@ -978,7 +1023,7 @@ class AzAnthropicProcessor {
         };
 
         try {
-          const meta = await getOpenAICallMetadata(req, element, config.appType); // ID08272025.n
+          const meta = await getOpenAICallMetadata(req, element, config.appType);
 
           if (routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter))
             routerInstance.updateUriConnections(req.id, true, uriIdx - 1);
@@ -994,18 +1039,12 @@ class AzAnthropicProcessor {
             // Send HTTP headers (if any) to the target endpoint
             const normalizer = config.normConfigs.find(cfg => cfg.normalizerId === element.normalizationPolicy.inputNormalizerId);
             normalizer.includeHeaders?.forEach(item => {
-              meta.set(item.headerName,item.headerValue);
+              meta.set(item.headerName, item.headerValue);
             });
           };
 
-          /*
           stTime = Date.now();
-          response = await fetch(element.uri, {
-            method: req.method,
-            headers: meta,
-            body: JSON.stringify(req.body)
-          });
-          */
+          response = await this._post(element.uri, meta, req.body, {});
 
           let status = response.status;
           if (status === 200) { // All Ok
@@ -1014,36 +1053,39 @@ class AzAnthropicProcessor {
             if (config.normConfigs && element.normalizationPolicy?.outputNormalizerId)
               normConfig = config.normConfigs.find(cfg => cfg.normalizerId === element.normalizationPolicy.outputNormalizerId);
 
-            if (req.body.stream) // Streaming request?
-              await this.#streamChatCompletion(req.id, th_id, config.appId, res, response, normConfig, toolsCount); // Messages API call
-            else
+            if (req.body.stream) { // Streaming request?
+              const { nonStreamResponse } = await this.#streamToText(req.id, th_id, config.appId, response, { onDelta: (chunk) => process.stdout.write(chunk), expressRes: res });
+              data = nonStreamResponse;
+            }
+            else {
               data = await response.json();
               // console.log(`***** Data: ${JSON.stringify(data, null, 2)} *****`);
+            };
 
             let respTime = Date.now() - stTime;
             metricsObj.updateApiCallsAndTokens(
-              req.id, // ID08252025.n
-              data.usage, // ID08252025.n
+              req.id,
+              data.usage,
               respTime,
-              threadStarted // ID04302025.n
+              threadStarted
             );
 
-            if (!req.body.stream && normConfig) // ID11032025.n
+            if (!req.body.stream && normConfig)
               data = processBatch(req.id, normConfig, data);
 
             if ((!threadId) && cacheDao && embeddedPrompt) { // Cache results ?
               let prompt = req.body.prompt;
               if (!prompt)
-                prompt = JSON.stringify(req.body_copy.messages); // ID02282026.n
+                prompt = JSON.stringify(req.body_copy.messages);
 
               values = [
                 req.id,
-                instanceName, // ID11112024.n
+                instanceName,
                 config.appId,
                 prompt,
-                embeddedPrompt, // ID11212025.n
-                data, // ID10142025.o; ID11032025.n
-                apps.serverId // ID11212025.n
+                embeddedPrompt,
+                data,
+                apps.serverId
               ];
 
               await cacheDao.storeEntity(
@@ -1053,29 +1095,29 @@ class AzAnthropicProcessor {
               );
             };
 
-            if (th_id && req.body.stream) // ID06052024.n
+            if (th_id && req.body.stream)
               threadId = th_id;
 
             let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
             if (persistPrompts) { // Persist prompt and completion ?
-              // ----- ID02112025.sn
+
               const allHeaders = {};
               for (const [name, value] of response.headers.entries()) {
                 allHeaders[name] = value;
               };
-              // ------ ID02112025.en
+
               promptDao = new PersistDao(persistdb, TblNames.Prompts);
               values = [
                 req.id,
-                instanceName, // ID11112024.n
+                instanceName,
                 config.appId,
                 req.body,
-                data, // ID04112024.n
-                allHeaders, // ID02112025.n
-                req.body.user, // ID04112024.n
-                toolsCount, // ID04302026.n
-                respTime / 1000, // ID11082024.n
-                (element.id) ? element.id : EndpointMiscConstants.IdIndexPrefix + (uriIdx - 1) // ID05082025.n, ID09162025.n
+                data,
+                allHeaders,
+                req.body.user,
+                toolsCount,
+                respTime / 1000,
+                (element.id) ? element.id : EndpointMiscConstants.IdIndexPrefix + (uriIdx - 1)
               ];
 
               await promptDao.storeEntity(
@@ -1088,25 +1130,25 @@ class AzAnthropicProcessor {
             if (routerInstance)
               if (routerInstance.routerType === EndpointRouterTypes.WeightedDynamicRouter)
                 routerInstance.updateWeightsBasedOnLatency(uriIdx - 1, respTime);
-              else if ((routerInstance.routerType === EndpointRouterTypes.BudgetAwareRouter) || (routerInstance.routerType === EndpointRouterTypes.AdaptiveBudgetAwareRouter)) // ID08292025.n, ID09022025.n
+              else if ((routerInstance.routerType === EndpointRouterTypes.BudgetAwareRouter) || (routerInstance.routerType === EndpointRouterTypes.AdaptiveBudgetAwareRouter))
                 routerInstance.updateActualCost(req.id, uriIdx - 1, data.usage);
 
             respMessage = {
               http_code: status,
               uri_idx: (uriIdx - 1),
               cached: false,
-              toolsCount, // ID04222026.n
-              data // ID10142025.o; ID11032025.n
+              toolsCount,
+              data
             };
 
-            if ( sessionId ) { // ID05202026.n
+            if (sessionId) {
               sendStatus(sessionId, "🏁 Completed");
 
               sendTrace(sessionId, `Response served by Endpoint: ${(element.id) ? element.id : EndpointMiscConstants.IdIndexPrefix + (uriIdx - 1)}`);
               sendTrace(sessionId, "Response ready");
             };
 
-            continueRetry = false; // ID05222026.n
+            continueRetry = false;
             break; // break out from the endpoint for loop!
           }
           else if (status === 429) { // Endpoint is busy so try next one
@@ -1121,31 +1163,29 @@ class AzAnthropicProcessor {
 
             logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Endpoint ID: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s\n  Retry seconds: %d", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, element.id, status, response.statusText, JSON.stringify(data, null, 2), retryAfterSecs] });
           }
-          else if (status === 400 || status === 422) { // Invalid prompt ~ content filtered; ID11062024.n
+          else if (status === 400 || status === 422) { // Invalid prompt ~ content filtered;
             data = await response.json();
 
-            // ID03012024.sn
             let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
             if ((status === 422) && persistPrompts) { // Persist prompts ?; Only update prompts table if it's a content filter issue. Exit while loop, return!
-              // ----- ID02112025.sn
+
               const allHeaders = {};
               for (const [name, value] of response.headers.entries()) {
                 allHeaders[name] = value;
               };
-              // ------ ID02112025.en
 
               promptDao = new PersistDao(persistdb, TblNames.Prompts);
               values = [
                 req.id,
-                instanceName, // ID11112024.n
+                instanceName,
                 config.appId,
                 req.body,
-                data, // ID04112024.n
-                allHeaders, // ID02112025.n
-                req.body.user, // ID04112024.n
-                toolsCount, // ID04302026.n
-                (Date.now() - stTime) / 1000, // ID11082024.n
-                (element.id) ? element.id : EndpointMiscConstants.IdIndexPrefix + (uriIdx - 1) // ID05082025.n, ID09162025.n
+                data,
+                allHeaders,
+                req.body.user,
+                toolsCount,
+                (Date.now() - stTime) / 1000,
+                (element.id) ? element.id : EndpointMiscConstants.IdIndexPrefix + (uriIdx - 1)
               ];
 
               await promptDao.storeEntity(
@@ -1154,18 +1194,17 @@ class AzAnthropicProcessor {
                 values
               );
 
-              continueRetry = false; // ID06062026.n - Exit while loop and processor
+              continueRetry = false; // Exit while loop and processor
             };
-            // ID03012024.en
 
             logger.log({ level: "warn", message: "[%s] %s.processRequest():\n  App Id: %s\n  Request ID: %s\n  Target Endpoint: %s\n  Status: %s\n  Status Text: %s\n  Message:\n  %s", splat: [scriptName, this.constructor.name, config.appId, req.id, element.uri, status, response.statusText, JSON.stringify(data, null, 2)] });
 
             metricsObj.updateFailedCalls(status, 0);
             respMessage = {
               http_code: status,
-              uri_idx: (uriIdx - 1), // ID03262025.n
+              uri_idx: (uriIdx - 1),
               status_text: response.statusText,
-              data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? data : // ID10082025.n
+              data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? data :
                 {
                   jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
                   id: req.a2aReqId,
@@ -1182,7 +1221,7 @@ class AzAnthropicProcessor {
 
             metricsObj.updateFailedCalls(status, 0);
 
-            const emsg = `AI Service endpoint returned exception: [${data}].`; // ID10082025.n
+            const emsg = `AI Service endpoint returned exception: [${data}].`;
             err_msg = {
               error: {
                 target: element.uri,
@@ -1193,8 +1232,8 @@ class AzAnthropicProcessor {
 
             respMessage = {
               http_code: status,
-              uri_idx: (uriIdx - 1), // ID03262025.n
-              data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg : // ID10082025.n
+              uri_idx: (uriIdx - 1),
+              data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg :
                 {
                   jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
                   id: req.a2aReqId,
@@ -1204,7 +1243,7 @@ class AzAnthropicProcessor {
           };
         }
         catch (error) {
-          const emsg = `AI Services Gateway encountered exception: [${error.message}].`; // ID10082025.n
+          const emsg = `AI Services Gateway encountered exception: [${error.message}].`;
           err_msg = {
             error: {
               target: element.uri,
@@ -1217,8 +1256,8 @@ class AzAnthropicProcessor {
 
           respMessage = {
             http_code: 500,
-            uri_idx: (uriIdx - 1), // ID03262025.n
-            data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg : // ID10082025.n
+            uri_idx: (uriIdx - 1),
+            data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg :
               {
                 jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
                 id: req.a2aReqId,
@@ -1226,18 +1265,18 @@ class AzAnthropicProcessor {
               }
           };
         }
-        finally { // ID06162025.sn
+        finally {
           if (routerInstance && (routerInstance.routerType === EndpointRouterTypes.LeastConnectionsRouter))
             routerInstance.updateUriConnections(req.id, false, uriIdx - 1);
-        }; // ID06162025.en
+        };
       }; // end of endpoint for loop
 
     }
-    while (continueRetry && triedEps.some(val => val === false)); // ID05222026.n
+    while (continueRetry && triedEps.some(val => val === false));
 
     if (retryAfter > 0) {
-      if (respMessage == null) { // ID06162025.n
-        const emsg = `All backend Azure OAI endpoints are too busy! Retry after [${retryAfter}] seconds ...`; // ID10082025.n
+      if (respMessage == null) { 
+        const emsg = `All backend endpoints are too busy! Retry after [${retryAfter}] seconds ...`;
 
         err_msg = {
           error: {
@@ -1249,8 +1288,8 @@ class AzAnthropicProcessor {
 
         respMessage = {
           http_code: 429, // Server is busy, retry later!
-          uri_idx: (uriIdx - 1), // ID05082025.n
-          data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg : // ID10082025.n
+          uri_idx: (uriIdx - 1),
+          data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg :
             {
               jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
               id: req.a2aReqId,
@@ -1258,28 +1297,27 @@ class AzAnthropicProcessor {
             },
           retry_after: retryAfter
         };
-      };  // ID06162025.n
+      };
     }
     else {
       if (respMessage == null) {
-        const emsg = "Internal server error. Unable to process request. Please check server logs."; // ID10082025.n
-        // ID06132024.sn
+        const emsg = "All backend endpoints failed with an exception. Unable to process request. Please check AI Gateway and Application/Model security policies."; 
+
         err_msg = {
           error: {
             target: req.originalUrl,
             message: emsg,
-            code: "internalFailure"
+            code: "forbidden"
           }
         };
-        // ID06132024.en
 
         respMessage = {
-          http_code: 500, // Internal API Gateway server error!
-          data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg : // ID10082025.n
+          http_code: 403, // Authorization (Gateway policy) error
+          data: (req.inboundApiType === AiGatewayInboundReqApiType.Anthropic) ? err_msg :
             {
               jsonrpc: A2AProtocolAttributes.JsonRpcVersion,
               id: req.a2aReqId,
-              error: { code: -32603, message: emsg } // Internal JSON-RPC error
+              error: { code: -32001, message: emsg }
             }
         };
 
@@ -1302,20 +1340,20 @@ class AzAnthropicProcessor {
 
       memoryDao = new PersistDao(persistdb, TblNames.Memory);
       if (!threadId)
-        threadId = th_id; // ID04222026.n
+        threadId = th_id;
 
       logger.log({ level: "debug", message: "[%s] %s.processRequest():\n  Request ID: %s\n  Thread ID: %s\n  Completed Message:\n  %s", splat: [scriptName, this.constructor.name, req.id, threadId, JSON.stringify(req.body.messages, null, 2)] });
 
       values = [
         req.id,
-        instanceName, // ID11112024.n
+        instanceName,
         threadId,
         config.appId,
         {
           content: req.body.messages
         },
-        req.body.user, // ID04112024.n
-        (uriIdx - 1) //ID05082025.n
+        req.body.user,
+        (uriIdx - 1)
       ];
 
       if (req.get(CustomRequestHeaders.ThreadId)) // Update
@@ -1325,7 +1363,7 @@ class AzAnthropicProcessor {
 
       respMessage.threadId = threadId;
 
-      // ID02142025.sn  Update the threadid in the prompts table for each request
+      // Update the threadid in the prompts table for each request
       if (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') {
         promptDao = new PersistDao(persistdb, TblNames.Prompts);
         values = [
@@ -1341,7 +1379,7 @@ class AzAnthropicProcessor {
           values
         );
       };
-      // ID02142025.en
+
     };
 
     /**
@@ -1405,8 +1443,8 @@ class AzAnthropicProcessor {
       };
     };
 
-    if ( sessionId ) // ID05202026.n
-      if ( respMessage.http_code === 200 )
+    if (sessionId)
+      if (respMessage.http_code === 200)
         sendDone(sessionId, { threadId: threadId || null });
       else {
         sendError(sessionId, respMessage.data?.error?.message || 'Execution failed');

@@ -48,6 +48,10 @@
             "description": "Name of the AI Search Application",
             "type": "string"
         },
+        "instructionPrompt": {
+            "description": "Instruction (system) prompt to be used for this AI Application",
+            "type": "string"
+        },
         "cacheSettings": {
             "description": "Cache settings for an AI Application",
             "type": "object",
@@ -291,65 +295,13 @@
             "additionalProperties": false
         },
         "securitySettings": {
-            "description": "Security settings for this AI Application/Agent",
+            "description": "List of inbound and outbound policies for securing the AI Application",
             "type": "object",
-            "properties": {
-                "inbound": {
-                    "type": "object",
-                    "description": "Allowed source ips/addresses for inbound requests",
-                    "properties": {
-                        "allowedSources": {
-                            "type": "object",
-                            "properties": {
-                                "ips": {
-                                    "type": "array",
-                                    "uniqueItems": true,
-                                    "items": {"type": "string"}
-                                }
-                            },
-                            "additionalProperties": false,
-                            "required": ["ips"]
-                        }
-                    },
-                    "required": ["allowedSources"],
-                    "additionalProperties": false
-                },
-                "outbound": {
-                    "type": "object",
-                    "description": "Allowed source ips/addresses for outbound requests",
-                    "properties": {
-                        "allowedDestinations": {
-                            "type": "object",
-                            "properties": {
-                                "ips": {
-                                    "type": "array",
-                                    "uniqueItems": true,
-                                    "items": {
-                                        "type": "string"
-                                    }
-                                },
-                                "domains": {
-                                    "type": "array",
-                                    "uniqueItems": true,
-                                    "items": {
-                                        "type": "string",
-                                        "pattern": "^(\\*\\.)?([a-zA-Z0-9-]+\\.)*[a-zA-Z0-9-]+$"
-                                    }
-                                }
-                            },
-                            "additionalProperties": false,
-                            "required": ["ips", "domains"]
-                        }
-                    },
-                    "required": ["allowedDestinations"],
-                    "additionalProperties": false
+            "allOf": [
+                {
+                    "$ref": "./security-policy-schema.json"
                 }
-            },
-            "required": [
-                "inbound",
-                "outbound"
-            ],
-            "additionalProperties": false
+            ]
         },
         "budgetSettings": {
             "description": "Budget settings for an AI Application",
@@ -360,7 +312,7 @@
                     "type": "boolean"
                 },
                 "budgetName": {
-                    "description": "Name/ID of the budget",
+                    "description": "Name/ID of the budget class",
                     "type": "string"
                 }
             },
@@ -643,6 +595,15 @@
             "description": "Remote Servers associated with an AI Application",
             "type": "object",
             "properties": {
+                "toolRetrieval": {
+                    "description": "Tool retrieval settings for the AI Application",
+                    "type": "object",
+                    "allOf": [
+                        {
+                            "$ref": "./tool-retrieval-schema.json"
+                        }
+                    ]
+                },
                 "servers": {
                     "description": "List of remote servers",
                     "type": "array",
@@ -672,6 +633,15 @@
                     "description": "AI Application used by the planner",
                     "type": "string"
                 },
+                "plannerType": {
+                    "description": "Type of tool planner and execution engine",
+                    "type": "string",
+                    "enum": [
+                        "v0",
+                        "v1"
+                    ],
+                    "minLength": 1
+                },
                 "plannerModel": {
                     "description": "Name of the Model to be used by the planner",
                     "type": "string"
@@ -683,6 +653,10 @@
                 "plannerMaxTokens": {
                     "description": "Max tokens to be generated by the planner (model)",
                     "type": "integer"
+                },
+                "reasoningEffort": {
+                    "description": "Reasoning effort or thinking type",
+                    "type": "string"
                 },
                 "plannerTemperature": {
                     "description": "Temperature setting for the planner (model)",
@@ -770,6 +744,11 @@
                         "description": "AI Service endpoint URI",
                         "type": "string",
                         "format": "uri",
+                        "minLength": 1
+                    },
+                    "apikeyName": {
+                        "description": "AI Service API Key Name.  Defaults to api-key for models hosted on Azure.",
+                        "type": "string",
                         "minLength": 1
                     },
                     "apikey": {

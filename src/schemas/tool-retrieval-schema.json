@@ -1,0 +1,163 @@
+{
+  "$id": "https://github.com/ganrad/rapid/schemas/tool-retrieval-schema.json",
+  "$comment": "ID09042026: ganrad: v3.0.1: This schema defines the attributes for configuring tool retrieval settings",
+  "title": "RAPID toolRetrieval configuration",
+  "description": "Per-AI-Application tool retrieval settings. Lives under the AI App configuration as the `toolRetrieval` object. All properties are optional; omitted values fall back to the defaults shown, which match RETRIEVAL_DEFAULTS in lib/toolRetriever.js and DEFAULTS in lib/toolIndexBuilder.js.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Master switch. When false, the full tool catalog is sent to the planner (identical behavior to strategy=none)."
+    },
+    "strategy": {
+      "enum": ["hybrid", "lexical", "semantic", "none"],
+      "default": "hybrid",
+      "description": "Scoring strategy. 'lexical' = BM25 only, no embedding call (safe for deployments with no embedding endpoint). 'semantic' = embedding cosine only. 'hybrid' = both, fused with Reciprocal Rank Fusion. 'none' = retrieval disabled, full catalog to the planner; use as the A/B control."
+    },
+    "topK": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 200,
+      "default": 15,
+      "description": "Maximum number of tools in the shortlist BEFORE server co-inclusion. alwaysInclude tools consume slots from this budget."
+    },
+    "minK": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 200,
+      "default": 5,
+      "description": "Floor on shortlist size. Applied after scoreFloor filtering so a narrow query cannot starve the planner. Must be <= topK (enforced at load time, not expressible in JSON Schema)."
+    },
+    "scoreFloor": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.012,
+      "description": "Minimum fused RRF score for a tool to be shortlisted. RRF scores are 1/(60+rank) summed across scorers, so a single top-ranked hit scores ~0.0164 and rank 20 scores ~0.0125. Set to 0 to disable floor filtering and rely on topK alone."
+    },
+    "serverCoInclusion": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20,
+      "default": 2,
+      "description": "Sibling tools pulled in per MCP server that produced a retrieved hit. Tools on one server are usually used together (lookup -> read -> write). Set to 0 to disable."
+    },
+    "coInclusionBudget": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50,
+      "default": 4,
+      "description": "Global cap on co-included tools across all servers. ADDITIVE to topK: the fused list normally fills topK on a large catalog, so co-inclusion needs its own slots or it never fires. Effective max shortlist size is topK + coInclusionBudget."
+    },
+    "candidatePool": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 500,
+      "default": 50,
+      "description": "Depth of each scorer's ranked list before fusion. Should comfortably exceed topK; raising it costs almost nothing and improves fusion quality."
+    },
+    "bypassBelowToolCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 500,
+      "default": 25,
+      "description": "If the app's catalog has this many tools or fewer, retrieval is skipped entirely and the full catalog goes to the planner. Set to 0 to force retrieval on regardless of catalog size (required when testing a small catalog)."
+    },
+    "expandFactor": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 20,
+      "default": 3,
+      "description": "Multiplier applied to topK on the empty-plan fallback retry. Bounded by the catalog size."
+    },
+    "embeddingDimensions": {
+      "type": "integer",
+      "minimum": 64,
+      "maximum": 3072,
+      "default": 512,
+      "description": "Dimensionality requested from the embedding model at index build time. Ignored when strategy=lexical. Changing this invalidates the embedding cache, because it is part of the cache key."
+    },
+    "maxAlwaysInclude": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 10,
+      "description": "Build-time cap on tools marked alwaysInclude across the app's SKILL.md files. Exceeding it throws during index build, preventing authors from silently disabling retrieval."
+    },
+    "semanticCache": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": { "enabled": true, "threshold": 0.95, "max": 200 },
+      "description": "Process-local cache of shortlists keyed by query embedding. Inert when strategy=lexical, because it requires a query vector.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reuse a previous shortlist when the incoming query embedding is near-identical to a cached one."
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 1,
+          "default": 0.95,
+          "description": "Cosine similarity required for a cache hit. Lower values increase hit rate but risk serving a shortlist built for a materially different query."
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000,
+          "default": 200,
+          "description": "Maximum cached entries per cache bucket. Buckets are keyed by app + index version + effective config, so each config variant caches separately."
+        }
+      }
+    },
+    "fallback": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": { "onEmptyPlan": "expand" },
+      "description": "Behavior when the planner returns no usable steps from the shortlist.",
+      "properties": {
+        "onEmptyPlan": {
+          "enum": ["expand", "none"],
+          "default": "expand",
+          "description": "'expand' retries retrieval once with topK * expandFactor and re-plans, trading latency on the rare miss for correctness. 'none' accepts the empty plan."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "enabled": true,
+      "strategy": "hybrid",
+      "topK": 15,
+      "minK": 5,
+      "scoreFloor": 0.012,
+      "serverCoInclusion": 2,
+      "coInclusionBudget": 4,
+      "candidatePool": 50,
+      "bypassBelowToolCount": 25,
+      "expandFactor": 3,
+      "embeddingDimensions": 512,
+      "maxAlwaysInclude": 10,
+      "semanticCache": { "enabled": true, "threshold": 0.95, "max": 200 },
+      "fallback": { "onEmptyPlan": "expand" }
+    },
+    {
+      "enabled": true,
+      "strategy": "lexical",
+      "topK": 8,
+      "minK": 5,
+      "scoreFloor": 0,
+      "serverCoInclusion": 2,
+      "coInclusionBudget": 2,
+      "candidatePool": 20,
+      "bypassBelowToolCount": 0,
+      "expandFactor": 3,
+      "maxAlwaysInclude": 10,
+      "semanticCache": { "enabled": false },
+      "fallback": { "onEmptyPlan": "expand" }
+    }
+  ]
+}

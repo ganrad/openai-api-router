@@ -9,13 +9,14 @@
  * Notes:
  * ID11212025: ganrad: v2.9.5: (Enhancement) Introduced multiple levels/layers for semantic cache (l1, l2 & pg)
  * ID05132026: ganrad: v3.0.1: (Enhancement; Refactored) Added support for exposing EP metrics in Prometheus text exposition format.
+ * ID08252026: ganrad: v3.0.1: (Enhancement) Include the endpoint router type when the metrics output format is 'json'.
  *
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('../utilities/logger');
 
-const { ServerTypes, EpMetricsOutputFormat } = require("../utilities/app-gtwy-constants"); // ID05132026.n
+const { ServerTypes, EpMetricsOutputFormat, EndpointRouterTypes } = require("../utilities/app-gtwy-constants"); // ID05132026.n, ID08252026.n
 const AbstractDataHandler = require('./abstract-data-handler');
 const { PrometheusEpMetricsFormatter } = require('../utilities/prometheus-ep-metrics-formatter'); // ID05132026.n
 const SUPPORTED_METRICS_FORMATS = new Set([EpMetricsOutputFormat.JSON, EpMetricsOutputFormat.PROMETHEUS]); // ID05132026.n
@@ -110,6 +111,7 @@ class MetricsDataHandler extends AbstractDataHandler {
         applicationId: application.appId,
         appType: application.appType,
         description: application.description,
+        endpointRouterType: application.endpointRouterType || EndpointRouterTypes.PriorityRouter, // ID08252026.n
         // cacheMetrics: cacheMetrics.getCacheMetrics(appId), // ID11212025.o
         cacheMetrics: (appCacheMetrics) ? appCacheMetrics.getAiAppCacheMetricsInfo(EpMetricsOutputFormat.JSON) : null, // ID11212025.n
         endpointMetrics: epDict
@@ -120,6 +122,7 @@ class MetricsDataHandler extends AbstractDataHandler {
         applicationId: application.appId,
         appType: application.appType,
         description: application.description,
+        endpointRouterType: application.endpointRouterType || EndpointRouterTypes.PriorityRouter, // ID08252026.n
         cacheMetrics: (appCacheMetrics) ? appCacheMetrics.getAiAppCacheMetricsInfo(EpMetricsOutputFormat.JSON) : null, // ID11212025.n
         /** ID11212025.o
         cacheMetrics: {

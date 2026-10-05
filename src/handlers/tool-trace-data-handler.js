@@ -4,7 +4,7 @@
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 04-23-2026
- * Version (Introduced): 3.1.0
+ * Version (Introduced): 3.0.1
  *
  * Notes:
  * 
@@ -148,6 +148,7 @@ class ToolExecutionTraceDataHandler extends AbstractDataHandler {
       .map((row) => ({
         seqId: row.seq_id,
         toolName: row.tool_name || null,
+        toolId: row.tool_id || null,
         remoteServerType: row.rem_srv_type || null,
         targetUri: row.target_uri || null,
         serverId: row.server_id || null,
@@ -201,6 +202,7 @@ class ToolExecutionTraceDataHandler extends AbstractDataHandler {
       },
 
       plan: {
+        plannerType: planRow?.planner_type,
         generatedByAiApp: planRow?.aiapp_gen_plan,
         generatedByModel: planRow?.planner_model,
         generatedPlan: safeParseJson(planRow?.toolplan),
@@ -212,7 +214,7 @@ class ToolExecutionTraceDataHandler extends AbstractDataHandler {
       executionSteps: normalizedDetails
     };
 
-    console.log(`***** Retrieved tool trace: ${JSON.stringify(responsePayload, null, 2)}`);
+    // 0 - console.log(`***** Retrieved tool trace: ${JSON.stringify(responsePayload, null, 2)}`);
     respMessage = {
       http_code: 200, // OK
       data: {

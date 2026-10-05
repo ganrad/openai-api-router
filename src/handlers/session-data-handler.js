@@ -8,8 +8,9 @@
  *
  * Notes:
  * ID09162025: ganrad: v2.6.0: (Bugfix) 1) Fixed 'err_obj' is 'not defined error' 2) Session data was not being retrieved for AI Foundry Inference API models
- * ID04282026: ganrad: v3.1.0: (Enhancement) Return the time session was created & user who created the session.
- * ID04302026: ganrad: v3.1.0: (Bugfix) Check for session record before retrieving requests associated with the session.
+ * ID04282026: ganrad: v3.0.1: (Enhancement) Return the time session was created & user who created the session.
+ * ID04302026: ganrad: v3.0.1: (Bugfix) Check for session record before retrieving requests associated with the session.
+ * ID08202026: ganrad: v3.0.1: (Bugfix) Added server name to all memory table searches.
 */
 const path = require('path');
 const scriptName = path.basename(__filename);
@@ -47,8 +48,11 @@ class SessionDataHandler extends AbstractDataHandler {
     const threadId = req.params.session_id; // User session (/Thread) ID
 
     let values = [
-      threadId,
-      appId
+      // threadId, ID08202026.o
+      // appId
+      req.targeturis.serverId, // ID08202026.n
+      appId,
+      threadId
     ];
 
     let memoryDao = new PersistDao(persistdb, TblNames.Memory); // ID05082025.n
@@ -60,11 +64,27 @@ class SessionDataHandler extends AbstractDataHandler {
       endpointId = sessionInfo.data[0].endpoint_id;
       user = sessionInfo.data[0].uname;
       sessionDate = sessionInfo.data[0].timestamp_;
+    }
+    else {
+      err_msg = {
+        error: {
+          endpointUri: req.originalUrl,
+          message: `Session [ID=${threadId}] not found for AI Application [ID=${appId}].  Please check the parameter values and try again!`,
+          code: "invalidPayload"
+        }
+      };
+
+      respMessage = {
+        http_code: 400, // Bad request
+        data: err_msg
+      };
+
+      return (respMessage);
     };
 
     let promptsDao = new PersistDao(persistdb, TblNames.Prompts);
     const sessionTrace = await promptsDao.queryTable(req.id, 2, values);
-    if ( (sessionInfo.rCount == 1) && (sessionTrace.rCount >= 1) ) { // ID04302026.n
+    if ( sessionTrace.rCount >= 1 ) { // ID04302026.n
       respMessage = {
         http_code: 200, // OK
         data: {
@@ -81,7 +101,7 @@ class SessionDataHandler extends AbstractDataHandler {
       err_msg = {
         error: {
           endpointUri: req.originalUrl,
-          message: `Session [ID=${threadId}] not found for AI Application [ID=${appId}].  Please check the parameter values and try again!`,
+          message: `No requests found for Session [ID=${threadId}] for AI Application [ID=${appId}].  Please check the parameter values and try again!`,
           code: "invalidPayload"
         }
       };
@@ -95,7 +115,7 @@ class SessionDataHandler extends AbstractDataHandler {
     return (respMessage);
   }
 
-  async #getOpenAICallMetadata(req, endpoint) {
+  async #getOpenAICallMetadata(req, endpoint) { // Deprecated!
     const meta = new Map();
     meta.set('Content-Type', 'application/json');
     let bearerToken = req.headers['Authorization'] || req.headers['authorization'];
@@ -124,7 +144,7 @@ class SessionDataHandler extends AbstractDataHandler {
     return (meta);
   }
 
-  async #listMessagesInThread(
+  async #listMessagesInThread( // Deprecated!
     req,
     meta,
     agentEndpoint) { // 2 - List messages associated with thread
@@ -196,7 +216,7 @@ class SessionDataHandler extends AbstractDataHandler {
     return (respMessage);
   }
 
-  async #getSDServerAgentSessionInfo(req, aiApp) {
+  async #getSDServerAgentSessionInfo(req, aiApp) { // Foundry Agent Service v1 is deprecated! This function is left as-is for reference purposes only!
     let err_msg;
     let respMessage;
 
@@ -234,11 +254,11 @@ class SessionDataHandler extends AbstractDataHandler {
     let response = null;
     let err_msg;
 
-    if (!(process.env.API_GATEWAY_PERSIST_PROMPTS === "true")) {
+    if (!(process.env.API_GATEWAY_STATE_MGMT === "true")) {
       err_msg = {
         error: {
           endpointUri: request.originalUrl,
-          message: `Prompt persistence is not enabled for this AI App Gateway instance! Unable to process request.`,
+          message: `State management is not enabled for this AI App Gateway instance! Unable to process request.`,
           code: "invalidPayload"
         }
       };

@@ -1,0 +1,34 @@
+global:
+  scrape_interval: 60s
+  evaluation_interval: 60s
+
+scrape_configs:
+  - job_name: 'rapid-ai-gk-chatbot'
+
+    metrics_path: /metrics
+    params:
+      format: ['prometheus']
+
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: rapid-local
+
+      - target_label: __metrics_path__
+        replacement: /api/v1/test/aigateway/metrics/ai-gk-chatbot
+
+  - job_name: 'rapid-ai-multi-domain-chabot'
+
+    metrics_path: /metrics
+    params:
+      format: ['prometheus']
+
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+
+    relabel_configs:
+      - target_label: __metrics_path__
+        replacement: /api/v1/test/aigateway/metrics/ai-multi-domain-chatbot

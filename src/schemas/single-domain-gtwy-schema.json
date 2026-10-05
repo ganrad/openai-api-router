@@ -1,7 +1,7 @@
 {
 	"$id": "https://github.com/ganrad/rapid/schemas/single-domain-gtwy-schema.json",
 	"title": "SingleDomainAgent",
-	"description": "A single domain AI Agent",
+	"description": "A single domain AI Agent Gateway",
 	"type": "object",
 	"properties": {
 		"serverId": {
@@ -41,6 +41,13 @@
 			"items": { "$ref": "./gtwy-remote-servers-schema.json" },
 			"minItems": 1,
 			"uniqueItems": true
+		},
+		"securityPolicyConfig": {
+			"description": "List of inbound and outbound policies for securing the AI Gateway",
+			"type": "object",
+			"allOf": [
+				{	"$ref": "./security-policy-schema.json" }
+			]
 		},
 		"agentRegistryId": {
 			"description": "Unique identity of the agent (a2a) registry",

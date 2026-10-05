@@ -34,6 +34,10 @@
  * ID04302026: ganrad: v3.0.1: (Enhancement) Introduced new field 'tool_exec_count' in table apigtwyprompts. This field will store the 
  * tools executed as part of a request.
  * ID05222026: ganrad: v3.0.1: (Enhancement) Made the PostgreSQL connection pool code more robust.
+ * ID08202026: ganrad: v3.0.1: (Refactoring) Introduced new 'instance' field in prompts & memory tables.
+ * ID08262026: ganrad: v3.0.1: (Enhancement) Introduced 3 new fields in apigtwyprompts table - generation model, generation input & output tokens.
+ * ID08272026: ganrad: v3.0.1: (Enhancement) Log query params passed to 'executeQuery' function.
+ * ID09282026: ganrad: v3.0.1: (Enhancement) Introduced 2 new fields in apigtwyprompts table - generation cache read and write tokens.  Used in user metrics feature.
  * 
 */
 
@@ -49,9 +53,10 @@ const { formatException } = require('../utilities/helper-funcs'); // ID12042025.
 const createTblStmts = [
   // "CREATE TABLE apigtwyprompts (id serial PRIMARY KEY, requestid VARCHAR(100), aiappname VARCHAR(100), prompt JSON, timestamp_ TIMESTAMPTZ default current_timestamp)" // ID04112024.o
   // "CREATE TABLE IF NOT EXISTS apigtwyprompts (id serial PRIMARY KEY, requestid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID04112024.n, ID11082024.o
-  "CREATE TABLE IF NOT EXISTS apigtwyprompts (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, model_res_hdrs JSON, exec_tool_count SMALLINT default 0, exec_time_secs real, endpoint_id VARCHAR(50), feedback_count SMALLINT not null default 0, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.n, ID09152025.n, ID04302026.n
-  "CREATE TABLE IF NOT EXISTS apigtwymemory (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), context JSON, tool_name VARCHAR(75), md_aiappname VARCHAR(100), md_srv_name VARCHAR(100), endpoint_id SMALLINT default 0, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID05062024.n, ID11112024.n, ID11122024.n, ID05082025.n
-  "CREATE TABLE IF NOT EXISTS aiapptoolstrace (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), tool_trace JSON, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID10262024.n, ID11112024.n
+  // "CREATE TABLE IF NOT EXISTS apigtwyprompts (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, model_res_hdrs JSON, exec_tool_count SMALLINT default 0, exec_time_secs real, endpoint_id VARCHAR(50), feedback_count SMALLINT not null default 0, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID11082024.n, ID11112024.n, ID02112025.n, ID05082025.n, ID09152025.n, ID04302026.n, ID08202026.o
+  "CREATE TABLE IF NOT EXISTS apigtwyprompts (id serial PRIMARY KEY, srv_name VARCHAR(100), instance VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), prompt JSON, completion JSON, model_res_hdrs JSON, exec_tool_count SMALLINT default 0, exec_time_secs real, endpoint_id VARCHAR(50), gen_model VARCHAR(75) default 'NA', gen_input_tokens INT default 0, gen_cache_rd_tokens INT default 0, gen_cache_wr_tokens INT default 0, gen_output_tokens INT default 0, feedback_count SMALLINT not null default 0, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID08202026.n, ID08262026.n, ID09282026.n
+  "CREATE TABLE IF NOT EXISTS apigtwymemory (id serial PRIMARY KEY, srv_name VARCHAR(100), instance VARCHAR(100), requestid VARCHAR(100), threadid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), context JSON, tool_name VARCHAR(75), md_aiappname VARCHAR(100), md_srv_name VARCHAR(100), endpoint_id SMALLINT default 0, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID05062024.n, ID11112024.n, ID11122024.n, ID05082025.n
+  "CREATE TABLE IF NOT EXISTS aiapptoolstrace (id serial PRIMARY KEY, srv_name VARCHAR(100), requestid VARCHAR(100), aiappname VARCHAR(100), uname VARCHAR(50), tool_trace JSON, timestamp_ TIMESTAMPTZ default current_timestamp)", // ID10262024.n, ID11112024.n, deprecated v3.0.1
   "CREATE TABLE IF NOT EXISTS aiappdeploy (" +
     "id serial PRIMARY KEY, " +
     "job_id VARCHAR(100) NOT NULL UNIQUE, " +
@@ -91,7 +96,9 @@ const createTblStmts = [
     "create_date TIMESTAMP DEFAULT NOW() )", // ID05122025.n
   "CREATE TABLE IF NOT EXISTS toolexecplan (" + // ID04212026.n
     "id SERIAL PRIMARY KEY, " +
-    "srv_name VARCHAR(100) NOT NULL, " + // AI Gateway server instance name
+    "srv_name VARCHAR(100) NOT NULL, " + // AI Gateway server name
+    "instance VARCHAR(150), " + // Gateway instance (~ pod, can be null)
+    "planner_type VARCHAR(50), " + // Tool planner and execution engine type
     "requestid VARCHAR(100) NOT NULL, " + // Request ID
     "threadid VARCHAR(100), " + // Thread ID
     "aiappname VARCHAR(100) NOT NULL, " + // AI App Name
@@ -106,15 +113,17 @@ const createTblStmts = [
     "create_date TIMESTAMP DEFAULT NOW() )",
   "CREATE TABLE IF NOT EXISTS toolexecdetails (" + // ID04212026.n
     "id SERIAL PRIMARY KEY, " +
-    "srv_name VARCHAR(100) NOT NULL, " + // AI Gateway server instance name
+    "srv_name VARCHAR(100) NOT NULL, " + // AI Gateway server name
+    "instance VARCHAR(150), " + // Gateway instance (~ pod, can be null)
     "requestid VARCHAR(100) NOT NULL, " + // Request ID
     "threadid VARCHAR(100), " + // Thread ID
     "aiappname VARCHAR(100) NOT NULL, " + // AI App Name
     "seq_id INTEGER NOT NULL, " + // Tool execution sequence id
-    "rem_srv_type VARCHAR(25) NOT NULL, " + // Remote server type - MCP, OpenAPI and gRPC
-    "target_uri VARCHAR(100) NOT NULL, " + // Target URI of service
+    "rem_srv_type VARCHAR(25) NOT NULL, " + // Remote server type - A2A, MCP, OpenAPI and gRPC
+    "target_uri VARCHAR(500) NOT NULL, " + // Target URI of service
     "server_id VARCHAR(100) NOT NULL, " + // Target remote server id
     "tool_name VARCHAR(100) NOT NULL, " + // Tool name/id
+    "tool_id VARCHAR(50), " + // Tool ID; Has a value when v1 tool planner is used; null for v0 planner
     "request_json JSON, " + // Request JSON
     "response_json JSON, " + // Response JSON OR Error/Exception returned by the tool
     "exception VARCHAR(1000), " + // Exceptions thrown by the remote server connection
@@ -255,6 +264,17 @@ async function executeQuery(entity, requestid, query, params) {
   // let logLine = `executeQuery():\n  Entity: ${entity}\n  Request ID: ${requestid}\n  Query: ${query}\n`;
   let logLine = "[%s] executeQuery():\n  Entity: %s\n  Request ID: %s\n  Query: %s\n";
 
+  // ID08272026.sn
+  let logParams = ""; // Initialize
+  if ( params ) {
+    params.forEach((item, index) => {
+      logParams += `[${index + 1}] ${item} `;
+    });
+
+    logLine += `  Params: ${logParams}\n`;
+  };
+  // ID08272026.en
+
   let stTime = Date.now();
   try {
     const client = await pool.connect(); // Get a connection
@@ -266,7 +286,7 @@ async function executeQuery(entity, requestid, query, params) {
       rows++;
     });
     // logLine += `  Operation: ${result.command}\n  Retrieved Rows: ${rows}\n  Execution Time: ${Date.now() - stTime}\n*****`;
-    logLine += "  Operation: %s\n  Retrieved Rows: %d\n  Execution Time: %d";
+    logLine += "  Operation: %s\n  Retrieved Rows: %d\n  Execution Time (ms): %d";
     // console.log(logLine);
     logger.log({level: "info", message: logLine, splat: [scriptName,entity,requestid,query,result.command,rows,Date.now() - stTime]});
   
@@ -275,7 +295,7 @@ async function executeQuery(entity, requestid, query, params) {
   catch (err) {
     // console.log("executeQuery():\n  Entity: ${entity}\n  Request ID: ${requestid}\n  Encountered exception:\n" + err.stack);
     errs = err; // ID02092025.n
-    logger.log({level: "error", message: "[%s] executeQuery():\n  Entity: %s\n  Request ID: %s\n  Encountered exception:\n%s", splat: [scriptName,entity,requestid,formatException(err)]});
+    logger.log({level: "error", message: "[%s] executeQuery():\n  Entity: %s\n  Request ID: %s\n  Query: %s\n  Encountered exception:\n%s", splat: [scriptName,entity,requestid,query,formatException(err)]});
   };
 
   return {

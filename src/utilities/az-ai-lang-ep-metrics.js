@@ -14,7 +14,7 @@ const path = require('path');
 const scriptName = path.basename(__filename);
 const logger = require('./logger');
 
-const Queue = require('./queue');
+const Queue = require('../lib/queue');
 const { EndpointMetricsConstants } = require('./app-gtwy-constants');
 
 class AzAiLanguageEpMetrics {

@@ -1,0 +1,87 @@
+/**
+ * Name: AI Application Gateway Control Plane
+ * Description: A simple control plane that exposes functions for performing CRUD operations on AI App Gateway resources.
+ *
+ * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
+ * Date: 01-23-2025
+ * Version: 2.2.0
+ *
+ * Notes:
+ * ID07252025: ganrad: v2.4.0: (Refactored code) Moved all cp router endpoint literals to the constants module ~ app-gtwy-constants.js.
+ * ID12042025: ganrad: v2.9.5: (Refactored code) Log error message details.
+ * ID07162026: ganrad: v3.0.1: (Enhancement) Added security router to intercept all inbound calls at gateway level and enforce IP security policies/rules.
+*/
+
+const path = require('path');
+const scriptName = path.basename(__filename);
+
+const express = require("express");
+const AppResProcessorFactory = require("../ai-app-resources/app-res-processor-factory.js");
+const { GatewayRouterEndpoints } = require("../utilities/app-gtwy-constants.js"); // ID07252025.n
+const logger = require("../utilities/logger.js");
+const { formatException } = require("../utilities/helper-funcs.js"); // ID12042025.n
+const secrouter = require("./security-router.js"); // ID07162026.n
+const cprouter = express.Router();
+
+// Endpoint: /aigateway/cp/:resource_type/:resource_id/:action
+// Method(s): GET, POST, DELETE
+// Resources: AiAppServer, AiApplication, MdAiApplication, RagAiApplication
+// Actions: operations, deploy, status, get, delete
+cprouter.use([GatewayRouterEndpoints.ControlPlaneEndpoint + "/:res_type/:res_id/:action", GatewayRouterEndpoints.ControlPlaneEndpoint + "/:res_type/:action"], secrouter, async (req, res) => { // ID07252025.n; ID07162026.n
+  const resourceType = req.params.res_type; // AI Gateway resource type
+  const action = req.params.action; // Action to be performed on resource
+  logger.log({ level: "info", message: "[%s] cprouter():\n  Request ID: %s\n  Resource Type: %s\n  Action: %s", splat: [scriptName, req.id, resourceType, action] });
+
+  let response;
+  if (!resourceType || !action) {
+    response = {
+      http_code: 400, // Bad Request
+      data: {
+        endpointUri: req.originalUrl,
+        message: `Resource Type [${resourceType}] and Action [${action}] are required parameters! Unable to process request.`,
+        code: "invalidPayload"
+      }
+    };
+  }
+  else { 
+    try {
+      response = await processRequest(req);
+    }
+    catch (error) { // catch all exceptions!
+      logger.log({ level: "warn", message: "[%s] cprouter():\n  Request ID: %s\n  Encountered exception: %s", splat: [scriptName, req.id, formatException(error)] });
+      
+      response = {
+        http_code: 500, // Internal Server Error
+        data: {
+          endpointUri: req.originalUrl,
+          message: `AI Services Gateway encountered exception: [${error.message}].`,
+          code: "internalServerFailure"
+        }
+      };
+    };
+  };
+
+  res.status(response.http_code).json(response.data);
+});
+
+async function processRequest(req) {
+  let respMessage;
+  
+  let resourceProcessor = new AppResProcessorFactory().getResourceProcessor(req.params.res_type);
+  if ( resourceProcessor )
+    respMessage = await resourceProcessor.executeOperation(req);
+  else {
+    respMessage = {
+      http_code: 400, // Bad Request
+      data: {
+        endpointUri: req.originalUrl,
+        message: `Resource Type [${resourceType}] is invalid! Unable to process request.`,
+        code: "invalidPayload"
+      }
+    };
+  };
+  
+  return respMessage;
+}
+
+module.exports = cprouter;

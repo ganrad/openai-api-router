@@ -2,6 +2,7 @@
  * Name: ToolExecPathTracer
  * Description: This class tracks the execution of retrieval tools & stores vital tool related
  * data useful for debugging AI App workflows.
+ * (Deprecated v3.0.1)
  *
  * Author: Ganesh Radhakrishnan (ganrad01@gmail.com)
  * Date: 09-04-2024
