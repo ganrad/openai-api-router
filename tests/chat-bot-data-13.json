@@ -1,0 +1,8 @@
+{
+  "messages": [
+        {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+        {"role": "user", "content": "Give me a brief summary of the documentary - Long way down"}
+  ],
+  "max_tokens": 1000,
+  "stream": false
+}

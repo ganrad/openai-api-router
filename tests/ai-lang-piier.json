@@ -1,0 +1,15 @@
+{
+    "kind": "PiiEntityRecognition",
+    "parameters": {
+        "modelVersion": "latest"
+    },
+    "analysisInput":{
+        "documents":[
+            {
+                "id":"1",
+                "language": "en",
+                "text": "Call our office at 312-555-1234, or send an email to support@contoso.com"
+            }
+        ]
+    }
+}

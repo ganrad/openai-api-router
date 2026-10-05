@@ -1,0 +1,17 @@
+{
+    "appId": "search-garmin-docs",
+    "description": "AI Search application for Garmin GPS support manuals",
+    "appType": "azure_search",
+    "cacheSettings": {
+      "useCache": false
+    },
+    "memorySettings": {
+      "useMemory": false
+    },
+    "endpoints": [
+      {
+        "uri": "https://gr-dev-rag-ais.search.windows.net/indexes/dev-garmin-idx/docs/search?api-version=2023-10-01-preview",
+        "apikey": "PjA7IU2Q4AB4YxvQc05q0r4wSvLZG96Kl2g0rhTlnVAzSeAK34Yj"
+      }
+    ]
+  }

@@ -1,0 +1,35 @@
+### Author: Ganesh Radhakrishnan (ganrad)
+### Dated: 09-26-2025
+### Description: Use this script to test the MCP Server
+
+@baseUrl = http://localhost:3333
+@contentType = application/json
+
+### Request list of tools from the MCP server
+GET {{baseUrl}}/tools/list
+
+### Get tool details
+GET {{baseUrl}}/tools/echo
+
+### Invoke 'echo' tool on the server
+POST {{baseUrl}}/tools/call
+Content-Type: {{contentType}}
+
+{
+  "tool": "echo",
+  "input": {
+    "text": "Hello World!"
+  }
+}
+
+### Invoke 'counter_stream' tool on the server
+POST {{baseUrl}}/tools/call
+Content-Type: {{contentType}}
+
+{
+  "tool": "counter_stream",
+  "input": {
+    "count": 5,
+    "interval_ms": 5000
+  }
+}

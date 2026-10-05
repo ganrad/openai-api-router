@@ -1,0 +1,36 @@
+@baseUrl = http://localhost:8080/api/v1/dev/apirouter/lb
+@contentType = application/json
+@requestsUrl = http://localhost:8080/api/v1/dev/apirouter
+
+### Test Header Switch endpoint router
+POST {{baseUrl}}/ai-chatbot-v2.4.0-gpt4o-mini-header
+Content-Type: {{contentType}}
+x-endpoint-id: gpt-4o-mini-eastus
+
+{
+  "messages": [
+        {"role": "system", "content": "Assistant is a large language model trained by OpenAI."},
+        {"role": "user", "content": "How does a car's hybrid engine work?"}
+  ],
+  "max_tokens": 1000,
+  "user": "ganeshra",
+  "stream": false
+}
+
+### Test Time Aware endpoint router
+POST {{baseUrl}}/Time-Aware-App
+Content-Type: {{contentType}}
+
+{
+  "messages": [
+        {"role": "system", "content": "Assistant is a large language model trained by OpenAI."},
+        {"role": "user", "content": "What are the top 3 most visited places on earth?"}
+  ],
+  "max_tokens": 1000,
+  "user": "ganeshra",
+  "stream": false
+}
+
+### Test User Feedback API
+PUT {{requestsUrl}}/requests/ai-chatbot-gpt4o/req_faf98dfc-cf8d-48e7-bbc1-43ab4719fcc1/up
+# PUT {{requestsUrl}}/requests/AIF-Proj-Model-gpt-4.1/req_33651ddd-43c0-452c-b11b-0535db551a2f/up

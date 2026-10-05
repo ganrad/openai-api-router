@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'rapid-ai-gateway'
+
+    metrics_path: /metrics/ai-gk-chatbot
+    params:
+      format: ['prometheus']
+
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+
+    # Optional but very useful labels
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: rapid-local

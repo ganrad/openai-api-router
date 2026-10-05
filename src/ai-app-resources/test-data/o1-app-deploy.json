@@ -1,0 +1,27 @@
+{
+  "appId": "ai-chatbot-o1",
+  "description": "An AI Assistant / Chatbot application which uses o1 advanced reasoning model for answering scientific, math questions.",
+  "appType": "azure_oai",
+  "cacheSettings": {
+    "useCache": true,
+    "searchType": "CosineSimilarity",
+    "searchDistance": 0.92,
+    "searchContent": {
+      "term": "messages",
+      "includeRoles": "user"
+    },
+    "entryExpiry": "2 minutes"
+  },
+  "memorySettings": {
+    "useMemory": true,
+    "msgCount": 4,
+    "entryExpiry": "5 minutes"
+  },
+  "endpoints": [
+    {
+      "rpm": 10,
+      "uri": "https://gbb-ea2-openai-o1-swedencentral-01.openai.azure.com/openai/deployments/o1-2024-12-17/chat/completions?api-version=2024-12-01-preview",
+      "apikey": "G5M45wIUS3Gi1BmKwtGn6gU4RChbt3Xa2phA5ZkYNeC5UCfjMhjkJQQJ99ALACfhMk5XJ3w3AAABACOGeLDk"
+    }
+  ]
+}

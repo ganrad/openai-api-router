@@ -1,0 +1,15 @@
+{
+  "messages": [
+        {"role": "system", "content": "You are an AI Assistant trained by OpenAI.  Can you help identify the root cause of this exception and provide code in nodejs to resolve this issue?"},
+        {"role": "user", "content": "10:10:48.152 [debug] Error: Bad Request: Invalid order content
+log.js:86
+Error: Bad Request: Invalid order content
+    at OrderConfigurationValidator.validate (/Users/dxoakes/workspaces/eis/eis-orders/src/data/configuration-validation.ts:205:13)
+    at async Orders.post (/Users/dxoakes/workspaces/eis/eis-orders/src/api/orders.ts:350:7)
+    at async RequestHandler.handleRequest (/Users/dxoakes/workspaces/eis/eis-orders/node_modules/@centurylink/snapi/src/endpoint/handler.ts:152:42)
+    at async /Users/dxoakes/workspaces/eis/eis-orders/node_modules/@centurylink/snapi/src/server/express.ts:293:17 {status: {…}, stack: 'Error: Bad Request: Invalid order content
+   …enturylink/snapi/src/server/express.ts:293:17', message: 'Bad Request: Invalid order content'}" }
+  ],
+  "max_tokens": 1000,
+  "stream": false
+}

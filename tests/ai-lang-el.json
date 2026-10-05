@@ -1,0 +1,15 @@
+{
+    "kind": "EntityLinking",
+    "parameters": {
+        "modelVersion": "latest"
+    },
+    "analysisInput":{
+        "documents":[
+            {
+                "id":"1",
+                "language":"en",
+                "text": "Microsoft was founded by Bill Gates and Paul Allen on April 4, 1975."
+            }
+        ]
+    }
+}

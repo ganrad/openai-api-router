@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Information Assistant</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel=stylesheet href=https://cdn.jsdelivr.net/npm/pretty-print-json@3.0/dist/css/pretty-print-json.css>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
+
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
+
+      To begin the development, run `npm start` or `yarn start`.
+      To create a production bundle, use `npm run build` or `yarn build`.
+    -->
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"
+      integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
+      crossorigin="anonymous"></script>
+    <script src=https://cdn.jsdelivr.net/npm/pretty-print-json@3.0/dist/pretty-print-json.min.js></script>
+
+    <!-- Optional JavaScript for chat box functionality -->
+    <script>
+      let aiAppObject = null;
+      let promptObject = null;
+
+      function setInferenceTarget() {
+			const aiAppElem = document.getElementById('appdropdown');
+			const aiApp = aiAppElem.options[aiAppElem.selectedIndex].text;
+
+			aiAppObject = aiAppConfig.get(aiApp);
+
+			// Set the model config form fields
+			document.getElementById("descField").innerHTML = aiAppObject.description;
+			document.getElementById("uid").value = aiAppObject.user;
+			document.getElementById("stopSequence").value = aiAppObject.model_params.stop_sequence;
+			document.getElementById("temperature").value = aiAppObject.model_params.temperature;
+			document.getElementById("temp_o").value = aiAppObject.model_params.temperature;
+			document.getElementById("mtokens").value = aiAppObject.model_params.max_tokens;
+			document.getElementById("mtokens_o").value = aiAppObject.model_params.max_tokens;
+			document.getElementById("frequency").value = aiAppObject.model_params.frequency_penalty;
+			document.getElementById("freq_o").value = aiAppObject.model_params.frequency_penalty;
+			document.getElementById("performance").value = aiAppObject.model_params.performance_penalty;
+			document.getElementById("perf_o").value = aiAppObject.model_params.performance_penalty;
+			document.getElementById("topp").value = aiAppObject.model_params.top_p;
+			document.getElementById("topp_o").value = aiAppObject.model_params.top_p;
+
+			// Construct & populate a new prompt object
+			promptObject = {
+				messages: [],
+				max_tokens: aiAppObject.model_params.max_tokens,
+				user: aiAppObject.user,
+				stream: aiAppObject.model_params.stream,
+				temperature: aiAppObject.model_params.temperature
+			};
+
+			// Create and populate ai search data source
+			let srchParams = aiAppObject.search_params;
+			if (srchParams) {
+				// Set the search config form fields
+				document.getElementById("searchAppName").value = srchParams.ai_search_app;
+				document.getElementById("endpoint").value = srchParams.endpoint;
+				document.getElementById("indexName").value = srchParams.index_name;
+				document.getElementById("scope").checked = srchParams.in_scope;
+				document.getElementById("queryType").value = srchParams.query_type;
+				document.getElementById("embeddModel").value = srchParams.embedding_model;
+				document.getElementById("semConfig").value = srchParams.semantic_config;
+				document.getElementById("strictness").value = srchParams.strictness;
+				document.getElementById("docs").value = srchParams.top_n_docs;
+
+				let dataSource = {
+					type: "azure_search",
+					parameters: {
+						endpoint: srchParams.endpoint,
+						index_name: srchParams.index_name,
+						authentication: {
+							type: "api_key",
+							key: srchParams.ai_search_app // Specify the API Key for chat completion + OYD calls
+						},
+						embedding_dependency: {
+							deployment_name: srchParams.embedding_model,
+							type: "deployment_name"
+						},
+						query_type: srchParams.query_type,
+						semantic_configuration: srchParams.semantic_config,
+						in_scope: srchParams.in_scope,
+						strictness: srchParams.strictness,
+						top_n_documents: srchParams.top_n_docs
+					}
+				};
+
+				promptObject.data_sources = [dataSource];
+
+				document.getElementById("nav-search-cfg-tab").className = "nav-link"
+			} // end - if srchParams
+			else {
+				document.getElementById("nav-search-cfg-tab").className = "nav-link disabled"
+			}
+			clearContent("chatBox"); // Clear the content of the chat box and msg box
+		}
+
+		function clearContent(elementId) {
+			if (elementId === "chatBox") {
+				threadId = null;
+
+				clearContent("msgBox"); // Recursive call!
+			};
+
+			document.getElementById(elementId).innerHTML = '';
+		}
+    </script>
+  </body>
+</html>

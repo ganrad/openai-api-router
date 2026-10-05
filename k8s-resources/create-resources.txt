@@ -1,0 +1,2 @@
+=> https://medium.com/@chaitanya.mannem.180/injecting-config-json-files-into-kubernetes-via-config-maps-651fc40bbb7a
+kubectl create configmap api-gateway-config-cm --from-file=../api-router-config-test.json -n apigateway

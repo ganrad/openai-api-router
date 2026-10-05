@@ -1,0 +1,22 @@
+# Use Azure portal PGSQL resource view to connect / open a console window
+
+# Connect to SQL DB
+psql -h gr-apig-dev-pg.postgres.database.azure.com -p 5432 -U gradmin aoaisvc
+
+# List all indexes
++\di;
+
+# Another way to list indexes
+SELECT tablename, indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' ORDER BY tablename, indexname;
+
+# List indexes for a specific table
+SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'apigtwycache';
+
+# List the tables and corresponding indexes
+\d;
+\d+;
+
+# List the table along with column defs
+\d+ apigtwycache;
+
+

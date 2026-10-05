@@ -1,0 +1,15 @@
+# Grafana user: admin; password: admin
+
+# Verify Prometheus is scraping RAPID 
+http://localhost:9090/targets
+
+# Test queries
+rapid_ai_application_gateway_endpoint_success_rate
+rapid_ai_application_gateway_endpoint_error_rate
+
+# Which LLM endpoint is performing best?
+avg(rapid_ai_application_gateway_endpoint_success_rate) by (endpoint_id)
+
+# Hits and misses are counters, hence use this.
+rate(application_cache_hits[5m])
+rate(application_cache_misses[5m])

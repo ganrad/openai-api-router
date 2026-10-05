@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+Dockerfile
+.dockerignore
+app-config.json
+README.md
+CHANGELOG.md
+images
+scripts
+k8s-resources
+ais-chat-app-chart
+package-lock.json
+LICENSE
+frontend-env.sh
+helm-deploy.sh
+values.yaml
+values-ghub.yaml

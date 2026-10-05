@@ -1,0 +1,16 @@
+{
+    "search": "Arctic Deep Draft Port of Nome",
+    "searchFields": "title, chunk",
+    "semanticConfiguration": "ak-stip-aisrch-iv-semantic-configuration",
+    "queryType": "semantic",
+    "select": "title, chunk, chunk_id",
+    "top": 2,
+    "vectorQueries": [
+        {
+            "kind": "text",
+            "text": "Arctic Deep Draft Port of Nome",
+            "fields": "vector",
+            "k": 5
+        }
+    ]
+}

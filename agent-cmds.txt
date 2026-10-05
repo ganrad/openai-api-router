@@ -1,0 +1,5 @@
+az logout
+az login --tenant "16b3c013-d300-468d-ac64-7eda0820b6d3"
+# The command below works!
+az account get-access-token --resource https://ai.azure.com --query "accessToken" --output tsv
+az account get-access-token --resource 'https://ai.azure.com' | jq -r .accessToken | tr -d '"'

@@ -1,0 +1,22 @@
+{
+  "data_sources": [
+    {
+      "type": "azure_search",
+      "parameters": {
+        "endpoint": "https://gr-dev-rag-ais.search.windows.net",
+        "index_name": "ak-stip-v2",
+        "authentication": {
+          "type": "api_key",
+	  "key": "9Y9OH0RTUg7KzF7hTbcuWJ3Eo1xEcFxoHbj3aWIcn9AzSeBjn5hf"
+        }
+      }
+    }
+  ],
+  "messages": [
+        {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+        {"role": "user", "content": "Get detailed information for Metlakatla Indian Community Watershed‐scale Fish Passage Improvement Project.  Include all the individual cost estimates."}
+  ],
+  "max_tokens": 1000,
+  "user": "ganeshra",
+  "stream": false
+}

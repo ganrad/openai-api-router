@@ -1,0 +1,91 @@
+# Best Endpoint (success rate)
+# Automatically surfaces best-performing endpoint
+# Updates dynamically as traffic patterns change
+
+{
+  "type": "stat",
+  "title": "Best Endpoint (Success Rate)",
+  "gridPos": { "x": 0, "y": 30, "w": 6, "h": 5 },
+  "targets": [
+    {
+      "expr": "topk(1, avg(rapid_ai_application_gateway_endpoint_success_rate{ai_application=\"$ai_application\"}) by (endpoint_id))",
+      "legendFormat": "{{endpoint_id}}"
+    }
+  ],
+  "options": {
+    "reduceOptions": { "calcs": ["last"] }
+  }
+}
+
+# Worst endpoint (error rate)
+# Highlights degraded endpoint
+# Perfect for incident/debug scenarios
+{
+  "type": "stat",
+  "title": "Worst Endpoint (Error Rate)",
+  "gridPos": { "x": 6, "y": 30, "w": 6, "h": 5 },
+  "targets": [
+    {
+      "expr": "topk(1, avg(rapid_ai_application_gateway_endpoint_error_rate{ai_application=\"$ai_application\"}) by (endpoint_id))",
+      "legendFormat": "{{endpoint_id}}"
+    }
+  ],
+  "options": {
+    "reduceOptions": { "calcs": ["last"] }
+  }
+}
+
+# Endpoint ranking table
+# Do this UI - click panel Table options -> Sort by value descending
+{
+  "type": "table",
+  "title": "Endpoint Ranking",
+  "gridPos": { "x": 12, "y": 30, "w": 12, "h": 5 },
+  "targets": [
+    {
+      "expr": "avg(rapid_ai_application_gateway_endpoint_success_rate{ai_application=\"$ai_application\"}) by (endpoint_id)"
+    }
+  ]
+}
+
+# Cost vs Success rate (powerful)
+# Reveals - 1) expensive but low success - bad routing candidate
+# 2) cheap + high success -> preferred endpoint
+{
+  "type": "timeseries",
+  "title": "Cost vs Success Rate",
+  "gridPos": { "x": 0, "y": 35, "w": 12, "h": 6 },
+  "targets": [
+    {
+      "expr": "avg(rapid_ai_application_gateway_endpoint_success_rate{ai_application=\"$ai_application\"}) by (endpoint_id)",
+      "legendFormat": "{{endpoint_id}} success"
+    },
+    {
+      "expr": "sum(rapid_ai_application_gateway_endpoint_token_cost_usd{ai_application=\"$ai_application\"}) by (endpoint_id)",
+      "legendFormat": "{{endpoint_id}} cost"
+    }
+  ]
+}
+
+# Endpoint efficient score
+{
+  "type": "bar",
+  "title": "Endpoint Efficiency Score",
+  "gridPos": { "x": 12, "y": 35, "w": 12, "h": 6 },
+  "targets": [
+    {
+      "expr": "avg(rapid_ai_application_gateway_endpoint_success_rate{ai_application=\"$ai_application\"}) by (endpoint_id) / sum(rapid_ai_application_gateway_endpoint_token_cost_usd{ai_application=\"$ai_application\"}) by (endpoint_id)",
+      "legendFormat": "{{endpoint_id}}"
+    }
+  ]
+}
+
+# After updating: For best/worst panels:
+# edit panel -> Field -> Thresholds.  Set value >= 0.95 Green; value 0.8-0.95 yellow; < 0.8 Red
+
+Routing intelligence in one glance
+Best endpoint - where traffic should go
+Worst endpoint - where traffic should Not go
+Ranking table - comparison across endpoints
+Cost vs success - optimization trade-offs
+Efficieny score - ultimate optimization signal

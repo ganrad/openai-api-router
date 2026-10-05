@@ -1,0 +1,8 @@
+{
+  "messages": [
+        {"role": "user", "content": "What's the weather like in Mumbai today?"}
+  ],
+  "max_tokens": 1000,
+  "user": "ganeshra",
+  "stream": false
+}

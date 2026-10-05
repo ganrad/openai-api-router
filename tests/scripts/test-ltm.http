@@ -1,0 +1,182 @@
+@baseUrl = http://localhost:8080/api/v1/dev/aigateway/lb
+@contentType = application/json
+
+#--------------------------
+# Use case I - Topics: Sports, Type=Group
+#--------------------------
+
+### Test LTM support of user groups - #1
+POST {{baseUrl}}/ai-chatbot-gpt4o
+Content-Type: {{contentType}}
+
+{
+  "messages": [
+        {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+        {"role": "user", "content": "Tell me who won the last world cup and who was the MVP?  Also, include the names of top players who scored the max. goals."}
+  ],
+  "max_tokens": 1000,
+  "user": "ganeshra:soccer",
+  "stream": false
+}
+
+### Test LTM support of user groups - #2
+POST {{baseUrl}}/ai-chatbot-gpt4o
+Content-Type: {{contentType}}
+
+{
+  "messages": [
+        {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+        {"role": "user", "content": "Who won the last Cricket world cup?  And who were the top players in this tournament?"}
+  ],
+  "max_tokens": 1000,
+  "user": "ganrad:cricket",
+  "stream": false
+}
+
+### Test LTM support of user groups - #3
+POST {{baseUrl}}/ai-chatbot-gpt4o
+Content-Type: {{contentType}}
+
+{
+  "messages": [
+        {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+        {"role": "user", "content": "Who has received the max. number of MVP titles and won the Super Bowls in NFL?"}
+  ],
+  "max_tokens": 1000,
+  "user": "ganshu:football",
+  "stream": false
+}
+
+### Test LTM support of user groups - #4
+POST {{baseUrl}}/ai-chatbot-gpt4o
+Content-Type: {{contentType}}
+
+{
+  "messages": [
+        {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+        {"role": "user", "content": "Give me the stats for Kobe Bryant.  How many NBA titles did he win etc"}
+  ],
+  "max_tokens": 1000,
+  "user": "gradhakr:sports",
+  "stream": false
+}
+
+### Test LTM support of user groups - #5
+POST {{baseUrl}}/ai-chatbot-gpt4o
+Content-Type: {{contentType}}
+
+{
+  "messages": [
+        {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+        {"role": "user", "content": "How many NBA titles did the Lakers win while Kobe Bryant was with them?"}
+  ],
+  "max_tokens": 1000,
+  "user": "gupte:sports",
+  "stream": false
+}
+
+### Test LTM support of user groups - #6
+POST {{baseUrl}}/ai-chatbot-gpt4o
+Content-Type: {{contentType}}
+# x-thread-id: thr_3339f926-6a24-4810-9222-2770fddec90f
+
+{
+  "messages": [
+    {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+    {"role": "user", "content": "How many NBA titles did the Lakers win?"}
+  ],
+  "max_tokens": 1000,
+  "user": "gupte:sports",
+  "stream": false
+}
+
+#--------------------------
+# Use case II - Topics:Cloud and AI, Type=Group
+#--------------------------
+
+### Test LTM support of user groups - #1
+POST {{baseUrl}}/ai-chatbot-gpt4o
+Content-Type: {{contentType}}
+
+{
+  "messages": [
+    {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+    {"role": "user", "content": "Who are the top 5 cloud providers. Share their market cap & rev. details."}
+  ],
+  "max_tokens": 1000,
+  "user": "gupte:cloud",
+  "stream": false
+}
+
+### Test LTM support of user groups - #2
+POST {{baseUrl}}/ai-chatbot-gpt4o
+Content-Type: {{contentType}}
+
+{
+  "messages": [
+    {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+    {"role": "user", "content": "Tell me about generative AI and it's main use cases"}
+  ],
+  "max_tokens": 1000,
+  "user": "gupte:ai",
+  "stream": false
+}
+
+### Test LTM support of user groups - #3
+POST {{baseUrl}}/ai-chatbot-gpt4o
+Content-Type: {{contentType}}
+
+{
+  "messages": [
+    {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+    {"role": "user", "content": "Educate me on AI Agents are how they can be used for building autonomous workflows for real-world use cases.  Give me an example of such a use case."}
+  ],
+  "max_tokens": 2000,
+  "user": "gupte:ai",
+  "stream": false
+}
+
+### Test LTM support of user groups - #4
+POST {{baseUrl}}/ai-chatbot-gpt4o
+Content-Type: {{contentType}}
+
+{
+  "messages": [
+    {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+    {"role": "user", "content": "I have a data and gen-ai heavy application workload.  Which cloud provider should I go with?  Give me concrete reasons and help me decide."}
+  ],
+  "max_tokens": 2000,
+  "user": "gupte:cloud",
+  "stream": false
+}
+
+#--------------------------
+# Use case III - Topic=Sports, Type=User
+#--------------------------
+### Test LTM support of user groups - #1
+POST {{baseUrl}}/ai-gk-chatbot
+Content-Type: {{contentType}}
+
+{
+  "messages": [
+    {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+    {"role": "user", "content": "Which NBA team has won the max. number of championships?"}
+  ],
+  "max_tokens": 1000,
+  "user": "ganshu",
+  "stream": false
+}
+
+### Test LTM support of user groups - #2
+POST {{baseUrl}}/ai-gk-chatbot
+Content-Type: {{contentType}}
+
+{
+  "messages": [
+    {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+    {"role": "user", "content": "Which teams did Kobe Bryant play for in during his NBA career?  Provide details."}
+  ],
+  "max_tokens": 1000,
+  "user": "ganshu",
+  "stream": false
+}

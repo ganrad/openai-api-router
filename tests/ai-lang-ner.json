@@ -1,0 +1,15 @@
+{
+    "kind": "EntityRecognition",
+    "parameters": {
+        "modelVersion": "latest"
+    },
+    "analysisInput":{
+        "documents":[
+            {
+                "id":"1",
+                "language": "en",
+                "text": "I had a wonderful trip to Seattle last week."
+            }
+        ]
+    }
+}

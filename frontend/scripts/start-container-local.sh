@@ -1,0 +1,1 @@
+docker run -e FRONTEND_SRV_HOST='0.0.0.0' -e FRONTEND_SRV_CONFIG_FILE=./app-config-test.json -e API_GATEWAY_AUTH="false" -e AZURE_TENANT_ID='c2236a74-6f69-4313-b77b-8a5360c27e88' -e FRONTEND_CLIENT_ID='dd5d5c33-a90f-459c-9b1f-64e654ce5f20' -e API_GATEWAY_APP_ID='api://ea069e81-89ea-4977-85ea-9903697bf41c' --name ai-app-gtwy-console -p 8000:8000 -d ai-app-gtwy-console-v1.3.0

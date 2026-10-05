@@ -1,0 +1,39 @@
+{
+  "mode": "All",
+  "policyRule": {
+    "if": {
+      "not": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.CognitiveServices/accounts/deployments"
+          },
+          {
+            "anyOf": [
+              {
+                "value": "[concat(field('Microsoft.CognitiveServices/accounts/deployments/model.name'),',',field('Microsoft.CognitiveServices/accounts/deployments/model.version'))]",
+                "in": "[parameters('allowedModels')]"
+              },
+              {
+                "field": "Microsoft.CognitiveServices/accounts/deployments/model.name",
+                "contains": "gpt-4o-mini-2024-08-06.ft"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "then": {
+      "effect": "deny"
+    }
+  },
+  "parameters": {
+    "allowedModels": {
+      "type": "Array",
+      "metadata": {
+        "displayName": "Allowed AI models",
+        "description": "The list of allowed models that can be deployed."
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "data_sources": [
+    {
+      "type": "azure_search",
+      "parameters": {
+        "endpoint": "https://gr-dev-rag-ais.search.windows.net",
+        "index_name": "ak-stip-v2",
+        "authentication": {
+          "type": "system_assigned_managed_identity"
+        },
+	"query_type": "vector_semantic_hybrid",
+	"embedding_dependency": {
+	  "type": "deployment_name",
+	  "deployment_name": "dev-embedd-ada-002"
+	},
+	"semantic_configuration": "default",
+	"top_n_documents": 2
+      }
+    }
+  ],
+  "messages": [
+        {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+        {"role": "user", "content": "Get detailed information for Nenana Safety and Access Improvements Transportation Project.  Include all the individual cost estimates."}
+  ],
+  "max_tokens": 1000,
+  "user": "ganeshra",
+  "stream": false
+}

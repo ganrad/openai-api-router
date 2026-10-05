@@ -1,0 +1,195 @@
+{
+  "serverId": "Ai-App-Gateway-Dev",
+  "serverType": "single-domain",
+  "applications": [
+    {
+      "appId": "ai-chatbot-gpt4o",
+      "description": "An AI Assistant / Chatbot application which uses gpt-4o (/ Omni) mini model for answering GK questions.",
+      "appType": "azure_oai",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CosineSimilarity",
+        "searchDistance": 0.92,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "5 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "5 minutes"
+      },
+      "endpoints": [
+        {
+          "rpm": 10,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d",
+          "healthPolicy": {
+            "maxCallsBeforeUnhealthy": 1,
+            "latencyThresholdSeconds": 20,
+            "retryAfterMinutes": 5
+          }
+        },
+        {
+          "rpm": 10,
+          "uri": "https://oai-gr-dev-wus3.openai.azure.com/openai/deployments/gpt-4o-wus3/chat/completions?api-version=2025-01-01-preview",
+          "apikey": "65d72ca615c44aacaa5d8e19c50eef81"
+        }
+      ]
+    },
+    {
+      "appId": "vectorizedata",
+      "description": "Application that uses OAI model to generate data embeddings/vectors",
+      "appType": "azure_oai",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "memorySettings": {
+        "useMemory": false
+      },
+      "endpoints": [
+        {
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d"
+        }
+      ]
+    },
+    {
+      "appId": "ai-chatbot-v2.3.8-gpt4o-mini",
+      "description": "An AI Application used for testing the personalization feature introduced in RAPID v2.3.8.",
+      "appType": "azure_oai",
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CosineSimilarity",
+        "searchDistance": 90,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": true,
+        "generateFollowupMsgs": true,
+        "userFactsAppName": "",
+        "extractRoleValues": "User",
+        "extractionPrompt": "",
+        "followupPrompt": ""
+      },
+      "endpoints": [
+        {
+          "id": "gpt-4o-mini-eastus",
+          "rpm": 5,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d"
+        },
+        {
+          "id": "gpt-4o-westus3",
+          "rpm": 10,
+          "uri": "https://oai-gr-dev-wus3.openai.azure.com/openai/deployments/gpt-4o-wus3/chat/completions?api-version=2025-01-01-preview",
+          "apikey": "65d72ca615c44aacaa5d8e19c50eef81"
+        }
+      ]
+    },
+    {
+      "appId": "ai-chatbot-v2.3.9-gpt4o-mini-w",
+      "description": "An AI Application used for testing endpoint routing features (Randowm weighted) introduced in RAPID v2.3.9.",
+      "appType": "azure_oai",
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": false,
+        "searchType": "CosineSimilarity",
+        "searchDistance": 90,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": false,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false,
+        "generateFollowupMsgs": true,
+        "userFactsAppName": "",
+        "extractRoleValues": "User",
+        "extractionPrompt": "",
+        "followupPrompt": ""
+      },
+      "endpointRouterType": "RandomWeighted",
+      "endpoints": [
+        {
+          "id": "gpt-4o-open-ai",
+          "weight": 50,
+          "uri": "https://api.openai.com/v1/chat/completions",
+          "apikey": "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"
+        },
+        {
+          "id": "gpt-4o-mini-eastus",
+          "weight": 50,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d"
+        }
+      ]
+    },
+    {
+      "appId": "ai-chatbot-v2.3.9-gpt4o-mini-l",
+      "description": "An AI Application used for testing endpoint routing features (Latency weighted) introduced in RAPID v2.3.9.",
+      "appType": "azure_oai",
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": false,
+        "searchType": "CosineSimilarity",
+        "searchDistance": 90,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": false,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false,
+        "generateFollowupMsgs": true,
+        "userFactsAppName": "",
+        "extractRoleValues": "User",
+        "extractionPrompt": "",
+        "followupPrompt": ""
+      },
+      "endpointRouterType": "LatencyWeighted",
+      "endpoints": [
+        {
+          "id": "gpt-4o-westus3",
+          "weight": 50,
+          "uri": "https://oai-gr-dev-wus3.openai.azure.com/openai/deployments/gpt-4o-wus3/chat/completions?api-version=2025-01-01-preview",
+          "apikey": "65d72ca615c44aacaa5d8e19c50eef81"
+        },
+        {
+          "id": "gpt-4o-mini-eastus",
+          "weight": 50,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d"
+        }
+      ]
+    }
+  ]
+}

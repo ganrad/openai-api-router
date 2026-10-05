@@ -1,0 +1,8 @@
+{
+  "messages": [
+        {"role": "system", "content": "You are an AI Assistant trained by OpenAI. Generate a crisp summary of all activities listed under the 'Content:' section."},
+        {"role": "user", "content": "Content:\nT-Mobile is running into problems trying to configure private endpoints for Azure AI Studio service. Azure engineering team is involved\n-Participated in an MTC engagement with T-Mobile stake holders.  This was an all day workshop and the focus was to come up with governance best policies for Azure OpenAI"}
+  ],
+  "max_tokens": 500,
+  "stream": false
+}

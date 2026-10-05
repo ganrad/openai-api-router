@@ -1,0 +1,8 @@
+{
+  "messages": [
+        {"role": "user", "content": "so when the vehicle is using ICE does it also charge the hybrid battery?"}
+  ],
+  "max_tokens": 1000,
+  "user": "ganeshra",
+  "stream": false
+}

@@ -1,0 +1,1014 @@
+{
+  "serverId": "Ai-App-Gateway-Test",
+  "serverType": "single-domain",
+  "agentRegistryId": "a2a_ea71e374-0ca8-4349-8c4d-5566842e030f",
+  "serverName": "AI App Gateway Test",
+  "description": "A test AI Application Gateway instance running on ACA",
+  "applications": [
+    {
+      "appId": "vectorizedata",
+      "description": "Application that uses OAI model to generate data embeddings/vectors",
+      "appType": "azure_oai",
+      "isActive": true,
+      "cacheSettings": {
+        "useCache": false
+      },
+      "memorySettings": {
+        "useMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "endpoints": [
+        {
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d",
+          "budget": {
+            "modelName": "text-embedding-ada-002-eastus"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-chatbot-phi-4",
+      "description": "An AI Assistant / Chatbot application which uses MSFT phi-4 model for answering questions.",
+      "appType": "azure_aimodel_inf",
+      "isActive": true,
+      "cacheSettings": {
+        "useCache": false,
+        "searchType": "Cosine",
+        "searchDistance": 0.92,
+        "encryptionKey": "kLfj338GMnWtXR2ml4GeNg1eF+afjmuOgZfWKuUEN0=",
+        "level1Cache": {
+          "entryCount": 5,
+          "timeToLiveInMs": 120000
+        },
+        "level2Cache": {
+          "qdrantUri": "http://gr-dev-vm.westus2.cloudapp.azure.com:6333",
+          "apikey": "Testing123",
+          "searchType": "Cosine",
+          "searchDistance": 0.9,
+          "timeToLiveInMs": 240000
+        },
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "6 minutes"
+      },
+      "memorySettings": {
+        "useMemory": true,
+        "msgCount": 1,
+        "entryExpiry": "5 minutes"
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "endpointRouterType": "FeedbackWeightedRandom",
+      "endpoints": [
+        {
+          "id": "phi-4-eastus2",
+          "rpm": 9,
+          "uri": "https://Phi-4-011625.eastus2.models.ai.azure.com/v1/chat/completions?api-version=2024-06-01",
+          "apikey": "HxV3w06gUSytAfXU16Au0uMwrI8DQjZz",
+          "budget": {
+            "modelName": "Phi-4"
+          }
+        },
+        {
+          "id": "phi-4-westus3",
+          "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56",
+          "budget": {
+            "modelName": "Phi-4"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-app-llama-3.3-70b",
+      "description": "An AI App that uses Llama-3.3-70B model",
+      "appType": "azure_aimodel_inf",
+      "isActive": true,
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "endpoints": [
+        {
+          "id": "global-std-westus3",
+          "rpm": 10,
+          "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56",
+          "budget": {
+            "modelName": "Llama-3.3-70B-Instruct-global"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-app-grok-3-mini",
+      "description": "An AI App which uses grok-3-mini model for text generation",
+      "appType": "azure_aimodel_inf",
+      "isActive": true,
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "endpoints": [
+        {
+          "id": "global-std-westus3",
+          "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56",
+          "budget": {
+            "modelName": "grok-3-mini-global"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "telecom-service-agent",
+      "description": "An AI Application (Agent) which uses gpt-4o-mini, gpt-4.1-mini and gpt-5.2 models for answering questions within Telecom domain",
+      "appType": "azure_oai",
+      "version": "1.0.0",
+      "isActive": true,
+      "exposeA2AEndpoint": true,
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "encryptionKey": "kLfj338GMnWtXR2ml4GeNg1eF+afjmuOgZfWKuUEN0=",
+        "level1Cache": {
+          "entryCount": 5,
+          "timeToLiveInMs": 240000
+        },
+        "level2Cache": {
+          "qdrantUri": "http://gr-dev-vm.westus2.cloudapp.azure.com:6333",
+          "apikey": "Testing123",
+          "searchType": "Cosine",
+          "searchDistance": 0.9,
+          "timeToLiveInMs": 300000
+        },
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "normalizerSettings": [
+        {
+          "normalizerId": "normalizeInputForGpt52",
+          "includeAttributes": [
+            {
+              "attributeName": "model",
+              "attributeValue": "gpt-5.2"
+            }
+          ],
+          "replaceAttributes": [
+            {
+              "fromAttributeName": "model",
+              "toAttributeName": "model",
+              "value": "gpt-5.2"
+            },
+            {
+              "fromAttributeName": "max_tokens",
+              "toAttributeName": "max_completion_tokens"
+            }
+          ]
+        }
+      ],
+      "remoteServerSettings": {
+        "servers": [
+          {
+            "serverId": "telco-cust360-server"
+          },
+          {
+            "serverId": "telco-cust-service-server"
+          }
+        ],
+        "aiAppName": "ai-multi-domain-agent",
+        "plannerModel": "gpt-5.2"
+      },
+      "endpoints": [
+        {
+          "id": "gpt-4o-mini-eastus",
+          "rpm": 5,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d",
+          "budget": {
+            "modelName": "gpt-4o-mini-0718-std"
+          }
+        },
+        {
+          "id": "westus3-global-standard",
+          "rpm": 10,
+          "uri": "https://disney-test-eastus2-resource.openai.azure.com/openai/v1/chat/completions",
+          "apikey": "77o97ahO5N7FDi5Tx1WLL6Mk7mjaw3JUiwF2CoUXFSO4EFo6SioZJQQJ99BFACHYHv6XJ3w3AAAAACOG5Td9",
+          "normalizationPolicy": {
+            "inputNormalizerId": "normalizeInputForGpt52"
+          },
+          "budget": {
+            "modelName": "gpt-5.2-global"
+          }
+        },
+        {
+          "id": "gpt-4.1-mini-global-std",
+          "uri": "https://aif-project-westus3-072-resource.cognitiveservices.azure.com/openai/deployments/gpt-4.1-mini/chat/completions?api-version=2025-01-01-preview",
+          "apikey": "FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56",
+          "budget": {
+            "modelName": "gpt-4.1-mini-global"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-app-grok-30-mini",
+      "description": "An AI Application that uses grok-3-mini model to generate content",
+      "appType": "azure_aimodel_inf",
+      "isActive": true,
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "endpoints": [
+        {
+          "id": "useast2-global-standard",
+          "rpm": 10,
+          "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56"
+        }
+      ]
+    },
+    {
+      "appId": "ai-multi-domain-agent",
+      "description": "An AI Application (Agent) that responds to user queries across multiple domains. The supported domains are energy and utilities, employee onboarding & supply chain sales fulfillment. Uses remote servers to provide additional context to LLM.",
+      "version": "1.0.0",
+      "appType": "azure_oai",
+      "isActive": true,
+      "exposeA2AEndpoint": true,
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "encryptionKey": "kLfj338GMnWtXR2ml4GeNg1eF+afjmuOgZfWKuUEN0=",
+        "level1Cache": {
+          "entryCount": 5,
+          "timeToLiveInMs": 120000
+        },
+        "level2Cache": {
+          "qdrantUri": "http://gr-dev-vm.westus2.cloudapp.azure.com:6333",
+          "apikey": "Testing123",
+          "searchType": "Cosine",
+          "searchDistance": 0.9,
+          "timeToLiveInMs": 240000
+        },
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "normalizerSettings": [
+        {
+          "normalizerId": "normalizeInputForGpt52",
+          "includeAttributes": [
+            {
+              "attributeName": "model",
+              "attributeValue": "gpt-5.2"
+            },
+            {
+              "attributeName": "temperature",
+              "attributeValue": 0.75
+            }
+          ],
+          "replaceAttributes": [
+            {
+              "fromAttributeName": "max_tokens",
+              "toAttributeName": "max_completion_tokens",
+              "value": 1500
+            }
+          ]
+        }
+      ],
+      "remoteServerSettings": {
+        "servers": [
+          {
+            "serverId": "utility-support-api-server"
+          },
+          {
+            "serverId": "supply-chain-fulfillment-mcp-server"
+          },
+          {
+            "serverId": "employee-onboarding-mcp-server"
+          }
+        ],
+        "plannerModel": "gpt-5.2"
+      },
+      "endpoints": [
+        {
+          "id": "westus3-global-standard",
+          "rpm": 10,
+          "rateLimitDelaySecs": 40,
+          "uri": "https://disney-test-eastus2-resource.openai.azure.com/openai/v1/chat/completions",
+          "apikey": "77o97ahO5N7FDi5Tx1WLL6Mk7mjaw3JUiwF2CoUXFSO4EFo6SioZJQQJ99BFACHYHv6XJ3w3AAAAACOG5Td9",
+          "normalizationPolicy": {
+            "inputNormalizerId": "normalizeInputForGpt52"
+          },
+          "budget": {
+            "modelName": "gpt-5-chat-global"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-claude-test-agent",
+      "description": "An AI Application to test Anthropic Claude models",
+      "version": "1.0.0",
+      "appType": "azure_claude",
+      "isActive": true,
+      "exposeA2AEndpoint": false,
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "encryptionKey": "kLfj338GMnWtXR2ml4GeNg1eF+afjmuOgZfWKuUEN0=",
+        "level1Cache": {
+          "entryCount": 5,
+          "timeToLiveInMs": 120000
+        },
+        "level2Cache": {
+          "qdrantUri": "http://gr-dev-vm.westus2.cloudapp.azure.com:6333",
+          "apikey": "Testing123",
+          "searchType": "Cosine",
+          "searchDistance": 0.9,
+          "timeToLiveInMs": 240000
+        },
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "normalizerSettings": [
+        {
+          "normalizerId": "normalizeInputForHaiku45",
+          "includeAttributes": [
+            {
+              "attributeName": "model",
+              "attributeValue": "claude-haiku-4-5"
+            },
+            {
+              "attributeName": "temperature",
+              "attributeValue": 0.75
+            }
+          ],
+          "excludeAttributes": [
+            {
+              "attributeName": "user"
+            },
+            {
+              "attributeName": "presence_penalty"
+            },
+            {
+              "attributeName": "frequency_penalty"
+            },
+            {
+              "attributeName": "stream_options"
+            },
+            {
+              "attributeName": "top_p"
+            }
+          ],
+          "replaceAttributes": [
+            {
+              "fromAttributeName": "max_completion_tokens",
+              "toAttributeName": "max_tokens"
+            }
+          ],
+          "includeHeaders": [
+            {
+              "headerName": "anthropic-version",
+              "headerValue": "2023-06-01"
+            }
+          ]
+        }
+      ],
+      "endpoints": [
+        {
+          "id": "claude-haiku-45-global-eus",
+          "rpm": 100,
+          "uri": "https://disney-test-eastus2-resource.services.ai.azure.com/anthropic/v1/messages",
+          "apikey": "77o97ahO5N7FDi5Tx1WLL6Mk7mjaw3JUiwF2CoUXFSO4EFo6SioZJQQJ99BFACHYHv6XJ3w3AAAAACOG5Td9",
+          "normalizationPolicy": {
+            "inputNormalizerId": "normalizeInputForHaiku45"
+          },
+          "budget": {
+            "modelName": "claude-haiku-4-5"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-disney-agent-test",
+      "description": "An Application to test 200 and 429 responses",
+      "appType": "azure_oai",
+      "isActive": true,
+      "exposeA2AEndpoint": false,
+      "cacheSettings": {
+        "useCache": false,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "encryptionKey": "kLfj338GMnWtXR2ml4GeNg1eF+afjmuOgZfWKuUEN0=",
+        "level1Cache": {
+          "entryCount": 5,
+          "timeToLiveInMs": 120000
+        },
+        "level2Cache": {
+          "qdrantUri": "http://gr-dev-vm.westus2.cloudapp.azure.com:6333",
+          "apikey": "Testing123",
+          "searchType": "Cosine",
+          "searchDistance": 0.9,
+          "timeToLiveInMs": 240000
+        },
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": false,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "normalizerSettings": [
+        {
+          "normalizerId": "normalizeInputForGpt41",
+          "includeAttributes": [
+            {
+              "attributeName": "model",
+              "attributeValue": "gpt-4.1"
+            },
+            {
+              "attributeName": "temperature",
+              "attributeValue": 0.75
+            }
+          ],
+          "replaceAttributes": [
+            {
+              "fromAttributeName": "max_tokens",
+              "toAttributeName": "max_completion_tokens",
+              "value": 1500
+            }
+          ]
+        },
+        {
+          "normalizerId": "normalizeInputForGpt52",
+          "includeAttributes": [
+            {
+              "attributeName": "model",
+              "attributeValue": "gpt-5.2"
+            },
+            {
+              "attributeName": "temperature",
+              "attributeValue": 0.75
+            }
+          ],
+          "replaceAttributes": [
+            {
+              "fromAttributeName": "max_tokens",
+              "toAttributeName": "max_completion_tokens",
+              "value": 1500
+            }
+          ]
+        }
+      ],
+      "endpoints": [
+        {
+          "id": "gpt-5-global-standard",
+          "rpm": 100,
+          "uri": "https://disney-test-eastus2-resource.openai.azure.com/openai/v1/chat/completions",
+          "apikey": "77o97ahO5N7FDi5Tx1WLL6Mk7mjaw3JUiwF2CoUXFSO4EFo6SioZJQQJ99BFACHYHv6XJ3w3AAAAACOG5Td9",
+          "normalizationPolicy": {
+            "inputNormalizerId": "normalizeInputForGpt52"
+          },
+          "budget": {
+            "modelName": "gpt-5-chat-global"
+          }
+        },
+        {
+          "id": "gpt-4.1-mini-global-std",
+          "rpm": 100,
+          "uri": "https://disney-test-eastus2-resource.openai.azure.com/openai/v1/chat/completions",
+          "apikey": "77o97ahO5N7FDi5Tx1WLL6Mk7mjaw3JUiwF2CoUXFSO4EFo6SioZJQQJ99BFACHYHv6XJ3w3AAAAACOG5Td9",
+          "normalizationPolicy": {
+            "inputNormalizerId": "normalizeInputForGpt41"
+          },
+          "budget": {
+            "modelName": "gpt-4.1-mini-global"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-app-DeepSeek-V3.2",
+      "description": "A sample app for testing",
+      "appType": "azure_oai",
+      "isActive": true,
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "endpoints": [
+        {
+          "id": "global-westus3",
+          "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/openai/v1/chat/completions",
+          "apikey": "test123",
+          "rpm": 20
+        }
+      ]
+    },
+    {
+      "appId": "anthropic-qna-agent",
+      "description": "An AI Application/Agent that answers technical and sales questions on Anthropic models hosted on Microsoft Foundry",
+      "version": "1.0.0",
+      "appType": "azure_oai",
+      "isActive": true,
+      "exposeA2AEndpoint": true,
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "encryptionKey": "kLfj338GMnWtXR2ml4GeNg1eF+afjmuOgZfWKuUEN0=",
+        "level1Cache": {
+          "entryCount": 10,
+          "timeToLiveInMs": 120000
+        },
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "remoteServerSettings": {
+        "servers": [
+          {
+            "serverId": "mcp-md-server"
+          }
+        ],
+        "plannerModel": "gpt-5.2",
+        "plannerMaxTokens": 5000
+      },
+      "endpoints": [
+        {
+          "id": "westus3-global-standard",
+          "rpm": 10,
+          "rateLimitDelaySecs": 40,
+          "uri": "https://disney-test-eastus2-resource.openai.azure.com/openai/v1/chat/completions",
+          "apikey": "77o97ahO5N7FDi5Tx1WLL6Mk7mjaw3JUiwF2CoUXFSO4EFo6SioZJQQJ99BFACHYHv6XJ3w3AAAAACOG5Td9",
+          "budget": {
+            "modelName": "gpt-5-chat-global"
+          }
+        }
+      ]
+    }
+  ],
+  "budgetConfig": [
+    {
+      "budgetName": "AzureAIFoundry-Direct-Models",
+      "description": "A budget class for Azure Direct Models on Azure AI Foundry",
+      "models": [
+        {
+          "modelName": "claude-haiku-4-5",
+          "description": "Deployed in Azure (PayGo TPMs)",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.001,
+            "cachedInputTokensCostPer1k": 0.0001,
+            "outputTokensCostPer1k": 0.005
+          }
+        },
+        {
+          "modelName": "gpt-oss-120b",
+          "description": "Deployed in Az OpenAI (PayGo TPMs)",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00015,
+            "outputTokensCostPer1k": 0.0006
+          }
+        },
+        {
+          "modelName": "gpt-4.1-mini-openai",
+          "description": "Deployed in OpenAI (PayGo TPMs)",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0008,
+            "cachedInputTokensCostPer1k": 0.00002,
+            "outputTokensCostPer1k": 0.0032
+          }
+        },
+        {
+          "modelName": "gpt-4o-mini-0718-std",
+          "description": "Deployed in westus3 region - AIF Hub = dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.000165,
+            "cachedInputTokensCostPer1k": 0.000083,
+            "outputTokensCostPer1k": 0.00066
+          }
+        },
+        {
+          "modelName": "gpt-4o-0806-global-std",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0025,
+            "cachedInputTokensCostPer1k": 0.00125,
+            "outputTokensCostPer1k": 0.01
+          }
+        },
+        {
+          "modelName": "gpt-4o-1120-std",
+          "description": "Deployed in westus3 AIF = oai-gr-dev-wus3",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00275,
+            "cachedInputTokensCostPer1k": 0.001375,
+            "outputTokensCostPer1k": 0.011
+          }
+        },
+        {
+          "modelName": "gpt-4.1-mini-global",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0004,
+            "cachedInputTokensCostPer1k": 0.0001,
+            "outputTokensCostPer1k": 0.0016
+          }
+        },
+        {
+          "modelName": "o4-mini-global-std",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0011,
+            "cachedInputTokensCostPer1k": 0.00028,
+            "outputTokensCostPer1k": 0.0044
+          }
+        },
+        {
+          "modelName": "gpt-5-chat-global",
+          "description": "Deployed in eastus2 region",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00125,
+            "cachedInputTokensCostPer1k": 0.000125,
+            "outputTokensCostPer1k": 0.01
+          }
+        },
+        {
+          "modelName": "gpt-5.2-global",
+          "description": "Deployed in eastus2 region",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00175,
+            "cachedInputTokensCostPer1k": 0.00018,
+            "outputTokensCostPer1k": 0.014
+          }
+        },
+        {
+          "modelName": "text-embedding-ada-002-eastus",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.000121,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0
+          }
+        },
+        {
+          "modelName": "text-embedding-3-small-global",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00002,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0
+          }
+        },
+        {
+          "modelName": "Phi-3-small-8k-instruct",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub - dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00015,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.0006
+          }
+        },
+        {
+          "modelName": "phi-3.5-MoE-Instruct",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub - dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00016,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.00064
+          }
+        },
+        {
+          "modelName": "Phi-4",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub - dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.000125,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.0005
+          }
+        },
+        {
+          "modelName": "DeepSeek-R1-021025",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.001485,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.00594
+          }
+        },
+        {
+          "modelName": "Llama-3.3-70B-Instruct-global",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00071,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.00071
+          }
+        },
+        {
+          "modelName": "grok-3-mini-global",
+          "description": "Grok-3-mini is deployed as global standard in westus3 region on AI Foundry",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.003,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.015
+          }
+        }
+      ]
+    }
+  ],
+  "remoteServerConfig": [
+    {
+      "id": "supply-chain-fulfillment-mcp-server",
+      "name": "Supply Chain Fulfillment",
+      "description": "Exposes tools for supply chain fulfillment such as sales order management (order info & status), creating/revising shipment plans, checking shipment dates etc",
+      "protocol": "MCP",
+      "uri": "https://supply-chain-fulfill-mcp-server.whiteground-1e998745.westus2.azurecontainerapps.io/mcp",
+      "tags": [
+        "supply-chain-management",
+        "fulfillment",
+        "shipment-management",
+        "order-management"
+      ],
+      "auth": {
+        "authType": "ApiKey",
+        "keyName": "x-api-key",
+        "keyValue": "demo-api-key-12345"
+      },
+      "examples": [
+        "Get me the status of sales order SO-10045",
+        "Get me sales order info for SO-10045",
+        "For order SO-10045, can we deliver to 98109 by July 12? If yes, pick the cheapest carrier that meets the date and create a shipment plan."
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    },
+    {
+      "id": "employee-onboarding-mcp-server",
+      "name": "Employee Onboarding",
+      "description": "Exposes tools for onboarding new employees.",
+      "protocol": "MCP",
+      "uri": "https://emp-onboarding-mcp-server.whiteground-1e998745.westus2.azurecontainerapps.io/mcp",
+      "tags": [
+        "hr-utilities",
+        "employee-onboarding"
+      ],
+      "auth": {
+        "authType": "ApiKey",
+        "keyName": "x-api-key",
+        "keyValue": "demo-api-key-12345"
+      },
+      "examples": [
+        "Create an offer letter for [name] as market analyst in Marketing team with salary $125,000 and starting 2026-08-01.  Their email ID is: [email-id] and phone number is 206-555-1234.",
+        "I need to create an offer letter for a new candidate. Her name is [name], email [email-id]. We're offering her the Senior Product Manager position in the Product department with an annual salary of $145,000. Her start date would be August 15, 2026.",
+        "Show me all employees whose onboarding status is 'training_enrolled' and in 'Product' department.",
+        "List employees in onboarding status."
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    },
+    {
+      "id": "utility-support-api-server",
+      "name": "Utilities Customer Support",
+      "description": "Exposes tools for querying utility related info such as billing and account management, outages etc, used by customer support personnel.",
+      "protocol": "WebAPI",
+      "uri": "https://utilities-support-web-api.whiteground-1e998745.westus2.azurecontainerapps.io",
+      "tags": [
+        "utilities-management",
+        "customer-support",
+        "billing-and-account-management",
+        "outage-management"
+      ],
+      "uriToFetchToolSchemas": "/openapi.json",
+      "auth": {
+        "authType": "ApiKey",
+        "keyName": "x-api-key",
+        "keyValue": "dev-key"
+      },
+      "examples": [
+        "Get me the account balance and due date for customer 'Ava'. Is there any outage in their area?  Get me this customer's billing info. as well.",
+        "What are the details of customer Ava's last 3 utility bills?  Give me the due date and amount due for the current bill. Also, is there any planned outage in her area in the next 7 days?"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    },
+    {
+      "id": "telco-cust360-server",
+      "name": "An AI Agent that retrieves 360 information about customers",
+      "description": "Exposes tools for querying and retrieving subscriber (360 degrees) information, customer's billing & location information.",
+      "protocol": "MCP",
+      "uri": "https://telco-mcp-server.whiteground-1e998745.westus2.azurecontainerapps.io/mcp",
+      "tags": [
+        "customer-info",
+        "billing-info",
+        "location-info"
+      ],
+      "auth": {
+        "authType": "ApiKey",
+        "keyName": "x-api-key",
+        "keyValue": "demo-api-key-12345"
+      },
+      "examples": [
+        "Get complete customer's profile information for phone no. +1-555-0001 and password 1234",
+        "Get the current location information for subscriber with phone no. +1-555-0001",
+        "Get the billing history for subscriber with phone no. +1-555-0001"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    },
+    {
+      "id": "telco-cust-service-server",
+      "name": "An AI Agent used by Customer Service personnel/representatives",
+      "description": "Exposes tools for querying the service ticket knowledge base, retrieve service ticket information and creating new service tickets.",
+      "protocol": "MCP",
+      "uri": "https://telco-mcp-func-app-fjadhdg3gjffdyh8.westus2-01.azurewebsites.net/runtime/webhooks/mcp",
+      "tags": [
+        "customer-service",
+        "service-tickets",
+        "knowledge-base"
+      ],
+      "auth": {
+        "authType": "ApiKey",
+        "keyName": "x-api-key",
+        "keyValue": "9b2e5c8e-1a0c-4f1b-9c3d-8f0e5b6c7d8e"
+      },
+      "examples": [
+        "Customer states internet connection keeps dropping. Search and list similar tickets reported by other customers.",
+        "Get me the details for ticket no. TKT-2024-007234",
+        "Create a service ticket for customer: Amy Wombach, phone no: (425) 8824667, email: amy.wombach@wc2010.com, description of problem: Internet connection is slow between 9am to 5pm during week days."
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ]
+}

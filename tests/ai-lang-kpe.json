@@ -1,0 +1,15 @@
+{
+    "kind": "KeyPhraseExtraction",
+    "parameters": {
+        "modelVersion": "latest"
+    },
+    "analysisInput":{
+        "documents":[
+            {
+                "id":"1",
+                "language":"en",
+                "text": "Get detailed information for Metlakatla Indian Community Watershed‐scale Fish Passage Improvement Project.  Include all the individual cost estimates."
+            }
+        ]
+    }
+}

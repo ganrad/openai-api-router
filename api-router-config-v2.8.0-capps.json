@@ -1,0 +1,717 @@
+{
+  "serverId": "Ai-App-Gateway-Dev",
+  "serverType": "single-domain",
+  "applications": [
+    {
+      "appId": "vectorizedata",
+      "description": "Application that uses OAI model to generate data embeddings/vectors",
+      "appType": "azure_oai",
+      "isActive": true,
+      "cacheSettings": {
+        "useCache": false
+      },
+      "memorySettings": {
+        "useMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "endpoints": [
+        {
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d",
+          "budget": {
+            "modelName": "text-embedding-ada-002-eastus"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-chatbot-phi-4",
+      "description": "An AI Assistant / Chatbot application which uses MSFT phi-4 model for answering questions.",
+      "appType": "azure_aimodel_inf",
+      "isActive": true,
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.92,
+        "encryptionKey": "kLfj338GMnWtXR2ml4GeNg1eF+afjmuOgZfWKuUEN0=",
+        "level1Cache": {
+          "entryCount": 5,
+          "timeToLiveInMs": 120000
+        },
+        "level2Cache": {
+          "qdrantUri": "http://gr-dev-vm.westus2.cloudapp.azure.com:6333",
+          "apikey": "Testing123",
+          "searchType": "Cosine",
+          "searchDistance": 0.9,
+          "timeToLiveInMs": 240000
+        },
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "6 minutes"
+      },
+      "memorySettings": {
+        "useMemory": true,
+        "msgCount": 1,
+        "entryExpiry": "5 minutes"
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "endpointRouterType": "FeedbackWeightedRandom",
+      "endpoints": [
+        {
+          "id": "phi-4-eastus2",
+          "rpm": 9,
+          "uri": "https://Phi-4-011625.eastus2.models.ai.azure.com/v1/chat/completions?api-version=2024-06-01",
+          "apikey": "HxV3w06gUSytAfXU16Au0uMwrI8DQjZz",
+          "budget": {
+            "modelName": "Phi-4"
+          }
+        },
+        {
+          "id": "phi-4-westus3",
+          "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56",
+          "budget": {
+            "modelName": "Phi-4"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-app-llama-3.3-70b",
+      "description": "An AI App that uses Llama-3.3-70B model",
+      "appType": "azure_aimodel_inf",
+      "isActive": true,
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "endpoints": [
+        {
+          "id": "global-std-westus3",
+          "rpm": 10,
+          "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56",
+          "budget": {
+            "modelName": "Llama-3.3-70B-Instruct-global"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-app-grok-3-mini",
+      "description": "An AI App which uses grok-3-mini model for text generation",
+      "appType": "azure_aimodel_inf",
+      "isActive": true,
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "endpoints": [
+        {
+          "id": "global-std-westus3",
+          "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56",
+          "budget": {
+            "modelName": "grok-3-mini-global"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-chatbot-gpt4o",
+      "description": "An AI Assistant / Chatbot application which uses gpt-4o (/ Omni) mini model for answering GK questions.",
+      "appType": "azure_oai",
+      "isActive": true,
+      "exposeA2AEndpoint": true,
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.92,
+        "encryptionKey": "kLfj338GMnWtXR2ml4GeNg1eF+afjmuOgZfWKuUEN0=",
+        "level1Cache": {
+          "entryCount": 5,
+          "timeToLiveInMs": 120000
+        },
+        "level2Cache": {
+          "qdrantUri": "http://gr-dev-vm.westus2.cloudapp.azure.com:6333",
+          "apikey": "Testing123",
+          "searchType": "Cosine",
+          "searchDistance": 0.9,
+          "timeToLiveInMs": 240000
+        },
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "6 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "5 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false,
+        "memoryType": "Group",
+        "userFactsAppName": "",
+        "separatorChar": ":",
+        "searchType": "Cosine",
+        "memoryConfig": [
+          {
+            "groupNames": [
+              "cricket",
+              "football",
+              "sports",
+              "soccer"
+            ],
+            "extractRoleValues": "User",
+            "extractionPrompt": "Glean and extract pertinent information or facts about the user from the 'Query'. Limit the facts to one or two. Infer information such as user's topics of interest especially in sports and associated events, game schedules, historical statistics for games played and top players in those events, demographics (where the games/tournaments were played) & any other useful contextual signals. Keep inferences **reasonable and grounded**, not speculative.",
+            "followupPrompt": "",
+            "generateFollowupMsgs": true
+          },
+          {
+            "groupNames": [
+              "cloud",
+              "ai"
+            ],
+            "extractRoleValues": "User",
+            "extractionPrompt": "Glean and extract pertinent information or facts about the user from the 'Query'. Limit the facts to one or two. Infer information about the user's topics of interest especially in cloud computing, technologies associated with artificial intelligence and machine learning, generative AI, large language models & any other useful contextual signals. Keep inferences **reasonable and grounded**, not speculative.",
+            "followupPrompt": "",
+            "generateFollowupMsgs": true
+          }
+        ]
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "endpoints": [
+        {
+          "rpm": 10,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d",
+          "budget": {
+            "modelName": "gpt-4o-mini-0718-std"
+          },
+          "healthPolicy": {
+            "maxCallsBeforeUnhealthy": 1,
+            "latencyThresholdSeconds": 20,
+            "retryAfterMinutes": 5
+          }
+        },
+        {
+          "rpm": 10,
+          "uri": "https://oai-gr-dev-wus3.openai.azure.com/openai/deployments/gpt-4o-wus3/chat/completions?api-version=2025-01-01-preview",
+          "apikey": "65d72ca615c44aacaa5d8e19c50eef81",
+          "budget": {
+            "modelName": "gpt-4o-1120-std"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-gk-chatbot",
+      "description": "An AI Assistant / Chatbot application which uses gpt mini models for answering questions.",
+      "appType": "azure_oai",
+      "isActive": true,
+      "exposeA2AEndpoint": true,
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.92,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "4 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "5 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false,
+        "memoryType": "User",
+        "userFactsAppName": "",
+        "memoryConfig": [
+          {
+            "extractRoleValues": "User",
+            "extractionPrompt": "Glean and extract pertinent information or facts about the user from the 'Query'. Limit the facts to one or two. Infer information such as user's topics of interest especially in sports and associated events, game schedules, historical statistics for games played and top players in those events, demographics (where the games/tournaments were played) & any other useful contextual signals. Keep inferences **reasonable and grounded**, not speculative.",
+            "followupPrompt": "",
+            "generateFollowupMsgs": true
+          }
+        ]
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "endpointRouterType": "FeedbackWeightedRandom",
+      "endpoints": [
+        {
+          "id": "gpt-4o-mini-eastus",
+          "rpm": 2,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d",
+          "budget": {
+            "modelName": "gpt-4o-mini-0718-std"
+          }
+        },
+        {
+          "id": "gpt-4.1-mini-global-std",
+          "uri": "https://aif-project-westus3-072-resource.cognitiveservices.azure.com/openai/deployments/gpt-4.1-mini/chat/completions?api-version=2025-01-01-preview",
+          "apikey": "FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56",
+          "budget": {
+            "modelName": "gpt-4.1-mini-global"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-app-grok-30-mini",
+      "description": "An AI Application that uses grok-3-mini model to generate content",
+      "appType": "azure_aimodel_inf",
+      "isActive": true,
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "endpoints": [
+        {
+          "id": "useast2-global-standard",
+          "rpm": 10,
+          "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56"
+        }
+      ]
+    },
+    {
+      "appId": "ai-app-gpt-5",
+      "description": "An AI Application that uses gpt-5 advanced reasoning model to generate content.  Uses input & output payload normalizers.",
+      "appType": "azure_oai",
+      "isActive": true,
+      "exposeA2AEndpoint": true,
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": false,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "normalizerSettings": [
+        {
+          "normalizerId": "normalizeInputToAzureOpenAI",
+          "includeAttributes": [
+            {
+              "attributeName": "messages",
+              "attributeValue": {
+                "role": "developer",
+                "content": "Always respond in Markdown. Use bullet points for lists and keep answers concise."
+              },
+              "op": "insert",
+              "index": 1
+            },
+            {
+              "attributeName": "temperature",
+              "attributeValue": 0.75
+            }
+          ],
+          "replaceAttributes": [
+            {
+              "fromAttributeName": "max_completion_tokens",
+              "toAttributeName": "max_tokens",
+              "value": 500
+            }
+          ]
+        },
+        {
+          "normalizerId": "normalizeOutputToOpenAI",
+          "excludeAttributes": [
+            {
+              "attributeName": "prompt_filter_results"
+            },
+            {
+              "attributeName": "choices[*].content_filter_results"
+            },
+            {
+              "attributeName": "system_fingerprint"
+            }
+          ],
+          "includeAttributes": [
+            {
+              "attributeName": "service_tier",
+              "attributeValue": "azure"
+            }
+          ]
+        }
+      ],
+      "endpoints": [
+        {
+          "id": "useast2-global-standard",
+          "rpm": 10,
+          "uri": "https://ganes-mbjvew83-eastus2.cognitiveservices.azure.com/openai/deployments/gpt-5-chat-GS/chat/completions?api-version=2025-01-01-preview",
+          "apikey": "77o97ahO5N7FDi5Tx1WLL6Mk7mjaw3JUiwF2CoUXFSO4EFo6SioZJQQJ99BFACHYHv6XJ3w3AAAAACOG5Td9",
+          "budget": {
+            "modelName": "gpt-5-chat-global"
+          },
+          "normalizationPolicy": {
+            "inputNormalizerId": "normalizeInputToAzureOpenAI",
+            "outputNormalizerId": "normalizeOutputToOpenAI"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-chatbot-normalize-test",
+      "description": "A sample AI Application that uses normalization policy to transform AOAI's output format to conform to OAI response format.",
+      "appType": "azure_oai",
+      "isActive": true,
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": false,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "normalizerSettings": [
+        {
+          "normalizerId": "normalizeOutputToOAI",
+          "excludeAttributes": [
+            {
+              "attributeName": "prompt_filter_results"
+            },
+            {
+              "attributeName": "choices[*].content_filter_results"
+            },
+            {
+              "attributeName": "system_fingerprint"
+            }
+          ],
+          "replaceAttributes": [
+            {
+              "fromAttributeName": "choices[*].message.annotations",
+              "toAttributeName": "choices[*].message.env"
+            },
+            {
+              "fromAttributeName": "choices[*].delta.annotations",
+              "toAttributeName": "choices[*].delta.env",
+              "value": ""
+            }
+          ],
+          "includeAttributes": [
+            {
+              "attributeName": "service_tier",
+              "attributeValue": "azure"
+            }
+          ]
+        }
+      ],
+      "endpointRouterType": "WeightedRandom",
+      "endpoints": [
+        {
+          "id": "gpt-4o-open-ai",
+          "weight": 50,
+          "uri": "https://api.openai.com/v1/chat/completions",
+          "apikey": "_bSMIGlclmosA",
+          "healthPolicy": {
+            "maxCallsBeforeUnhealthy": 1,
+            "latencyThresholdSeconds": 20,
+            "retryAfterMinutes": 5
+          },
+          "budget": {
+            "modelName": "gpt-4.1-mini-openai"
+          }
+        },
+        {
+          "id": "gpt-4o-mini-eastus",
+          "weight": 50,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01",
+          "apikey": "9ecabe6d",
+          "budget": {
+            "modelName": "gpt-4o-mini-0718-std"
+          },
+          "normalizationPolicy": {
+            "outputNormalizerId": "normalizeOutputToOAI"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "Researcher-Agent",
+      "description": "An AI Application that uses an advanced reasoning model (o4-mini) to generate responses",
+      "appType": "azure_oai",
+      "isActive": true,
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "Cosine",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "30 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "endpoints": [
+        {
+          "id": "o4-mini-global-std-wus3-v1",
+          "uri": "https://aif-project-westus3-072-resource.openai.azure.com/openai/v1/chat/completions",
+          "apikey": "helloworld01",
+          "rpm": 10
+        },
+        {
+          "id": "o4-mini-global-std-wus3-chat",
+          "uri": "https://aif-project-westus3-072-resource.cognitiveservices.azure.com/openai/deployments/o4-mini/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "helloworld01",
+          "rpm": 10
+        }
+      ]
+    }
+  ],
+  "budgetConfig": [
+    {
+      "budgetName": "AzureAIFoundry-Direct-Models",
+      "description": "A budget class for Azure Direct Models on Azure AI Foundry",
+      "models": [
+        {
+          "modelName": "gpt-4.1-mini-openai",
+          "description": "Deployed in OpenAI (PayGo TPMs)",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0008,
+            "cachedInputTokensCostPer1k": 0.00002,
+            "outputTokensCostPer1k": 0.0032
+          }
+        },
+        {
+          "modelName": "gpt-4o-mini-0718-std",
+          "description": "Deployed in westus3 region - AIF Hub = dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.000165,
+            "cachedInputTokensCostPer1k": 0.000083,
+            "outputTokensCostPer1k": 0.00066
+          }
+        },
+        {
+          "modelName": "gpt-4o-0806-global-std",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0025,
+            "cachedInputTokensCostPer1k": 0.00125,
+            "outputTokensCostPer1k": 0.01
+          }
+        },
+        {
+          "modelName": "gpt-4o-1120-std",
+          "description": "Deployed in westus3 AIF = oai-gr-dev-wus3",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00275,
+            "cachedInputTokensCostPer1k": 0.001375,
+            "outputTokensCostPer1k": 0.011
+          }
+        },
+        {
+          "modelName": "gpt-4.1-mini-global",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0004,
+            "cachedInputTokensCostPer1k": 0.0001,
+            "outputTokensCostPer1k": 0.0016
+          }
+        },
+        {
+          "modelName": "o4-mini-global-std",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0011,
+            "cachedInputTokensCostPer1k": 0.00028,
+            "outputTokensCostPer1k": 0.0044
+          }
+        },
+        {
+          "modelName": "gpt-5-chat-global",
+          "description": "Deployed in eastus2 region",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00125,
+            "cachedInputTokensCostPer1k": 0.000125,
+            "outputTokensCostPer1k": 0.01
+          }
+        },
+        {
+          "modelName": "text-embedding-ada-002-eastus",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.000121,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0
+          }
+        },
+        {
+          "modelName": "text-embedding-3-small-global",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00002,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0
+          }
+        },
+        {
+          "modelName": "Phi-3-small-8k-instruct",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub - dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00015,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.0006
+          }
+        },
+        {
+          "modelName": "phi-3.5-MoE-Instruct",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub - dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00016,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.00064
+          }
+        },
+        {
+          "modelName": "Phi-4",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub - dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.000125,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.0005
+          }
+        },
+        {
+          "modelName": "DeepSeek-R1-021025",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.001485,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.00594
+          }
+        },
+        {
+          "modelName": "Llama-3.3-70B-Instruct-global",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00071,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.00071
+          }
+        },
+        {
+          "modelName": "grok-3-mini-global",
+          "description": "Grok-3-mini is deployed as global standard in westus3 region on AI Foundry",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.003,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.015
+          }
+        }
+      ]
+    }
+  ]
+}

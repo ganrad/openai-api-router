@@ -1,0 +1,9 @@
+{
+    "search": "Metlakatla Indian Community Watershed‐scale Fish Passage Improvement Project",
+    "queryType": "simple",
+    "searchMode": "all",
+    "searchFields": "content",
+    "select": "title,content,filepath,url,chunk_id",
+    "top": "5",
+    "count": "true"
+}

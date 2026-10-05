@@ -1,0 +1,30 @@
+{
+  "data_sources": [
+    {
+      "type": "azure_search",
+      "parameters": {
+        "endpoint": "https://gr-dev-rag-ais.search.windows.net",
+        "index_name": "ak-stip-aisrch-iv",
+        "authentication": {
+          "type": "api_key",
+	  "key": "CyMRW4Ei4bSgVahEVxV3PJyXN3vh361rYYblOes2YrAzSeD5lrSL"
+        },
+	"query_type": "vector_semantic_hybrid",
+	"in_scope": false,
+	"embedding_dependency": {
+	  "type": "deployment_name",
+	  "deployment_name": "dev-embedd-ada-002"
+	},
+	"semantic_configuration": "ak-stip-aisrch-iv-semantic-configuration",
+	"top_n_documents": "1"
+      }
+    }
+  ],
+  "messages": [
+        {"role": "system", "content": "You are an AI Assistant trained by OpenAI. If you unable to answer using retrieved content, please respond based on your knowledge."},
+        {"role": "user", "content": "Get detailed information on Ponte Morandi motorway bridge and include the fatalaties. If you are unable to find this info. in the provided content then answer based on your knowledge."}
+  ],
+  "max_tokens": 1000,
+  "user": "ganeshra",
+  "stream": false
+}

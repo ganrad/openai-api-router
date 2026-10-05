@@ -1,0 +1,156 @@
+{
+  "applications": [
+    {
+      "appId": "search-garmin-docs",
+      "description": "AI application to search Garmin GPS manuals",
+      "appType": "azure_search",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "endpoints": [
+        {
+          "uri": "https://gr-dev-rag-ais.search.windows.net/indexes/dev-garmin-idx/docs/search?api-version=2023-10-01-preview",
+          "apikey": "PjA7IU2Q4AB4YxvQc05q0r4wSvLZG96Kl2g0rhTlnVAzSeAK34Yj"
+        }
+      ]
+    },
+    {
+      "appId": "chatbot-gpt4o",
+      "description": "An AI Assistant / Chatbot application which uses gpt-4o (Omni) model for inferencing",
+      "appType": "azure_oai",
+      "searchAiApp": "search-garmin-docs",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CS",
+        "searchDistance": 0.98,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+	"entryExpiry": "2 minutes"
+      },
+      "memorySettings": {
+	"useMemory": true,
+	"msgCount": 1,
+	"entryExpiry": "5 minutes"
+      },
+      "endpoints": [
+        {
+	  "rpm": 10,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt-4o/chat/completions?api-version=2024-02-01",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d"
+	}
+      ]
+    },
+    {
+      "appId": "vectorizedata",
+      "description": "Application that uses OAI model to generate data embeddings/vectors",
+      "appType": "azure_oai",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "memorySettings": {
+	"useMemory": false
+      },
+      "endpoints": [
+        {
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d"
+        }
+      ]
+    },
+    {
+      "appId": "detect-retrieval-tool",
+      "description": "An AI application which uses gpt-4o (Omni) model to identify the right retrieval tool (/agent) based on the end user's query.",
+      "appType": "azure_oai",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "memorySettings": {
+	"useMemory": false
+      },
+      "endpoints": [
+        {
+	  "rpm": 10,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt-4o/chat/completions?api-version=2024-02-01",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d"
+	}
+      ]
+    },
+    {
+      "appId": "build-sql-query",
+      "description": "An AI application which uses gpt-4o (Omni) model for translating NL query to SQL",
+      "appType": "azure_oai",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "memorySettings": {
+	"useMemory": false
+      },
+      "endpoints": [
+        {
+	  "rpm": 10,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt-4o/chat/completions?api-version=2024-02-01",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d"
+	}
+      ]
+    },
+    {
+      "appId": "execute-sql-query",
+      "description": "This application invokes a microservice (Function App) that executes SQL queries and returns results.",
+      "appType": "web_api",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "memorySettings": {
+	"useMemory": false
+      },
+      "endpoints": [
+        {
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt-4o/chat/completions?api-version=2024-02-01",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d"
+	}
+      ]
+    },
+    {
+      "appId": "falcon-ai-summarize",
+      "description": "An AI Assistant / Chatbot application which uses gpt-4o (Omni) model for inferencing",
+      "appType": "azure_oai",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "memorySettings": {
+	"useMemory": true,
+	"msgCount": 3,
+	"entryExpiry": "5 minutes"
+      },
+      "toolChain": [
+        {
+	  "name": "identifyAgent",
+	  "description": "Identifies the agent/app best suited to respond to the end user's query!",
+	  "reqJson": {},
+	  "appId": "detect-retrieval-tool"
+	},
+        {
+	  "name": "buildSqlQuery",
+	  "description": "Builds a SQL query based on end user's question",
+	  "reqJson": {},
+	  "appId": "build-sql-query"
+	},
+        {
+	  "name": "executeSql",
+	  "description": "External app which runs a SQL query",
+	  "reqJson": {},
+	  "appId": "execute-sql-query"
+	}
+      ],
+      "endpoints": [
+        {
+	  "rpm": 10,
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-gpt-4o/chat/completions?api-version=2024-02-01",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d"
+	}
+      ]
+    }
+  ]
+}

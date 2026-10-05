@@ -1,0 +1,12 @@
+# Run this command
+npm audit --omit=dev
+
+# Notes:
+Transitive vulnerability in protobufjs via OpenTelemetry chain.
+No direct exposure to untrusted protobuf inputs.
+Risk accepted
+
+# Add this to Dockerfile at some point
+ENV NODE_ENV=production
+ENV AZURE_LOG_LEVEL=info
+

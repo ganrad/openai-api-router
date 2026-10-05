@@ -52,14 +52,14 @@ async function main() {
   console.log("Begin: Test");
 
   const client = new OpenAIClient(endpoint,new AzureKeyCredential(azureApiKey), clientOptions);
-  const deploymentId = "aichatbotapp"; // Specify the name of the AI Application registered in AI Services API Gateway!
+  const deploymentId = "ai-chatbot-gpt4o"; // Specify the name of the AI Application registered in AI Services API Gateway!
   let events = await client.streamChatCompletions(
     deploymentId,
     [
       { role: "system", content: "You are a helpful AI assistant." },
-      { role: "user", content: "What are the top 10 must see places in the world?" },
+      { role: "user", content: "What are the top 10 must see places in Paris?" },
     ],
-    { maxTokens: 500 },
+    { maxTokens: 1500 },
   );
 
   let prompt = "";

@@ -1,0 +1,315 @@
+{
+  "serverId": "Ai-App-Gateway-v2.6.0",
+  "serverType": "single-domain",
+  "applications": [
+    {
+      "appId": "ai-chatbot-phi-4",
+      "description": "An AI Assistant / Chatbot application which uses MSFT phi-4 model for answering questions.",
+      "appType": "azure_aimodel_inf",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CosineSimilarity",
+        "searchDistance": 0.92,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "2 minutes"
+      },
+      "memorySettings": {
+        "useMemory": true,
+        "msgCount": 1,
+        "entryExpiry": "5 minutes"
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "endpointRouterType": "FeedbackWeightedRandom",
+      "endpoints": [
+        {
+          "id": "phi-4-eastus2",
+          "rpm": 9,
+          "uri": "https://Phi-4-011625.eastus2.models.ai.azure.com/v1/chat/completions?api-version=2024-06-01",
+          "apikey": "HxV3w06gUSytAfXU16Au0uMwrI8DQjZz",
+          "budget": {
+            "modelName": "Phi-4"
+          }
+        },
+        {
+          "id": "phi-4-westus3",
+          "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56",
+          "budget": {
+            "modelName": "Phi-4"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "vectorizedata",
+      "description": "Application that uses OAI model to generate data embeddings/vectors",
+      "appType": "azure_oai",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "memorySettings": {
+        "useMemory": false
+      },
+      "endpoints": [
+        {
+          "uri": "https://oai-gr-dev.openai.azure.com/openai/deployments/dev-embedd-ada-002/embeddings?api-version=2023-05-15",
+          "apikey": "9eca9ec12e1e4be4a38d00282f0d266d"
+        }
+      ]
+    },
+    {
+      "appId": "vec-data-text-embedding-3-small",
+      "description": "Application that uses 'text-embedding-3-small' embedding model to generate data embeddings/vectors",
+      "appType": "azure_oai",
+      "cacheSettings": {
+        "useCache": false
+      },
+      "memorySettings": {
+        "useMemory": false
+      },
+      "budgetSettings": {
+        "useBudget": true,
+        "budgetName": "AzureAIFoundry-Direct-Models"
+      },
+      "endpoints": [
+        {
+          "id": "text-embedd-3-small-global-std",
+          "uri": "https://aif-project-westus3-072-resource.cognitiveservices.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2023-05-15",
+          "apikey": "FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56",
+          "budget": {
+            "modelName": "text-embedding-3-small-global"
+          }
+        }
+      ]
+    },
+    {
+      "appId": "ai-app-llama-3.3-70b",
+      "description": "An AI App that uses Llama-3.3-70B model",
+      "appType": "azure_aimodel_inf",
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": false,
+        "searchType": "CosineSimilarity",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "endpoints": [
+        {
+          "id": "global-std-westus3",
+          "rpm": 10,
+          "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "abcd"
+        }
+      ]
+    },
+    {
+      "appId": "ai-app-grok-3-mini",
+      "description": "An AI App which uses grok-3-mini model for text generation",
+      "appType": "azure_aimodel_inf",
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CosineSimilarity",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "endpoints": [
+        {
+          "id": "global-std-westus3",
+          "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "abcd"
+        }
+      ]
+    },
+    {
+      "appId": "ai-app-gpt",
+      "description": "An AI App which uses cost effective GPT models",
+      "appType": "azure_oai",
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CosineSimilarity",
+        "searchDistance": 0.9,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": false
+      },
+      "endpoints": [
+        {
+          "id": "global-std-westus3-gpt-oss-120b",
+          "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "abcd"
+        },
+        {
+          "id": "global-std-westus3-gpt-4.1-mini",
+          "uri": "https://aif-project-westus3-072-resource.cognitiveservices.azure.com/openai/deployments/gpt-4.1-mini/chat/completions?api-version=2025-01-01-preview",
+          "apikey": "abcd",
+          "rpm": 10
+        }
+      ]
+    }
+  ],
+  "budgetConfig": [
+    {
+      "budgetName": "AzureAIFoundry-Direct-Models",
+      "description": "A budget class for Azure Direct Models on Azure AI Foundry",
+      "models": [
+        {
+          "modelName": "gpt-4o-mini-0718-std",
+          "description": "Deployed in westus3 region - AIF Hub = dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.000165,
+            "cachedInputTokensCostPer1k": 0.000083,
+            "outputTokensCostPer1k": 0.00066
+          }
+        },
+        {
+          "modelName": "gpt-4o-0806-global-std",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0025,
+            "cachedInputTokensCostPer1k": 0.00125,
+            "outputTokensCostPer1k": 0.01
+          }
+        },
+        {
+          "modelName": "gpt-4o-1120-std",
+          "description": "Deployed in westus3 AIF = oai-gr-dev-wus3",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00275,
+            "cachedInputTokensCostPer1k": 0.001375,
+            "outputTokensCostPer1k": 0.011
+          }
+        },
+        {
+          "modelName": "gpt-4.1-mini-global",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0004,
+            "cachedInputTokensCostPer1k": 0.0001,
+            "outputTokensCostPer1k": 0.0016
+          }
+        },
+        {
+          "modelName": "o4-mini-global-std",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0011,
+            "cachedInputTokensCostPer1k": 0.00028,
+            "outputTokensCostPer1k": 0.0044
+          }
+        },
+        {
+          "modelName": "gpt-5-chat-global",
+          "description": "Deployed in eastus2 region",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00125,
+            "cachedInputTokensCostPer1k": 0.000125,
+            "outputTokensCostPer1k": 0.01
+          }
+        },
+        {
+          "modelName": "text-embedding-3-small-global",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00002,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0
+          }
+        },
+        {
+          "modelName": "Phi-3-small-8k-instruct",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub - dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00015,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.0006
+          }
+        },
+        {
+          "modelName": "phi-3.5-MoE-Instruct",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub - dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00016,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.00064
+          }
+        },
+        {
+          "modelName": "Phi-4",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub - dev-ais-wus3-prj-01",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.000125,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.0005
+          }
+        },
+        {
+          "modelName": "DeepSeek-R1-021025",
+          "description": "This model is deployed on serverless API in eastus2 region on AIF Hub",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.001485,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.00594
+          }
+        },
+        {
+          "modelName": "Llama-3.3-70B-Instruct-global",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.00071,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.00071
+          }
+        },
+        {
+          "modelName": "grok-3-mini-global",
+          "description": "Grok-3-mini is deployed as global standard in westus3 region on AI Foundry",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.003,
+            "cachedInputTokensCostPer1k": 0,
+            "outputTokensCostPer1k": 0.015
+          }
+        }
+      ]
+    }
+  ]
+}

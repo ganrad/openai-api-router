@@ -1,0 +1,8 @@
+{
+  "messages": [
+        {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
+        {"role": "user", "content": "Where are the top coffee beans grown in the world?"}
+  ],
+  "max_tokens": 1000,
+  "stream": false
+}

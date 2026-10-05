@@ -1,0 +1,347 @@
+{
+  "ai_app_gateways": [
+    {
+      "name": "Local-Single-Domain",
+      "type": "single-domain",
+      "uri": "http://gr-dev-vm.westus2.cloudapp.azure.com:8080/api/v1/dev/apirouter",
+      "ai_apps": [
+        {
+          "ai_app_name": "ai-chatbot-gpt4o",
+          "description": "An AI Assistant / Chatbot application which uses gpt-4o (Omni) model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-reason-o1-mini-2024-09-12",
+          "description": "An AI Assistant which uses the advanced o1-mini reasoning model for accurately answering questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model_family": "o1",
+          "model_params": {
+            "temperature": 0,
+            "max_tokens": 1000,
+            "top_p": 0,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-reason-o1-2024-12-17",
+          "description": "An AI Assistant which uses the advanced o1 reasoning model for accurately answering questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model_family": "o1",
+          "model_params": {
+            "temperature": 0,
+            "max_tokens": 1000,
+            "top_p": 0,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-phi-3.5-MoE",
+          "description": "An AI Assistant / Chatbot application which uses MSFT PHI-3.5-MoE-Instruct model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-phi-3-small-8k",
+          "description": "An AI Assistant / Chatbot application which uses MSFT phi-3-small-8k-instruct model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-phi-4",
+          "description": "An AI Assistant / Chatbot application which uses MSFT phi-4 model for answering questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-mistral-nemo",
+          "description": "An AI Assistant / Chatbot application which uses Mistral-nemo SLM chat completion model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-mistral-small",
+          "description": "An AI Assistant / Chatbot application which uses Mistral-small chat completion model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-mistral-large",
+          "description": "An AI Assistant / Chatbot application which uses Mistral-large chat completion model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-llama-3.1-70B",
+          "description": "An AI Assistant / Chatbot application which uses Llama-3.1-70B chat completion model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-llama-3.1-405B-Instruct",
+          "description": "An AI Assistant / Chatbot application which uses Llama-3.1-405B instruct chat completion model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "garmin-ai-chatbot-gpt4o",
+          "description": "An AI Assistant application which uses gpt-4o (Omni) model for performing Q&A on Garmin GPS support manuals.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 500,
+            "top_p": 0.1,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          },
+          "search_params": {
+            "ai_search_app": "search-garmin-docs",
+            "endpoint": "https://gr-dev-rag-ais.search.windows.net",
+            "auth_type": "system_assigned_managed_identity",
+            "mid_resource_id": "",
+            "index_name": "dev-garmin-idx",
+            "embedding_model": "dev-embedd-ada-002",
+            "query_type": "vector_semantic_hybrid",
+            "semantic_config": "default",
+            "in_scope": true,
+            "strictness": 3,
+            "top_n_docs": 3,
+            "role_info": "",
+            "include_contexts": ""
+          }
+        },
+        {
+          "ai_app_name": "Deepseek-R1-chatbot",
+          "description": "An AI Assistant / Chatbot application which uses Deepseek R1 chat completion model for answering GK questions.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "Research-Agent",
+          "description": "This is an AI Research Agent which uses the o1 advanced reasoning model",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-gpt4o-mini-v2",
+          "description": "An AI Application that uses gpt4o & gpt-4o-mini models to test advanced traffic management features.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-gpt4o-mini-v4",
+          "description": "An AI Application that uses gpt4o & gpt-4o-mini models to test advanced traffic management features.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-v2.3.8-gpt4o-mini",
+          "description": "An AI Application used for testing the personalization feature introduced in RAPID v2.3.8.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-v2.3.9-gpt4o-mini-w",
+          "description": "An AI Application used for testing endpoint routing (Random Weighted) feature introduced in RAPID v2.3.9.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model": "gpt-4o",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-chatbot-v2.3.9-gpt4o-mini-l",
+          "description": "An AI Application used for testing endpoint routing (Latency Weighted) feature introduced in RAPID v2.3.9.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant trained by OpenAI.",
+          "model": "gpt-4o",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        },
+        {
+          "ai_app_name": "ai-app-grok-3-mini",
+          "description": "An AI Application that uses grok-3-mini model to generate content",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 1000,
+            "top_p": 0.1,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "Local-Multi-Domain",
+      "type": "multi-domain",
+      "uri": "http://4.242.16.181:8000/api/v1/dev/apirouter",
+      "ai_apps": [
+        {
+          "ai_app_name": "garmin-docs-sql-ai-assistant",
+          "description": "An intelligent AI Application that composes a response to the end user's query by orchestrating the execution of a series of LLM Apps.",
+          "user": "rapid",
+          "sysPrompt": "You are a helpful AI Assistant.",
+          "model_params": {
+            "temperature": 0.1,
+            "max_tokens": 500,
+            "top_p": 0.1,
+            "stream": false,
+            "stop": "",
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }
+        }
+      ]
+    }
+  ],
+  "aisGtwyAuth": false,
+  "azTenantId": "c2236a74-6f69-4313-b77b-8a5360c27e88",
+  "appClientId": "dd5d5c33-a90f-459c-9b1f-64e654ce5f20",
+  "apiGatewayAppId": "api://ea069e81-89ea-4977-85ea-9903697bf41c"
+}

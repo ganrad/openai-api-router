@@ -1,0 +1,155 @@
+### Author: Ganesh Radhakrishnan (ganrad)
+### Dated: 08-26-2025
+
+@baseUrl = http://localhost:8080/api/v1/dev/aigateway/cp
+@contentType = application/json
+@BrToken = FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56
+
+@BearerToken = eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6InlFVXdtWFdMMTA3Q2MtN1FaMldTYmVPYjNzUSJ9.eyJhdWQiOiJkNmY3NzI3MC00MGE4LTRhMTItYWIxNS1mM2JmODEyNTI5ZjkiLCJpc3MiOiJodHRwczovL2xvZ2luLm1pY3Jvc29mdG9ubGluZS5jb20vYzIyMzZhNzQtNmY2OS00MzEzLWI3N2ItOGE1MzYwYzI3ZTg4L3YyLjAiLCJpYXQiOjE3NjE3OTIzODIsIm5iZiI6MTc2MTc5MjM4MiwiZXhwIjoxNzYxNzk3NTExLCJhaW8iOiJBVlFBcS84YUFBQUFreWtVZk9OcGp1Zm9DRDBwNU4vZXZSeE1adUsrUHBvRXBJOTd3dFJMMW5vWWdlRmtDTkx2YmpOY1dSb3VhSVNOZTJRME43THVGR0duNHYyUzQyRmpYVnBQWjEzNzFyK05aU3VucnBhU3NEOD0iLCJhenAiOiJjMjJkODEwZC1lMjRhLTQ0YmUtYjA1Mi1kZjIzNGEwMWJlOTkiLCJhenBhY3IiOiIwIiwibmFtZSI6IlRlc3QgVXNlciIsIm9pZCI6IjQ5YWYwODM0LTYzMDctNDllOS05NjIyLTJhNzM5ZDczNWE0YyIsInByZWZlcnJlZF91c2VybmFtZSI6InRlc3QwMUBncmFkaGFrcjRnbWFpbC5vbm1pY3Jvc29mdC5jb20iLCJyaCI6IjEuQVZFQWRHb2p3bWx2RTBPM2U0cFRZTUotaUhCeTk5YW9RQkpLcXhYenY0RWxLZmxSQUZkUkFBLiIsInNjcCI6IkFpR2F0ZXdheS5Db250cm9sUGxhbmUud3JpdGUgQWlHYXRld2F5LnJlYWQgQWlHYXRld2F5LndyaXRlIiwic2lkIjoiMDA5ZDMyNDktNDM4Zi00NmZmLThhMmMtNGM1MWYzOWZjNTEyIiwic3ViIjoiN1lRTWxha3paejM0UzI4QmNrZEZZeGVXYVYzbUozMnluV2xmYTBRa2ViSSIsInRpZCI6ImMyMjM2YTc0LTZmNjktNDMxMy1iNzdiLThhNTM2MGMyN2U4OCIsInV0aSI6ImtUZGUzWjA2TTBLMjNrM2FtelpKQVEiLCJ2ZXIiOiIyLjAiLCJ4bXNfZnRkIjoieWRfN3E4d2w1c2hJM0xhUDl6alBrSldnX3BoN200QjlfY080QWFkSmViSUJkWE5sWVhOMExXUnpiWE0ifQ.P1eVhW_z1_DdSeKUk7j4xw7qpQk3X9z8kbiLDMS0Fh76ePmg9t42e599bfHgNrshUfMER_zWluBv1b7wO5ufpwL5xkGvk4I2SrAXYi-QqDkMIweLL9frW77YTpv0a1H9TWSs91JR3h4ejYVQTPkpTtNcuxLHNm9kVX-GCrkhRQ6LcDcsp6pTyrGaMq0ZKkodmqpL8gLhKjAKpuPaJWRJEsHY7xz7QgsqKgVMNMfQMsA1WUeuZN4UuX3SD17mjfsx5v_hDFiBEFtBaK_EdO4IKovwB96ibCqe245IitF_0_Eaq6saA6k21SbLvJ9Fb_yEm2oifQ45-nZ90Szu4m_G2Q
+
+### Test the healthz endpoint when gateway auth is set to true
+GET http://localhost:8080/api/v1/dev/aigateway/healthz
+
+### Request to retrieve the AI Application Gateway operations
+GET {{baseUrl}}/AiAppServer/operations
+Authorization: Bearer {{BearerToken}}
+
+### Request to retrieve the AI App Gateway configuration
+GET {{baseUrl}}/AiAppServer/get
+Authorization: Bearer {{BearerToken}}
+
+### Request to deploy an AI App Gateway along with AI Apps
+POST {{baseUrl}}/AiAppServer/deploy
+Content-Type: {{contentType}}
+Authorization: Bearer {{BearerToken}}
+
+{
+  "serverId": "Ai-App-Gateway-Local",
+  "serverType": "single-domain",
+  "applications": [
+    {
+      "appId": "ai-app-grok-3-mini",
+      "description": "An AI Application that uses grok-3-mini model to generate content",
+      "appType": "azure_oai",
+      "searchAiApp": "",
+      "cacheSettings": {
+        "useCache": true,
+        "searchType": "CosineSimilarity",
+        "searchDistance": 90,
+        "searchContent": {
+          "term": "messages",
+          "includeRoles": "user"
+        },
+        "entryExpiry": "10 minutes"
+      },
+      "memorySettings": {
+        "affinity": true,
+        "useMemory": true,
+        "msgCount": 5,
+        "entryExpiry": "10 minutes"
+      },
+      "personalizationSettings": {
+        "userMemory": true,
+        "generateFollowupMsgs": true,
+        "userFactsAppName": "",
+        "extractionPrompt": "",
+        "followupPrompt": ""
+      },
+      "endpoints": [
+        {
+          "id": "useast2-global-standard",
+          "rpm": 10,
+          "uri": "https://ganes-mbjvew83-eastus2.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+          "apikey": "jaw3JUiwF"
+        }
+      ]
+    }
+  ],
+  "budgetConfig": [
+    {
+      "budgetName": "AzureAIFoundry-OpenAI",
+      "description": "A budget class for OpenAI models on Azure AI Foundry",
+      "models": [
+        {
+          "modelName": "gpt-4.1-mini-global",
+          "tokenPriceInfo": {
+            "inputTokensCostPer1k": 0.0004,
+            "cachedInputTokensCostPer1k": 0.0001,
+            "outputTokensCostPer1k": 0.0016
+          }
+        }
+      ]
+    }
+  ]
+}
+
+### Request to retrieve the AI Application operations
+GET {{baseUrl}}/AiApplication/operations
+Authorization: Bearer {{BearerToken}}
+
+### Request to get an AI Application's details
+GET {{baseUrl}}/AiApplication/ai-app-grok-30-mini/get
+Authorization: Bearer {{BearerToken}}
+
+### Delete an AI Application
+#DELETE {{baseUrl}}/AiApplication/ai-app-grok-30-mini/delete
+DELETE {{baseUrl}}/AiApplication/Research-Agent/delete
+Authorization: Bearer {{BearerToken}}
+
+### Add/update AI Application
+POST {{baseUrl}}/AiApplication/deploy
+Content-Type: {{contentType}}
+Authorization: Bearer {{BearerToken}}
+
+{
+  "appId": "ai-app-grok-30-mini",
+  "description": "An AI Application that uses grok-3-mini model to generate content",
+  "appType": "azure_aimodel_inf",
+  "isActive": true,
+  "searchAiApp": "",
+  "cacheSettings": {
+    "useCache": true,
+    "searchType": "CosineSimilarity",
+    "searchDistance": 0.90,
+    "searchContent": {
+      "term": "messages",
+      "includeRoles": "user"
+    },
+    "entryExpiry": "10 minutes"
+  },
+  "memorySettings": {
+    "affinity": true,
+    "useMemory": true,
+    "msgCount": 5,
+    "entryExpiry": "10 minutes"
+  },
+  "personalizationSettings": {
+    "userMemory": false
+  },
+  "endpoints": [
+    {
+      "id": "useast2-global-standard",
+      "rpm": 10,
+      "uri": "https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview",
+      "apikey": "FqUADqACfWD61m1GVyI6JVrTpWiLmLioWBO816HjAgWcRzqz3iQOJQQJ99BGACMsfrFXJ3w3AAAAACOG9h56"
+    }
+  ]
+}
+
+### Random test for grok-3-mini model
+POST https://aif-project-westus3-072-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview
+Content-Type: {{contentType}}
+Authorization: Bearer {{BrToken}}
+
+{
+  "messages": [
+      {
+          "role": "user",
+          "content": "I am going to Paris, what should I see?"
+      }
+  ],
+  "max_completion_tokens": 1000,
+  "temperature": 1,
+  "top_p": 1,
+  "model": "grok-3-mini"
+}

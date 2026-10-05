@@ -1,0 +1,16 @@
+{
+	"kind": "SentimentAnalysis",
+	"parameters": {
+		"modelVersion": "latest",
+		"opinionMining": "True"
+	},
+	"analysisInput":{
+		"documents":[
+			{
+				"id":"1",
+				"language":"en",
+				"text": "The food and service were unacceptable. The concierge was nice, however."
+			}
+		]
+	}
+}
