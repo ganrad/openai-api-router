@@ -5,7 +5,7 @@
 @baseUrl = http://localhost:8080/api/v1/dev/aigateway/agents
 @contentType = application/json
 @AcceptType = text/event-stream
-@BearerToken = 
+# @BearerToken = 
 
 ### Get list of all agent cards from the AI App Gateway Server
 GET {{baseUrl}}/.well-known/agents.json
