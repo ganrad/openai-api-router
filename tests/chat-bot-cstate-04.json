@@ -1,8 +1,0 @@
-{
-  "messages": [
-        {"role": "user", "content": "Explain again how the generator functions?"}
-  ],
-  "max_tokens": 1000,
-  "user": "ganeshra",
-  "stream": false
-}

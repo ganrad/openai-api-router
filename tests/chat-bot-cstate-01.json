@@ -1,9 +1,0 @@
-{
-  "messages": [
-        {"role": "system", "content": "Assistant is a large language model trained by OpenAI."},
-        {"role": "user", "content": "How does a car's hybrid engine work?"}
-  ],
-  "max_tokens": 1000,
-  "user": "ganeshra",
-  "stream": false
-}

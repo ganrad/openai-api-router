@@ -263,8 +263,8 @@ class OpenApiMcpBridge {
 
     logger.log({ 
       level: "debug", 
-      message: "[%s] %s.invoke(): Invoking OpenAPI operation.\n  Request ID: %s\n  Target URI: %s\n  Operation ID: %s", 
-      splat: [scriptName, this.constructor.name, requestId, targetUri, operationId] 
+      message: "[%s] %s.invoke(): Invoking OpenAPI operation.\n  Request ID: %s\n  Target URI: %s\n  Method: %s\n  Operation ID: %s", 
+      splat: [scriptName, this.constructor.name, requestId, targetUri, op.method, operationId] 
     });
 
     try {

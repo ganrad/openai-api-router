@@ -50,13 +50,7 @@ class UserMetricsDataHandler extends AbstractDataHandler {
     return (dynamicWithClause);
   }
 
-  async #retrieveAiAppUserMetrics(req, appConnections) {
-    let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
-
-    if (!persistPrompts) { // Prompt persistence is disabled for this AI Application Platform instance!
-
-    };
-
+  async #retrieveAiAppUserMetrics(req) {
     const gatewayConfig = req.targeturis; // AI application platform config
 
     const serverId = gatewayConfig.serverId; // AI Application Platform ID
@@ -68,9 +62,9 @@ class UserMetricsDataHandler extends AbstractDataHandler {
     const threadCount = parseInt(req.query.topThreads) || 20;
 
     let application = this._getAiApplication(appId, gatewayConfig);
-    logger.log({ level: "info", message: "[%s] %s.#retrieveAiAppUserMetrics():\n  Req ID: %s\n  AI Application ID: %s", splat: [scriptName, this.constructor.name, req.id, appId] });
+    logger.log({ level: "info", message: "[%s] %s.#retrieveAiAppUserMetrics():\n  AI Application ID: %s\n  User ID: %s", splat: [scriptName, this.constructor.name, appId, userId] });
 
-    if (!application) {
+    if (!userId) { // User name / id is required to retrieve user level metrics
       return (
         {
           http_code: 404, // Resource not found!
@@ -78,7 +72,7 @@ class UserMetricsDataHandler extends AbstractDataHandler {
           data: {
             error: {
               target: req.originalUrl,
-              message: `AI Application ID [${appId}] not found. Unable to process request.`,
+              message: `User ID [${userId}] not found. Unable to process request.`,
               code: "invalidPayload"
             }
           }
@@ -86,18 +80,26 @@ class UserMetricsDataHandler extends AbstractDataHandler {
       );
     };
 
-    if (!userId) { // User name / id is required to retrieve user level metrics
-    };
-
     if (!application?.budgetSettings || !application?.budgetSettings.useBudget) { // If budget class is not defined for the app or if budgeting is disabled, return an exception
+      return (
+        {
+          http_code: 400, // Bad request!
+          format: EpMetricsOutputFormat.JSON,
+          data: {
+            error: {
+              target: req.originalUrl,
+              message: `Budgeting is disabled for AI App [${appId}]. Unable to process request.`,
+              code: "badRequest"
+            }
+          }
+        }
+      );
     };
 
     let responseHdrs = {  // Set the response headers
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
     };
-
-    // let appConnection = appConnections.getConnection(appId); // Required ?
 
     // Extract individual query strings safely
     // pg-minify handles PostgreSQL comments, blocks, and literal strings perfectly
@@ -411,24 +413,7 @@ class UserMetricsDataHandler extends AbstractDataHandler {
     const from = req.query.from; // From time
     const to = req.query.to; // To time
 
-    let application = this._getAiApplication(appId, gatewayConfig);
-    logger.log({ level: "info", message: "[%s] %s.#retrieveUsersForTypeAhead():\n  Req ID: %s\n  AI Application ID: %s", splat: [scriptName, this.constructor.name, req.id, appId] });
-
-    if (!application) {
-      return (
-        {
-          http_code: 404, // Resource not found!
-          format: EpMetricsOutputFormat.JSON,
-          data: {
-            error: {
-              target: req.originalUrl,
-              message: `AI Application ID [${appId}] not found. Unable to process request.`,
-              code: "invalidPayload"
-            }
-          }
-        }
-      );
-    };
+    logger.log({ level: "info", message: "[%s] %s.#retrieveUsersForTypeAhead():\n  AI Application ID: %s\n  User ID: %s", splat: [scriptName, this.constructor.name, appId, userId] });
 
     let responseHdrs = {  // Set the response headers
       'Content-Type': 'application/json; charset=utf-8',
@@ -450,8 +435,8 @@ class UserMetricsDataHandler extends AbstractDataHandler {
       from,
       to
     ];
-    // Query 7
-    const userData = await userMetricsDao.queryTable("req_metrics_id_8", 7, values, userMetricsQueryStmts[8]);
+    // Query 8
+    const userData = await userMetricsDao.queryTable("req_metrics_id_8", 8, values, userMetricsQueryStmts[8]);
 
     if (userData.errors) {
       return (
@@ -462,7 +447,7 @@ class UserMetricsDataHandler extends AbstractDataHandler {
           data: userData.errors
         });
     };
-    console.log(`*****\nUSER OUTPUT:\n${JSON.stringify(userData.data)}\n****`);
+    // console.log(`*****\nUSER OUTPUT:\n${JSON.stringify(userData.data)}\n****`);
 
     return (
       {
@@ -474,22 +459,282 @@ class UserMetricsDataHandler extends AbstractDataHandler {
     );
   }
 
-  async #processUserMetricsRequest(req, appConnections) {
-    const { aiAppName, resource, requestId } = req.params;
+  async #retrieveRequestList(req) {
+    const gatewayConfig = req.targeturis; // AI application platform config
+
+    const serverId = gatewayConfig.serverId; // AI Application Platform ID
+    const appId = req.params.aiAppName; // AI Application ID
+    const userId = req.query.userName; // Query: User name
+    const from = req.query.from; // From time
+    const to = req.query.to; // To time
+    const limit = req.query.limit; // Page count
+    const offset = req.query.offset; // Offset records (paging)
+    const threadId = req.query.threadId; // Thread ID
+
+    let application = this._getAiApplication(appId, gatewayConfig);
+    logger.log({ level: "info", message: "[%s] %s.#retrieveRequestList():\n  AI Application ID: %s\n  Thread ID: %s\n  User ID: %s", splat: [scriptName, this.constructor.name, appId, threadId, userId] });
+
+    let responseHdrs = {  // Set the response headers
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+    };
+
+    // Extract individual query strings safely
+    // pg-minify handles PostgreSQL comments, blocks, and literal strings perfectly
+    const userMetricsQueryStmts = minify(usermetricsQueriesFileContent, { compress: false })
+      .split(/(?<=;)/) // Splits right after each valid semicolon tokenized by minify
+      .map(q => q.trim())
+      .filter(q => q.length > 0);
+
+    const budgetClass = application?.budgetSettings.budgetName;
+    const payload = {};
+    payload.limit = limit;
+    payload.offset = offset;
+    payload.budgetClass = budgetClass;
+    payload.rows = [];
+
+    let userMetricsDao = new PersistDao(persistdb, TblNames.UserMetrics);
+    let values = [
+      serverId,
+      appId,
+      userId,
+      from,
+      to,
+      threadId // could be null
+    ];
+
+    // Query 5
+    const requestCount = await userMetricsDao.queryTable("req_metrics_id_5", 5, values, userMetricsQueryStmts[5]);
+    if (requestCount.errors) {
+      return (
+        {
+          http_code: 500, // DB error
+          format: EpMetricsOutputFormat.JSON,
+          responseHdrs,
+          data: requestCount.errors
+        });
+    };
+    if ( requestCount.rCount <= 0 ) { // no records, return empty object
+      payload.total = 0;
+      return (
+        {
+          http_code: 500, // DB error
+          format: EpMetricsOutputFormat.JSON,
+          responseHdrs,
+          data: payload
+        });
+    }
+    else
+      payload.total = requestCount.data[0].total_rows;
+
+    const modelClassDef = gatewayConfig.budgetConfig.find(bclass => bclass.budgetName === budgetClass);
+
+    const budgetModelNames = application.endpoints.map(ep => ep.budget?.modelName).filter(Boolean);
+    const modelPriceDefs = modelClassDef.models.filter(modelDef => budgetModelNames.find(bmName => bmName === modelDef.modelName)).map(priceDef => {
+      return {
+        gen_model: priceDef.modelName,
+        in_rate: priceDef.tokenPriceInfo.inputTokensCostPer1k,
+        cr_rate: priceDef.tokenPriceInfo.cachedInputTokensCostPer1k || 0,
+        cw_rate: priceDef.tokenPriceInfo.cachedWriteTokensCostPer1k || 0,
+        out_rate: priceDef.tokenPriceInfo.outputTokensCostPer1k
+      };
+    });
+    const withClause = this.#transformMetricsQuery(modelPriceDefs);
+
+    values = [
+      serverId,
+      appId,
+      userId,
+      from,
+      to,
+      limit,
+      offset,
+      threadId
+    ];
+    // Query 4
+    let sqlQuery = withClause + " " + userMetricsQueryStmts[4];
+    const requestData = await userMetricsDao.queryTable("req_metrics_id_4", 4, values, sqlQuery);
+
+    if (requestData.errors) {
+      return (
+        {
+          http_code: 500, // DB error
+          format: EpMetricsOutputFormat.JSON,
+          responseHdrs,
+          data: requestData.errors
+        });
+    };
+    // console.log(`*****\nREQUEST LIST:\n${JSON.stringify(requestData.data)}\n****`);
+
+    if (requestData.rCount >= 1) {
+      let requestObj;
+      for (const request of requestData.data) {
+        requestObj = {
+          id: Number(request.id),
+          requestId: request.requestid,
+          threadId: request.threadid,
+          ts: request.ts,
+          endpointId: request.endpoint_id,
+          model: request.gen_model,
+          priced: request.priced,
+          instance: request.instance,
+          tokens: {
+            input: Number(request.input_tokens),
+            cacheRead: Number(request.cache_read_tokens),
+            cacheWrite: Number(request.cache_write_tokens),
+            output: Number(request.output_tokens),
+            total: Number(request.total_tokens)
+          },
+          cost: Number(request.cost),
+          toolCalls: Number(request.tool_calls),
+          latencySecs: Number(request.latency_secs),
+          feedbackCount: Number(request.feedback_count)
+        };
+
+        payload.rows.push(requestObj);
+      };
+    };
+
+    return (
+      {
+        http_code: 200,
+        format: EpMetricsOutputFormat.JSON,
+        responseHdrs,
+        data: payload
+      }
+    );
+  }
+
+  async #retrieveRequestDetail(req) {
+    const gatewayConfig = req.targeturis; // AI application platform config
+
+    const appId = req.params.aiAppName; // AI Application ID
+    const serverId = gatewayConfig.serverId; // AI Application Platform ID
+    const requestId = req.params.resourceId; // Resource ID
+
+    logger.log({ level: "info", message: "[%s] %s.#retrieveRequestDetail():\n  AI Application ID: %s\n  Request ID: %s", splat: [scriptName, this.constructor.name, appId, requestId] });
+
+    let responseHdrs = {  // Set the response headers
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+    };
+
+    // Extract individual query strings safely
+    // pg-minify handles PostgreSQL comments, blocks, and literal strings perfectly
+    const userMetricsQueryStmts = minify(usermetricsQueriesFileContent, { compress: false })
+      .split(/(?<=;)/) // Splits right after each valid semicolon tokenized by minify
+      .map(q => q.trim())
+      .filter(q => q.length > 0);
+
+    let userMetricsDao = new PersistDao(persistdb, TblNames.UserMetrics);
+    let values = [
+      requestId,
+      serverId
+    ];
+
+    // Query 7
+    const requestInfo = await userMetricsDao.queryTable("req_metrics_id_7", 7, values, userMetricsQueryStmts[7]);
+    if (requestInfo.errors) {
+      return (
+        {
+          http_code: 500, // DB error
+          format: EpMetricsOutputFormat.JSON,
+          responseHdrs,
+          data: requestInfo.errors
+        });
+    };
+
+    const payload = {};
+    if (requestInfo.rCount >= 1) {
+      payload.id = Number(requestInfo.data[0].id);
+      payload.requestId = requestInfo.data[0].requestid;
+      payload.threadId = requestInfo.data[0].threadid;
+      payload.serverName = requestInfo.data[0].srv_name;
+      payload.instance = requestInfo.data[0].instance;
+      payload.appName = requestInfo.data[0].aiappname;
+      payload.userName = requestInfo.data[0].uname;
+      payload.ts = requestInfo.data[0].ts;
+      payload.endpointId = requestInfo.data[0].endpoint_id;
+      payload.model = requestInfo.data[0].gen_model;
+      payload.toolCalls = Number(requestInfo.data[0].tool_calls);
+      payload.latencySecs = Number(requestInfo.data[0].latency_secs);
+      payload.tokens = {
+        input: Number(requestInfo.data[0].input_tokens),
+        cacheRead: (Number(requestInfo.data[0].cache_read_tokens)),
+        cacheWrite: (Number(requestInfo.data[0].cache_write_tokens)),
+        output: (Number(requestInfo.data[0].output_tokens))
+      },
+      payload.feedbackCount = Number(requestInfo.data[0].feedback_count);
+      payload.prompt = requestInfo.data[0].prompt,
+      payload.completion = requestInfo.data[0].completion,
+      payload.modelResponseHeaders = requestInfo.data[0].model_res_hdrs;
+    };
+
+    return (
+      {
+        http_code: 200,
+        format: EpMetricsOutputFormat.JSON,
+        responseHdrs,
+        data: payload
+      }
+    );
+  }
+
+  async #processUserMetricsRequest(req) {
+    const { aiAppName, resource, resourceId } = req.params;
+
+    const gatewayConfig = req.targeturis; // AI application platform config
+
+    const serverId = gatewayConfig.serverId; // AI Application Platform ID
+    let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
+
+    if (!persistPrompts) { // Prompt persistence is disabled for this AI Application Platform instance!
+      return (
+        {
+          http_code: 400, // Bad request!
+          format: EpMetricsOutputFormat.JSON,
+          data: {
+            error: {
+              target: req.originalUrl,
+              message: `Prompt persistence is disabled for AI Gateway Server [${serverId}]. Unable to process request.`,
+              code: "badRequest"
+            }
+          }
+        }
+      );
+    };
+
+    let application = this._getAiApplication(aiAppName, gatewayConfig);
+
+    if (!application) {
+      return (
+        {
+          http_code: 404, // Resource not found!
+          format: EpMetricsOutputFormat.JSON,
+          data: {
+            error: {
+              target: req.originalUrl,
+              message: `AI Application ID [${appId}] not found. Unable to process request.`,
+              code: "invalidPayload"
+            }
+          }
+        }
+      );
+    };
 
     // 1. GET /usermetrics/{aiAppName}
     if (!resource) {
-      return await this.#retrieveAiAppUserMetrics(req, appConnections);
+      return await this.#retrieveAiAppUserMetrics(req);
     };
 
     // 2. GET /usermetrics/{aiAppName}/requests
     if (resource === 'requests') {
-      return res.send(`All requests for app: ${aiAppName}`);
+      return await this.#retrieveRequestList(req);
     };
 
-    // 3. GET /usermetrics/{aiAppName}/request/{requestId}
-    if (resource === 'request' && requestId) {
-      return res.send(`Request detail for ID: ${requestId} in app: ${aiAppName}`);
+    // 3. GET /usermetrics/{aiAppName}/request/{resourceId}
+    if (resource === 'request' && resourceId) {
+      return await this.#retrieveRequestDetail(req);
     };
 
     // 4. GET /usermetrics/{aiAppName}/users
@@ -518,7 +763,7 @@ class UserMetricsDataHandler extends AbstractDataHandler {
 
     switch (request.targeturis.serverType) {
       case ServerTypes.SingleDomain:
-        response = await this.#processUserMetricsRequest(request, arguments[1]);
+        response = await this.#processUserMetricsRequest(request);
         break;
     };
 

@@ -1077,8 +1077,8 @@ class AzOaiProcessor {
      * ID02232026.sn
      * When remote server config is present for an AI App, make a call to remote servers and fetch the tools.
      * This is an optional step and will only be executed when remote server config is provided in the AI App config.
-     * If the calls to remote server(s) fail for any reason, tools exposed by those servers will not be cached.  We will proceed 
-     * with the original request payload and call OAI endpoint(s).
+     * If the calls to remote server(s) fail for any reason, tools exposed by those servers will not be cached.
+     * We will proceed with the original request payload and call backend endpoint(s).
      */
     let remoteServersObject = null;
     if (config.appRemoteServerConfig) {

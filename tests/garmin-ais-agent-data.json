@@ -1,8 +1,0 @@
-{
-  "messages": [
-        {"role": "user", "content": "What are the top 5 features of Garmin Zumo XT2? Also, can this device detect speed traps and notify the rider?"}
-  ],
-  "max_tokens": 1000,
-  "user": "ganeshra",
-  "stream": false
-}

@@ -234,7 +234,7 @@ router.get([GatewayRouterEndpoints.MetricsEndpoint, GatewayRouterEndpoints.Metri
 //   Varies by resource
 router.get([GatewayRouterEndpoints.UserMetricsEndpoint + "/:aiAppName/:resource?/:resourceId?"], async (req, res) => { // ID09282026.n
   const response = await new ResourceHandlerFactory().getDataHandler(AppResourceTypes.AiAppGatewayUserMetrics).
-      handleRequest(req, appConnections); 
+      handleRequest(req); 
 
   if (response.responseHdrs)
     res.set(response.responseHdrs);

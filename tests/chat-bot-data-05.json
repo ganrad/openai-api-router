@@ -1,8 +1,0 @@
-{
-  "messages": [
-        {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
-        {"role": "user", "content": "What are the top 10 Rajesh Khanna movies, the must see classics.  Rank them as well."}
-  ],
-  "max_tokens": 1000,
-  "stream": false
-}

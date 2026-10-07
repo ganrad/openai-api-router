@@ -1,9 +1,0 @@
-{
-  "messages": [
-        {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
-        {"role": "user", "content": "Top 10 Bollywood movies in 2006?"}
-  ],
-  "max_tokens": 1000,
-  "user": "ganeshra",
-  "stream": false
-}

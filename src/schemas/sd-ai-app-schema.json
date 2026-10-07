@@ -615,7 +615,7 @@
                                 "type": "string"
                             },
                             "allowedTools": {
-                                "description": "List of tools/endpoints allowed for this remote server",
+                                "description": "List of tools/operations/services allowed for this remote server",
                                 "type": "array",
                                 "items": {
                                     "type": "string"

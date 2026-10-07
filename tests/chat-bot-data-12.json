@@ -1,8 +1,0 @@
-{
-  "messages": [
-        {"role": "system", "content": "You are an AI Assistant trained by OpenAI."},
-        {"role": "user", "content": "Provide a brief summary of Satanic Verses"}
-  ],
-  "max_tokens": 1000,
-  "stream": false
-}

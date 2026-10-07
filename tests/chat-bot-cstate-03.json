@@ -1,8 +1,0 @@
-{
-  "messages": [
-        {"role": "user", "content": "Can you elaborate on how this can help with reducing emissions?"}
-  ],
-  "max_tokens": 1000,
-  "user": "ganeshra",
-  "stream": false
-}

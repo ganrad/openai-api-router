@@ -272,10 +272,6 @@ LIMIT  $6;
 --
 -- One row per API call. No prompt / completion / model_res_hdrs.
 -- ============================================================================
-WITH price (gen_model, in_rate, cr_rate, cw_rate, out_rate) AS (
-  VALUES /* :price_rows */
-    ('gpt-5.4'::varchar, 0.00250::numeric, 0.00025::numeric, 0.00313::numeric, 0.01000::numeric)
-)
 SELECT
   a.id,
   a.requestid,
@@ -317,7 +313,7 @@ WHERE  a.srv_name   = $1
   AND  a.uname      = $3
   AND  a.timestamp_ >= $4
   AND  a.timestamp_ <  $5
-  AND  ($8::varchar IS NULL OR a.threadid = $8);
+  AND  ($6::varchar IS NULL OR a.threadid = $6);
 
 
 -- ============================================================================
@@ -389,7 +385,8 @@ SELECT
   a.completion,
   a.model_res_hdrs
 FROM   apigtwyprompts a
-WHERE  a.requestid = $1;
+WHERE  a.requestid = $1
+AND    a.srv_name = $2;
 
 
 -- ============================================================================
