@@ -19,7 +19,7 @@ const {
   AzAiServices,
   ToolPlannerTypes
 } = require("../utilities/app-gtwy-constants.js");
-const { sendStatus, sendTrace, sendError } = require("../lib/sse-event-broker.js");
+const { sendStatus, sendError } = require("../lib/sse-event-broker.js");
 const helper = require("../utilities/helper-funcs.js");
 const { TblNames, PersistDao } = require("../utilities/persist-dao.js");
 const persistdb = require("../services/pp-pg.js");
@@ -169,14 +169,14 @@ Generate a concise, final response to the user query:
         "temperature": this.aiAppRemoteServerConfig.plannerTemperature || 1,
         ...((this.appType === AzAiServices.OAI) && { max_completion_tokens: this.aiAppRemoteServerConfig.plannerMaxTokens || 5000 }),
         ...((this.appType === AzAiServices.Anthropic) && { max_tokens: this.aiAppRemoteServerConfig.plannerMaxTokens || 5000 }),
-        ...((this.appType === AzAiServices.OAI) && { reasoning_effort: this.aiAppRemoteServerConfig.reasoningEffort || "medium" } ),
+        ...((this.appType === AzAiServices.OAI) && { reasoning_effort: this.aiAppRemoteServerConfig.reasoningEffort || "medium" } ), // none, minimal, low, medium, high, xhigh, max
         ...((this.appType === AzAiServices.Anthropic) && { thinking: { type: "adaptive" } }),
         ...((this.appType === AzAiServices.Anthropic) && { outputConfig: { effort: this.aiAppRemoteServerConfig.reasoningEffort || "medium", format: { type: "json_schema", schema: TOOL_PLAN_SCHEMA } } }),
       };  // User message with tool definitions and selection prompt
 
       let stTime = Date.now();
       // LLM selects tools and plan
-      const selectionCompletion = await helper.callAiAppEndpoint(request, this.epMetricsInfo, this.endpointsInfo, toolsMessage, this.appType, normsConfig);
+      const selectionCompletion = await helper.callAiAppEndpoint(request, this.epMetricsInfo, this.endpointsInfo, toolsMessage, this.appType, normsConfig); // Non streaming call
       const execTime = (Date.now() - stTime) / 1000;
       // console.log("******** Tool selection completion from planner model:", JSON.stringify(selectionCompletion, null, 2)); // Debug log to check the tool selection completion response
 
@@ -197,6 +197,12 @@ Generate a concise, final response to the user query:
       else
         execToolCount = toolPlan.nodes.length; // Set the tools count
 
+      // Tokens counts
+      const promptTokens = ((this.appType === AzAiServices.OAI) ? selectionCompletion.usage.prompt_tokens : selectionCompletion.usage.input_tokens) || 0;
+      const completionTokens = ((this.appType === AzAiServices.OAI) ? selectionCompletion.usage.completion_tokens : selectionCompletion.usage.output_tokens) || 0;
+      const cacheReadTokens = ((this.appType === AzAiServices.OAI) ? selectionCompletion.usage.prompt_tokens_details?.cached_tokens : selectionCompletion.usage.cache_read_input_tokens) || 0;
+      const cacheWriteTokens = ((this.appType === AzAiServices.OAI) ? selectionCompletion.usage.prompt_tokens_details?.cache_write_tokens : selectionCompletion.usage.cache_creation_input_tokens) || 0;
+
       // Persist the tool execution plan in table 'toolexecplan'
       let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
       if (persistPrompts) { // Persist prompt, completion, tool plan and tool call details ?
@@ -212,8 +218,10 @@ Generate a concise, final response to the user query:
           this.aiAppRemoteServerConfig.plannerModel,
           toolPlan,
           toolDefinitions.length,
-          selectionCompletion.usage.completion_tokens || 0,
-          selectionCompletion.usage.prompt_tokens || 0,
+          completionTokens,
+          promptTokens,
+          cacheReadTokens,
+          cacheWriteTokens,
           execTime,
           request.body.user
         ];

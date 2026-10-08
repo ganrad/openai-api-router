@@ -772,7 +772,7 @@ initServer().then(() => { // ID01302025.n
       spanProperties.set(GatewaySpanAttrs.HostIdentity, hostId);
 
       // const gatewayId = (process.env.POD_NAME) ? context.serverId + '-' + process.env.POD_NAME : context.serverId; ID08202026.o
-      const gatewayId = (replicaId !== null) ? context.serverId + ':' + replicaId : context.serverId; // ID08202026.n
+      const gatewayId = (replicaId) ? context.serverId + ':' + replicaId : context.serverId; // ID08202026.n
       spanProperties.set(GatewaySpanAttrs.GatewayId, gatewayId);
 
       addCustomPropertiesToSpan(spanProperties);

@@ -323,7 +323,7 @@ class AzOaiProcessor {
     return new Promise((resolve) => setTimeout(resolve, time));
   }
 
-  async #streamChatCompletion(req_id, t_id, app_id, router_res, oai_res, nconfig, t_count) { // ID11032025.n, ID04222026.n
+  async #streamChatCompletion(req_id, t_id, app_id, router_res, oai_res, nconfig, t_count, session_id) { // ID11032025.n, ID04222026.n, ID05202026.n
     const reader = oai_res.body.getReader(); // use Nodejs native fetch!
     // const reader = oai_res.body; // use node-fetch library!
 
@@ -459,6 +459,13 @@ class AzOaiProcessor {
             let content = jsonMsg.choices[0].delta.content;
             if (content)
               recv_data = recv_data.concat(content);
+
+            // ID05202026.sn
+            // When advanced reasoning models are used, reasoning_content is returned. 
+            const rcontent = jsonMsg.choices[0].delta.reasoning_content;
+            if ( session_id && rcontent )
+              sendTrace(session_id, `Thinking: ${rcontent}`);
+            // ID05202026.en
 
             if (!call_data && (jsonMsg.created > 0))
               call_data = {
@@ -1311,7 +1318,7 @@ class AzOaiProcessor {
             if (req.body.stream) // Streaming request?
               data = (req.body.data_sources) ?
                 await this.#streamChatCompletionOyd(req.id, th_id, config.appId, res, response, toolsCount) :  // OYD call; ID04222026.n
-                await this.#streamChatCompletion(req.id, th_id, config.appId, res, response, normConfig, toolsCount); // Chat completion call; ID11032025.n, ID04222026.n
+                await this.#streamChatCompletion(req.id, th_id, config.appId, res, response, normConfig, toolsCount, sessionId); // Chat completion call; ID11032025.n, ID04222026.n, ID05202026.n
             else
               data = await response.json();
             // ID06052024.en
@@ -1385,8 +1392,8 @@ class AzOaiProcessor {
                 req.body.model || 'NA', // ID08262026.n
                 data.usage?.prompt_tokens || 0,
                 data.usage?.completion_tokens || 0,
-                data.usage?.prompt_token_details?.cached_tokens || 0, // ID09282026.n
-                data.usage?.prompt_token_details?.cache_write_tokens || 0
+                data.usage?.prompt_tokens_details?.cached_tokens || 0, // ID09282026.n
+                data.usage?.prompt_tokens_details?.cache_write_tokens || 0
               ];
 
               await promptDao.storeEntity(

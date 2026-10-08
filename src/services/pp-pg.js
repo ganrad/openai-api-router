@@ -38,6 +38,7 @@
  * ID08262026: ganrad: v3.0.1: (Enhancement) Introduced 3 new fields in apigtwyprompts table - generation model, generation input & output tokens.
  * ID08272026: ganrad: v3.0.1: (Enhancement) Log query params passed to 'executeQuery' function.
  * ID09282026: ganrad: v3.0.1: (Enhancement) Introduced 2 new fields in apigtwyprompts table - generation cache read and write tokens.  Used in user metrics feature.
+ * ID10072026: ganrad: v3.0.1: (Enhancement) Introduced 2 new fields in toolexecplan table - cache read and write tokens.
  * 
 */
 
@@ -108,6 +109,8 @@ const createTblStmts = [
     "evaltools INTEGER, " +  // No. of tools evaluated
     "completion_tokens INTEGER, " + // Completion tokens
     "prompt_tokens INTEGER, " + // Prompt tokens
+    "cache_read_tokens INTEGER, " + // Cache read tokens
+    "cache_write_tokens INTEGER, " + // Cache write tokens
     "exec_time_secs real, " + // Time taken to generate tool plan
     "uname VARCHAR(50), " + // User name/id
     "create_date TIMESTAMP DEFAULT NOW() )",
