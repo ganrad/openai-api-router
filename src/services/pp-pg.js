@@ -39,6 +39,8 @@
  * ID08272026: ganrad: v3.0.1: (Enhancement) Log query params passed to 'executeQuery' function.
  * ID09282026: ganrad: v3.0.1: (Enhancement) Introduced 2 new fields in apigtwyprompts table - generation cache read and write tokens.  Used in user metrics feature.
  * ID10072026: ganrad: v3.0.1: (Enhancement) Introduced 2 new fields in toolexecplan table - cache read and write tokens.
+ * ID10082026: ganrad: v3.0.1: (Enhancement) Introduced a new table view 'llm_calls' so users can view the user metrics (UI) split by stages - planning & generation.
+ * Also, introduced 3 new fields in toolexecplan table - model response headers, endpoint id & tool retrieval prompt.
  * 
 */
 
@@ -105,13 +107,16 @@ const createTblStmts = [
     "aiappname VARCHAR(100) NOT NULL, " + // AI App Name
     "aiapp_gen_plan VARCHAR(100) NOT NULL, " + // AI App used to generate plan
     "planner_model VARCHAR(50), " + // LLM used to generate the plan
+    "retrieval_prompt JSON, " + // Generated tool retrieval prompt
     "toolplan JSON, " +  // Tool Plan
     "evaltools INTEGER, " +  // No. of tools evaluated
+    "model_res_hdrs JSON, " + // Fetch call response headers returned by model deployment
     "completion_tokens INTEGER, " + // Completion tokens
     "prompt_tokens INTEGER, " + // Prompt tokens
     "cache_read_tokens INTEGER, " + // Cache read tokens
     "cache_write_tokens INTEGER, " + // Cache write tokens
     "exec_time_secs real, " + // Time taken to generate tool plan
+    "endpoint_id VARCHAR(50), " + // Endpoint ID, which served the request
     "uname VARCHAR(50), " + // User name/id
     "create_date TIMESTAMP DEFAULT NOW() )",
   "CREATE TABLE IF NOT EXISTS toolexecdetails (" + // ID04212026.n
@@ -133,18 +138,32 @@ const createTblStmts = [
     "status VARCHAR(20), " + // Status of tool call - Completed, Failed
     "exec_time_secs real, " + // Time taken to execute/run tool
     "uname VARCHAR(50), " + // User name/id
-    "create_date TIMESTAMP DEFAULT NOW() )"
+    "create_date TIMESTAMP DEFAULT NOW() )",
+  "CREATE VIEW llm_calls AS " + // ID10082026.n
+    "SELECT 'generation' AS stage, requestid, threadid, uname, aiappname, srv_name, endpoint_id, gen_model, " +
+      "gen_input_tokens, gen_cache_rd_tokens, gen_cache_wr_tokens, gen_output_tokens, exec_tool_count, feedback_count, " +
+      "prompt, completion, model_res_hdrs, exec_time_secs, timestamp_ " +
+    "FROM apigtwyprompts " +
+    "UNION ALL " +
+    "SELECT 'planning' AS stage, p.requestid, p.threadid, p.uname, p.aiapp_gen_plan, p.srv_name, p.endpoint_id, p.planner_model, " +
+      "p.prompt_tokens, p.cache_read_tokens, p.cache_write_tokens, p.completion_tokens, p.evaltools, 0, " +
+      "p.retrieval_prompt, p.toolplan, p.model_res_hdrs, p.exec_time_secs, p.create_date " +
+    "FROM toolexecplan p"
 ];
 
 const dropTblStmts = [
-  "DROP TABLE IF EXISTS apigtwyprompts;",
+  "DROP TABLE IF EXISTS apigtwyprompts CASCADE;",
   "DROP TABLE IF EXISTS apigtwymemory;", // ID05062024.n
   "DROP TABLE IF EXISTS aiapptoolstrace;", // ID10262024.n
   "DROP TABLE IF EXISTS aiappdeploy;", // ID01232025.n
   "DROP TABLE IF EXISTS aiappservers;", // ID01272025.n
   "DROP TABLE IF EXISTS userfacts;", // ID05142025.n
-  "DROP TABLE IF EXISTS toolexecplan;", // ID04212026.n
+  "DROP TABLE IF EXISTS toolexecplan CASCADE;", // ID04212026.n
   "DROP TABLE IF EXISTS toolexecdetails;" // ID04212026.n
+];
+
+const dropTblViewStmts = [ // ID10082026.n
+  "DROP VIEW IF EXISTS llm_calls;"
 ];
 
 // 1. Initialize the DB connection pool
@@ -192,6 +211,20 @@ async function checkDbConnection() {
     logger.log({level: "error", message: "[%s] checkDbConnection(): Encountered exception:\n%s", splat: [scriptName, formatException(err)]});
   };
   return ret_val;
+}
+
+// Delete/Drop table view
+async function dropTableView(idx) { // ID10082026.n
+  try {
+    const client = await pool.connect(); // Get a connection
+    await client.query(dropTblViewStmts[idx]);
+    logger.log({level: 'info', message: '[%s] dropTableView(): Table View dropped successfully!', splat: [scriptName]});
+
+    client.release();
+  }
+  catch (err) {
+    logger.log({level: "error", message: "[%s] dropTableView(): Encountered exception:\n%s", splat: [scriptName, formatException(err)]});
+  };
 }
 
 // Delete/Drop table
@@ -336,6 +369,7 @@ async function deleteData(entity, query, params) { // ID05062024.n
 
 module.exports = {
   checkDbConnection,
+  dropTableView, // ID10082026.n
   dropTable,
   createTable,
   // insertData, // ID05062024.o

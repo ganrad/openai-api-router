@@ -29,6 +29,7 @@
  * ID07282026: ganrad: v3.0.1: (Enhancement) Introduced support for enforcement of outbound security policies at both a) AI Gateway level and b) AI Application level.
  * ID08032026: ganrad: v3.0.1: (Enhancement) Add http header keys (if present) when the endpoint uses a norm input policy ...
  * ID08042026: ganrad: v3.0.1: (Enhancement) API Key name can be configured for a model deployment endpoint. This is optional.  Defaults to 'api-key'.
+ * ID10082026: ganrad: v3.0.1: (Enhancement) Include the endpoint id which served the request along with the response headers.
  * 
 */
 const path = require('path');
@@ -184,6 +185,14 @@ async function callAiAppEndpoint(
           respTime);
 
         logger.log({ level: "info", message: "[%s] callAiAppEndpoint():\n  Request ID: %s\n  Target Endpoint: %s\n  Endpoint ID: %s\n  Model/Deployment ID: %s\n  Status: %s\n  Status Text: %s\n  Execution Time: %d", splat: [scriptName, req.id, element.uri, element.id, messages.model, status, response.statusText, Date.now() - stTime] });
+
+        // ID10082026.sn
+        // Add the metadata object containing the endpoint ID which served the request
+        data.imetadata = {
+          endpointId: element.id,
+          responseHdrs: Object.fromEntries(response.headers.entries())
+        };
+        // ID10082026.en
 
         return data; // 200 All OK
       }

@@ -19,6 +19,8 @@
  * by the model to provided more personalized responses.
  * ID06132025: ganrad: v2.3.8: Renamed this script from 'pg-test.js' to 'pg-create-db-resources.js'.
  * ID04212026: ganrad: v3.0.1: (Enhancement) Introduced 2 new tables 'toolexecplan' and 'toolexecdetails' to capture tool plan and execution data.
+ * ID10082026: ganrad: v3.0.1: (Enhancement) Introduced new table view 'llm_calls' for generating the user metrics view.
+ * 
  */
 
 // const pgvector = require('pgvector/pg');
@@ -135,9 +137,10 @@ async function createDBResources() {
   // Query rows in 'ToolExecDetails' table
   let tedDao = new PersistDao(pdb,TblNames.ToolExecDetails);
   await tedDao.queryTable('001',0,null);
-  console.log("***** End of Tool Execution Details Table; *****");
+  console.log("***** End of Tool Execution Details Table; *****\n\n***** Begin LLM Calls table view; *****");
   // ID04212026.en
 
+  await pdb.createTable(8); // ID10082026.n
   // await new Promise(r => setTimeout(r, 2000));
 }
 

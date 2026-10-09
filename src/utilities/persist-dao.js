@@ -44,6 +44,7 @@
  * ID09282026: ganrad: v3.0.1: (Enhancement) Two new fields were added to apigtwyprompts table - generation cache read and write tokens. These values are 
  * used for deriving user API call and cost metrics.
  * ID10072026: ganrad: v3.0.1: (Enhancement) Two new fields were added to toolexecplan table - cache read and write tokens.
+ * ID10082026: ganrad: v3.0.1: (Enhancement) Three new fields were added to toolexecplan table - model response headers, endpoint id & tool retrieval prompt.
  * 
 */
 
@@ -150,7 +151,7 @@ const toolExecPlanQueryStmts = [ // ID04212026.n
 ];
 
 const toolExecPlanInsertStmts = [ // ID04212026.n
-  "INSERT INTO toolexecplan (srv_name, instance, planner_type, requestid, threadid, aiappname, aiapp_gen_plan, planner_model, toolplan, evaltools, completion_tokens, prompt_tokens, cache_read_tokens, cache_write_tokens, exec_time_secs, uname) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id"
+  "INSERT INTO toolexecplan (srv_name, instance, planner_type, requestid, threadid, aiappname, aiapp_gen_plan, planner_model, retrieval_prompt, toolplan, evaltools, model_res_hdrs, completion_tokens, prompt_tokens, cache_read_tokens, cache_write_tokens, exec_time_secs, endpoint_id, uname) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING id"
 ];
 
 const toolExecDetailsQueryStmts = [ // ID04212026.n

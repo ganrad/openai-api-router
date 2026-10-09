@@ -216,13 +216,16 @@ Generate a concise, final response to the user query:
           this.appId,
           this.aiAppRemoteServerConfig.aiAppName || this.appId,
           this.aiAppRemoteServerConfig.plannerModel,
+          toolsMessage,
           toolPlan,
           toolDefinitions.length,
+          selectionCompletion.imetadata?.responseHdrs,
           completionTokens,
           promptTokens,
           cacheReadTokens,
           cacheWriteTokens,
           execTime,
+          selectionCompletion.imetadata?.endpointId,
           request.body.user
         ];
 

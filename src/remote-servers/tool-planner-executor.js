@@ -727,6 +727,12 @@ Generate a concise, final response to the user query:
       else
         execToolCount = toolPlan.tools.length; // Set the tools count
 
+      // Tokens counts
+      const promptTokens = ((this.appType === AzAiServices.OAI) ? selectionCompletion.usage.prompt_tokens : selectionCompletion.usage.input_tokens) || 0;
+      const completionTokens = ((this.appType === AzAiServices.OAI) ? selectionCompletion.usage.completion_tokens : selectionCompletion.usage.output_tokens) || 0;
+      const cacheReadTokens = ((this.appType === AzAiServices.OAI) ? selectionCompletion.usage.prompt_tokens_details?.cached_tokens : selectionCompletion.usage.cache_read_input_tokens) || 0;
+      const cacheWriteTokens = ((this.appType === AzAiServices.OAI) ? selectionCompletion.usage.prompt_tokens_details?.cache_write_tokens : selectionCompletion.usage.cache_creation_input_tokens) || 0;
+
       // Persist the tool execution plan in table 'toolexecplan'
       let persistPrompts = (process.env.API_GATEWAY_PERSIST_PROMPTS === 'true') ? true : false
       if (persistPrompts) { // Persist prompt, completion, tool plan and tool call details ?
@@ -740,11 +746,16 @@ Generate a concise, final response to the user query:
           this.appId,
           this.aiAppRemoteServerConfig.aiAppName || this.appId,
           this.aiAppRemoteServerConfig.plannerModel,
+          toolsMessage,
           toolPlan,
           toolDefinitions.length,
-          selectionCompletion.usage.completion_tokens || 0,
-          selectionCompletion.usage.prompt_tokens || 0,
+          selectionCompletion.imetadata?.responseHdrs,
+          completionTokens,
+          promptTokens,
+          cacheReadTokens,
+          cacheWriteTokens,
           execTime,
+          selectionCompletion.imetadata?.endpointId,
           request.body.user
         ];
 
